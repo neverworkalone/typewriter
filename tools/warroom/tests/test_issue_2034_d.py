@@ -1,4 +1,5 @@
 """Issue #2034: Method D runs as serial 25-record chunk sessions with a deterministic, idempotent finalization."""
+import hashlib
 import json
 import unittest
 
@@ -37,21 +38,32 @@ class DWorld(World):
                 self.runner.dchunk.save(self.wt(), self.active()["chunk_no"])
         self.adapter.plan.append({"code": code, "session": session, "effect": effect})
 
-    def ai_rejected(self, code=0, session="ses_d", scope="decisions", stale=False, failed_search_after=False):
+    def ai_rejected(self, code=0, session="ses_d", scope="decisions", stale=False, failed_search_after=False,
+                    failed_record=None):
         """A fake AI whose `save` is rejected: decisions.txt stays, the CLI's diagnostic for the active chunk is written."""
         def effect():
             rec = self.active()
             names = dchunk.chunk_names(self.row_(), rec["chunk_no"])
             folder = self.wt() / names.directory
-            (self.wt() / names.decisions).write_text("s1 Z\n")
+            active = dchunk.read_active(self.wt(), self.row_())
+            target_record = failed_record or active["senses"][0]["sense_id"].rsplit("-s", 1)[0]
+            sense_id = f"{target_record}-s1"
+            sense_ref = next(sense["ref"] for sense in active["senses"]
+                             if sense["sense_id"] == sense_id)
+            error = f"{sense_ref}: Z needs every recorded search of this record to be complete with 0 hits"
+            (self.wt() / names.decisions).write_text(f"{sense_ref} Z\n")
             if failed_search_after:   # a search after the rejected save failed: the repairable diagnostic is now stale
                 with open(self.wt() / names.searches, "a") as fh:
-                    fh.write(json.dumps({"record_id": "w0001", "status": "SEARCH_FAILED", "hits": 0,
+                    fh.write(json.dumps({"record_id": target_record, "status": "SEARCH_FAILED", "hits": 0,
                                          "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"]}) + "\n")
             (self.wt() / names.rejected).write_text(json.dumps({
                 "diagnostic": "save_rejected", "chunk_no": rec["chunk_no"],
                 "view_sha256": "0" * 64 if stale else rec["view_sha256"], "git_head": rec["git_head"], "repair_scope": scope,
-                "senses": ["s1"], "errors": ["s1: Z needs every recorded search of this record to be complete with 0 hits"],
+                "senses": [sense_ref], "errors": [error],
+                "failed_records": [{"record_id": target_record, "failed_sense_ids": [sense_id],
+                                    "errors": [error]}],
+                "decisions_sha256": hashlib.sha256((self.wt() / names.decisions).read_bytes()).hexdigest(),
+                "searches_sha256": hashlib.sha256((self.wt() / names.searches).read_bytes()).hexdigest(),
                 "error_count": 1}))
         self.adapter.plan.append({"code": code, "session": session, "effect": effect})
 
@@ -369,40 +381,63 @@ class SaveRejectedFix(unittest.TestCase):
         self.assertEqual(w.active()["chunk_no"], 2)
         self.assertFalse((w.wt() / dchunk.chunk_names(w.row_(), 1).rejected).exists())   # accepted chunk scratch was removed
 
-    def test_repeated_rejection_stops_after_the_limit_and_extra_ticks_launch_nothing(self):
+    def test_repeated_record_local_rejection_skips_only_that_record_and_continues(self):
         w = self.w
         w.start("single", "deepseek", "d")
-        w.ai_rejected()
-        w.ai_rejected()
-        self.run_once()
+        w.ai_rejected(failed_record="w0003")
+        w.tick()
+        w.finish_last()
+        rec = w.active()
+        with self.assertRaisesRegex(dchunk.DChunkError, "exhausted fix budget"):
+            dchunk.supervisor_skip(w.store, w.runner, w.sup._d_env(w.row_()), w.wt(), w.row_(), rec)
+        w.ai_rejected(failed_record="w0003")
+        w.tick()
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
         w.finish_last()
         w.tick()
-        self.assertEqual(w.row_()["state"], "ERROR")
-        self.assertIn("마지막 save 거부", w.row_()["error"])
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual((w.row_()["state"], w.row_()["run_kind"], w.active()["chunk_no"]),
+                         ("PRODUCING", "d_chunk_new", 2))
+        self.assertEqual(len(w.adapter.launches), 3)                 # fallback saves chunk 1 and immediately launches chunk 2
+        rows = [json.loads(line) for line in (w.wt() / dchunk.names(w.row_()).directory / "chunk-001.jsonl").read_text().splitlines()]
+        first = next(row for row in rows if row["record_id"] == "w0003")
+        other = next(row for row in rows if row["record_id"] == "w0002")
+        self.assertEqual(first["senses"], [
+            {"sense_id": "w0003-s1", "candidates": []},
+            {"sense_id": "w0003-s2", "candidates": ["후보"]},
+        ])
+        self.assertTrue(all(sense["candidates"] == ["후보"] for sense in other["senses"]))
+        skip = json.loads((w.wt() / dchunk.chunk_names(w.row_(), 1).technical_skips).read_text())
+        self.assertEqual((skip["fix_attempts"], skip["skips"][0]["record_id"], skip["skips"][0]["sense_ids"],
+                          skip["skips"][0]["failed_sense_ids"]),
+                         (1, "w0003", ["w0003-s1", "w0003-s2"], ["w0003-s1"]))
+        audit = next(event["msg"] for event in w.store.recent_events()
+                     if event["batch_id"] == w.row_()["id"] and "D 기술적 생산 제외:" in event["msg"])
+        expected = json.dumps(skip["skips"], ensure_ascii=False, separators=(",", ":"))
+        self.assertIn(f"technical_skips={expected}", audit)
+        self.assertIn("same-session-fixes=1", audit)
+        self.assertIn("실패 Sense만 후보 []로 저장", audit)
+        self.assertNotIn("Record 전체", audit)
         w.tick(3)
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
 
-    def test_operator_retry_regrants_exactly_one_correction(self):
+    def test_operator_retry_regrants_one_correction_before_the_local_fallback(self):
         w = self.w
         w.start("single", "deepseek", "d")
-        for _ in range(3):
-            w.ai_rejected()
+        w.ai_rejected(session=None)  # without a live session the Supervisor preserves the failure for an operator
         self.run_once()
-        w.finish_last()
-        w.tick()
         self.assertEqual(w.row_()["state"], "ERROR")
+        w.ai_rejected(session="ses_retry")
+        w.ai_rejected(session="ses_retry")
         self.assertTrue(control.retry(w.store, "deepseek", "d"))
-        w.tick(2)                                                        # the Retry resumes the chunk (existing path)
+        w.tick(2)
         w.finish_last()
         w.tick()
-        self.assertEqual(w.kinds()[-1], "d_chunk_fix")                   # ...and a new rejection gets one fresh correction
+        self.assertEqual(w.kinds()[-1], "d_chunk_fix")
         w.finish_last()
         w.tick()
-        self.assertEqual(w.row_()["state"], "ERROR")
-        w.tick(3)
-        self.assertEqual(w.kinds().count("d_chunk_fix"), 2)
+        self.assertEqual((w.row_()["state"], w.active()["chunk_no"]), ("PRODUCING", 2))
+        self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
 
     def test_unrepairable_or_stale_diagnostics_start_no_ai(self):
         for label, kw in (("hit-bearing Z", {"scope": "stop_and_report"}), ("stale view", {"stale": True}),
@@ -884,6 +919,13 @@ class VerifiedPrefix(unittest.TestCase):
 
 
 class Prompts(unittest.TestCase):
+    def test_d_production_pr_reports_exact_technical_skip_count_only_when_present(self):
+        batch = {"shard": "001", "batch": "01"}
+        base = {"records": 25, "senses": 27, "candidates": 20, "empty_senses": 4, "technical_skips": []}
+        self.assertNotIn("Technical skips", dchunk.pr_body("DeepSeek", batch, base))
+        skipped = {**base, "technical_skips": [{"record_id": "w1", "sense_ids": ["s1", "s2"]}]}
+        self.assertIn("Technical skips: 1 records — w1 (2 senses)", dchunk.pr_body("DeepSeek", batch, skipped))
+
     def test_exactly_one_of_view_or_pages_and_the_card_binds_the_save_call(self):
         b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
         with self.assertRaises(prompts.PromptError):

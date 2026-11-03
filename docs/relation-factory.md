@@ -100,9 +100,11 @@ Issue #1750/#1761의 공통 read-only 조회·checkpoint·집계·Candidate 출�
 
 D는 전용 Workbench 없이 #1156의 25-record 청크 직접 검색 → AI 판독 → 후보 편집 → Candidate JSONL 조립 → 공통 validator 순서로 생산한다. 전수 선행 scan, 문맥/후보별 영수증은 요구하지 않는다.
 
+**C/D 기술적 생산 제외 (#2881):** Supervisor는 먼저 기존 source-bound 증거로 가능한 결정적 정규화(예: C의 문맥 키 양끝 공백 제거)를 일반 CLI 검증 경로에서 시도하고, 이후 기존 same-session Retry 한도를 그대로 사용한다. 한도 소진 뒤에는 정상 결과를 보존하면서 오류가 입증된 source Sense만 기술적으로 제외한다. C와 D 모두 실패 Sense 후보만 `[]`로 저장하고, 같은 Record의 다른 Sense 후보는 보존한다. D의 검색 증거는 Record 단위로 공유되므로 다른 Sense도 의존하는 실제 공유 검색 증거가 손상되었거나 실패 범위를 안전하게 특정할 수 없으면 Record의 정상 Sense까지 비우지 않고 중단한다. 이 제외는 검색 0건·편집적 무가치·Stage 2 Drop을 뜻하지 않는다. C의 일반 `submit`과 D의 일반 `save` Candidate 형식에는 skip 표식을 추가하지 않는다. Supervisor 전용 CLI 경로만 정확한 최신 진단·청크/HEAD·입력 파일에 결속해 제외를 기록한다. 검색 상태, 원본 검색 증거, 나머지 정상 제출은 그대로 유지한다. 다수·모호·stale 진단, `SEARCH_FAILED`, hit-bearing `Z`, cursor/인덱스 무결성 실패, 전역 증거 손상은 기술적 제외로 바꾸지 않고 중단한다. 로컬 checkpoint/청크 sidecar와 Supervisor Audit Log에 정확한 ID·진단·Retry 수를 남기며, 생산 PR 본문에는 제외 수와 source ID를 표시한다.
+
 > 정확한 출발 sense가 쓰인 문맥에서 자연스러운 연관 표현, 사용 상황, 함께 발생하는 행동, 의미상 가까운 말, 글쓰기에 도움이 되는 연상을 찾는다. 같은 문서의 주제어, 가까이에 나온 명사, 단순 공출현 빈도만으로 후보를 선택하지 않는다. 후보와 출발 sense 사이의 **구체적인 쓰임·의미 연결**이 실제 문맥에 있어야 한다. `가계도 → 가계도`처럼 출발 표제어 자신은 제외하고, 동음이의어·부분 문자열 검색 오탐을 구별한다. 검색 자료가 문학 분야에 치우친 경우 이를 일반 문어 전체의 대표 용례로 간주하지 않는다. 적절한 후보가 없으면 빈 배열을 반환한다.
 
-**실행 기록과 공개 PR 보고:** C/D는 실제 탐색과 source-sense 판독을 수행하고 재개·검증에 필요한 최소 로컬 상태만 남긴다. **C의 7관점 × 독립 2회 실제 탐색은 필수**지만, 관점별·회차별 실측 검산 장부, 빈 관점별 0건 표, 문맥·후보별 영수증 및 상세 통계는 #1155에 따라 필수로 기록·제출하지 않는다. **C의 공개 PR 본문은 #1155 §4의 여섯 항목(Method, Model, Shard, Batch, Coverage, Candidates)만 기록한다.** 공통 안내의 활성/빈 sense, 문맥 검증 요약, 탐색 수행 여부, 절차 식별·한계 보고를 C PR 본문의 추가 의무로 적용하지 않는다. D의 공개 PR 본문에는 #1156의 최소 실행 요약(실제 모델, shard/batch, 후보 수, 승인 문어 원문 검색·source-sense 확인·Candidate v1 검증 수행 여부, 주요 한계)만 간결히 기록한다. 활성/빈 sense 수, 별도 절차 식별자, PASS별 세부 통계·영수증·장부를 추가 의무로 요구하지 않는다. 단순 표기·전사 오류는 실제 데이터·필수 실행에 영향을 주지 않는다면 PR 본문만 정정할 수 있다. 반면 검증 문맥 날조, 다른 sense 결속, 탐색 누락, 허위 수행 보고는 기술 차단 사항이다. 보고된 합계만으로 비공개 문맥을 독립 확인했다고 주장하지 않는다.
+**실행 기록과 공개 PR 보고:** C/D는 실제 탐색과 source-sense 판독을 수행하고 재개·검증에 필요한 최소 로컬 상태만 남긴다. **C의 7관점 × 독립 2회 실제 탐색은 필수**지만, 관점별·회차별 실측 검산 장부, 빈 관점별 0건 표, 문맥·후보별 영수증 및 상세 통계는 #1155에 따라 필수로 기록·제출하지 않는다. **C의 공개 PR 본문은 #1155 §4의 여섯 표준 항목(Method, Model, Shard, Batch, Coverage, Candidates)을 기록한다.** 기술적 제외가 있으면 여기에만 추가로 `Technical skips: N senses — Record/Sense ID (diagnostic reason)`를 표시한다. 공통 안내의 활성/빈 sense, 문맥 검증 요약, 탐색 수행 여부, 절차 식별·한계 보고를 C PR 본문의 추가 의무로 적용하지 않는다. D의 공개 PR 본문에는 #1156의 최소 실행 요약(실제 모델, shard/batch, 후보 수, 승인 문어 원문 검색·source-sense 확인·Candidate v1 검증 수행 여부, 주요 한계)을 간결히 기록하고, 기술적 제외가 있으면 `Technical skips: N records — Record ID (sense count)`를 추가한다. 활성/빈 sense 수, 별도 절차 식별자, PASS별 세부 통계·영수증·장부를 추가 의무로 요구하지 않는다. 단순 표기·전사 오류는 실제 데이터·필수 실행에 영향을 주지 않는다면 PR 본문만 정정할 수 있다. 반면 검증 문맥 날조, 다른 sense 결속, 탐색 누락, 허위 수행 보고는 기술 차단 사항이다. 보고된 합계만으로 비공개 문맥을 독립 확인했다고 주장하지 않는다.
 
 **공통 출력:** Stage 1은 `candidates: string[]`만 기록한다. 타입·Tier·대상 ID·채택 판정은 Stage 2가 한다. 후보별 인용문·검색 로그·근거 설명은 Candidate JSONL에 싣지 않는다. 문학·말뭉치 원문과 SQLite는 Git에 올리지 않는다.
 
@@ -197,7 +199,8 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 - ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. Stage 2 Part의 `read-chunk` 입력은 같은 표기의 모든 target record, lemma, sense ID, POS, 전체 gloss를 제공한다. 동철 이의어·다의어는 출발 sense와 각 target sense를 비교해 선택하며 첫 항목을 자동 선택하지 않는다. text-only로 남길 때도 제공된 target sense ID를 전부 검토하고 `no_exact_match`로 명시한다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
 - 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 새 Part의 각 방향은 source 기준으로 한 번 판단하고 동일한 반대 값을 저장한다. 양쪽 출발 sense의 Candidate가 같은 쌍을 동시에 만들면 기존 방향 충돌 검사가 두 source 판단의 일치 여부를 확인하며, 서로 다르면 한쪽을 임의 선택하지 않고 #2307 preflight/국소 재판정으로 해결한다. 빌드는 ID 행마다 같은 Type/Tier의 양방향 탐색 행 2개를 만든다.
 - 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외**로 설명되어야 한다. 같은 후보 표기에 ID 관계가 여러 개 있으면 실제 target sense가 서로 다를 때 허용하며, 동일 source/target sense 쌍은 한 번만 저장한다. 여러 후보형이 같은 쌍을 공유하면 위의 type/relevance 병합 규칙을 적용한다. 같은 후보에 대한 text-only 관계나 Drop은 다른 처리와 중복할 수 없다.
-- **Stage 2 Drop**은 (1) 실제 출발 sense와 관계가 없는 후보 또는 (2) 의미가 연결되더라도 작가에게 독립적인 표현 가치를 주지 않는 후보에만 쓴다(#2544). `by:"x"`는 무관·오결속 후보, `by:"e"`는 연결은 되지만 독립적인 표현 가치가 없는 후보를 뜻한다. Stage 2는 `x/e`만 저장하며 자유형 설명, `editorial:`, `edit`, `z`를 거부한다. **뜻풀이에 직접 등장하는 후보에 대한 `findGlossNamedDrops` 반례 검사는 `x`에 적용하고, `e`는 면제**한다. `z`는 Stage 3 전용 회계 코드다. 같은 sense의 기존 승인 peer와 모순되는 Drop, 잘못된 후보 회계·중복·샤드 소유는 여전히 금지다.
+- **Stage 2 editorial Drop**은 (1) 실제 출발 sense와 관계가 없는 후보 또는 (2) 의미가 연결되더라도 작가에게 독립적인 표현 가치를 주지 않는 후보에만 쓴다(#2544). `by:"x"`는 무관·오결속 후보, `by:"e"`는 연결은 되지만 독립적인 표현 가치가 없는 후보를 뜻한다. 모델의 일반 compact 입력은 `x/e`만 허용하며 자유형 설명, `editorial:`, `edit`, `z`, `f`를 거부한다. **뜻풀이에 직접 등장하는 후보에 대한 `findGlossNamedDrops` 반례 검사는 `x`에 적용하고, `e`는 면제**한다. `z`는 Stage 3 전용 회계 코드다. 같은 sense의 기존 승인 peer와 모순되는 Drop, 잘못된 후보 회계·중복·샤드 소유는 여전히 금지다.
+- **Stage 2 technical failure Drop (`f`, issue #2874):** Supervisor가 공식 `save-chunk`의 전체 진단을 현재 chunk의 단일 alias와 source record/sense/candidate에 결속하고, 기존 세션의 수정 1회가 끝난 뒤에도 그 후보가 같은 `save-chunk` 오류로 남았음을 확인한 경우에만 별도 restricted CLI 경로로 저장한다. `f`는 자동화 실패 표식이며 의미·표현 가치 판단을 뜻하지 않는다. 일반 모델 입력 `D f`와 다른 모든 누락·다중 후보·비국소 검증 오류의 자동 `f` 전환은 금지한다. `f`는 gloss-name 반례 검사에서 면제하고 editorial Drop 통계와 분리한다. Persisted Drop JSONL의 기존 `{id,sid,cd,by}` 축약 계약은 그대로이며 `by:"f"`는 향후 재심사를 위해 남긴다.
 
 **도구** (`pnpm run relation:admission -- <command>`, 샤드 번호만 바꿔 재사용):
 
@@ -238,11 +241,20 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 **허용:** (1) 승인 Relation **한 행 전체를 삭제**하는 Drop, (2) 기존 **text-only 관계를 정확한 Canonical target record/sense의 ID 관계로 전환**하는 Link Repair. Repair는 기존 `tp/rv`를 보존한다. ID 행 삭제는 **해당 행이 만든 정·역방향 투영**을 제거한다. 다른 살아 있는 Relation이 같은 meaning-level 관계를 만들면 제품 화면의 링크는 남을 수 있다. 표제어·Sense·후보·새 관계 추가, 대상어 바꿔치기, Type/Tier 재판정, STDICT direct/antonym 편집은 금지한다.
 
+Stage 3의 사후 국소 Link Repair는 `edit-cli`에 `--batch BB --part PP`를 함께 지정한다. 이 경로는 정식 Stage 2 `partScope`와 같은 Canonical 순서로 source record/sense 집합을 만들고, 그 범위에서 현재 text-only 행만 준비한다. scoped checkpoint는 샤드 전체 Stage 3 checkpoint와 분리하며 `save-chunk`는 `L <row> T<target>` 또는 `none`만 허용한다. `apply`는 exact target, source/target gloss와 동철 선택지, 충돌, 양방향 후보 회계를 기존 Stage 3 검증기로 확인하고 Relation 파일만 갱신한다. 대상 표제어가 없거나 의미가 확실하지 않으면 text-only 상태로 둔다. 사용 예:
+
+```sh
+node scripts/relation/edit-cli.mjs prepare --shard 002 --batch 02 --part 02
+node scripts/relation/edit-cli.mjs read-chunk --shard 002 --batch 02 --part 02
+node scripts/relation/edit-cli.mjs save-chunk --shard 002 --batch 02 --part 02 --in .warroom-scratch/decisions.txt
+node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
+```
+
 ### 5-A. 파일·후보 회계
 
 - **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"z"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.
 - **Drop 소유:** `drop-SSS`의 `sid`는 항상 SSS의 Canonical source sense에 속한다. 다른 샤드 sense를 넣는 foreign tombstone이나 별도 `edit-SSS.jsonl` 원장은 금지한다. 다른 샤드의 역방향 고아 후보는 **그 샤드 자체 Stage 2 흐름에서** 원인에 따라 처리한다.
-- **Stage 3 Drop은 출발 의미와 무관해야 한다는 뜻이 아니다.** 후보가 의미상 유효해도 단순 활용형, 어미 변이, 명사화, 반복·중복, 효용 없는 유의어, 가치 없는 연상 또는 잘못 결속된 Sense면 Relation 삭제 후 고아 후보 Drop이 될 수 있다. 이는 **Stage 2가 먼저 걸러야 할 유형을 감사하며 놓친 사례를 교정**하는 것이지 Stage 3 전용으로 분리된 느슨한 승인 기준이 아니다. Stage 3는 고아 후보의 회계 코드로 `by:"z"`를 만들며, 이 값은 Stage 2 `x`와 달리 출발 sense와 무관하다는 뜻이 아니므로 gloss-name 반례 검사에서 면제한다. Stage 2는 `x/e`만 사용한다.
+- **Stage 3 Drop은 출발 의미와 무관해야 한다는 뜻이 아니다.** 후보가 의미상 유효해도 단순 활용형, 어미 변이, 명사화, 반복·중복, 효용 없는 유의어, 가치 없는 연상 또는 잘못 결속된 Sense면 Relation 삭제 후 고아 후보 Drop이 될 수 있다. 이는 **Stage 2가 먼저 걸러야 할 유형을 감사하며 놓친 사례를 교정**하는 것이지 Stage 3 전용으로 분리된 느슨한 승인 기준이 아니다. Stage 3는 고아 후보의 회계 코드로 `by:"z"`를 만들며, 이 값은 Stage 2 `x`와 달리 출발 sense와 무관하다는 뜻이 아니므로 gloss-name 반례 검사에서 면제한다. Stage 2 편집자는 `x/e`만 판단하며, Supervisor 기술 실패는 위 #2874 계약을 충족할 때만 `f`를 사용한다.
 - **Link Repair:** 동일 표기 Canonical의 **모든 target Sense 및 전체 뜻풀이**를 비교해 정확한 하나를 선택한 경우에만 `{id,sid,tid,tsid,tp,rv,ver:1,fm:[tt],rfm:[…]}`로 교체한다. Stage 2 신규 ID 링크와 Stage 3 Link Repair는 **이미 처리된 target Sense 후보형을 `rfm`에서 제외하는 공유 필터**를 사용한다. target 소유 샤드의 기존 Relation/Drop(`by:"z"` 포함)·역방향 커버로 이미 결정된 형태는 `rfm`에서 제외한다. 아직 판정 전인 실제 후보형은 기존 계약대로 유지한다. 불명확하면 text-only 유지. 중복 ID 쌍·역방향 중복은 금지한다.
 - 최종 빌드는 계속 **`pnpm run build`**. 빌더나 persisted JSONL 스키마를 변경하지 않는다. SQLite의 meaning-level 병합/중복 출처가 있을 수 있으므로 관계 삭제의 최종 표시 효과는 실제 provenance를 고려한다.
 

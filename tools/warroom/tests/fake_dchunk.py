@@ -52,7 +52,7 @@ class FakeDChunkCli:
     def opt(argv, name):
         return argv[argv.index(name) + 1] if name in argv else None
 
-    def run(self, argv, cwd):
+    def run(self, argv, cwd, env=None, input=None):
         self.calls.append(list(argv))
         if argv[1] == "scripts/relation/candidate-contract.mjs":
             self.validations += 1
@@ -88,3 +88,22 @@ class FakeDChunkCli:
             "view_bytes": len(view.encode()),
             "senses": senses}))
         return Result(0, json.dumps({"status": "READY", "ai_senses": len(senses), **base}))
+
+    def inspect_internal(self, argv, input):
+        try:
+            payload = json.loads(input or "{}")
+            scratch = Path(payload["root"])
+            folder = scratch / "d-001_01"
+            number = int(Path(payload["inputPath"]).stem.split("-")[-1])
+            rejected = json.loads((folder / f"rejected-{number:03d}.json").read_text("utf-8"))
+            rows = [{"record_id": row["id"], "senses": [{"sense_id": sense["id"], "candidates": ["후보"]}
+                                                               for sense in row["senses"]]}
+                    for row in self.chunk(number)]
+            decisions_sha = hashlib.sha256((folder / f"decision-{number:03d}.txt").read_bytes()).hexdigest()
+            searches_sha = hashlib.sha256((folder / f"search-{number:03d}.jsonl").read_bytes()).hexdigest()
+            return Result(0, json.dumps({"status": "REJECTED", "repair_scope": rejected["repair_scope"],
+                "rows": rows, "failed_records": rejected["failed_records"], "hit_bearing_z": [],
+                "search_failed": False, "decisions_sha256": decisions_sha,
+                "searches_sha256": searches_sha, "error_count": rejected["error_count"]}))
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            return Result(1, "", str(error))
