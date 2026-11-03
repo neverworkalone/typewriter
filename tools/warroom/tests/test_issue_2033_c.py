@@ -1,6 +1,5 @@
 """Issue #2033 (PR 2): Method C runs as serial chunk sessions with a deterministic, idempotent finalization."""
 import json
-import hashlib
 import tempfile
 import unittest
 
@@ -182,13 +181,11 @@ class SerialChunks(unittest.TestCase):
             payload = json.dumps({"senses": entries}, ensure_ascii=False)
             input_path = w.wt() / f".warroom-scratch/c-chunk-{rec['chunk_no']:03d}.submit.json"
             input_path.write_text(payload, "utf-8")
-            input_sha = hashlib.sha256(payload.encode("utf-8")).hexdigest()
             (input_path.with_name(input_path.name + ".diag.json")).write_text(json.dumps({
                 "status": "FAILED", "diagnostic": "submit_validation", "repair_scope": "resubmit_affected_sense",
                 "reason": "context_key_not_found",
                 "affected": {"sense_id": rec["sense_ids"][3], "field": "verified", "entry_number": 4},
                 "issues": [{"entry_number": 4, "reason": "context_key_not_found", "field": "verified"}],
-                "input_sha256": input_sha,
             }))
 
         for attempt in range(3):
@@ -234,6 +231,13 @@ class SerialChunks(unittest.TestCase):
                          "context_key_not_found")
         self.assertTrue(any(call[2] == "submit" for call in w.runner.literary.calls),
                         "the final full submit is revalidated by the ordinary CLI before a technical skip")
+        self.assertTrue(all(Path(call[1]).is_absolute() for call in w.runner.literary.calls),
+                        "legacy worktrees use the current Supervisor checkout's CLI")
+        self.assertTrue(any(Path(call[1]).name == "literary-context-supervisor-cli.mjs"
+                            for call in w.runner.literary.calls),
+                        "the checkpoint transition is written by the internal official CLI")
+        self.assertIn(str(literary.cli_path()), w.adapter.launches[-1]["prompt"],
+                      "the next producer session keeps using the current official CLI")
         self.assertTrue(any("record=record-s0003" in event["msg"] for event in w.store.recent_events()
                             if event["batch_id"] == b["id"]))
 

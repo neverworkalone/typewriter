@@ -34,6 +34,38 @@ class FakeLiteraryCli:
     def save(self, cwd, argv, cp):
         (Path(cwd) / self.opt(argv, "--checkpoint")).write_text(json.dumps(cp))
 
+    def run_supervisor(self, argv, cwd, env=None):
+        cp = self.load(cwd, argv)
+        input_path = Path(cwd) / self.opt(argv, "--input")
+        diagnostic_path = Path(cwd) / self.opt(argv, "--diagnostic")
+        diagnostic = json.loads(diagnostic_path.read_text("utf-8"))
+        target_id = diagnostic["affected"]["sense_id"]
+        target_record = next(record for record in cp["records"]
+                             if any(sense["sense_id"] == target_id for sense in record["senses"]))
+        target_sense = next(sense for sense in target_record["senses"] if sense["sense_id"] == target_id)
+        target_sense["submission"] = {
+            "status": "TECHNICAL_SKIPPED", "candidates": [],
+            "technical_skip": {"record_id": target_record["record_id"], "sense_id": target_id,
+                               "diagnostic": diagnostic["diagnostic"], "reason": diagnostic["reason"],
+                               "field": diagnostic["affected"]["field"],
+                               "entry_number": diagnostic["affected"]["entry_number"],
+                               "chunk_no": int(self.opt(argv, "--chunk-no")),
+                               "view_sha256": "d" * 64, "git_head": "a" * 40,
+                               "retry_attempts": int(self.opt(argv, "--retry-attempts")),
+                               "input_sha256": hashlib.sha256(input_path.read_bytes()).hexdigest(),
+                               "source_procedure_sha256": "e" * 64,
+                               "runtime_procedure_sha256": "f" * 64,
+                               "supervisor_cli_sha256": "c" * 64,
+                               "skipped_at": "2026-01-01T00:00:00.000Z"},
+        }
+        cp["status"][target_id] = "TECHNICAL_SKIPPED"
+        cp["output"] = None
+        cp["technical_skips"] = [{"record_id": target_record["record_id"], "sense_id": target_id,
+                                   "reason": diagnostic["reason"]}]
+        self.save(cwd, argv, cp)
+        return Result(0, json.dumps({"status": "TECHNICAL_SKIPPED", "record_id": target_record["record_id"],
+                                     "sense_id": target_id, "pending_senses": 0}))
+
     def mark(self, cwd, checkpoint, ids, status="SUBMITTED"):
         """What a successful `submit` does (used by the fake AI's effect)."""
         path = Path(cwd) / checkpoint
@@ -51,6 +83,8 @@ class FakeLiteraryCli:
     # -- CLI ----------------------------------------------------------------------------------------------------
     def run(self, argv, cwd, env=None, input=None):
         self.calls.append(list(argv))
+        if len(argv) > 1 and Path(argv[1]).name == "literary-context-supervisor-cli.mjs":
+            return self.run_supervisor(argv, cwd, env)
         cmd = argv[2]
         if cmd in self.fail:
             return self.fail[cmd]

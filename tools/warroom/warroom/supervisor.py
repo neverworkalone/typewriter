@@ -4187,7 +4187,8 @@ class Supervisor:
                                        "결정적 정규화가 성공해 technical skip 없이 진행합니다.", "warn")
                     else:
                         if not literary.technical_skip_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
-                            return self._fail(b, "ERROR", "C 재검증 뒤에도 현재 단일-Sense 진단을 증명하지 못했습니다. 원본을 보존합니다.")
+                            reason_code = literary.technical_skip_reason_code(Path(b["worktree"]), b, rec["chunk_no"])
+                            return self._fail(b, "ERROR", f"C technical skip blocked [{reason_code or 'diagnostic_not_authorized'}]. 원본을 보존합니다.")
                         skip_result = literary.supervisor_skip(
                             self.store, self.runner, self._c_env(b), Path(b["worktree"]), b, rec)
                 except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError) as e:

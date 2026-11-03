@@ -91,17 +91,17 @@ function gitHead() {
   }
 }
 
-async function procedureDigest() {
-  const repositoryDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-  const files = [
-    'scripts/relation/literary-context.mjs',
-    'scripts/relation/literary-context-cli.mjs',
-    'docs/relation-literary-context.md',
-    'docs/relation-factory.md',
-    'tools/warroom/prompts/c.md',
-  ];
+const PROCEDURE_FILES = [
+  'scripts/relation/literary-context.mjs',
+  'scripts/relation/literary-context-cli.mjs',
+  'docs/relation-literary-context.md',
+  'docs/relation-factory.md',
+  'tools/warroom/prompts/c.md',
+];
+
+export async function literaryProcedureDigest(repositoryDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')) {
   const inputs = [];
-  for (const relativePath of files) {
+  for (const relativePath of PROCEDURE_FILES) {
     const contents = await readFile(path.join(repositoryDirectory, relativePath));
     inputs.push([relativePath, sha256(contents)]);
   }
@@ -923,7 +923,7 @@ export async function initializeLiteraryCheckpoint({ canonicalPath, shard, batch
       canonical_sha256: sha256(shardText),
       canonical_revision: head,
       procedure_contract: 'issue-1155-c-literary-v2',
-      procedure_sha256: await procedureDigest(),
+      procedure_sha256: await literaryProcedureDigest(),
       git_head: head,
       initialized_at: new Date().toISOString(),
     },
@@ -971,6 +971,200 @@ function markOutputStale(checkpoint, reason) {
   if (!checkpoint.output) return;
   checkpoint.output.stale = true;
   checkpoint.output.stale_reason = reason;
+}
+
+function technicalSkipBlocked(reasonCode) {
+  const error = new Error('C technical skip proof failed');
+  error.code = 'LITERARY_TECHNICAL_SKIP_BLOCKED';
+  error.reasonCode = reasonCode;
+  throw error;
+}
+
+function isWithin(root, target) {
+  const relative = path.relative(root, target);
+  return Boolean(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+async function assertRealScratchPath(filePath, scratchDirectory, reasonCode) {
+  const resolved = assertScratchPath(filePath, scratchDirectory);
+  try {
+    const realRoot = await realpath(scratchDirectory);
+    let realTarget;
+    try {
+      realTarget = await realpath(resolved);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+      realTarget = path.join(await realpath(path.dirname(resolved)), path.basename(resolved));
+    }
+    if (!isWithin(realRoot, realTarget)) technicalSkipBlocked(reasonCode);
+  } catch (error) {
+    if (error?.code === 'LITERARY_TECHNICAL_SKIP_BLOCKED') throw error;
+    technicalSkipBlocked(reasonCode);
+  }
+  return resolved;
+}
+
+const TECHNICAL_SKIP_REASONS = new Set([
+  'context_key_not_found', 'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
+  'missing_verified', 'no_literary_hits', 'submission_schema',
+]);
+
+/**
+ * Supervisor-only transition for a single source-Sense rejected by the current submit CLI.
+ * The public producer CLI intentionally exposes no technical-skip command.
+ */
+export async function applySupervisorTechnicalSkip({
+  checkpointPath,
+  inputPath,
+  diagnosticPath,
+  activePath,
+  viewPath,
+  chunkNo,
+  retryAttempts,
+  expectedHead,
+  supervisorCliSha256,
+  worktreeDirectory = process.cwd(),
+  scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY),
+}) {
+  if (!Number.isSafeInteger(chunkNo) || chunkNo < 1) technicalSkipBlocked('active_chunk_invalid');
+  if (retryAttempts !== 2) technicalSkipBlocked('resubmit_budget_not_exhausted');
+  if (!/^[a-f0-9]{40}$/u.test(expectedHead ?? '')) technicalSkipBlocked('head_binding_invalid');
+  if (!/^[a-f0-9]{64}$/u.test(supervisorCliSha256 ?? '')) technicalSkipBlocked('supervisor_cli_identity_invalid');
+
+  const resolvedCheckpoint = await assertRealScratchPath(checkpointPath, scratchDirectory, 'checkpoint_path_invalid');
+  const resolvedInput = await assertRealScratchPath(inputPath, scratchDirectory, 'submit_path_invalid');
+  const resolvedDiagnostic = await assertRealScratchPath(diagnosticPath, scratchDirectory, 'diagnostic_path_invalid');
+  const resolvedActive = await assertRealScratchPath(activePath, scratchDirectory, 'active_path_invalid');
+  const resolvedView = await assertRealScratchPath(viewPath, scratchDirectory, 'view_path_invalid');
+
+  let actualHead;
+  let worktreeStatus;
+  try {
+    actualHead = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: worktreeDirectory, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    worktreeStatus = execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=no'], {
+      cwd: worktreeDirectory, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    technicalSkipBlocked('worktree_identity_unavailable');
+  }
+  if (actualHead !== expectedHead || worktreeStatus !== '') technicalSkipBlocked('worktree_identity_mismatch');
+
+  let checkpoint;
+  let active;
+  let submission;
+  let diagnostic;
+  let viewBytes;
+  try {
+    ({ checkpoint } = await loadLiteraryCheckpoint(resolvedCheckpoint, { scratchDirectory }));
+    active = JSON.parse(await readFile(resolvedActive, 'utf8'));
+    const inputBytes = await readFile(resolvedInput);
+    if (inputBytes.length > 64_000) technicalSkipBlocked('submit_too_large');
+    submission = JSON.parse(inputBytes.toString('utf8'));
+    diagnostic = JSON.parse(await readFile(resolvedDiagnostic, 'utf8'));
+    viewBytes = await readFile(resolvedView);
+    const actualInputSha256 = sha256(inputBytes);
+    if (diagnostic?.input_sha256 !== actualInputSha256) technicalSkipBlocked('input_digest_mismatch');
+  } catch (error) {
+    if (error?.code === 'LITERARY_TECHNICAL_SKIP_BLOCKED') throw error;
+    technicalSkipBlocked('current_evidence_unavailable');
+  }
+
+  const batch = checkpoint.batch;
+  if (checkpoint.contract !== CHECKPOINT_CONTRACT || batch?.procedure_contract !== 'issue-1155-c-literary-v2'
+      || batch?.git_head !== expectedHead || batch?.canonical_revision !== expectedHead || active?.git_head !== expectedHead
+      || !Number.isSafeInteger(active?.chunk_no) || active.chunk_no !== chunkNo
+      || active?.shard !== batch.shard || active?.batch !== batch.batch || active?.model !== batch.model
+      || active?.chunk_id !== `${batch.shard}-${batch.batch}-${String(chunkNo).padStart(3, '0')}`
+      || active?.repair === true
+      || !Array.isArray(active?.sense_ids) || active.sense_ids.length === 0
+      || new Set(active.sense_ids).size !== active.sense_ids.length
+      || active.sense_ids.some((id) => typeof id !== 'string')
+      || active.view_sha256 !== sha256(viewBytes) || active.view_bytes !== viewBytes.length) {
+    technicalSkipBlocked('checkpoint_or_active_binding_mismatch');
+  }
+
+  let sourceProcedureSha256;
+  let runtimeProcedureSha256;
+  try {
+    sourceProcedureSha256 = await literaryProcedureDigest(worktreeDirectory);
+    runtimeProcedureSha256 = await literaryProcedureDigest();
+  } catch {
+    technicalSkipBlocked('procedure_digest_unavailable');
+  }
+  if (!/^[a-f0-9]{64}$/u.test(batch.procedure_sha256 ?? '') || batch.procedure_sha256 !== sourceProcedureSha256) {
+    technicalSkipBlocked('source_procedure_digest_mismatch');
+  }
+
+  const entries = submission?.senses;
+  const issues = diagnostic?.issues;
+  const affected = diagnostic?.affected;
+  const entryNumber = affected?.entry_number;
+  const targetId = affected?.sense_id;
+  const targetEntry = Number.isSafeInteger(entryNumber) && entryNumber > 0 && Array.isArray(entries)
+    ? entries[entryNumber - 1] : null;
+  const issue = Array.isArray(issues) && issues.length === 1 ? issues[0] : null;
+  if (!exactKeys(submission, ['senses']) || !Array.isArray(entries) || entries.length === 0
+      || !Array.isArray(issues) || issues.length !== 1 || diagnostic?.issues_truncated === true
+      || diagnostic?.status !== 'FAILED' || diagnostic?.diagnostic !== 'submit_validation'
+      || diagnostic?.repair_scope !== 'resubmit_affected_sense' || !TECHNICAL_SKIP_REASONS.has(diagnostic?.reason)
+      || !isPlainObject(affected) || typeof targetId !== 'string'
+      || typeof affected.field !== 'string' || affected.field === ''
+      || !Number.isSafeInteger(entryNumber) || entryNumber < 1 || entryNumber > entries.length
+      || !isPlainObject(targetEntry) || targetEntry.sense_id !== targetId
+      || !isPlainObject(issue) || issue.entry_number !== entryNumber || issue.reason !== diagnostic.reason
+      || issue.field !== affected.field || !active.sense_ids.includes(targetId)) {
+    technicalSkipBlocked('diagnostic_not_single_sense');
+  }
+  const entryIds = entries.map((entry) => entry?.sense_id);
+  if (entries.some((entry) => !isPlainObject(entry) || !exactKeys(entry, ['sense_id', 'verified', 'candidates'])
+      || typeof entry.sense_id !== 'string' || !active.sense_ids.includes(entry.sense_id)
+      || !Array.isArray(entry.verified) || !entry.verified.every((key) => typeof key === 'string')
+      || !Array.isArray(entry.candidates) || !entry.candidates.every((candidate) => typeof candidate === 'string'))
+      || new Set(entryIds).size !== entryIds.length) {
+    technicalSkipBlocked('submit_entries_do_not_match_active_chunk');
+  }
+
+  let targetRecord;
+  let targetSense;
+  try {
+    ({ record: targetRecord, sense: targetSense } = findSense(checkpoint, targetId));
+  } catch {
+    technicalSkipBlocked('source_sense_not_in_checkpoint');
+  }
+  if (targetSense.submission !== null && targetSense.submission !== undefined || senseDone(targetSense)) {
+    technicalSkipBlocked('source_sense_already_saved');
+  }
+  for (const senseId of active.sense_ids) {
+    if (senseId === targetId) continue;
+    const { sense } = findSense(checkpoint, senseId);
+    if (!senseDone(sense)) technicalSkipBlocked('unaffected_senses_not_saved');
+  }
+
+  const technicalSkip = {
+    record_id: targetRecord.record_id,
+    sense_id: targetId,
+    diagnostic: diagnostic.diagnostic,
+    reason: diagnostic.reason,
+    field: affected.field,
+    entry_number: entryNumber,
+    chunk_no: chunkNo,
+    view_sha256: active.view_sha256,
+    git_head: expectedHead,
+    retry_attempts: retryAttempts,
+    input_sha256: diagnostic.input_sha256,
+    source_procedure_sha256: sourceProcedureSha256,
+    runtime_procedure_sha256: runtimeProcedureSha256,
+    supervisor_cli_sha256: supervisorCliSha256,
+    skipped_at: new Date().toISOString(),
+  };
+  targetSense.submission = { status: 'TECHNICAL_SKIPPED', candidates: [], technical_skip: technicalSkip };
+  markOutputStale(checkpoint, 'supervisor technical skip');
+  await saveCheckpoint(resolvedCheckpoint, checkpoint);
+  return { status: 'TECHNICAL_SKIPPED', record_id: targetRecord.record_id, sense_id: targetId,
+    diagnostic: diagnostic.diagnostic, reason: diagnostic.reason, field: affected.field,
+    retry_attempts: retryAttempts, pending_senses: 0 };
 }
 
 /** Add a source-bound additional inflection before the sense has been read and submitted. */
@@ -1326,6 +1520,13 @@ function assertCheckpointStructure(checkpoint) {
             || !Number.isSafeInteger(technicalSkip.chunk_no) || technicalSkip.chunk_no < 1
             || !/^[a-f0-9]{64}$/u.test(technicalSkip.view_sha256 ?? '') || !/^[a-f0-9]{40}$/u.test(technicalSkip.git_head ?? '')
             || !/^[a-f0-9]{64}$/u.test(technicalSkip.input_sha256 ?? '') || technicalSkip.retry_attempts !== 2
+            || (technicalSkip.source_procedure_sha256 !== undefined
+              && (!/^[a-f0-9]{64}$/u.test(technicalSkip.source_procedure_sha256)
+                || technicalSkip.source_procedure_sha256 !== batch.procedure_sha256))
+            || (technicalSkip.runtime_procedure_sha256 !== undefined
+              && !/^[a-f0-9]{64}$/u.test(technicalSkip.runtime_procedure_sha256))
+            || (technicalSkip.supervisor_cli_sha256 !== undefined
+              && !/^[a-f0-9]{64}$/u.test(technicalSkip.supervisor_cli_sha256))
             || !isNonEmptyString(technicalSkip.skipped_at)))
           || (saved.candidates.length > 0 && verified.length === 0)) fail('checkpoint sense submission is damaged');
       } else if (sense.search !== null && sense.search !== undefined) {

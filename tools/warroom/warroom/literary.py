@@ -11,10 +11,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
 from . import stage2
@@ -24,6 +22,7 @@ SCRATCH = ".warroom-scratch"
 ACTIVE = f"{SCRATCH}/c-active-chunk.json"
 VIEW = f"{SCRATCH}/c-active-chunk.txt"
 CLI = "scripts/relation/literary-context-cli.mjs"
+SUPERVISOR_CLI = "scripts/relation/literary-context-supervisor-cli.mjs"
 CHUNK_LIMIT = 12
 CHUNK_CONTEXTS = 8
 # The whole initial prompt (card + chunk view) travels as ONE argv element. Linux caps a single argument at 128 KiB
@@ -81,8 +80,8 @@ def submit_retryable(worktree, b, chunk_no: int) -> bool:
             and diag.get("repair_scope") != "stop_and_report")
 
 
-def technical_skip_candidate(worktree, b, chunk_no: int) -> bool:
-    """Cheap routing check; the C CLI revalidates the full active view, file, and diagnostic before it writes."""
+def technical_skip_reason_code(worktree, b, chunk_no: int, *, require_input_digest: bool = True) -> str | None:
+    """Return a safe reason code for the current local diagnostic, without exposing submitted content."""
     n = names(b)
     path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json.diag.json"
     try:
@@ -90,20 +89,46 @@ def technical_skip_candidate(worktree, b, chunk_no: int) -> bool:
         submit_path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json"
         submission = json.loads(submit_path.read_text("utf-8"))
     except (OSError, ValueError):
-        return False
+        return "current_evidence_unavailable"
+    if not isinstance(diag, dict) or not isinstance(submission, dict) or set(submission) != {"senses"} \
+            or not isinstance(submission.get("senses"), list) or not submission["senses"]:
+        return "submit_shape_invalid"
+    if diag.get("status") != "FAILED" or diag.get("diagnostic") != "submit_validation":
+        return "diagnostic_kind_mismatch"
+    if diag.get("repair_scope") != "resubmit_affected_sense":
+        return "diagnostic_scope_mismatch"
+    if diag.get("issues_truncated") is True:
+        return "diagnostic_issues_truncated"
+    if diag.get("reason") not in {"context_key_not_found", "context_key_ambiguous", "context_key_too_short",
+                                   "duplicate_verified", "missing_verified", "no_literary_hits", "submission_schema"}:
+        return "diagnostic_reason_unsupported"
+    issues = diag.get("issues")
+    if not isinstance(issues, list) or len(issues) != 1:
+        return "diagnostic_issue_count"
     affected = diag.get("affected") if isinstance(diag, dict) else None
-    issues = diag.get("issues") if isinstance(diag, dict) else None
-    if not (isinstance(diag, dict) and diag.get("status") == "FAILED"
-            and diag.get("diagnostic") == "submit_validation"
-            and diag.get("repair_scope") == "resubmit_affected_sense"
-            and diag.get("issues_truncated") is not True and isinstance(issues, list) and len(issues) == 1
-            and isinstance(affected, dict) and isinstance(affected.get("sense_id"), str)
-            and isinstance(affected.get("entry_number"), int) and not isinstance(affected.get("entry_number"), bool)
-            and isinstance(submission, dict) and isinstance(submission.get("senses"), list)
-            and 1 <= affected["entry_number"] <= len(submission["senses"])):
-        return False
+    if not isinstance(affected, dict) or not isinstance(affected.get("sense_id"), str) \
+            or not isinstance(affected.get("entry_number"), int) or isinstance(affected.get("entry_number"), bool) \
+            or not 1 <= affected["entry_number"] <= len(submission["senses"]):
+        return "affected_entry_invalid"
     entry = submission["senses"][affected["entry_number"] - 1]
-    return isinstance(entry, dict) and entry.get("sense_id") == affected["sense_id"]
+    issue = issues[0]
+    if not isinstance(entry, dict) or entry.get("sense_id") != affected["sense_id"] \
+            or not isinstance(issue, dict) or issue.get("entry_number") != affected["entry_number"] \
+            or issue.get("reason") != diag["reason"] or issue.get("field") != affected.get("field"):
+        return "affected_entry_mismatch"
+    if require_input_digest:
+        try:
+            current_sha = hashlib.sha256(submit_path.read_bytes()).hexdigest()
+        except OSError:
+            return "submit_unavailable"
+        if diag.get("input_sha256") != current_sha:
+            return "input_digest_mismatch"
+    return None
+
+
+def technical_skip_candidate(worktree, b, chunk_no: int) -> bool:
+    """Cheap routing check; the Supervisor CLI revalidates the full active view and checkpoint before it writes."""
+    return technical_skip_reason_code(worktree, b, chunk_no, require_input_digest=False) is None
 
 
 def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
@@ -138,7 +163,7 @@ def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
 
 
 def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
-    """Apply C's final fallback inside War Room, after checking its persisted retry count."""
+    """Orchestrate C's source-Sense fallback through the pinned Supervisor-only CLI."""
     owner = store.batch(b["id"])
     if (not owner or owner["method"] != "c" or owner["producer"] != b["producer"]
             or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
@@ -148,38 +173,23 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     if retry_attempts != MAX_RESUBMITS:
         raise LiteraryError("C technical skip requires the exhausted Supervisor resubmit budget")
     n = names(b)
+    if rec.get("repair") is True:
+        raise LiteraryError("C technical skip is not allowed during a Candidate repair chunk")
     input_path = f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
     absolute_input = Path(worktree) / input_path
-    checkpoint_path = Path(worktree) / n.checkpoint
+    diagnostic_path = absolute_input.with_name(absolute_input.name + ".diag.json")
     try:
         input_bytes = absolute_input.read_bytes()
         submission = json.loads(input_bytes)
-        diagnostic = json.loads(absolute_input.with_name(absolute_input.name + ".diag.json").read_text("utf-8"))
-        input_sha256 = hashlib.sha256(input_bytes).hexdigest()
+        diagnostic = json.loads(diagnostic_path.read_text("utf-8"))
     except (OSError, ValueError) as error:
         raise LiteraryError("C technical skip inputs are unavailable") from error
-    allowed_reasons = {"context_key_not_found", "context_key_ambiguous", "context_key_too_short",
-                       "duplicate_verified", "missing_verified", "no_literary_hits", "submission_schema"}
-    affected = diagnostic.get("affected") if isinstance(diagnostic, dict) else None
-    issues = diagnostic.get("issues") if isinstance(diagnostic, dict) else None
-    if not (isinstance(diagnostic, dict) and diagnostic.get("status") == "FAILED"
-            and diagnostic.get("diagnostic") == "submit_validation"
-            and diagnostic.get("repair_scope") == "resubmit_affected_sense"
-            and diagnostic.get("issues_truncated") is not True and isinstance(issues, list) and len(issues) == 1
-            and diagnostic.get("reason") in allowed_reasons and diagnostic.get("input_sha256") == input_sha256
-            and isinstance(submission, dict) and set(submission) == {"senses"}
-            and isinstance(submission.get("senses"), list) and submission["senses"]):
-        raise LiteraryError("C technical skip requires one current source-Sense-local submit diagnostic")
+    reason_code = technical_skip_reason_code(worktree, b, rec["chunk_no"])
+    if reason_code:
+        raise LiteraryError(f"C technical skip blocked [{reason_code}]")
+    affected = diagnostic["affected"]
     entry_number = affected.get("entry_number") if isinstance(affected, dict) else None
     target_id = affected.get("sense_id") if isinstance(affected, dict) else None
-    issue = issues[0]
-    target_entry = submission["senses"][entry_number - 1] if isinstance(entry_number, int) and not isinstance(entry_number, bool) \
-        and 1 <= entry_number <= len(submission["senses"]) else None
-    if (not isinstance(entry_number, int) or isinstance(entry_number, bool) or not 1 <= entry_number <= len(submission["senses"])
-            or not isinstance(target_id, str) or not isinstance(target_entry, dict) or target_id != target_entry.get("sense_id")
-            or not isinstance(issue, dict) or issue.get("entry_number") != entry_number or issue.get("reason") != diagnostic["reason"]
-            or issue.get("field") != affected.get("field")):
-        raise LiteraryError("C technical skip diagnostic does not identify its exact submitted Sense")
     entries = submission["senses"]
     active_ids = rec.get("sense_ids")
     if (rec.get("repair") is True or not isinstance(active_ids, list) or target_id not in active_ids
@@ -187,37 +197,12 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
             or any(not isinstance(entry, dict) or set(entry) != {"sense_id", "verified", "candidates"}
                    or entry.get("sense_id") not in active_ids for entry in entries)):
         raise LiteraryError("C technical skip submission does not match the active chunk")
-    read_view(worktree, rec)
-    try:
-        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
-    except (OSError, ValueError) as error:
-        raise LiteraryError("C technical skip checkpoint is unavailable") from error
-    if not isinstance(checkpoint, dict):
-        raise LiteraryError("C technical skip checkpoint structure is damaged")
-    batch = checkpoint.get("batch")
-    if (checkpoint.get("contract") != "literary-checkpoint-v3" or not isinstance(batch, dict)
-            or (batch.get("shard"), batch.get("batch"), batch.get("model"), batch.get("git_head"))
-            != (b["shard"], b["batch"], b["producer"], rec.get("git_head"))
-            or (rec.get("shard"), rec.get("batch"), rec.get("model")) != (b["shard"], b["batch"], b["producer"])):
-        raise LiteraryError("C technical skip checkpoint and active chunk bindings differ")
-    records = checkpoint.get("records")
-    if not isinstance(records, list) or any(not isinstance(record, dict) or not isinstance(record.get("senses"), list)
-                                             or any(not isinstance(sense, dict) for sense in record["senses"])
-                                             for record in records):
-        raise LiteraryError("C technical skip checkpoint Records are damaged")
-    target_record = next((record for record in records if any(isinstance(sense, dict) and sense.get("sense_id") == target_id
-                                                                for sense in record["senses"])), None)
-    target_sense = next((sense for sense in target_record["senses"] if sense.get("sense_id") == target_id), None) \
-        if target_record else None
-    if target_sense is None or target_sense.get("submission") is not None:
-        raise LiteraryError("C technical skip cannot overwrite a saved or unknown Sense")
-
     before = sense_report(runner, env, worktree, b, active_ids)
     done = {item["sense_id"] for item in before["senses"] if item["done"]}
     pending = [entry for entry in entries if entry["sense_id"] != target_id and entry["sense_id"] not in done]
     if pending:
         temporary = absolute_input.with_name(f"c-chunk-{rec['chunk_no']:03d}.supervisor-submit.json")
-        diagnostic_path = temporary.with_name(temporary.name + ".diag.json")
+        temporary_diagnostic = temporary.with_name(temporary.name + ".diag.json")
         temporary.write_text(json.dumps({"senses": pending}, ensure_ascii=False), "utf-8")
         try:
             result = cli(runner, env, worktree, "submit", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
@@ -225,38 +210,27 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
             _json(result, "C unaffected Sense resubmission")
         finally:
             temporary.unlink(missing_ok=True)
-            diagnostic_path.unlink(missing_ok=True)
+            temporary_diagnostic.unlink(missing_ok=True)
 
-    current = sense_report(runner, env, worktree, b, active_ids)
-    if any(not item["done"] for item in current["senses"] if item["sense_id"] != target_id):
-        raise LiteraryError("C technical skip refused while an unaffected active Sense is still pending")
-    checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
-    target_record = next(record for record in checkpoint["records"]
-                         if any(isinstance(sense, dict) and sense.get("sense_id") == target_id for sense in record["senses"]))
-    target_sense = next(sense for sense in target_record["senses"] if sense.get("sense_id") == target_id)
-    if target_sense.get("submission") is not None:
-        raise LiteraryError("C technical skip cannot overwrite a Sense saved while processing unaffected entries")
-    target_sense["submission"] = {
-        "status": "TECHNICAL_SKIPPED", "candidates": [],
-        "technical_skip": {"record_id": target_record["record_id"], "sense_id": target_id,
-                           "diagnostic": diagnostic["diagnostic"], "reason": diagnostic["reason"],
-                           "field": affected["field"], "entry_number": entry_number,
-                           "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"],
-                           "git_head": rec["git_head"], "retry_attempts": retry_attempts,
-                           "input_sha256": input_sha256,
-                           "skipped_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")},
-    }
-    output = checkpoint.get("output")
-    if output:
-        output["stale"] = True
-        output["stale_reason"] = "supervisor technical skip"
-    temporary_checkpoint = checkpoint_path.with_name(checkpoint_path.name + ".supervisor.tmp")
-    temporary_checkpoint.write_text(json.dumps(checkpoint, ensure_ascii=False, indent=2) + "\n", "utf-8")
-    os.replace(temporary_checkpoint, checkpoint_path)
+    result = runner.run(["node", str(supervisor_cli_path()), "--checkpoint", n.checkpoint,
+                         "--input", input_path, "--diagnostic", str(diagnostic_path.relative_to(worktree)),
+                         "--active", ACTIVE, "--view", VIEW, "--chunk-no", str(rec["chunk_no"]),
+                         "--retry-attempts", str(retry_attempts), "--expected-head", rec["git_head"]],
+                        cwd=worktree, env=env, timeout=900)
+    if not result.ok:
+        try:
+            detail = json.loads(result.out or result.err)
+            reason_code = detail.get("reason_code") if isinstance(detail, dict) else None
+        except ValueError:
+            reason_code = None
+        raise LiteraryError(f"C technical skip blocked [{reason_code or 'supervisor_cli_failed'}]")
+    saved = _json(result, "C Supervisor technical skip")
+    if saved.get("status") != "TECHNICAL_SKIPPED" or saved.get("sense_id") != target_id:
+        raise LiteraryError("C Supervisor technical skip returned an unexpected state")
     after = sense_report(runner, env, worktree, b, active_ids)
     if not all(item["done"] for item in after["senses"]):
         raise LiteraryError("C technical skip was written but the complete active chunk did not validate")
-    return {"status": "TECHNICAL_SKIPPED", "record_id": target_record["record_id"], "sense_id": target_id,
+    return {"status": "TECHNICAL_SKIPPED", "record_id": saved["record_id"], "sense_id": target_id,
             "diagnostic": diagnostic["diagnostic"], "reason": diagnostic["reason"], "field": affected["field"],
             "retry_attempts": retry_attempts, "pending_senses": 0}
 
@@ -280,8 +254,18 @@ def revalidate_submit_before_skip(runner, env, worktree, b, chunk_no: int) -> di
 
 
 def cli(runner, env, worktree, *args, db: bool = False, timeout: float = 900):
-    argv = ["node", CLI, *args]
+    argv = ["node", str(cli_path()), *args]
     return runner.run(argv, cwd=worktree, env=env, timeout=timeout)
+
+
+def cli_path() -> Path:
+    """Current Supervisor checkout's official C CLI, run with the batch worktree as cwd."""
+    return Path(__file__).resolve().parents[3] / CLI
+
+
+def supervisor_cli_path() -> Path:
+    """Internal save path for Supervisor-owned state transitions; never included in producer prompts."""
+    return Path(__file__).resolve().parents[3] / SUPERVISOR_CLI
 
 
 def _json(res, what: str) -> dict:
