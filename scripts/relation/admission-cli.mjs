@@ -44,6 +44,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs plan-chunks --checkpoint <file.json> --target 250 --out <plan.json>
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --task <plan.json> <task-id> --format compact --out <view>
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --task <plan.json> <task-id> --in <decisions> --expect-view-sha256 <sha> [--supervisor-fallback]
+  node scripts/relation/admission-cli.mjs close-plan --checkpoint <file.json> --plan <plan.json>
   node scripts/relation/admission-cli.mjs inspect --checkpoint <file.json> --source-sense-id <id>[,<id>...] [--candidate <text> | --select <file.json>] [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> [--format json|compact]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> --format compact --supervisor-fallback
@@ -314,6 +315,10 @@ function validateCheckpoint(checkpoint, identity = {}) {
             || ![manifest.relation_diff.from, manifest.relation_diff.to].every((sha) => typeof sha === 'string' && /^[a-f0-9]{40}$/u.test(sha))))) {
       throw new Error('checkpoint contains invalid premerge snapshot metadata');
     }
+  }
+  if (checkpoint.task_plan !== undefined && (!isPlainObject(checkpoint.task_plan) || keysOf(checkpoint.task_plan) !== 'closed,plan_digest'
+      || typeof checkpoint.task_plan.closed !== 'boolean' || !/^[a-f0-9]{64}$/u.test(checkpoint.task_plan.plan_digest ?? ''))) {
+    throw new Error('checkpoint contains an invalid task plan record');
   }
   if (checkpoint.optional_review_complete === true) assertOptionalComplete(checkpoint);
   return checkpoint;
@@ -819,7 +824,7 @@ function parseArgs(argv) {
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, relationsOnly: false, sourceSenseId: null, candidateText: null,
     selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0,
     diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, from: null, fromShas: [], to: null,
-    taskPlan: null, taskId: null, target: DEFAULT_CHUNK_CANDIDATES, expectViewSha256: null };
+    taskPlan: null, planFile: null, taskId: null, target: DEFAULT_CHUNK_CANDIDATES, expectViewSha256: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -848,6 +853,7 @@ function parseArgs(argv) {
     else if (flag === '--refresh') options.refreshPremerge = true;
     else if (flag === '--dry-run') options.dryRun = true;
     else if (flag === '--task') { options.taskPlan = rest[++index]; options.taskId = rest[++index]; }
+    else if (flag === '--plan') options.planFile = rest[++index];
     else if (flag === '--target') options.target = Number(rest[++index]);
     else if (flag === '--expect-view-sha256') options.expectViewSha256 = rest[++index];
     else if (flag === '--from') options.from = rest[++index];
@@ -870,20 +876,22 @@ function parseArgs(argv) {
   if (options.expectViewSha256 !== null && !(command === 'save-chunk' && options.taskPlan !== null)) throw new Error(`--expect-view-sha256 is only valid for save-chunk --task\n${USAGE}`);
   if (command === 'save-chunk' && options.taskPlan !== null && !/^[a-f0-9]{64}$/u.test(options.expectViewSha256 ?? '')) throw new Error(`save-chunk --task requires --expect-view-sha256 <64 hex>\n${USAGE}`);
   if (command === 'plan-chunks' && (!Number.isInteger(options.target) || options.target < 1)) throw new Error(`--target must be a positive integer\n${USAGE}`);
+  if (command === 'close-plan' && !options.planFile) throw new Error(`close-plan requires --plan\n${USAGE}`);
+  if (options.planFile !== null && command !== 'close-plan') throw new Error(`--plan is only valid for close-plan\n${USAGE}`);
   if (command === 'plan-chunks' && !options.out) throw new Error(`plan-chunks requires --out\n${USAGE}`);
   if (options.target !== DEFAULT_CHUNK_CANDIDATES && command !== 'plan-chunks') throw new Error(`--target is only valid for plan-chunks\n${USAGE}`);
   if (options.supervisorFallback !== null
       && (command !== 'save-chunk' || options.format !== 'compact')) {
     throw new Error('--supervisor-fallback requires save-chunk --format compact\n' + USAGE);
   }
-  if (!['prepare', 'plan-chunks', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
+  if (!['prepare', 'plan-chunks', 'close-plan', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify', 'reconcile'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
   if (options.part !== null && !['01', '02', '03', '04', '05'].includes(options.part)) throw new Error(`--part must be 01, 02, 03, 04 or 05\n${USAGE}`);
   if (options.part !== null && options.batch === null) throw new Error(`--part requires --batch\n${USAGE}`);
   if (options.part !== null && !['prepare', 'verify', 'reconcile'].includes(command)) throw new Error(`--part is only valid for prepare/verify/reconcile\n${USAGE}`);
   if (!Number.isInteger(options.maxCandidates) || options.maxCandidates < 1) throw new Error(`--max-candidates must be a positive integer\n${USAGE}`);
-  if (['plan-chunks', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
+  if (['plan-chunks', 'close-plan', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
   if (['save-chunk', 'save-optional', 'amend', 'repair'].includes(command) && !options.input) throw new Error(`${command} requires --in\n${USAGE}`);
   if (command === 'cancel-revision' && !options.chunkId) throw new Error(`cancel-revision requires --chunk-id\n${USAGE}`);
   if (['inspect', 'read-chunk'].includes(command) && (!Number.isInteger(options.page) || options.page < 1)) throw new Error(`--page must be a positive integer\n${USAGE}`);
@@ -1006,7 +1014,11 @@ export async function run(argv, { root } = {}) {
     return inspectCheckpoint(checkpoint, options.out, repositoryRoot, ids, options.candidateText, options.selectPath,
       options.format, options.page, options.pageSize);
   }
-  if (options.command === 'plan-chunks') return planChunks(await readCheckpoint(checkpointPath), options.target, options.out, repositoryRoot);
+  if (options.command === 'plan-chunks') return planChunks(await readCheckpoint(checkpointPath), checkpointPath, options.target, options.out, repositoryRoot);
+  if (options.command === 'close-plan') {
+    const checkpoint = await readCheckpoint(checkpointPath);
+    return closeTaskPlan(checkpoint, checkpointPath, await readTaskPlan(checkpoint, options.planFile, repositoryRoot));
+  }
   if (options.command === 'read-chunk' || options.command === 'save-chunk') {
     const checkpoint = await readCheckpoint(checkpointPath);
     if (options.taskPlan !== null) {
@@ -2040,6 +2052,7 @@ async function cancelRevision(checkpoint, checkpointPath, chunkId) {
 async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, sourceSenseId = null, candidateText = null, format = 'json',
                           optional = false, page = 1, pageSize = INSPECT_PAGE_SIZE) {
   if (optional) return readOptional(checkpoint, out, root, format, page, pageSize);
+  assertNoOpenTaskPlan(checkpoint);
   let pending = checkpoint.pending_chunk;
   if (format === 'compact' && pending?.revision === true) throw new Error(`active chunk ${pending.chunk_id} is a revision; read it as JSON`);
   if (sourceSenseId !== null) {
@@ -2249,6 +2262,7 @@ function applyChunkDecisions(received, expected) {
 }
 
 async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json', supervisorFallbackRequested = false) {
+  assertNoOpenTaskPlan(checkpoint);
   const pending = checkpoint.pending_chunk;
   if (!pending) throw new Error('checkpoint has no unread or unsaved chunk');
   const { received, expected } = await evaluateChunkDecisions(checkpoint, pending, inputPath, root, format, supervisorFallbackRequested);
@@ -2262,6 +2276,13 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
 }
 
 const TASK_PLAN_VERSION = 1;
+
+/** While a task plan is open the checkpoint belongs to its tasks; legacy pending/revision chunks wait for close-plan. */
+function assertNoOpenTaskPlan(checkpoint) {
+  if (checkpoint.task_plan?.closed === false) {
+    throw new Error('checkpoint has an open task plan; use --task, or close-plan once every task is saved');
+  }
+}
 const TASK_PLAN_KEYS = 'base_items_digest,batch,part,plan_digest,shard,target,tasks,version';
 
 /** Digest of the immutable Part context; saved decisions and optional links are excluded so saving never invalidates a plan. */
@@ -2344,21 +2365,39 @@ async function readTaskPlan(checkpoint, planPath, root) {
   return plan;
 }
 
-async function planChunks(checkpoint, target, out, root) {
+async function planChunks(checkpoint, checkpointPath, target, out, root) {
   if (checkpoint.merged) throw new Error('cannot plan chunks for a merged Part checkpoint');
   if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} before planning tasks`);
+  if (checkpoint.task_plan?.closed === true) throw new Error('this Part\'s task plan is closed; it is not planned again');
   const planPath = resolveRootPath(root, out);
   let plan = null;
   if (existsSync(planPath)) {
     // An existing plan for this Part is reused as is, never rewritten.
     try { plan = JSON.parse(await readFile(planPath, 'utf8')); } catch (error) { throw new Error(`cannot read existing task plan: ${error.message}`); }
     assertTaskPlanFor(checkpoint, plan);
-  }
+  } else if (checkpoint.task_plan) throw new Error('checkpoint has an open task plan whose file is missing; refusing to plan again');
   const reused = plan !== null;
   plan ??= buildTaskPlan(checkpoint, target);
   if (!reused) await writeJsonAtomically(planPath, plan);
+  if (!checkpoint.task_plan) {
+    checkpoint.task_plan = { plan_digest: plan.plan_digest, closed: false };
+    await writeJsonAtomically(checkpointPath, checkpoint);
+  } else if (checkpoint.task_plan.plan_digest !== plan.plan_digest) throw new Error('task plan is not the plan this checkpoint registered');
   const result = { version: 1, ok: true, plan: planPath, reused, target: plan.target, tasks: plan.tasks.length,
     candidates: plan.tasks.reduce((sum, task) => sum + task.candidate_count, 0), plan_digest: plan.plan_digest };
+  console.log(JSON.stringify(result));
+  return result;
+}
+
+async function closeTaskPlan(checkpoint, checkpointPath, plan) {
+  if (checkpoint.task_plan?.plan_digest !== plan.plan_digest) throw new Error('task plan is not the plan this checkpoint registered');
+  if (checkpoint.task_plan.closed !== true) {
+    const unsaved = plan.tasks.filter((task) => taskState(checkpoint, task) !== 'saved');
+    if (unsaved.length) throw new Error(`cannot close the task plan: unsaved task(s) ${unsaved.map((task) => task.id).join(', ')}`);
+    checkpoint.task_plan.closed = true;
+    await writeJsonAtomically(checkpointPath, checkpoint);
+  }
+  const result = { version: 1, ok: true, closed: true, plan_digest: plan.plan_digest };
   console.log(JSON.stringify(result));
   return result;
 }
@@ -2378,6 +2417,9 @@ function taskState(checkpoint, task) {
 
 function taskContext(checkpoint, plan, taskId) {
   if (checkpoint.merged) throw new Error('cannot use a task of a merged Part checkpoint');
+  if (checkpoint.task_plan?.plan_digest !== plan.plan_digest || checkpoint.task_plan.closed !== false) {
+    throw new Error('task plan is not the open plan registered in this checkpoint');
+  }
   if (checkpoint.pending_chunk) throw new Error(`checkpoint has an active chunk ${checkpoint.pending_chunk.chunk_id}; tasks and pending chunks cannot be mixed`);
   const task = plan.tasks.find((entry) => entry.id === taskId);
   if (!task) throw new Error(`task plan has no task ${taskId}`);

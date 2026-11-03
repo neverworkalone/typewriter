@@ -2702,6 +2702,9 @@ test('Stage 2 task plan splits a Part deterministically and saves tasks in any o
   assert.equal((await quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '1', '--out', plan], { root }))).reused, true);
   assert.equal(await readFile(path.join(root, plan), 'utf8'), planBytes, 'an existing plan is reused, never rewritten');
   assert.equal((await read()).pending_chunk, null);
+  await assert.rejects(() => quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '1'], { root })), /open task plan/);
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', plan], { root })), /open task plan/);
+  await assert.rejects(() => quiet(() => run(['close-plan', '--checkpoint', checkpoint, '--plan', plan], { root })), /unsaved task/);
 
   const view = (id) => `.warroom-scratch/${id}.view.txt`;
   const decisions = (id) => `.warroom-scratch/${id}.decisions.txt`;
@@ -2732,4 +2735,8 @@ test('Stage 2 task plan splits a Part deterministically and saves tasks in any o
   const done = await saveTask('001-01-01-t02', t02.view_sha256, ['c1 D e', 'c2 D e']);
   assert.equal(done.decided, done.total);
   assert.equal((await read()).next_chunk_number, startCursor + 3);
+  await quiet(() => run(['close-plan', '--checkpoint', checkpoint, '--plan', plan], { root }));
+  await assert.rejects(() => quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '2', '--out', plan], { root })), /closed/);
+  await assert.rejects(() => readTask('001-01-01-t01'), /not the open plan/);
+  assert.equal((await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }))).complete, true, 'the legacy path works again once the plan is closed');
 });
