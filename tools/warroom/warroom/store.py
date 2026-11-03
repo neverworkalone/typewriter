@@ -942,6 +942,11 @@ class Store:
             return c.execute("SELECT * FROM events WHERE batch_id=? ORDER BY id DESC LIMIT 1",
                              (batch_id,)).fetchone()
 
+    def batch_events(self, batch_id: int):
+        """The persisted audit trail for one owned batch, in write order."""
+        with self._conn() as c:
+            return c.execute("SELECT * FROM events WHERE batch_id=? ORDER BY id", (batch_id,)).fetchall()
+
     def events_after(self, after_id: int = 0, limit: int = 500):
         with self._conn() as c:
             return c.execute("SELECT * FROM events WHERE id>? ORDER BY id LIMIT ?", (after_id, limit)).fetchall()

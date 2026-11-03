@@ -48,6 +48,14 @@ class Stage2RepairSchemaError(ValueError):
     """A candidate row's answer fields do not match its persisted per-candidate output contract."""
 
 
+class Stage2RepairUnresolvedError(ValueError):
+    """The answer explicitly left one or more in-scope candidates unresolved."""
+
+
+class Stage2RepairContentError(ValueError):
+    """The parsed answer has invalid target, coverage, or peer-adjustment content."""
+
+
 def acquire_lock(path: Path):
     """Single War Room instance: returns an open locked file, or None if held."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2004,6 +2012,14 @@ class Supervisor:
         self.store.update(b["id"], **fields)
         run_id = self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
                                     model=run.model, effort=run.effort, permission_profile=run.permission_profile)
+        if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
+            repair_state = self._stage2_repair_state(b, required=True)
+            current = repair_state.get("current")
+            attempts = current.get("attempt_log") if isinstance(current, dict) else None
+            if isinstance(attempts, list) and attempts and isinstance(attempts[-1], dict) \
+                    and attempts[-1].get("status") == "launched":
+                attempts[-1]["run_id"] = run_id
+                self._save_stage2_repair_state(b, repair_state)
         if events:
             keys = [e["key"] for e in events]
             if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and kind.startswith("fix"):
@@ -2776,12 +2792,243 @@ class Supervisor:
             return f"Stage 2 repair boundary check failed: {error}"
         return None
 
+    def _stage2_repair_mark_rejected(self, b, state: dict, final: str, error: ValueError,
+                                     reason_code: str) -> None:
+        """Persist a completed output-validation failure without turning it into an applied judgment."""
+        current = state.get("current")
+        attempts = current.get("attempt_log") if isinstance(current, dict) else None
+        if not isinstance(attempts, list) or not attempts or not isinstance(attempts[-1], dict) \
+                or attempts[-1].get("status") != "launched":
+            self._save_stage2_repair_state(b, state)
+            return
+        run = self._last_run(b)
+        if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
+                or str(run["exit_status"]) != "0" \
+                or attempts[-1].get("run_id") not in (None, run["id"]) \
+                or str(run["log_file"]) != str(b["log_file"]):
+            self._save_stage2_repair_state(b, state)
+            return
+        attempt = attempts[-1]
+        attempt.update({
+            "status": "rejected",
+            "rejection_version": 1,
+            "reason_code": reason_code,
+            "response_sha256": hashlib.sha256(final.encode("utf-8")).hexdigest(),
+            "error_sha256": hashlib.sha256(str(error).encode("utf-8")).hexdigest(),
+            "rejected_at": self.clock(),
+        })
+        attempt["run_id"] = run["id"]
+        attempt["run_exit_status"] = str(run["exit_status"])
+        attempt["run_ended_at"] = run["ended_at"]
+        self._save_stage2_repair_state(b, state)
+
+    @staticmethod
+    def _stage2_repair_legacy_reason_code(error_text: str) -> str | None:
+        """Classify only known completed response-validation diagnostics from the pre-proof Supervisor."""
+        lowered = error_text.lower()
+        if lowered.startswith("unresolved:"):
+            return "unresolved"
+        if any(token in lowered for token in (
+                "schema", "already_accounted", "additional_relations", "complete optional-link list")):
+            return "schema"
+        if any(token in lowered for token in (
+                "repair decision needs", "repair response contains", "unresolved repair items need",
+                "repair response does not cover", "peer adjustments need", "peer adjustment is outside")):
+            return "content"
+        return None
+
+    @staticmethod
+    def _stage2_repair_answer_keys(answer: dict) -> list[str] | None:
+        keys = []
+        for row in answer["decisions"] + answer["unresolved"]:
+            if not isinstance(row, dict) or not isinstance(row.get("source_sense_id"), str) \
+                    or not isinstance(row.get("candidate"), str):
+                return None
+            keys.append(f"{row['source_sense_id']}\u0000{row['candidate']}")
+        return keys
+
+    def _stage2_repair_reconcile_legacy_launches(self, b, current: dict, attempts: list) -> tuple[list, str | None]:
+        """Reconcile one old `launched` row only when its exact finished run and validation error are provable."""
+        legacy_positions = [i for i, attempt in enumerate(attempts)
+                            if isinstance(attempt, dict) and attempt.get("status") == "launched"
+                            and "rejection_version" not in attempt]
+        normalized = json.loads(json.dumps(attempts))
+        if not legacy_positions:
+            return normalized, None
+        if len(legacy_positions) != 1:
+            return normalized, "multiple legacy launched attempts cannot be safely reconciled"
+        if normalized[legacy_positions[0]].get("receipt") is not None:
+            return normalized, "legacy launched attempt unexpectedly contains a receipt"
+
+        fingerprint = current.get("fingerprint")
+        groups = current.get("groups")
+        if not isinstance(fingerprint, str) or not isinstance(groups, list):
+            return normalized, "legacy attempt has no stable repair page identity"
+
+        runs = list(reversed(self.store.runs(b["id"])))
+        repair_runs = [run for run in runs if run["kind"] == "s2_repair_new"]
+        matching_runs = []
+        for run in repair_runs:
+            if not run["log_file"]:
+                continue
+            response = self._adapter(b["producer"]).final_answer(Path(run["log_file"]))
+            if not isinstance(response, str):
+                continue
+            answer = stage2.extract_repair_answer(response, fingerprint)
+            if answer is not None:
+                if run["ended_at"] is None or str(run["exit_status"]) != "0":
+                    return normalized, "a fingerprint-matched legacy repair run is not complete"
+                matching_runs.append((run, response, answer))
+        if len(matching_runs) != len(normalized):
+            return normalized, "legacy repair runs do not map one-to-one to persisted page attempts"
+
+        events = self.store.batch_events(b["id"])
+        legacy_index = legacy_positions[0]
+        if legacy_index == len(normalized) - 1 or not any(
+                later.get("status") == "applied" and later.get("cursor") == normalized[legacy_index].get("cursor")
+                and later.get("target_keys") == normalized[legacy_index].get("target_keys")
+                for later in normalized[legacy_index + 1:] if isinstance(later, dict)):
+            return normalized, "legacy rejection has no later applied attempt for the same page"
+
+        for index, (attempt, run_answer) in enumerate(zip(normalized, matching_runs)):
+            run, response, answer = run_answer
+            cursor = attempt.get("cursor") if isinstance(attempt, dict) else None
+            if type(cursor) is not int or not 0 <= cursor < len(groups):
+                return normalized, "legacy repair attempt cursor is invalid"
+            page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+            page_keys = sorted({key for group in page if isinstance(group, dict)
+                                for key in group.get("candidate_keys", [])})
+            if not page_keys or attempt.get("target_keys") != page_keys:
+                return normalized, "legacy repair attempt targets differ from its persisted page"
+            if attempt.get("run_id") is not None and attempt.get("run_id") != run["id"]:
+                return normalized, "legacy repair run ID differs from its attempt record"
+            requested_keys = attempt.get("correction_candidate_keys") or page_keys
+            if not isinstance(requested_keys, list) or not requested_keys or requested_keys != sorted(set(requested_keys)) \
+                    or not set(requested_keys).issubset(page_keys):
+                return normalized, "legacy correction scope is malformed"
+            response_keys = self._stage2_repair_answer_keys(answer)
+            if not response_keys or len(response_keys) != len(set(response_keys)) \
+                    or not set(response_keys).issubset(requested_keys):
+                return normalized, "legacy response keys differ from the recorded repair scope"
+            if attempt.get("status") == "applied" and set(response_keys) != set(requested_keys):
+                return normalized, "legacy applied response does not cover its recorded repair scope"
+
+            if index == legacy_index:
+                if run["ended_at"] is None or str(run["exit_status"]) != "0":
+                    return normalized, "legacy response run did not terminate successfully"
+                later_runs = [item for item in repair_runs if item["id"] > run["id"]]
+                if not later_runs:
+                    return normalized, "legacy response has no subsequent repair attempt"
+                next_start = later_runs[0]["started_at"]
+                prefix = "Stage 2 repair answer rejected; no checkpoint change was made:"
+                errors = [event for event in events if event["level"] == "error"
+                          and run["ended_at"] <= event["ts"] < next_start
+                          and event["msg"].startswith(prefix)]
+                if len(errors) != 1:
+                    return normalized, "legacy run has no unique persisted response-validation error"
+                event = errors[0]
+                error_text = event["msg"][len(prefix):].strip()
+                reason_code = self._stage2_repair_legacy_reason_code(error_text)
+                if reason_code is None:
+                    return normalized, "legacy error is not a recognized response-validation failure"
+                if not any(key in error_text or key.replace("\u0000", "/") in error_text for key in response_keys):
+                    return normalized, "legacy error is not bound to a candidate in its response"
+                response_sha256 = hashlib.sha256(response.encode("utf-8")).hexdigest()
+                error_sha256 = hashlib.sha256(error_text.encode("utf-8")).hexdigest()
+                proof = {
+                    "run_id": run["id"], "run_exit_status": str(run["exit_status"]),
+                    "run_ended_at": run["ended_at"], "response_sha256": response_sha256,
+                    "error_event_id": event["id"],
+                    "error_event_sha256": hashlib.sha256(event["msg"].encode("utf-8")).hexdigest(),
+                    "fingerprint": fingerprint, "cursor": cursor, "target_keys": page_keys,
+                    "response_candidate_keys": response_keys,
+                }
+                proof_sha256 = hashlib.sha256(json.dumps(
+                    proof, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+                reconciled_at = self.clock()
+                attempt.update({
+                    "status": "rejected", "rejection_version": 1, "reason_code": reason_code,
+                    "response_sha256": response_sha256, "error_sha256": error_sha256,
+                    "run_id": run["id"], "run_exit_status": str(run["exit_status"]),
+                    "run_ended_at": run["ended_at"], "rejected_at": reconciled_at, "reconciled_at": reconciled_at,
+                    "reconciliation": {"source": "legacy_run_ledger", "error_event_id": event["id"],
+                                       "error_event_ts": event["ts"],
+                                       "error_event_sha256": proof["error_event_sha256"],
+                                       "proof_sha256": proof_sha256},
+                })
+        return normalized, None
+
+    def _stage2_repair_explicit_rejection_problem(self, b, current_fp: str, attempt: dict, runs_by_id: dict) -> str | None:
+        """Check the durable run/output proof written for rejection statuses produced by this version."""
+        if "rejection_version" not in attempt:
+            return None
+        if attempt.get("rejection_version") != 1:
+            return "Stage 2 rejected attempt evidence version is invalid"
+        if attempt.get("reason_code") not in {"format", "schema", "unresolved", "content"} \
+                or not re.fullmatch(r"[a-f0-9]{64}", attempt.get("response_sha256", "")) \
+                or not re.fullmatch(r"[a-f0-9]{64}", attempt.get("error_sha256", "")) \
+                or type(attempt.get("run_id")) is not int \
+                or not isinstance(attempt.get("rejected_at"), (int, float)):
+            return "Stage 2 rejected attempt evidence is malformed"
+        reconciliation = attempt.get("reconciliation")
+        if reconciliation is not None:
+            if not isinstance(reconciliation, dict) or reconciliation.get("source") != "legacy_run_ledger" \
+                    or type(reconciliation.get("error_event_id")) is not int \
+                    or not isinstance(reconciliation.get("error_event_ts"), (int, float)) \
+                    or not re.fullmatch(r"[a-f0-9]{64}", reconciliation.get("error_event_sha256", "")) \
+                    or not re.fullmatch(r"[a-f0-9]{64}", reconciliation.get("proof_sha256", "")):
+                return "Stage 2 legacy rejection proof is malformed"
+        run = runs_by_id.get(attempt["run_id"])
+        if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
+                or str(run["exit_status"]) != "0" or attempt.get("run_exit_status") != "0" \
+                or attempt.get("run_ended_at") != run["ended_at"] or not run["log_file"]:
+            return "Stage 2 rejected attempt has no matching completed run"
+        response = self._adapter(b["producer"]).final_answer(Path(run["log_file"]))
+        if not isinstance(response, str) or hashlib.sha256(response.encode("utf-8")).hexdigest() != attempt["response_sha256"]:
+            return "Stage 2 rejected attempt response hash differs from its run log"
+        parsed_answer = stage2.extract_repair_answer(response, current_fp)
+        if attempt["reason_code"] != "format" and parsed_answer is None:
+            return "Stage 2 rejected answer fingerprint differs from its run output"
+        if reconciliation is not None:
+            prefix = "Stage 2 repair answer rejected; no checkpoint change was made:"
+            matches = [event for event in self.store.batch_events(b["id"])
+                       if event["id"] == reconciliation["error_event_id"]]
+            if len(matches) != 1 or matches[0]["ts"] != reconciliation["error_event_ts"] \
+                    or not matches[0]["msg"].startswith(prefix):
+                return "Stage 2 legacy rejection event is missing or changed"
+            event = matches[0]
+            event_sha256 = hashlib.sha256(event["msg"].encode("utf-8")).hexdigest()
+            error_text = event["msg"][len(prefix):].strip()
+            response_keys = self._stage2_repair_answer_keys(parsed_answer) if parsed_answer is not None else None
+            if not response_keys or not any(
+                    key in error_text or key.replace("\u0000", "/") in error_text for key in response_keys):
+                return "Stage 2 legacy error is not bound to its saved response keys"
+            if event_sha256 != reconciliation["error_event_sha256"] \
+                    or hashlib.sha256(error_text.encode("utf-8")).hexdigest() != attempt["error_sha256"] \
+                    or self._stage2_repair_legacy_reason_code(error_text) != attempt["reason_code"]:
+                return "Stage 2 legacy rejection details differ from their saved proof"
+            proof = {
+                "run_id": run["id"], "run_exit_status": str(run["exit_status"]),
+                "run_ended_at": run["ended_at"], "response_sha256": attempt["response_sha256"],
+                "error_event_id": event["id"], "error_event_sha256": event_sha256,
+                "fingerprint": current_fp, "cursor": attempt["cursor"],
+                "target_keys": attempt["target_keys"],
+                "response_candidate_keys": response_keys,
+            }
+            proof_sha256 = hashlib.sha256(json.dumps(
+                proof, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            if proof_sha256 != reconciliation["proof_sha256"]:
+                return "Stage 2 legacy rejection proof hash does not match its evidence"
+        return None
+
     def _stage2_repair_rebind_problem(self, b, state: dict, checkpoint: dict, fingerprint: str) -> str | None:
         """Advance a completed Repair identity only after current-base preflight and durable owner evidence."""
         try:
             identity = state.get("identity")
             if not isinstance(identity, dict):
                 return "Stage 2 repair has no owner identity to rebind"
+            if b["pid"] is not None:
+                return "Stage 2 repair still has a running process; preserving state"
             old_head = identity.get("base_head")
             if not re.fullmatch(r"[a-f0-9]{40}", old_head or ""):
                 return "Stage 2 repair owner baseline is invalid; preserving prior decisions and receipts"
@@ -2817,6 +3064,7 @@ class Supervisor:
             cursor = current.get("cursor")
             if not isinstance(groups, list) or not groups or type(cursor) is not int or cursor != len(groups) \
                     or current.get("pending_answer") is not None or current.get("apply_intent") is not None \
+                    or current.get("schema_repair") is not None or current.get("last_error") is not None \
                     or current.get("attempts") != 0 or "last_response" in current:
                 return "Stage 2 repair page is unfinished; preserving its answer and apply boundary"
 
@@ -2878,18 +3126,39 @@ class Supervisor:
             attempt_log = current.get("attempt_log")
             if not isinstance(attempt_log, list) or not attempt_log:
                 return "Stage 2 completed repair has no persisted page attempts"
+            attempt_log, problem = self._stage2_repair_reconcile_legacy_launches(b, current, attempt_log)
+            if problem:
+                return f"Stage 2 legacy attempt reconciliation failed: {problem}; preserving state"
+            runs_by_id = {run["id"]: run for run in self.store.runs(b["id"])}
             covered = set()
+            attempt_numbers, recorded_run_ids = {}, set()
             for attempt in attempt_log:
                 if not isinstance(attempt, dict) or attempt.get("fingerprint") != current_fp \
                         or type(attempt.get("cursor")) is not int or not 0 <= attempt["cursor"] < len(groups) \
                         or attempt.get("status") not in {"applied", "rejected"}:
                     return "Stage 2 repair has an unfinished or mismatched page attempt"
-                if attempt["status"] == "rejected":
-                    continue
-                receipt = receipt_by_id.get(attempt.get("receipt"))
+                if type(attempt.get("attempt")) is not int or attempt["attempt"] < 1:
+                    return "Stage 2 repair attempt number is malformed"
+                expected_attempt_number = attempt_numbers.get(attempt["cursor"], 0) + 1
+                if attempt["attempt"] != expected_attempt_number:
+                    return "Stage 2 repair attempt sequence is incomplete or duplicated"
+                attempt_numbers[attempt["cursor"]] = expected_attempt_number
+                run_id = attempt.get("run_id")
+                if run_id is not None:
+                    if type(run_id) is not int or run_id < 1 or run_id in recorded_run_ids:
+                        return "Stage 2 repair attempts have a malformed or duplicate run identity"
+                    recorded_run_ids.add(run_id)
                 page = groups[attempt["cursor"]:attempt["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
                 page_targets = sorted({key for group in page if isinstance(group, dict)
                                        for key in group.get("candidate_keys", [])})
+                if not page_targets or attempt.get("target_keys") != page_targets:
+                    return "Stage 2 repair attempt targets do not match their page"
+                if attempt["status"] == "rejected":
+                    if problem := self._stage2_repair_explicit_rejection_problem(
+                            b, current_fp, attempt, runs_by_id):
+                        return f"{problem}; preserving state"
+                    continue
+                receipt = receipt_by_id.get(attempt.get("receipt"))
                 if receipt is None or receipt.get("fingerprint") != current_fp or \
                         attempt.get("target_keys") != page_targets or \
                         not set(page_targets).issubset(receipt.get("candidate_keys", [])):
@@ -2943,6 +3212,7 @@ class Supervisor:
                 return "Stage 2 repair rebind lacks a verified Supervisor master-integration chain"
 
             updated = json.loads(json.dumps(state))
+            updated["current"]["attempt_log"] = attempt_log
             updated.setdefault("rebindings", []).append({
                 "from_head": old_head, "to_head": head, "branch": b["branch"], "worktree": str(wt),
                 "base_branch": self.cfg["base_branch"], "remote_head": remote,
@@ -3055,19 +3325,39 @@ class Supervisor:
         final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
         current["last_response"] = final
         self._save_stage2_repair_state(b, state)
-        try:
-            answer = stage2.extract_repair_answer(final, current["fingerprint"])
-        except ValueError as error:
-            current["last_error"] = str(error)
-            if isinstance(error, stage2.RepairFormatError) and current.get("attempt_log"):
-                current["attempt_log"][-1]["status"] = "rejected"
+        if final is None:
+            current["last_error"] = "repair run produced no complete final response"
             self._save_stage2_repair_state(b, state)
+            return None
+        try:
+            answer = self._stage2_repair_validate_response(b, state, final)
+        except stage2.RepairFormatError as error:
+            current["last_error"] = str(error)
+            self._stage2_repair_mark_rejected(b, state, final, error, "format")
+            raise
+        except Stage2RepairSchemaError as error:
+            current["last_error"] = str(error)
+            self._stage2_repair_mark_rejected(b, state, final, error, "schema")
+            raise
+        except Stage2RepairUnresolvedError as error:
+            current["last_error"] = str(error)
+            self._stage2_repair_mark_rejected(b, state, final, error, "unresolved")
+            raise
+        except Stage2RepairContentError as error:
+            current["last_error"] = str(error)
+            self._stage2_repair_mark_rejected(b, state, final, error, "content")
             raise
         if answer is None:
             current["last_error"] = "repair response is missing the exact fingerprint header"
-            if current.get("attempt_log"):
-                current["attempt_log"][-1]["status"] = "rejected"
-            self._save_stage2_repair_state(b, state)
+            error = ValueError(current["last_error"])
+            self._stage2_repair_mark_rejected(b, state, final, error, "format")
+            return None
+        return answer
+
+    def _stage2_repair_validate_response(self, b, state: dict, final: str) -> dict | None:
+        current = state["current"]
+        answer = stage2.extract_repair_answer(final, current["fingerprint"])
+        if answer is None:
             return None
         page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
         required = {}
@@ -3113,10 +3403,10 @@ class Supervisor:
         schema_diagnostics = []
         for row in direct_rows:
             if not isinstance(row, dict) or not isinstance(row.get("source_sense_id"), str) or not isinstance(row.get("candidate"), str):
-                raise ValueError("repair decision needs an exact source_sense_id/candidate key")
+                raise Stage2RepairContentError("repair decision needs an exact source_sense_id/candidate key")
             key = (row["source_sense_id"], row["candidate"])
             if key not in required or key not in response_keys or key in seen:
-                raise ValueError("repair response contains a duplicate or out-of-page candidate")
+                raise Stage2RepairContentError("repair response contains a duplicate or out-of-page candidate")
             candidate = required[key]
             if candidate["already_accounted"]:
                 required_fields = {"source_sense_id", "candidate", "additional_relations"}
@@ -3146,21 +3436,20 @@ class Supervisor:
         for row in unresolved_rows:
             if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "reason"} \
                     or not isinstance(row.get("reason"), str) or not row["reason"].strip():
-                raise ValueError("unresolved repair items need an exact candidate key and reason")
+                raise Stage2RepairContentError("unresolved repair items need an exact candidate key and reason")
             key = (row["source_sense_id"], row["candidate"])
             if key not in required or key not in response_keys or key in seen:
-                raise ValueError("unresolved response contains a duplicate or out-of-page candidate")
+                raise Stage2RepairContentError("unresolved response contains a duplicate or out-of-page candidate")
             seen.add(key)
         if unresolved_rows:
             current["last_error"] = "unresolved: " + "; ".join(
                 f"{row['source_sense_id']}/{row['candidate']}: {row['reason']}" for row in unresolved_rows[:8])
-            self._save_stage2_repair_state(b, state)
-            raise ValueError(current["last_error"])
+            raise Stage2RepairUnresolvedError(current["last_error"])
         if schema_repair is not None and (peer_rows or unresolved_rows):
-            raise ValueError("schema-correction response may contain only the requested candidate rows")
+            raise Stage2RepairContentError("schema-correction response may contain only the requested candidate rows")
         if seen != response_keys:
             missing = sorted(response_keys - seen)
-            raise ValueError(f"repair response does not cover every requested candidate ({len(missing)} missing)")
+            raise Stage2RepairContentError(f"repair response does not cover every requested candidate ({len(missing)} missing)")
         affected_types = {}
         for row in valid_direct_rows:
             candidate = required[(row["source_sense_id"], row["candidate"])]
@@ -3175,12 +3464,12 @@ class Supervisor:
         for row in peer_rows:
             if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "decision"} \
                     or not isinstance(row.get("decision"), dict):
-                raise ValueError("peer adjustments need an exact candidate key and complete decision")
+                raise Stage2RepairContentError("peer adjustments need an exact candidate key and complete decision")
             key = (row["source_sense_id"], row["candidate"])
             peer = allowed_peers.get(key)
             if peer is None or key in required or key in normalized_peers or row["source_sense_id"] not in affected_types \
                     or peer["decision"].get("type") not in affected_types[row["source_sense_id"]]:
-                raise ValueError("peer adjustment is outside the directly affected same-source UI group")
+                raise Stage2RepairContentError("peer adjustment is outside the directly affected same-source UI group")
             normalized_peers.add(key)
         if schema_diagnostics:
             if schema_repair is not None:
@@ -3196,9 +3485,6 @@ class Supervisor:
                 }
                 current["last_error"] = "schema correction required: " + ", ".join(
                     f"{row['candidate_key']} [{row['code']}]" for row in schema_diagnostics)
-            if current.get("attempt_log"):
-                current["attempt_log"][-1]["status"] = "rejected"
-            self._save_stage2_repair_state(b, state)
             raise Stage2RepairSchemaError(current["last_error"])
         if schema_repair is not None:
             answer["decisions"] = accepted_rows + valid_direct_rows
