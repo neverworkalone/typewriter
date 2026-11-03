@@ -69,7 +69,8 @@ class TechnicalFallback(unittest.TestCase):
         self.assertEqual(stage2.single_candidate_failure_alias(
             f"chunk {CHUNK} not saved, checkpoint unchanged: 1 problem(s)\nc1 candidate-0: bad", CHUNK, local), "c1")
 
-        w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D BAD\nc2 D BAD")}, candidates=2)
+        w, b = self.world({"code": 0, "session": "s1", "text": answer(
+            f"chunk {CHUNK}\nc1 D BAD\nc2 D BAD\nc99 D e")}, candidates=2)
         b = self.finish(w, b)
         self.assertEqual((b["state"], len(w.adapter.launches), w.git.technical_fallback_calls),
                          ("ERROR", 1, []))
