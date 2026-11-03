@@ -772,16 +772,16 @@ class ElapsedDisplay(unittest.TestCase):
             return [{"started_at": start, "ended_at": end} for start, end in intervals]
 
         cases = [
-            ("four fully overlapping runs", [(0, 300)] * 4, 300),
-            ("partially overlapping runs", [(0, 240), (120, 360), (300, 420)], 420),
-            ("sequential runs omit the pause", [(0, 100), (500, 600)], 200),
-            ("completed and active runs", [(100, 200), (150, None)], 150),
-            ("empty and reversed intervals", [], 0),
-            ("reversed interval contributes zero", [(100, 50), (0, 10)], 10),
+            ("four fully overlapping runs", [(0, 300)] * 4, 300, None),
+            ("partially overlapping runs", [(0, 240), (120, 360), (300, 420)], 420, None),
+            ("sequential runs omit the pause", [(0, 100), (500, 600)], 200, None),
+            ("completed and active runs", [(100, 200), (150, None)], 150, 250),
+            ("empty and reversed intervals", [], 0, None),
+            ("reversed interval contributes zero", [(100, 50), (0, 10)], 10, None),
         ]
-        for name, intervals, want in cases:
+        for name, intervals, want, now in cases:
             with self.subTest(name=name):
-                self.assertEqual(elapsed_seconds(runs(intervals), now=self.NOW), want)
+                self.assertEqual(elapsed_seconds(runs(intervals), now=self.NOW if now is None else now), want)
 
     def _set_intervals(self, store, batch_id, intervals):
         for index, (started_at, ended_at) in enumerate(intervals):
