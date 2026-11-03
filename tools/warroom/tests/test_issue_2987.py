@@ -133,7 +133,7 @@ class Stage2RepairSchemaCorrection(unittest.TestCase):
 
         batch = w.store.batch(batch["id"])
         self.assertEqual(batch["state"], "ERROR")
-        self.assertIn("schema correction exhausted", batch["error"])
+        self.assertIn("repeated optional-link problem cannot use a technical fallback", batch["error"])
         state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
         self.assertEqual((state["current"]["attempts"],
                           [row["status"] for row in state["current"]["attempt_log"]]),

@@ -1290,22 +1290,30 @@ class Git:
         return first
 
     def stage2_repair(self, worktree: Path, shard: str, batch: str, part: str, repair: dict,
-                      timeout: int = 900) -> dict:
-        """Apply a persisted, source-bound answer through the official atomic Admission CLI repair API."""
+                      timeout: int = 900, *, check: bool = False) -> dict:
+        """Check (`--check`, read-only) or apply a persisted, source-bound answer through the official Admission CLI.
+
+        Exit 2 with a valid `ok:false` JSON line is a candidate-local result and is returned as-is; every other
+        failure is a global error. Diagnostic text is never parsed."""
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
-        input_path = Path(worktree) / ".warroom-scratch" / "s2-repair-input.json"
+        input_path = Path(worktree) / ".warroom-scratch" / ("s2-repair-check-input.json" if check else "s2-repair-input.json")
         input_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = input_path.with_suffix(".json.tmp")
         temporary.write_text(json.dumps(repair, ensure_ascii=False, separators=(",", ":")) + "\n", "utf-8")
         temporary.replace(input_path)
         res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "repair", "--checkpoint", checkpoint,
-                          "--in", ".warroom-scratch/s2-repair-input.json", "--json"], cwd=worktree,
-                         env=self.env, timeout=timeout)
-        if not res.ok:
-            raise GitError(f"admission-cli repair 실패: {' '.join((res.err or res.out).split())[-500:]}")
+                          "--in", f".warroom-scratch/{input_path.name}", "--json", *(["--check"] if check else [])],
+                         cwd=worktree, env=self.env, timeout=timeout)
         try:
             payload = json.loads((res.out or "").strip().splitlines()[-1])
         except (ValueError, IndexError):
+            payload = None
+        if res.code == 2 and isinstance(payload, dict) and payload.get("ok") is False \
+                and isinstance(payload.get("invalid_candidates"), list):
+            return payload
+        if not res.ok:
+            raise GitError(f"admission-cli repair 실패: {' '.join((res.err or res.out).split())[-500:]}")
+        if payload is None:
             raise GitError("admission-cli repair exited 0 without a valid JSON receipt")
         if not isinstance(payload, dict) or payload.get("ok") is not True:
             raise GitError("admission-cli repair exited 0 without {ok:true}")

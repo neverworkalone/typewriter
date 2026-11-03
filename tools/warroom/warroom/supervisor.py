@@ -2885,8 +2885,11 @@ class Supervisor:
         attempt["run_ended_at"] = run["ended_at"]
         correction = self._stage2_repair_correction(current)
         if correction is not None and correction.get("source_attempt") == attempt.get("attempt"):
-            attempt["correction_candidate_keys"] = correction["requested_keys"]
-            attempt["correction_kind"] = correction["kind"]
+            if "correction_response_sha256" not in attempt:   # an attempt that itself ran a correction keeps its own scope
+                attempt["correction_candidate_keys"] = correction["requested_keys"]
+                attempt["correction_kind"] = correction["kind"]
+            else:
+                attempt["produced_correction_keys"] = correction["requested_keys"]
             correction["source_run_id"] = run["id"]
         self._save_stage2_repair_state(b, state)
 
@@ -3244,7 +3247,7 @@ class Supervisor:
                             or source_attempt.get("target_keys") != page_targets \
                             or not isinstance(requested, list) or requested != sorted(set(requested)) \
                             or not set(requested).issubset(page_targets) \
-                            or correction_kind not in {"coverage", "schema", "schema_and_coverage"} \
+                            or correction_kind not in {"coverage", "schema", "schema_and_coverage", "problems"} \
                             or source_run is None or source_run["kind"] != "s2_repair_new" \
                             or source_run["ended_at"] is None or str(source_run["exit_status"]) != "0":
                         return "Stage 2 repair correction is not bound to its rejected source attempt"
@@ -3252,7 +3255,11 @@ class Supervisor:
                     if not isinstance(source_response, str) \
                             or hashlib.sha256(source_response.encode("utf-8")).hexdigest() != attempt["correction_response_sha256"]:
                         return "Stage 2 repair correction source response hash does not match its run"
-                    if correction_kind in {"coverage", "schema", "schema_and_coverage"}:
+                    if "correction_problems" in attempt:
+                        if sorted({row.get("candidate_key") for row in attempt["correction_problems"]
+                                   if isinstance(row, dict)}) != requested:
+                            return "Stage 2 repair correction problems do not match their requested candidates"
+                    elif correction_kind in {"coverage", "schema", "schema_and_coverage"}:
                         source_answer = stage2.extract_repair_answer(source_response, current_fp)
                         response_keys = self._stage2_repair_answer_keys(source_answer) if source_answer is not None else None
                         missing = sorted(set(page_targets) - set(response_keys or [])) if response_keys is not None else None
@@ -3373,7 +3380,7 @@ class Supervisor:
                 return self._fail(b, "ERROR", "Stage 2 repair page cursor is invalid; preserving all evidence")
             if current.get("pending_answer") is not None:
                 return self._apply_stage2_repair_answer(b, state)
-            if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
+            if self._stage2_repair_noncandidate_attempts(current) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
                 return self._fail(b, "ERROR", "Stage 2 repair response retry limit reached; saved checkpoint and round evidence are preserved")
             page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
             page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
@@ -3413,6 +3420,7 @@ class Supervisor:
                 attempt["correction_candidate_keys"] = correction["requested_keys"]
                 attempt["correction_response_sha256"] = correction["response_sha256"]
                 attempt["correction_kind"] = correction.get("kind", "schema")
+                attempt["correction_problems"] = self._stage2_repair_correction_problems(correction)
                 if "response_correction" in current:
                     attempt["correction_source_attempt"] = correction["source_attempt"]
                     attempt["correction_source_run_id"] = correction["source_run_id"]
@@ -3469,8 +3477,9 @@ class Supervisor:
             raise ValueError("Stage 2 repair prompt candidate keys differ from its persisted page/correction scope")
         if correction is None:
             return {"groups": prompt_groups}
-        diagnostics = [{key: row[key] for key in ("candidate_key", "code", "required_fields", "actual_fields")
-                        if key in row} for row in correction.get("diagnostics", [])]
+        diagnostics = [{key: row[key] for key in ("candidate_key", "code", "required_fields", "actual_fields",
+                                                  "field_path", "condition", "message") if key in row}
+                       for row in correction.get("diagnostics", [])]
         return {"repair_correction": {"kind": correction.get("kind", "schema"),
                                        "candidate_keys": sorted(selected_keys), "diagnostics": diagnostics},
                 "groups": prompt_groups}
@@ -3502,7 +3511,9 @@ class Supervisor:
             raise
         except Stage2RepairMissingCandidatesError as error:
             current["last_error"] = str(error)
-            self._stage2_repair_mark_rejected(b, state, final, error, "coverage")
+            attempts = current.get("attempt_log")
+            ran_correction = bool(attempts) and isinstance(attempts[-1], dict) and "correction_response_sha256" in attempts[-1]
+            self._stage2_repair_mark_rejected(b, state, final, error, "schema" if ran_correction else "coverage")
             raise
         except Stage2RepairContentError as error:
             current["last_error"] = str(error)
@@ -3589,6 +3600,146 @@ class Supervisor:
         if correction is not None and correction.get("source_run_id") is None \
                 and correction.get("source_attempt") == attempt.get("attempt"):
             correction["source_run_id"] = run["id"]
+
+    def _stage2_repair_cli_input(self, current: dict, answer: dict) -> dict:
+        """The one CLI repair input shared by `repair --check` and the apply call (the nonce is added by apply)."""
+        page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
+        targets = {}
+        for group in page:
+            for candidate in group["candidates"]:
+                targets[(candidate["source_sense_id"], candidate["candidate"])] = candidate
+        changes = []
+        fallback = []
+
+        def add_change(key, new_decision=None, new_optional=None):
+            candidate = targets.get(key)
+            if candidate is None:
+                candidate = next((peer for group in page for target in group["candidates"]
+                                  for peer in target.get("same_group_peers", [])
+                                  if (peer["source_sense_id"], peer["candidate"]) == key), None)
+            if candidate is None:
+                raise ValueError(f"repair answer target is not in the persisted preflight page: {key[0]}/{key[1]}")
+            changes.append({"source_sense_id": key[0], "candidate": key[1],
+                "expected_decision": candidate["decision"],
+                "expected_additional_relations": candidate.get("additional_relations"),
+                "decision": new_decision, "additional_relations": new_optional})
+
+        for row in answer["decisions"]:
+            key = (row["source_sense_id"], row["candidate"])
+            if key not in targets:
+                raise ValueError("repair decision key changed after answer validation")
+            if targets[key]["already_accounted"]:
+                add_change(key, None, row["additional_relations"])
+            else:
+                add_change(key, row["decision"], None)
+                if row.get("supervisor_fallback") is not None:
+                    fallback.append({"source_sense_id": key[0], "candidate": key[1], "evidence": row["supervisor_fallback"]})
+        for row in answer["peer_adjustments"]:
+            add_change((row["source_sense_id"], row["candidate"]), row["decision"], None)
+        repair_input = {"version": 1, "fingerprint": current["fingerprint"],
+                        "decisions": sorted(changes, key=lambda row: (row["source_sense_id"], row["candidate"]))}
+        if fallback:
+            repair_input["supervisor_fallback"] = sorted(fallback, key=lambda row: (row["source_sense_id"], row["candidate"]))
+        return repair_input
+
+    def _stage2_repair_check(self, b, current: dict, rows: list, peers: list) -> dict:
+        """Run the read-only official check; candidate-local diagnostics come back, global failures raise."""
+        repair_input = self._stage2_repair_cli_input(current, {"decisions": rows, "peer_adjustments": peers})
+        result = self.git.stage2_repair(Path(b["worktree"]), b["shard"], *stage2.split_key(b["batch"]),
+                                        repair_input, check=True)
+        if not isinstance(result, dict) or not isinstance(result.get("ok"), bool) \
+                or not isinstance(result.get("invalid_candidates"), list) \
+                or (result["ok"] is False and not result["invalid_candidates"]) \
+                or (result["ok"] is True and result["invalid_candidates"]):
+            raise ValueError("official repair check returned an inconsistent result")
+        for entry in result["invalid_candidates"]:
+            if not isinstance(entry, dict) or not isinstance(entry.get("candidate_key"), str) \
+                    or not isinstance(entry.get("problems"), list) or not entry["problems"] \
+                    or any(not isinstance(problem, dict) or not isinstance(problem.get("field_path"), str)
+                           or not isinstance(problem.get("condition"), str)
+                           or not isinstance(problem.get("message"), str) for problem in entry["problems"]):
+                raise ValueError("official repair check returned a malformed candidate diagnostic")
+        return result
+
+    def _stage2_repair_checkpoint_path(self, b) -> Path:
+        bb, pp = stage2.split_key(b["batch"])
+        return Path(b["worktree"]) / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json"
+
+    def _stage2_repair_binding(self, b, current: dict, answer: dict, final: str, check: dict | None) -> dict:
+        """Bind a checked answer to the exact response, CLI input and checkpoint it was checked against."""
+        repair_input = self._stage2_repair_cli_input(current, answer)
+        return {"response_sha256": hashlib.sha256(final.encode("utf-8")).hexdigest(),
+                "cli_input_sha256": hashlib.sha256(json.dumps(
+                    repair_input, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+                "checkpoint_sha256": hashlib.sha256(self._stage2_repair_checkpoint_path(b).read_bytes()).hexdigest(),
+                "check_request_id": (check or {}).get("request_id")}
+
+    @staticmethod
+    def _stage2_repair_correction_problems(correction: dict) -> list[dict]:
+        """The `(candidate_key, field_path, condition)` problems a correction asked for (legacy: derived)."""
+        problems = correction.get("problems")
+        if isinstance(problems, list):
+            return [{"candidate_key": row["candidate_key"], "field_path": row["field_path"], "condition": row["condition"]}
+                    for row in problems if isinstance(row, dict)]
+        if correction.get("kind") == "coverage":
+            return [{"candidate_key": key, "field_path": "row", "condition": "required"}
+                    for key in correction.get("requested_keys", [])]
+        return [{"candidate_key": key, "field_path": "row", "condition": "legacy"}
+                for key in correction.get("requested_keys", [])]
+
+    @staticmethod
+    def _stage2_repair_requested_problems(current: dict) -> dict:
+        """Cumulative problems already requested on this page: `(key, field_path, condition)` → requesting attempt."""
+        out = {}
+        for attempt in current.get("attempt_log", []):
+            if not isinstance(attempt, dict) or attempt.get("cursor") != current.get("cursor") \
+                    or attempt.get("fingerprint") != current.get("fingerprint"):
+                continue
+            problems = attempt.get("correction_problems")
+            if problems is None and attempt.get("correction_kind") == "coverage" \
+                    and "correction_source_attempt" in attempt:
+                problems = [{"candidate_key": key, "field_path": "row", "condition": "required"}
+                            for key in attempt.get("correction_candidate_keys", [])]
+            for problem in problems or []:
+                out[(problem["candidate_key"], problem["field_path"], problem["condition"])] = attempt
+        return out
+
+    @staticmethod
+    def _stage2_repair_noncandidate_attempts(current: dict) -> int:
+        """Attempts on this page that made no candidate-local progress (the retry budget's unit)."""
+        count = 0
+        for attempt in current.get("attempt_log", []):
+            if not isinstance(attempt, dict) or attempt.get("cursor") != current.get("cursor") \
+                    or attempt.get("fingerprint") != current.get("fingerprint"):
+                continue
+            if attempt.get("status") in {"answer_saved", "applied"} \
+                    or (attempt.get("status") == "rejected" and attempt.get("reason_code") in {"schema", "coverage"}):
+                continue
+            count += 1
+        return count
+
+    def _stage2_repair_fallback_evidence(self, b, current: dict, final: str, problem: dict, current_row: dict | None) -> dict | None:
+        """Prove that the exact problem was requested by a completed correction run; None if anything is missing."""
+        attempt = self._stage2_repair_requested_problems(current).get(
+            (problem["candidate_key"], problem["field_path"], problem["condition"]))
+        attempts = current.get("attempt_log") or []
+        if attempt is None or not attempts:
+            return None
+        runs_by_id = {run["id"]: run for run in self.store.runs(b["id"])}
+        if attempt is attempts[-1] and attempt.get("status") == "launched":
+            run = self._last_run(b)    # the correction run whose response is being validated right now
+            if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None or str(run["exit_status"]) != "0" \
+                    or str(run["log_file"]) != str(b["log_file"]) or attempt.get("run_id") not in (None, run["id"]):
+                return None
+            run_id, response_sha256 = run["id"], hashlib.sha256(final.encode("utf-8")).hexdigest()
+        else:
+            if attempt.get("status") != "rejected" or attempt.get("rejection_version") != 1 \
+                    or self._stage2_repair_explicit_rejection_problem(b, current["fingerprint"], attempt, runs_by_id) is not None:
+                return None
+            run_id, response_sha256 = attempt["run_id"], attempt["response_sha256"]
+        return {"prior_request": {"attempt": attempt["attempt"], "run_id": run_id, "response_sha256": response_sha256,
+                                  "problem": {"field_path": problem["field_path"], "condition": problem["condition"]}},
+                "current_row": current_row}
 
     def _stage2_repair_validate_response(self, b, state: dict, final: str) -> dict | None:
         current = state["current"]
@@ -3684,16 +3835,21 @@ class Supervisor:
         if correction is not None and (peer_rows or unresolved_rows):
             raise Stage2RepairContentError("repair-correction response may contain only the requested candidate rows")
         missing = sorted(response_keys - seen)
-        affected_types = {}
-        for row in valid_direct_rows:
-            candidate = required[(row["source_sense_id"], row["candidate"])]
-            previous = candidate.get("decision") or {}
-            changed = row.get("decision", {}).get("type") if isinstance(row.get("decision"), dict) else None
-            if changed and previous.get("type") != changed:
-                types = affected_types.setdefault(row["source_sense_id"], set())
-                if previous.get("disposition") == "relation" and previous.get("type"):
-                    types.add(previous["type"])
-                types.add(changed)
+
+        def affected_for(rows):
+            affected = {}
+            for row in rows:
+                candidate = required[(row["source_sense_id"], row["candidate"])]
+                previous = candidate.get("decision") or {}
+                changed = row.get("decision", {}).get("type") if isinstance(row.get("decision"), dict) else None
+                if changed and previous.get("type") != changed:
+                    types = affected.setdefault(row["source_sense_id"], set())
+                    if previous.get("disposition") == "relation" and previous.get("type"):
+                        types.add(previous["type"])
+                    types.add(changed)
+            return affected
+
+        affected_types = affected_for(valid_direct_rows)
         normalized_peers = set()
         for row in peer_rows:
             if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "decision"} \
@@ -3705,58 +3861,162 @@ class Supervisor:
                     or peer["decision"].get("type") not in affected_types[row["source_sense_id"]]:
                 raise Stage2RepairContentError("peer adjustment is outside the directly affected same-source UI group")
             normalized_peers.add(key)
-        if schema_diagnostics or missing:
-            if correction is not None:
-                if schema_diagnostics:
-                    current["last_error"] = "repair correction schema rejected: " + ", ".join(
-                        f"{row['candidate_key']} [{row['code']}]" for row in schema_diagnostics)
+
+        key_text = lambda row: f"{row['source_sense_id']}\u0000{row['candidate']}"
+        requested_texts = {f"{sense_id}\u0000{name}" for sense_id, name in response_keys}
+        all_peers = list(accepted_peers if correction is not None else []) + list(peer_rows)
+        peer_texts = {key_text(row) for row in all_peers}
+        cli_rows = list(accepted_rows) + list(valid_direct_rows)
+
+        def run_check(rows, peers):
+            """The official CLI check over the composed answer; candidate-local diagnostics and invalid peers only."""
+            result = self._stage2_repair_check(b, current, rows, peers)
+            local, bad_peers = [], set()
+            for entry in result["invalid_candidates"]:
+                key = entry["candidate_key"]
+                if key in peer_texts:
+                    bad_peers.add(key)
+                elif key in requested_texts:
+                    local.extend({"candidate_key": key, "field_path": problem["field_path"],
+                                  "condition": problem["condition"], "message": problem["message"], "source": "cli"}
+                                 for problem in entry["problems"])
+                else:
+                    raise Stage2RepairContentError(
+                        f"previously accepted repair row {key.replace(chr(0), '/')} no longer passes the official check")
+            return result, local, bad_peers
+
+        check, cli_problems, bad_peers = None, [], set()
+        if cli_rows:
+            check, cli_problems, bad_peers = run_check(cli_rows, all_peers)
+            if bad_peers:   # an invalid peer adjustment is dropped (its stored value stays); never a reason to re-ask
+                peer_rows = [row for row in peer_rows if key_text(row) not in bad_peers]
+                accepted_peers = [row for row in accepted_peers if key_text(row) not in bad_peers]
+                all_peers = [row for row in all_peers if key_text(row) not in bad_peers]
+                current["dropped_peer_adjustments"] = sorted(bad_peers)
+                check, cli_problems, bad_peers = run_check(cli_rows, all_peers)
+                if bad_peers:
+                    raise Stage2RepairContentError("peer adjustments still fail the official check after being removed")
+
+        problems = [{"candidate_key": row["candidate_key"], "field_path": "row", "condition": row["code"],
+                     "message": row["code"], "source": "wrapper"} for row in schema_diagnostics]
+        problems += [{"candidate_key": f"{sense_id}\u0000{name}", "field_path": "row", "condition": "required",
+                      "message": "the candidate row is missing", "source": "missing"} for sense_id, name in missing]
+        problems += cli_problems
+        fallback_rows, fallback_keys = [], set()
+        if problems:
+            history = self._stage2_repair_requested_problems(current)
+            by_key = {}
+            for problem in problems:
+                by_key.setdefault(problem["candidate_key"], []).append(problem)
+            correction_keys = sorted(key for key, rows in by_key.items()
+                                     if not any((p["candidate_key"], p["field_path"], p["condition"]) in history for p in rows))
+            valid_by_key = {key_text(row): row for row in valid_direct_rows}
+            for key, rows in sorted(by_key.items()):
+                repeated = next((p for p in rows if (p["candidate_key"], p["field_path"], p["condition"]) in history), None)
+                if repeated is None:
+                    continue
+                candidate = required[tuple(key.split("\u0000", 1))]
+                label = key.replace("\u0000", "/")
+                if candidate["already_accounted"]:
+                    raise Stage2RepairContentError(f"{label}: a repeated optional-link problem cannot use a technical fallback")
+                if repeated["source"] == "missing":
+                    current_row = None
+                elif repeated["source"] == "cli" and key in valid_by_key:
+                    current_row = {"source_sense_id": valid_by_key[key]["source_sense_id"],
+                                   "candidate": valid_by_key[key]["candidate"], "decision": valid_by_key[key]["decision"]}
+                else:
+                    raise Stage2RepairContentError(f"{label}: {repeated['field_path']} [{repeated['condition']}] repeated but cannot be re-verified by the official CLI")
+                evidence = self._stage2_repair_fallback_evidence(b, current, final, repeated, current_row)
+                if evidence is None:
+                    raise Stage2RepairContentError(f"{label}: a repeated problem lacks completed correction-run evidence; refusing technical fallback")
+                source_sense_id, name = key.split("\u0000", 1)
+                fallback_rows.append({"source_sense_id": source_sense_id, "candidate": name,
+                    "decision": {"source_sense_id": source_sense_id, "candidate": name, "disposition": "drop", "reason": "f"},
+                    "supervisor_fallback": evidence})
+                fallback_keys.add(key)
+            correction_keys = [key for key in correction_keys if key not in fallback_keys]
+            kept_rows = [row for row in cli_rows if key_text(row) not in fallback_keys and key_text(row) not in correction_keys]
+            if correction_keys:
+                requested = [p for p in problems if p["candidate_key"] in correction_keys]
+                wrapper_requested = [p for p in requested if p["source"] == "wrapper"]
+                missing_requested = [p for p in requested if p["source"] == "missing"]
+                if any(p["source"] == "cli" for p in requested):
+                    correction_kind = "problems"
+                elif wrapper_requested and missing_requested:
+                    correction_kind = "schema_and_coverage"
+                elif wrapper_requested:
+                    correction_kind = "schema"
+                else:
+                    correction_kind = "coverage"
+                diagnostics = []
+                for problem in requested:
+                    if problem["source"] == "cli":
+                        diagnostics.append({"candidate_key": problem["candidate_key"], "code": "cli_problem",
+                            "field_path": problem["field_path"], "condition": problem["condition"],
+                            "message": problem["message"], "required_fields": [], "actual_fields": []})
+                diagnostics += [row for row in schema_diagnostics if row["candidate_key"] in correction_keys]
+                for problem in missing_requested:
+                    sense_id, name = problem["candidate_key"].split("\u0000", 1)
+                    candidate_row = required[(sense_id, name)]
+                    diagnostics.append({"candidate_key": problem["candidate_key"], "code": "missing_candidate",
+                        "required_fields": (["source_sense_id", "candidate", "additional_relations"]
+                                            if candidate_row["already_accounted"] else ["source_sense_id", "candidate", "decision"]),
+                        "actual_fields": []})
+                current["response_correction"] = {
+                    "kind": correction_kind,
+                    "fingerprint": current["fingerprint"], "page_keys": page_keys,
+                    "requested_keys": correction_keys,
+                    "response_sha256": hashlib.sha256(final.encode("utf-8")).hexdigest(),
+                    "source_attempt": current.get("attempt_log", [{}])[-1].get("attempt"),
+                    "source_run_id": None,
+                    "problems": [{"candidate_key": p["candidate_key"], "field_path": p["field_path"],
+                                  "condition": p["condition"]} for p in requested],
+                    "diagnostics": diagnostics,
+                    "accepted_answer": {"decisions": kept_rows + fallback_rows, "peer_adjustments": all_peers},
+                }
+                current["last_error"] = f"repair response needs correction for {len(correction_keys)} candidate(s)"
+                if any(p["source"] != "missing" for p in requested):
                     raise Stage2RepairSchemaError(current["last_error"])
-                raise Stage2RepairMissingCandidatesError(
-                    f"repair correction still omits {len(missing)} requested candidate(s)")
-            diagnostics = list(schema_diagnostics)
-            for source_sense_id, candidate in missing:
-                key = f"{source_sense_id}\u0000{candidate}"
-                candidate_row = required[(source_sense_id, candidate)]
-                required_fields = (["source_sense_id", "candidate", "additional_relations"]
-                                   if candidate_row["already_accounted"]
-                                   else ["source_sense_id", "candidate", "decision"])
-                diagnostics.append({"candidate_key": key, "code": "missing_candidate",
-                                    "required_fields": required_fields, "actual_fields": []})
-            requested_keys = sorted({row["candidate_key"] for row in diagnostics})
-            if schema_diagnostics and missing:
-                correction_kind = "schema_and_coverage"
-            elif schema_diagnostics:
-                correction_kind = "schema"
-            else:
-                correction_kind = "coverage"
-            current["response_correction"] = {
-                "kind": correction_kind,
-                "fingerprint": current["fingerprint"], "page_keys": page_keys,
-                "requested_keys": requested_keys,
-                "response_sha256": hashlib.sha256(final.encode("utf-8")).hexdigest(),
-                "source_attempt": current.get("attempt_log", [{}])[-1].get("attempt"),
-                "source_run_id": None,
-                "diagnostics": diagnostics,
-                "accepted_answer": {"decisions": valid_direct_rows, "peer_adjustments": peer_rows},
-            }
-            current["last_error"] = f"repair response needs correction for {len(requested_keys)} candidate(s)"
-            if schema_diagnostics:
-                raise Stage2RepairSchemaError(current["last_error"])
-            raise Stage2RepairMissingCandidatesError(current["last_error"])
-        if correction is not None:
-            answer["decisions"] = accepted_rows + valid_direct_rows
-            answer["peer_adjustments"] = accepted_peers
+                raise Stage2RepairMissingCandidatesError(current["last_error"])
+            # Every problem is a proven repeat: finish with the technical fallback and re-check the composed page.
+            final_rows = kept_rows + fallback_rows
+            affected = affected_for([row for row in final_rows if key_text(row) not in fallback_keys])
+            all_peers = [row for row in all_peers if row["source_sense_id"] in affected
+                         and allowed_peers[(row["source_sense_id"], row["candidate"])]["decision"].get("type")
+                         in affected[row["source_sense_id"]]]
+            check, cli_problems, bad_peers = run_check(final_rows, all_peers)
+            if cli_problems or bad_peers:
+                raise Stage2RepairContentError("the technical-fallback page does not pass the official check; refusing to apply")
+            answer["decisions"] = final_rows
+            answer["peer_adjustments"] = all_peers
         else:
-            answer["decisions"] = valid_direct_rows
-            answer["peer_adjustments"] = peer_rows
+            answer["decisions"] = cli_rows
+            answer["peer_adjustments"] = all_peers
         answer["unresolved"] = []
         current["pending_answer"] = answer
         if current.get("attempt_log"):
             current["attempt_log"][-1]["status"] = "answer_saved"
         self._stage2_repair_mark_answer_saved(b, state, final)
+        current["pending_binding"] = self._stage2_repair_binding(b, current, answer, final, check)
         current.pop("last_error", None)
         self._save_stage2_repair_state(b, state)
         return answer
+
+    def _stage2_repair_demote(self, b, state: dict, check: dict) -> None:
+        """An unapplied pending answer no longer passes the official check: reject it and ask only the new problems."""
+        current = state["current"]
+        attempts = current.get("attempt_log")
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+        if not isinstance(attempt, dict) or attempt.get("status") != "answer_saved":
+            return self._fail(b, "ERROR", "pending Stage 2 repair answer fails the official check but has no demotable attempt; preserving evidence")
+        keys = ", ".join(sorted(entry["candidate_key"].replace("\u0000", "/") for entry in check["invalid_candidates"])[:8])
+        attempt["status"] = "launched"
+        current["pending_answer"] = None
+        current.pop("pending_binding", None)
+        current.pop("apply_intent", None)
+        self._save_stage2_repair_state(b, state)
+        self.store.log(b["id"], f"Stage 2 repair pending answer failed the official check ({keys}); re-validating its saved response", "warn")
+        return self._run_ok_stage2_repair(self.store.batch(b["id"]))
 
     def _apply_stage2_repair_answer(self, b, state: dict | None = None) -> None:
         try:
@@ -3774,35 +4034,7 @@ class Supervisor:
             if info is not None:
                 return self._fail(b, "ERROR", f"Stage 2 repair cannot continue after PR creation; unexpected PR #{info['number']} found")
             page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
-            targets = {}
-            for group in page:
-                for candidate in group["candidates"]:
-                    targets[(candidate["source_sense_id"], candidate["candidate"])] = candidate
-            changes = []
-            def add_change(key, new_decision=None, new_optional=None):
-                candidate = targets.get(key)
-                if candidate is None:
-                    candidate = next((peer for group in page for target in group["candidates"]
-                                      for peer in target.get("same_group_peers", [])
-                                      if (peer["source_sense_id"], peer["candidate"]) == key), None)
-                if candidate is None:
-                    raise ValueError(f"repair answer target is not in the persisted preflight page: {key[0]}/{key[1]}")
-                changes.append({"source_sense_id": key[0], "candidate": key[1],
-                    "expected_decision": candidate["decision"],
-                    "expected_additional_relations": candidate.get("additional_relations"),
-                    "decision": new_decision, "additional_relations": new_optional})
-            for row in answer["decisions"]:
-                key = (row["source_sense_id"], row["candidate"])
-                if key not in targets:
-                    raise ValueError("repair decision key changed after answer validation")
-                if targets[key]["already_accounted"]:
-                    add_change(key, None, row["additional_relations"])
-                else:
-                    add_change(key, row["decision"], None)
-            for row in answer["peer_adjustments"]:
-                add_change((row["source_sense_id"], row["candidate"]), row["decision"], None)
-            repair_input = {"version": 1, "fingerprint": current["fingerprint"],
-                            "decisions": sorted(changes, key=lambda row: (row["source_sense_id"], row["candidate"]))}
+            repair_input = self._stage2_repair_cli_input(current, answer)
             candidate_keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair_input["decisions"])
             intent = current.get("apply_intent")
             if intent is None:
@@ -3814,8 +4046,34 @@ class Supervisor:
                     or intent.get("candidate_keys") != candidate_keys \
                     or not re.fullmatch(r"[a-f0-9]{64}", intent.get("supervisor_nonce", "")):
                 raise ValueError("persisted Supervisor apply intent does not match the pending repair answer")
+            checkpoint_file = self._stage2_repair_checkpoint_path(b)
+            receipts = json.loads(checkpoint_file.read_text("utf-8")).get("repair_receipts", [])
+            receipt_proven = any(isinstance(receipt, dict) and receipt.get("supervisor_nonce") == intent["supervisor_nonce"]
+                                 and receipt.get("fingerprint") == current["fingerprint"]
+                                 and receipt.get("candidate_keys") == candidate_keys for receipt in receipts)
+            binding = current.get("pending_binding")
+            current_binding = self._stage2_repair_binding(b, current, answer, current.get("last_response") or "", None)
+            if not receipt_proven and not (isinstance(binding, dict)
+                    and binding.get("cli_input_sha256") == current_binding["cli_input_sha256"]
+                    and binding.get("checkpoint_sha256") == current_binding["checkpoint_sha256"]):
+                # Unbound (legacy) or changed inputs, and no successful receipt: the official check decides again.
+                check = self._stage2_repair_check(b, current, answer["decisions"], answer["peer_adjustments"])
+                if check["ok"] is not True:
+                    return self._stage2_repair_demote(b, state, check)
+                binding = {**current_binding, "check_request_id": check.get("request_id")}
+                current["pending_binding"] = binding
+                self._save_stage2_repair_state(b, state)
             repair_input["supervisor_nonce"] = intent["supervisor_nonce"]
             receipt = self.git.stage2_repair(Path(b["worktree"]), b["shard"], *stage2.split_key(b["batch"]), repair_input)
+            if receipt.get("ok") is False:
+                causes = []
+                if isinstance(binding, dict) and binding.get("checkpoint_sha256") != current_binding["checkpoint_sha256"]:
+                    causes.append("the checkpoint changed after the answer was checked")
+                if isinstance(binding, dict) and binding.get("cli_input_sha256") != current_binding["cli_input_sha256"]:
+                    causes.append("the regenerated CLI input differs from the checked input")
+                return self._fail(b, "ERROR", "official repair CLI rejected an answer its check accepted ("
+                                  + ("; ".join(causes) or "check and apply disagree with identical checkpoint and input")
+                                  + "); response, checkpoint and receipts are preserved")
             if receipt.get("ok") is not True or not re.fullmatch(r"[a-f0-9]{64}", receipt.get("request_id", "")) \
                     or receipt.get("supervisor_nonce") != intent["supervisor_nonce"] \
                     or receipt.get("candidate_keys") != candidate_keys:
@@ -4416,16 +4674,11 @@ class Supervisor:
             try:
                 answer = self._stage2_repair_response(b, state)
             except Stage2RepairSchemaError as error:
-                current = state.get("current", {})
-                if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
-                    return self._fail(b, "ERROR", f"Stage 2 repair schema correction exhausted its page attempt budget; preserving prior decisions and receipts: {error}")
-                self.store.log(b["id"], f"Stage 2 repair output schema rejected ({error}); requesting only the identified candidate rows within the existing attempt budget", "warn")
+                self.store.log(b["id"], f"Stage 2 repair output rejected ({error}); requesting only the unrequested candidate problems (each problem is asked at most once)", "warn")
                 return self._launch_stage2_repair_page(b)
             except Stage2RepairMissingCandidatesError as error:
                 current = state.get("current", {})
                 correction = self._stage2_repair_correction(current)
-                if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
-                    return self._fail(b, "ERROR", f"Stage 2 repair coverage correction did not complete within its page attempt budget; preserving accepted rows and receipts: {error}")
                 if not isinstance(correction, dict) or correction.get("kind") not in {"coverage", "schema_and_coverage"}:
                     return self._fail(b, "ERROR", f"Stage 2 repair missing-candidate response has no exact correction scope; preserving all evidence: {error}")
                 self.store.log(b["id"], f"Stage 2 repair response omitted {len(correction['requested_keys'])} candidates; requesting only those keys on the same page", "warn")

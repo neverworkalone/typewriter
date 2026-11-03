@@ -178,6 +178,9 @@ class FakeGit:
         self.reconcile_preview_calls: list[tuple] = []
         self.reconcile_calls: list[tuple] = []
         self.stage2_repair_calls: list[dict] = []
+        self.stage2_repair_check_calls: list[dict] = []
+        self.stage2_repair_checker = None
+        self.stage2_repair_apply_results: list = []
         self.stage2_repair_results: list[dict] = []
 
     def fetch_base(self, base):
@@ -422,7 +425,17 @@ class FakeGit:
                 "part": part, "fingerprint": "a" * 64, "total": 0, "candidate_total": 0,
                 "problems": [], "unclassified": [], "coverage": {}}
 
-    def stage2_repair(self, worktree, shard, batch, part, repair, timeout=900):
+    def stage2_repair(self, worktree, shard, batch, part, repair, timeout=900, *, check=False):
+        if check:
+            self.stage2_repair_check_calls.append(repair)
+            if self.stage2_repair_checker is not None:
+                return self.stage2_repair_checker(repair)
+            return {"version": 1, "ok": True, "already_applied": False, "repaired": 0, "normalized": [],
+                    "invalid_candidates": []}
+        if self.stage2_repair_apply_results:
+            outcome = self.stage2_repair_apply_results.pop(0)
+            if outcome is not None:
+                return outcome
         self.stage2_repair_calls.append(repair)
         path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
         data = json.loads(path.read_text("utf-8"))
@@ -434,8 +447,10 @@ class FakeGit:
             for row in repair["decisions"]:
                 item = next(item for item in data["items"] if item["sense_id"] == row["source_sense_id"])
                 candidate = next(candidate for candidate in item["candidates"] if candidate["text"] == row["candidate"])
-                expected = row["additional_relations"] if candidate.get("already_accounted") is True else row["decision"]
-                actual = candidate.get("additional_relations") if candidate.get("already_accounted") is True else candidate.get("decision")
+                expected = row["additional_relations"] if row["additional_relations"] is not None else row["decision"]
+                actual = candidate.get("additional_relations") if row["additional_relations"] is not None else candidate.get("decision")
+                if candidate.get("already_accounted") is not True and row["additional_relations"] is None:
+                    continue
                 if actual != expected:
                     raise GitError("repair receipt exists but its candidate state no longer matches")
             result = {"version": 1, "ok": True, "repaired": 0, "already_applied": True,
@@ -446,9 +461,9 @@ class FakeGit:
         for row in repair["decisions"]:
             item = next(item for item in data["items"] if item["sense_id"] == row["source_sense_id"])
             candidate = next(candidate for candidate in item["candidates"] if candidate["text"] == row["candidate"])
-            if candidate.get("already_accounted") is True:
+            if row["additional_relations"] is not None:
                 candidate["additional_relations"] = row["additional_relations"]
-            else:
+            elif candidate.get("already_accounted") is not True:
                 candidate["decision"] = row["decision"]
         data.setdefault("repair_receipts", []).append({"request_id": "c" * 64, "fingerprint": repair["fingerprint"],
                                                         "supervisor_nonce": repair["supervisor_nonce"],
