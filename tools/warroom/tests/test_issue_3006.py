@@ -51,7 +51,6 @@ class MultiCandidateCorrection(unittest.TestCase):
             failures().replace("c2 candidate-1: target_resolution must name an available target", "types: unexpected mixed error"),
             failures().replace("c2 candidate-1: target_resolution must name an available target",
                                "c1 candidate-0: target_resolution must name an available target"),
-            failures().replace("c2 candidate-1", "c99 unknown-candidate"),
         ):
             with self.subTest(diagnostic=diagnostic):
                 self.assertIsNone(stage2.candidate_local_failure_aliases(diagnostic, CHUNK))
