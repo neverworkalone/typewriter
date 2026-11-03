@@ -8,6 +8,7 @@ import process from 'node:process';
 
 import {
   addSearchForm,
+  assertActiveChunkScope,
   clearLiteraryCandidateSenses,
   exportLiteraryCandidates,
   initializeLiteraryCheckpoint,
@@ -92,6 +93,12 @@ function validateSenseIds(value) {
     fail('--sense-ids must be a comma-separated list of valid IDs');
   }
   if (new Set(ids).size !== ids.length) fail('--sense-ids must contain unique IDs');
+}
+
+function chunkOption(options) {
+  if (options.chunk === undefined) return undefined;
+  if (!/^\d{1,6}$/u.test(options.chunk) || Number(options.chunk) < 1) fail('--chunk must be a positive chunk number');
+  return Number(options.chunk);
 }
 
 function print(payload) {
@@ -235,7 +242,7 @@ async function main() {
       break;
     }
     case 'chunk': {
-      only(options, 'db', 'checkpoint', 'limit', 'contexts', 'skip', 'snippet-chars', 'sense-ids', 'format');
+      only(options, 'db', 'checkpoint', 'limit', 'contexts', 'skip', 'snippet-chars', 'sense-ids', 'exclude-sense-ids', 'format', 'chunk');
       const format = options.format ?? 'json';
       if (!['json', 'text'].includes(format)) fail('--format must be json or text');
       required(options, 'db', 'checkpoint');
@@ -244,10 +251,20 @@ async function main() {
       const skip = options.skip === undefined ? undefined : integerOption(options, 'skip', 0, contexts - 1, 0);
       if (skip !== undefined && options['sense-ids'] === undefined) fail('--skip requires --sense-ids');
       if (options['sense-ids'] !== undefined) validateSenseIds(options['sense-ids']);
+      if (options['exclude-sense-ids'] !== undefined) {
+        if (options['sense-ids'] !== undefined) fail('--exclude-sense-ids cannot be combined with --sense-ids');
+        validateSenseIds(options['exclude-sense-ids']);
+      }
+      const chunkNo = chunkOption(options);
+      if (chunkNo !== undefined) {
+        if (options['sense-ids'] === undefined) fail('--chunk requires --sense-ids');
+        await assertActiveChunkScope({ checkpointPath: options.checkpoint, chunkNo, senseIds: options['sense-ids'].split(','), scratchDirectory: SCRATCH_DIRECTORY });
+      }
       result = await readLiteraryChunk({
         databasePath: options.db,
         checkpointPath: options.checkpoint,
         senseIds: options['sense-ids'],
+        excludeSenseIds: options['exclude-sense-ids'],
         limit,
         contexts,
         skip,
@@ -270,23 +287,31 @@ async function main() {
       break;
     }
     case 'submit': {
-      only(options, 'db', 'checkpoint', 'input');
+      only(options, 'db', 'checkpoint', 'input', 'chunk');
       required(options, 'db', 'checkpoint', 'input');
+      const chunkNo = chunkOption(options);
       assertSubmissionPath(options.input);   // only a sidecar inside .warroom-scratch/ is ever touched
       submitDiagnosticPath = `${path.resolve(options.input)}.diag.json`;
       submitDiagnosticInputSha256 = null;
       await unlink(submitDiagnosticPath).catch(() => {});
+      const submission = await readSubmission(options.input);
+      if (chunkNo !== undefined) {
+        const entries = Array.isArray(submission?.senses) ? submission.senses : [];
+        await assertActiveChunkScope({ checkpointPath: options.checkpoint, chunkNo, senseIds: entries.map((entry) => entry?.sense_id).filter((id) => typeof id === 'string'), scratchDirectory: SCRATCH_DIRECTORY });
+      }
       result = await submitLiteraryChunk({
         databasePath: options.db,
         checkpointPath: options.checkpoint,
-        submission: await readSubmission(options.input),
+        submission,
         scratchDirectory: SCRATCH_DIRECTORY,
       });
       break;
     }
     case 'add-form': {
-      only(options, 'checkpoint', 'sense-id', 'form', 'basis');
+      only(options, 'checkpoint', 'sense-id', 'form', 'basis', 'chunk');
       required(options, 'checkpoint', 'sense-id', 'form', 'basis');
+      const chunkNo = chunkOption(options);
+      if (chunkNo !== undefined) await assertActiveChunkScope({ checkpointPath: options.checkpoint, chunkNo, senseIds: [options['sense-id']], scratchDirectory: SCRATCH_DIRECTORY });
       result = await addSearchForm(options.checkpoint, options['sense-id'], options.form, options.basis, { scratchDirectory: SCRATCH_DIRECTORY });
       break;
     }
@@ -351,7 +376,8 @@ main().catch((error) => {
       'unsupported option', '--contexts must be an integer 1..16', '--limit must be an integer 1..50',
       '--skip must be an integer 0..contexts-1', '--skip requires --sense-ids',
       '--sense-ids must be a comma-separated list of valid IDs', '--sense-ids must contain unique IDs',
-      '--format must be json or text', 'unknown command',
+      '--format must be json or text', 'unknown command', '--chunk must be a positive chunk number',
+      '--chunk requires --sense-ids', '--exclude-sense-ids cannot be combined with --sense-ids',
     ]);
     const message = messages.has(error.message) ? error.message : 'invalid command arguments';
     process.stderr.write(`${JSON.stringify({ status: 'FAILED', diagnostic: 'usage', message })}\n`);
@@ -370,7 +396,7 @@ main().catch((error) => {
     const reasons = new Set([
       'submission_schema', 'unknown_sense', 'duplicate_sense', 'context_key_not_found',
       'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
-      'missing_verified', 'missing_search_forms', 'no_literary_hits',
+      'missing_verified', 'missing_search_forms', 'no_literary_hits', 'checkpoint_sense_changed',
     ]);
     const fields = new Set(['submission', 'senses', 'sense', 'sense_id', 'verified', 'candidates', 'search_forms', 'input']);
     const reason = reasons.has(error.reason) ? error.reason : 'submission_schema';
@@ -445,6 +471,22 @@ main().catch((error) => {
       message: 'Candidate v1 validation failed; inspect the affected row and resubmit the affected sense.',
       affected,
       repair_scope: error.repair_scope ?? null,
+    })}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (error?.code === 'LITERARY_CHECKPOINT_LOCK_TIMEOUT' || error?.code === 'LITERARY_CHUNK_SCOPE') {
+    const timeout = error.code === 'LITERARY_CHECKPOINT_LOCK_TIMEOUT';
+    process.stderr.write(`${JSON.stringify({
+      status: 'FAILED',
+      diagnostic: timeout ? 'checkpoint_lock' : 'chunk_scope',
+      code: error.code,
+      error_type: errorType,
+      message: timeout
+        ? 'Timed out waiting for the checkpoint lock; the checkpoint was not changed. Run the command again.'
+        : 'The request is outside the active chunk assigned to this worker; use only the Senses of your chunk.',
+      repair_scope: timeout ? 'retry_command' : 'stop_and_report',
     })}\n`);
     process.exitCode = 1;
     return;

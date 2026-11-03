@@ -1011,6 +1011,29 @@ class PureHelpers(unittest.TestCase):
         with self.assertRaises(literary.LiteraryError):
             literary.progress_numbers("nonsense")
 
+    def test_parallel_header_and_numbered_active_chunks(self):
+        reserved = "batch=001_01 done=1/5 zero_hit=0 not_yet_read=0 excluded_pending=3 truncated=true\n\n"
+        self.assertEqual(literary.progress_numbers(reserved), (1, 5, 0, 0))
+        self.assertEqual(literary.excluded_pending(reserved), 3)
+        self.assertEqual(literary.excluded_pending("batch=001_01 done=1/5 zero_hit=0 not_yet_read=0\n\n"), 0)
+        import tempfile
+        from pathlib import Path
+        b = {"shard": "001", "batch": "01", "producer": "codex"}
+        with tempfile.TemporaryDirectory() as tmp:
+            literary.write_active(tmp, b, "v1", ["s1"], "a" * 40, 1, numbered=True)
+            literary.write_active(tmp, b, "v2", ["s2", "s3"], "a" * 40, 2, numbered=True)
+            (Path(tmp) / literary.SCRATCH / "c-active-003.json.tmp").write_text("partial")
+            self.assertEqual(sorted(literary.active_chunks(tmp, b)), [1, 2])
+            self.assertEqual(literary.reserved_sense_ids(tmp, b), {"s1", "s2", "s3"})
+            self.assertIsNone(literary.read_active(tmp, b))   # the singleton is separate
+            rec = literary.read_active(tmp, b, 2)
+            self.assertEqual(literary.read_view(tmp, rec, 2), "v2")
+            literary.clear_active(tmp, 1)
+            self.assertEqual(sorted(literary.active_chunks(tmp, b)), [2])
+            (Path(tmp) / literary.SCRATCH / "c-active-002.json").write_text("{broken")
+            with self.assertRaises(literary.LiteraryError):
+                literary.active_chunks(tmp, b)
+
     def test_delivery_and_pages_are_lossless(self):
         original_limit = literary.INLINE_MAX_PROMPT_BYTES
         literary.INLINE_MAX_PROMPT_BYTES = 16
