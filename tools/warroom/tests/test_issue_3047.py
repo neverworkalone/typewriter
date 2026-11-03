@@ -240,6 +240,71 @@ class ParallelStage2(unittest.TestCase):
         self.assertNotIn("checkpoint 0/", prompt)   # Part-wide progress is left out of the shared prefix
 
 
+class ParallelStage2Recovery(ParallelStage2):
+    def finish_code(self, w, task, code, text):
+        b = w.store.active_batch("claude", S2)
+        run = w.store.run(w.store.task_row(b["id"], task)["run_id"])
+        pid = next(l["pid"] for l in w.adapter.launches if w.adapter.running.get(l["pid"], {}).get("log") == Path(run["log_file"]))
+        w.adapter.running[pid].update(code=code, text=text)
+        w.adapter.finish(pid)
+
+    def test_complete_answer_survives_a_nonzero_exit(self):
+        w = self.world([("s", 3)])
+        self.launch(w, 1)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.finish_code(w, task, 1, answer(drop_rows(task, 3)))
+        w.tick()
+        self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
+        self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_unknown_failure_without_answer_is_preserved_not_rerun(self):
+        w = self.world([("s", 3)])
+        self.launch(w, 1)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.finish_code(w, task, 1, "something odd happened\n")
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.store.active_batch("claude", S2)["state"], "ERROR")
+
+    def test_rate_limit_failure_is_retried_for_that_task(self):
+        w = self.world([("s", 3)])
+        self.launch(w, 2)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.finish_code(w, task, 1, "HTTP 429 rate limit exceeded\n")
+        w.tick()
+        w.now += 1000
+        w.tick()
+        self.assertEqual(len(w.adapter.launches), 2)
+
+    def test_restart_after_technical_drop_save_resaves_with_persisted_evidence(self):
+        w = self.world([("s", 3)])
+        self.launch(w, 1)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.respond(w, task, drop_rows(task, 3, bad=(2,)))
+        w.tick()
+        self.respond(w, task, f"chunk {task}\nc2 D BAD")
+        real = w.store.update_task
+        def lose_saved(batch_id, t, **fields):   # the CLI saved, then the Supervisor died before recording SAVED
+            if fields.get("state") == "SAVED":
+                raise RuntimeError("crash")
+            return real(batch_id, t, **fields)
+        w.store.update_task = lose_saved
+        with self.assertRaises(RuntimeError):
+            w.sup.s2p.poll(w.store.active_batch("claude", S2))
+        w.store.update_task = real
+        self.assertEqual(self.tasks(w)[task]["state"], "RESPONDED")
+        w.sup = w.make_sup()
+        w.sup.parallel_new_parts = True
+        w.tick()
+        self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
+        b = w.store.active_batch("claude", S2) or w.store.latest_batch("claude", S2)
+        self.assertEqual(stage2.checkpoint(b["worktree"], "001", "01-01")["next_chunk_number"], 2)
+
+
 class ConfigAndMigration(unittest.TestCase):
     def test_defaults_and_validation(self):
         self.assertEqual((DEFAULTS["stage2_chunk_candidates"], DEFAULTS["stage2_max_parallel"]), (250, 16))

@@ -207,7 +207,7 @@ class ParallelStage2:
                 self._poll_task(b, plan, row, round_)
         for row in self.store.task_rows(b["id"]):
             if row["state"] == "RESPONDED" and not self._halted_by_boundary(b, round_):
-                self._save_task(b, plan, row, round_)
+                self._save_task(b, plan, row, round_, fallback=self._persisted_fallback(b, row))
         b = self.store.batch(b["id"])
         if b["state"] != "PRODUCING":
             return
@@ -292,8 +292,18 @@ class ParallelStage2:
     def _run_failed(self, b, row, data, run, code: int) -> None:
         cls = self.sup._classify_run(b["producer"], run["log_file"])
         self.store.log(b["id"], f"[{row['task']}] AI 종료 코드 {code}, 분류={cls}", "warn")
-        if cls in ("auth", "usage_limit", "free_quota", "effort"):
+        hard = cls in ("auth", "usage_limit", "free_quota", "effort")
+        if not hard:   # a complete current answer survives an ordinary non-zero exit, like the serial path
+            ad, log = self._adapter(b), Path(run["log_file"])
+            sid = run["session_id"] or ad.session_id(log)
+            if stage2.extract_decisions(ad.final_answer(log), row["task"]) is not None \
+                    and ad.output_identity_problem(log, self._recorded(run), sid, b["worktree"], self.sup.env) is None:
+                self.store.log(b["id"], f"[{row['task']}] 비정상 종료지만 현재 task의 응답과 실행 identity를 확인해 저장 경로로 진행합니다", "warn")
+                return self._accept_answer(b, row, data, run)
+        if hard:
             return self._task_failed(b, row, data, f"[{row['task']}] AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+        if cls not in ("rate_limit", "network"):   # unknown / session_missing: preserved, never silently re-run
+            return self._task_failed(b, row, data, f"[{row['task']}] AI 실행 실패(코드 {code}, {cls}) — 자동 재시도 없이 응답·세션을 보존합니다.")
         retries = data.get("transient_retries", 0)
         if retries < self.cfg["rate_limit_retries"]:   # this task's own transient budget; never the candidate-fix budget
             data["transient_retries"] = retries + 1
@@ -346,6 +356,15 @@ class ParallelStage2:
             stage2.write_decisions(wt, task, rows, rel)   # the preserved answer: a restart saves it without the AI
         data.pop("kind", None)
         self._set(b, task, data, state="RESPONDED")
+
+    def _persisted_fallback(self, b, row) -> dict | None:
+        """The technical-Drop evidence of a task whose fallback save may already have reached the checkpoint: its
+        failing row was removed from the decision file on purpose, so a retry must present the same evidence."""
+        proof = (self._data(row).get("correction") or {}).get("fallback")
+        if not proof:
+            return None
+        rows = stage2.read_rows(self._wt(b), stage2.task_path(row["task"], "decisions.txt"))
+        return proof if all(stage2.alias_of(r) != proof["alias"] for r in rows) else None
 
     # ---- saving -----------------------------------------------------------------------------------------------
     def _save_task(self, b, plan, row, round_: _Round, *, fallback: dict | None = None) -> None:
