@@ -139,6 +139,7 @@ BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge
                      "s2_finalize_base_", "s2_commit_head_", "s2_fix_start_",
                      "s3_run_start_", "s3_wait_", "s3_apply_ready_", "s3_apply_result_", "s3_commit_head_",
                      "s3_merge_wait_",
+                     "c_retry_guard_",
                      "pending_", "pr_create_")
 
 

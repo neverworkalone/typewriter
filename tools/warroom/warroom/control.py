@@ -8,8 +8,9 @@ from __future__ import annotations
 import json
 import time
 from datetime import datetime, time as wall_time, timedelta
+from pathlib import Path
 
-from . import stage2
+from . import literary, stage2
 from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
                      stage2_problem, stage3_models, stage3_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
@@ -148,9 +149,35 @@ def retry(store: Store, model: str, method: str) -> bool:
     b = store.active_batch(model, method)
     if (b is not None and store.clear_request(model, method) is None and b["state"] in ("PAUSED", "ERROR")
             and b["pid"] is None and not defect_locked(store, b)):
+        if method == literary.METHOD and b["state"] == "ERROR":
+            reason = _c_retry_block_reason(store, b)
+            if reason:
+                store.log(b["id"], f"C 운영자 Retry 차단: {reason}", "warn")
+                return False
         store.set_line(model, method, retry_batch=b["id"])
         return True
     return False
+
+
+def _c_retry_block_reason(store: Store, b) -> str | None:
+    raw = store.get(literary.retry_guard_key(b["id"]))
+    if not raw:
+        return None
+    if not isinstance(b["worktree"], str) or not b["worktree"]:
+        return "[same_failure; checkpoint_or_chunk_mismatch] worktree를 확인할 수 없어 보존했습니다."
+    try:
+        guard = json.loads(raw)
+    except ValueError:
+        guard = None
+    if not isinstance(guard, dict):
+        return "[same_failure; checkpoint_or_chunk_mismatch] evidence를 확인할 수 없습니다. 보존했습니다."
+    if not literary.retry_guard_unchanged_fast(Path(b["worktree"]), b, guard,
+                                                session_available=bool(b["session_id"])):
+        return None
+    codes = guard.get("reason_codes")
+    code_text = ",".join(str(code) for code in codes) if isinstance(codes, list) and codes else "unknown_recovery_block"
+    return (f"[same_failure; {code_text}] 체크포인트·제출·진단 evidence가 그대로여서 Retry를 막았습니다. "
+            "증거가 바뀐 뒤 재시도하세요.")
 
 
 def retry_maintainer(store: Store, issue_number: int | None = None, batch_id: int | None = None) -> bool:
@@ -253,7 +280,10 @@ def line_status(store: Store, model: str, method: str) -> dict:
     out["can_drain"] = (out["occupied"] and st != "CLEARING") or out["run"]
     out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR", "CLEARING") or out["run"]
     out["stoppable"] = (out["occupied"] and st != "CLEARING") or out["run"]   # what `stop_lines` can actually affect
-    out["can_retry"] = st in ("PAUSED", "ERROR") and b["pid"] is None and not defect_locked(store, b)
+    retry_blocked_reason = (_c_retry_block_reason(store, b) if method == literary.METHOD and st == "ERROR" else None)
+    out["retry_blocked_reason"] = retry_blocked_reason
+    out["can_retry"] = (st in ("PAUSED", "ERROR") and b["pid"] is None and not defect_locked(store, b)
+                        and retry_blocked_reason is None)
     req = store.clear_request(model, method) if out["occupied"] else None
     out["clear"] = None if req is None else {"status": req["status"], "error": req["error"]}
     # Clear needs a specific unfinished batch; once started it can only be re-armed after a BLOCKED teardown.

@@ -544,7 +544,27 @@ class Supervisor:
                 return
         if ln["retry_batch"] == b["id"]:
             target = self._chunk_retry_target(b)
-            if target is not None:
+            c_evidence_changed = False
+            if b["method"] == literary.METHOD and b["state"] == "ERROR" and target is not None:
+                raw_guard = self.store.get(literary.retry_guard_key(b["id"]))
+                if raw_guard:
+                    try:
+                        guard = json.loads(raw_guard)
+                    except ValueError:
+                        guard = None
+                    if not isinstance(guard, dict) or self._c_retry_guard_unchanged(b, guard):
+                        self.store.set_line(b["producer"], b["method"], retry_batch=None)
+                        codes = guard.get("reason_codes", []) if isinstance(guard, dict) else []
+                        code_text = ",".join(str(code) for code in codes) or "checkpoint_or_chunk_mismatch"
+                        self.store.set(literary.retry_guard_key(b["id"]), json.dumps(guard, sort_keys=True))
+                        self.store.log(b["id"], f"C 운영자 Retry 차단 [same_failure; {code_text}]: "
+                                       "active chunk의 Sense·제출·진단 상태가 바뀌지 않아 재실행하지 않았습니다.", "warn")
+                        return
+                    c_evidence_changed = True
+                    self.store.delete(literary.retry_guard_key(b["id"]))
+                    self.store.log(b["id"], "C 운영자 Retry: 현재 active chunk의 체크포인트·제출·진단 evidence 변경을 확인했습니다.", "warn")
+            if target is not None and (b["method"] != literary.METHOD or b["state"] != "ERROR" or c_evidence_changed):
+                # For C errors, an unchanged failure keeps its one persisted budget. Only new evidence grants a new cycle.
                 self.store.delete(self._auto_retry_key(b, target))   # only an explicit operator Retry grants one new chance
             if self._d_chunk_run(b) and not b["pr_number"]:
                 self.store.delete_prefix(f"d_fix_{b['id']}:")   # only an explicit Retry regrants the automatic correction
@@ -4939,6 +4959,7 @@ class Supervisor:
                 raise prompts.PromptError("이어갈 미완료 sense가 없습니다")
             prompt = prompts.c_chunk_resume(rec["chunk_no"], checkpoint, remaining, note=rec.get("note", ""))
         else:
+            remaining = list(rec["sense_ids"])
             note = rec.get("note", "")
             if self.store.get(literary.run_start_key(b["id"])):
                 note += ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. 이미 checkpoint에 완료된 Sense와 "
@@ -4950,7 +4971,10 @@ class Supervisor:
                 prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, pages=literary.write_pages(wt, view),
                                          note=note)
         baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
-                    "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote, "chunk_no": rec["chunk_no"]}
+                    "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote,
+                    "chunk_no": rec["chunk_no"],
+                    "retry_state": literary.retry_state(wt, b, rec, remaining,
+                                                         session_available=bool(b["session_id"]))}
         return prompt, baseline
 
     def _c_chunk_saved(self, b) -> bool:
@@ -4960,6 +4984,127 @@ class Supervisor:
             return rec is not None and literary.chunk_finished(self.runner, self._c_env(b), Path(b["worktree"]), b, rec)
         except (literary.LiteraryError, OSError, ValueError):
             return False
+
+    def _c_chunk_progress(self, b):
+        """Return the active C record, exact pending Sense IDs, and the CLI's completion decision."""
+        wt = Path(b["worktree"])
+        rec = literary.read_active(wt, b)
+        if rec is None:
+            return None, [], False
+        if rec.get("repair"):
+            done = literary.chunk_finished(self.runner, self._c_env(b), wt, b, rec)
+            return rec, [] if done else list(rec["sense_ids"]), done
+        report = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
+        pending = [sense["sense_id"] for sense in report["senses"] if not sense["done"]]
+        return rec, pending, not pending
+
+    def _c_incomplete_reason_codes(self, b, rec, *, report_valid: bool) -> list[str]:
+        """Classify only the observed C recovery blockers; never expose submission contents."""
+        codes = []
+        if not report_valid or rec is None:
+            codes.append("checkpoint_or_chunk_mismatch")
+        if not b["session_id"]:
+            codes.append("session_unavailable")
+        target = self._chunk_retry_target(b)
+        if target is not None:
+            try:
+                auto_used = int(self.store.get(self._auto_retry_key(b, target)) or 0)
+            except (TypeError, ValueError):
+                auto_used = 1
+            if auto_used >= 1:
+                codes.append("retry_budget_exhausted")
+        if rec is None:
+            return codes
+
+        submit = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json"
+        diagnostic = submit.with_name(submit.name + ".diag.json")
+        parsed = None
+        if not submit.is_file() or not diagnostic.is_file():
+            codes.append("diagnostic_unavailable_or_invalid")
+        else:
+            try:
+                parsed = json.loads(diagnostic.read_text("utf-8"))
+            except (OSError, ValueError):
+                pass
+            if not isinstance(parsed, dict) or parsed.get("status") != "FAILED":
+                codes.append("diagnostic_unavailable_or_invalid")
+            elif not literary.submit_retryable(Path(b["worktree"]), b, rec["chunk_no"]):
+                codes.append("submit_validation_blocked")
+
+        try:
+            resubmits = int(self.store.get(literary.resubmit_key(b["id"])) or 0)
+        except (TypeError, ValueError):
+            resubmits = literary.MAX_RESUBMITS
+        if resubmits >= literary.MAX_RESUBMITS and b["session_id"]:
+            skip_reason = literary.technical_skip_reason_code(Path(b["worktree"]), b, rec["chunk_no"])
+            if skip_reason:
+                codes.append(f"technical_skip_ineligible:{skip_reason}")
+        return list(dict.fromkeys(codes))
+
+    def _c_incomplete_error(self, b, rec, pending, *, report_valid: bool) -> str:
+        codes = self._c_incomplete_reason_codes(b, rec, report_valid=report_valid)
+        raw = self.store.get(literary.run_start_key(b["id"]))
+        try:
+            run_start = json.loads(raw or "null")
+        except ValueError:
+            run_start = None
+        baseline = run_start.get("retry_state") if isinstance(run_start, dict) else None
+        if rec is not None:
+            required_state = {"chunk_id", "chunk_no", "view_sha256", "repair", "pending_sense_ids",
+                              "session_available", "checkpoint", "submit", "diagnostic"}
+            baseline_ok = (isinstance(baseline, dict) and required_state <= set(baseline)
+                           and baseline.get("chunk_id") == rec.get("chunk_id")
+                           and baseline.get("chunk_no") == rec["chunk_no"]
+                           and isinstance(baseline.get("pending_sense_ids"), list)
+                           and isinstance(baseline.get("session_available"), bool))
+            if not baseline_ok:
+                # No trustworthy launch baseline: bind the guard to current evidence and require a later change.
+                try:
+                    baseline = literary.retry_state(Path(b["worktree"]), b, rec, pending,
+                                                     session_available=bool(b["session_id"]))
+                except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+                    baseline = None
+                if "checkpoint_or_chunk_mismatch" not in codes:
+                    codes.append("checkpoint_or_chunk_mismatch")
+            if isinstance(baseline, dict):
+                baseline["report_valid"] = bool(report_valid)
+                self.store.set(literary.retry_guard_key(b["id"]), json.dumps(
+                    {"baseline": baseline, "reason_codes": codes}, sort_keys=True))
+        code_text = ",".join(codes) if codes else "checkpoint_or_chunk_mismatch"
+        total = len(rec["sense_ids"]) if rec else "?"
+        pending_count = len(pending) if report_valid else "?"
+        return ("C 청크 실행이 종료됐지만 활성 청크의 모든 Sense가 완료되지 않았습니다 "
+                f"(checkpoint 완료 증거 없음; pending={pending_count}/{total}) [{code_text}]. "
+                "동일 증거의 Retry는 차단됩니다. 제출·진단 또는 체크포인트 진행이 바뀐 뒤 재시도하세요; "
+                "기존 완료 Sense와 worktree/checkpoint는 보존했습니다.")
+
+    def _c_retry_guard_unchanged(self, b, guard: dict) -> bool:
+        """Recheck exact pending Sense state before accepting a manual Retry."""
+        baseline = guard.get("baseline")
+        if not isinstance(baseline, dict):
+            return True
+        try:
+            rec, pending, _done = self._c_chunk_progress(b)
+            if rec is None:
+                return True
+            if baseline.get("report_valid") is False:
+                # Recovery from a checkpoint that could not be reported is new evidence even when
+                # the repaired report has the same pending Sense IDs.
+                return False
+            if (rec.get("chunk_id") != baseline.get("chunk_id")
+                    or rec.get("chunk_no") != baseline.get("chunk_no")
+                    or rec.get("view_sha256") != baseline.get("view_sha256")):
+                return True
+            current = literary.retry_state(Path(b["worktree"]), b, rec, pending,
+                                           session_available=bool(b["session_id"]))
+            unchanged = literary.retry_state_same(current, baseline)
+            if unchanged and not baseline.get("repair"):
+                # A checkpoint rewrite with identical completed Sense evidence must not leave the UI
+                # offering the same blocked Retry on every refresh.
+                baseline["checkpoint"] = current["checkpoint"]
+            return unchanged
+        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+            return True
 
     def _c_boundary_problem(self, b) -> str | None:
         return self._stage2_chunk_boundary_problem(b, literary.run_start_key(b["id"]))
@@ -4977,14 +5122,20 @@ class Supervisor:
             raise
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 종료 후 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
-        if not self._c_chunk_saved(b):
-            rec = diag = None
+        try:
+            rec, pending, chunk_saved = self._c_chunk_progress(b)
+            report_valid = rec is not None
+        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
             try:
                 rec = literary.read_active(Path(b["worktree"]), b)
-                if rec is not None:
-                    diag = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json.diag.json"
             except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-                pass
+                rec = None
+            pending = list(rec["sense_ids"]) if rec is not None else []
+            chunk_saved, report_valid = False, False
+        if not chunk_saved:
+            diag = None
+            if rec is not None:
+                diag = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json.diag.json"
             revalidated_saved = False
             submit_revalidated = False
             if rec is not None and literary.deterministic_context_trim_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
@@ -4994,12 +5145,14 @@ class Supervisor:
                     submit_revalidated = True
                     if refreshed is not None:
                         if not self._c_chunk_saved(b):
-                            return self._fail(b, "ERROR", "C 결정적 CLI 복구 뒤에도 활성 청크 완료를 확인하지 못했습니다. 보존합니다.")
+                            return self._fail(b, "ERROR", "C 결정적 CLI 복구 뒤에도 활성 청크 완료를 확인하지 못했습니다 "
+                                              "[checkpoint_or_chunk_mismatch]. 보존합니다.")
                         revalidated_saved = True
                         self.store.log(b["id"], f"C 활성 청크 {rec['chunk_no']:03d}의 변경 없는 제출을 일반 CLI로 재검증해 저장했습니다. "
                                        "문맥 키의 양끝 공백을 정규화했습니다.", "warn")
                 except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError) as e:
-                    return self._fail(b, "ERROR", f"C 결정적 제출 복구를 검증하지 못했습니다: {e}. 원본을 보존합니다.")
+                    return self._fail(b, "ERROR", f"C 결정적 제출 복구를 검증하지 못했습니다 "
+                                      f"[diagnostic_unavailable_or_invalid]: {e}. 원본을 보존합니다.")
             if not revalidated_saved and self._c_resubmit(b):
                 return
             used = int(self.store.get(literary.resubmit_key(b["id"])) or 0)
@@ -5021,7 +5174,9 @@ class Supervisor:
                     else:
                         if not literary.technical_skip_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
                             reason_code = literary.technical_skip_reason_code(Path(b["worktree"]), b, rec["chunk_no"])
-                            return self._fail(b, "ERROR", f"C technical skip blocked [{reason_code or 'diagnostic_not_authorized'}]. 원본을 보존합니다.")
+                            return self._fail(b, "ERROR", f"C technical skip blocked "
+                                              f"[technical_skip_ineligible:{reason_code or 'diagnostic_not_authorized'}]. "
+                                              "원본을 보존합니다.")
                         skip_result = literary.supervisor_skip(
                             self.store, self.runner, self._c_env(b), Path(b["worktree"]), b, rec)
                 except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError) as e:
@@ -5031,15 +5186,19 @@ class Supervisor:
                                    f"sense={skip_result['sense_id']} diagnostic={skip_result['diagnostic']}/{skip_result['reason']} "
                                    f"field={skip_result['field']} same-session-resubmits={used}; 나머지 제출은 기존 CLI 경로로 저장했습니다.", "warn")
                     if not self._c_chunk_saved(b):
-                        return self._fail(b, "ERROR", "C technical skip 이후에도 활성 청크 전체 완료를 확인하지 못했습니다. 보존합니다.")
+                        return self._fail(b, "ERROR", "C technical skip 이후에도 활성 청크 전체 완료를 확인하지 못했습니다 "
+                                          "[checkpoint_or_chunk_mismatch]. 보존합니다.")
             if skip_result is None and not revalidated_saved:
                 if rec is not None and diag is not None and not diag.exists() and b["run_kind"] != "c_chunk_fix" \
                         and self._retry_unsaved_chunk(b, "checkpoint 미완료"):
                     return
-                return self._fail(b, "ERROR", "C 청크 실행이 종료됐지만 활성 청크의 모든 sense가 완료되지 않았습니다 (checkpoint 완료 증거 없음). "
-                                  "자동 재진입 한도를 소진했거나 제출 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크의 미완료 sense만 이어갑니다.")
+                return self._fail(b, "ERROR", self._c_incomplete_error(b, rec, pending,
+                                                                        report_valid=report_valid))
         self.store.delete(literary.run_start_key(b["id"]))
         self.store.delete(literary.resubmit_key(b["id"]))
+        if rec is not None:
+            self.store.delete(literary.retry_guard_key(b["id"]))
+            self.store.delete(self._auto_retry_key(b, f"c:{rec['chunk_no']}"))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
         self.store.log(b["id"], "C 청크의 모든 sense 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         try:
@@ -5078,6 +5237,13 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
         if self._c_chunk_saved(b):
+            try:
+                rec = literary.read_active(Path(b["worktree"]), b)
+            except (literary.LiteraryError, OSError, ValueError):
+                rec = None
+            if rec is not None:
+                self.store.delete(literary.retry_guard_key(b["id"]))
+                self.store.delete(self._auto_retry_key(b, f"c:{rec['chunk_no']}"))
             self.store.delete(literary.run_start_key(b["id"]))
             self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
             literary.clear_active(Path(b["worktree"]))

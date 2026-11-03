@@ -318,6 +318,8 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
                      else "Clear 중단됨 (보존됨) — Clear 버튼으로 이어서 재시도할 수 있습니다")
     if st["error"]:
         lines.append(f"ERROR/PAUSED 사유: {st['error']}")
+    if st.get("retry_blocked_reason"):
+        lines.append(f"Retry 비활성: {st['retry_blocked_reason']}")
     if st["blocked"]:
         lines.append(f"BLOCKED: {st['blocked']}")
     return "\n".join(lines)
