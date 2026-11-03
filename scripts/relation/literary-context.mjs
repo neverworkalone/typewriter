@@ -1453,6 +1453,20 @@ function senseSnapshot(sense) {
   };
 }
 
+function completeShownSample(sense, digest, result) {
+  const shown = sense.shown;
+  const unitRowIds = shown?.unit_rowids;
+  const expected = Math.min(result.total_hits, MAX_CONTEXTS_PER_SENSE);
+  return Number.isSafeInteger(result.total_hits) && result.total_hits > 0
+    && shown?.forms_sha256 === digest && shown.total_hits === result.total_hits
+    && Object.keys(shown).length === 3
+    && Array.isArray(unitRowIds) && unitRowIds.length === expected
+    && unitRowIds.every((rowId) => Number.isSafeInteger(rowId) && rowId > 0)
+    && new Set(unitRowIds).size === expected
+    && result.results.length === expected
+    && result.results.every((row, index) => row._private?.locator?.unit_rowid === unitRowIds[index]);
+}
+
 function assertSkipPrefix(prior, digest, allUnitRowIds, skippedContexts) {
   if (!prior || prior.forms_sha256 !== digest || !Array.isArray(prior.unit_rowids)
     || prior.unit_rowids.length < skippedContexts) {
@@ -1758,12 +1772,20 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
       }
       if (result.total_hits === 0 && candidates.size > 0) failSubmission('no_literary_hits', entry.sense_id, 'candidates', entryNumber);
       if (candidates.size > 0 && verified.length === 0) failSubmission('missing_verified', entry.sense_id, 'verified', entryNumber);
+      const shownSampleComplete = completeShownSample(sense, digest, result);
+      if (result.total_hits > 0 && verified.length === 0 && candidates.size === 0 && !shownSampleComplete) {
+        failSubmission('unshown_empty_sample', entry.sense_id, 'verified', entryNumber);
+      }
       accepted.push({
         senseId: entry.sense_id,
         entryNumber,
         start: senseSnapshot(sense),
         submission: {
-          status: result.total_hits === 0 ? 'ZERO_HITS' : 'SUBMITTED',
+          status: result.total_hits === 0 ? 'ZERO_HITS'
+            : verified.length === 0 && candidates.size === 0
+              && shownSampleComplete
+              && result.results.length === MAX_CONTEXTS_PER_SENSE
+              && result.total_hits > result.results.length ? 'SAMPLED_NO_VERIFIED' : 'SUBMITTED',
           submitted_at: new Date().toISOString(),
           total_hits: result.total_hits,
           contexts_available: result.results.length,
@@ -1802,7 +1824,7 @@ export function summarizeLiteraryCheckpoint(checkpoint) {
   return checkpointSummary(checkpoint);
 }
 
-const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED', 'TECHNICAL_SKIPPED'];
+const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED', 'SAMPLED_NO_VERIFIED', 'TECHNICAL_SKIPPED'];
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isNonEmptyString = (value) => typeof value === 'string' && value !== '';
 
@@ -1830,9 +1852,27 @@ function assertCheckpointStructure(checkpoint) {
         // Per-status invariants: a candidate always rests on a stored VERIFIED context, and ZERO_HITS has neither.
         const verified = saved.verified ?? [];
         const technicalSkip = saved.technical_skip;
+        const shownIds = sense.shown?.unit_rowids;
+        const sampledShownValid = isPlainObject(sense.shown)
+          && sense.search_forms.every((form) => typeof form === 'string' && form.length > 0)
+          && sense.added_forms.every((item) => isPlainObject(item) && typeof item.form === 'string' && item.form.length > 0)
+          && Object.keys(sense.shown).length === 3
+          && typeof sense.shown.forms_sha256 === 'string'
+          && sense.shown.forms_sha256 === formsDigest(senseForms(sense))
+          && sense.shown.total_hits === saved.total_hits
+          && Array.isArray(shownIds) && shownIds.length === MAX_CONTEXTS_PER_SENSE
+          && shownIds.every((rowId) => Number.isSafeInteger(rowId) && rowId > 0)
+          && new Set(shownIds).size === MAX_CONTEXTS_PER_SENSE;
         if (!Array.isArray(verified) || !verified.every((item) => isPlainObject(item) && isNonEmptyString(item.locator_key))
           || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))
           || (saved.status === 'ZERO_HITS' && (saved.candidates.length > 0 || verified.length > 0))
+          || (saved.status === 'SAMPLED_NO_VERIFIED' && (saved.candidates.length > 0 || verified.length > 0
+            || !Array.isArray(saved.verified)
+            || !sampledShownValid
+            || saved.contexts_available !== MAX_CONTEXTS_PER_SENSE
+            || !Number.isSafeInteger(saved.total_hits) || saved.total_hits <= MAX_CONTEXTS_PER_SENSE
+            || !Number.isSafeInteger(saved.remaining_hit_count)
+            || saved.remaining_hit_count !== saved.total_hits - saved.contexts_available))
           || (saved.status === 'TECHNICAL_SKIPPED' && (saved.candidates.length > 0 || !isPlainObject(technicalSkip)
             || technicalSkip.record_id !== record.record_id || technicalSkip.sense_id !== sense.sense_id
             || technicalSkip.diagnostic !== 'submit_validation'

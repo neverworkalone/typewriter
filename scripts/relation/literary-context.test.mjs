@@ -842,6 +842,87 @@ test('contexts per sense are capped at 16, unseen hits stay explicit and any sho
   }
 });
 
+test('an empty submission completes a fully sampled sense with no verified context despite unread hits', async () => {
+  const fixture = await makeFixture({ unitCount: 20 });
+  try {
+    const senseId = 'sense-000001';
+    const first = (await chunk(fixture, { senseIds: senseId, contexts: 8 })).items[0];
+    const extra = (await chunk(fixture, { senseIds: senseId, contexts: 16, skip: 8 })).items[0];
+    assert.equal(first.contexts.length, 8);
+    assert.equal(extra.contexts.length, 8);
+    assert.equal(extra.unseen_hits, 4);
+    assert.equal((await load(fixture)).records[0].senses[0].shown.unit_rowids.length, 16);
+
+    const saved = await submit(fixture, [{ sense_id: senseId, verified: [], candidates: [] }]);
+    assert.equal(saved.status, 'SAVED');
+    const report = reportCli(fixture, senseId);
+    assert.equal(report.status, 0, report.stderr);
+    const completion = JSON.parse(report.stdout);
+    assert.equal(completion.all_done, true);
+    assert.equal(completion.senses[0].status, 'SAMPLED_NO_VERIFIED');
+    const checkpoint = await load(fixture);
+    assert.deepEqual(checkpoint.records[0].senses[0].submission.verified, []);
+    assert.deepEqual(checkpoint.records[0].senses[0].submission.candidates, []);
+    const damaged = structuredClone(checkpoint);
+    damaged.records[0].senses[0].submission.contexts_available = 8;
+    assert.throws(() => reportLiteraryCheckpointSenses(damaged, senseId), /checkpoint sense submission is damaged/u);
+    const missingShown = structuredClone(checkpoint);
+    missingShown.records[0].senses[0].shown = null;
+    assert.throws(() => reportLiteraryCheckpointSenses(missingShown, senseId), /checkpoint sense submission is damaged/u);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('SAMPLED_NO_VERIFIED requires 16 distinct contexts exposed for the current forms', async () => {
+  const unopened = await makeFixture({ unitCount: 20 });
+  try {
+    const before = await readFile(unopened.checkpointPath, 'utf8');
+    await rejectsSubmitAs(submit(unopened, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]), 'unshown_empty_sample');
+    assert.equal(await readFile(unopened.checkpointPath, 'utf8'), before);
+    const cliFailure = await submitCli(unopened, { senses: [{ sense_id: 'sense-000001', verified: [], candidates: [] }] });
+    assert.equal(cliFailure.status, 1);
+    const diagnostic = JSON.parse(cliFailure.stderr);
+    assert.equal(diagnostic.reason, 'unshown_empty_sample');
+    assert.equal(diagnostic.repair_scope, 'resubmit_affected_sense');
+    const report = reportLiteraryCheckpointSenses(await load(unopened), 'sense-000001');
+    assert.equal(report.all_done, false);
+    assert.equal(report.senses[0].status, 'PENDING');
+  } finally {
+    await cleanup(unopened);
+  }
+
+  const reformed = await makeFixture({ unitCount: 20 });
+  try {
+    await chunk(reformed, { senseIds: 'sense-000001', contexts: 8 });
+    await addSearchForm(reformed.checkpointPath, 'sense-000001', '새로운 검색 형태', 'reviewed fixture form',
+      { scratchDirectory: reformed.scratchDirectory });
+    await rejectsSubmitAs(submit(reformed, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]), 'unshown_empty_sample');
+    const sense = (await load(reformed)).records[0].senses[0];
+    assert.equal(sense.shown, null);
+    assert.equal(sense.submission, null);
+    const report = reportLiteraryCheckpointSenses(await load(reformed), 'sense-000001');
+    assert.equal(report.all_done, false);
+    assert.equal(report.senses[0].done, false);
+  } finally {
+    await cleanup(reformed);
+  }
+
+  const completeSmallSet = await makeFixture({ unitCount: 5 });
+  try {
+    const read = await chunk(completeSmallSet, { senseIds: 'sense-000001', contexts: 8 });
+    assert.equal(read.items[0].contexts.length, 5);
+    assert.equal(read.items[0].unseen_hits, 0);
+    const saved = await submit(completeSmallSet, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
+    assert.equal(saved.status, 'SAVED');
+    const sense = (await load(completeSmallSet)).records[0].senses[0];
+    assert.equal(sense.submission.status, 'SUBMITTED');
+    assert.equal(reportLiteraryCheckpointSenses(await load(completeSmallSet), 'sense-000001').all_done, true);
+  } finally {
+    await cleanup(completeSmallSet);
+  }
+});
+
 test('chunk --skip returns only new contexts while preserving the full lookup evidence for submission', async () => {
   const fixture = await makeFixture({ unitCount: 20 });
   try {
@@ -1598,6 +1679,7 @@ test('CLI usage diagnostics are fixed and validation precedes checkpoint/databas
       [['--sense-ids', 'a', 'b'], 'arguments must use --option value pairs'],
       [['--unknown', 'private-value'], 'unsupported option'],
       [['--skip', '0'], '--skip requires --sense-ids'],
+      [['--sense-ids', 'sense-000001', '--skip', '16', '--contexts', '16'], '--skip must be an integer 0..contexts-1'],
     ];
     for (const [args, expectedMessage] of cases) {
       const result = runCli(fixture, cliChunkArgs(fixture, args));

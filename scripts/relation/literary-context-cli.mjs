@@ -398,7 +398,7 @@ main().catch((error) => {
     const reasons = new Set([
       'submission_schema', 'unknown_sense', 'duplicate_sense', 'context_key_not_found',
       'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
-      'missing_verified', 'missing_search_forms', 'no_literary_hits', 'checkpoint_sense_changed',
+      'missing_verified', 'missing_search_forms', 'no_literary_hits', 'unshown_empty_sample', 'checkpoint_sense_changed',
     ]);
     const fields = new Set(['submission', 'senses', 'sense', 'sense_id', 'verified', 'candidates', 'search_forms', 'input']);
     const reason = reasons.has(error.reason) ? error.reason : 'submission_schema';
