@@ -3257,7 +3257,7 @@ class Supervisor:
                         return "Stage 2 repair correction source response hash does not match its run"
                     if "correction_problems" in attempt:
                         if sorted({row.get("candidate_key") for row in attempt["correction_problems"]
-                                   if isinstance(row, dict)}) != requested:
+                                   if isinstance(row, dict)}) != sorted(set(requested) | set(attempt.get("correction_peer_keys", []))):
                             return "Stage 2 repair correction problems do not match their requested candidates"
                     elif correction_kind in {"coverage", "schema", "schema_and_coverage"}:
                         source_answer = stage2.extract_repair_answer(source_response, current_fp)
@@ -3370,6 +3370,45 @@ class Supervisor:
         except Exception as error:
             return f"Stage 2 repair rebind evidence check failed: {error}; preserving prior decisions and receipts"
 
+    def _stage2_repair_recover_launched(self, b, state: dict, current: dict) -> bool:
+        """Settle a `launched` attempt left by a restart: attach, judge a finished run, or re-run a never-started one.
+
+        True when this call already handled the batch; False when a fresh launch may proceed."""
+        attempts = current.get("attempt_log")
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+        if not isinstance(attempt, dict) or attempt.get("status") != "launched" or "prior_run_id" not in attempt:
+            return False
+        if attempt.get("fingerprint") != current.get("fingerprint") or attempt.get("cursor") != current.get("cursor"):
+            return False
+        ad = self._adapter(b["producer"])
+        if b["pid"] is not None and ad.alive(b["pid"]):
+            return True   # still running: the poll loop re-attaches, never a second run
+        newer = [run for run in self.store.runs(b["id"]) if run["kind"] == "s2_repair_new" and run["id"] > attempt["prior_run_id"]]
+        if not newer:
+            if b["pid"] is not None:
+                self._fail(b, "ERROR", "Stage 2 repair attempt has a process but no recorded run; preserving all evidence")
+                return True
+            # reserved but never started: drop the stale reservation and let the caller launch the same request once
+            attempts.pop()
+            current["attempts"] = max(0, current.get("attempts", 1) - 1)
+            self._save_stage2_repair_state(b, state)
+            return False
+        run = newer[0]
+        if run["ended_at"] is None:
+            code = ad.exit_code(Path(b["exit_file"])) if b["exit_file"] else None
+            if code is None:
+                self._fail(b, "ERROR", "Stage 2 repair run has no recorded end or exit status; preserving all evidence")
+                return True
+            self.store.update(b["id"], pid=None)
+            self.store.finish_runs(b["id"], code)
+            run = next(row for row in self.store.runs(b["id"]) if row["id"] == run["id"])
+        if str(run["exit_status"]) != "0":
+            self._fail(b, "ERROR", f"Stage 2 repair run ended with exit {run['exit_status']}; preserving all evidence")
+            return True
+        self.store.log(b["id"], "Stage 2 repair run already finished before the restart; judging its saved output without re-running", "warn")
+        self._run_ok_stage2_repair(self.store.batch(b["id"]))
+        return True
+
     def _launch_stage2_repair_page(self, b) -> None:
         try:
             state = self._stage2_repair_state(b, required=True)
@@ -3380,6 +3419,9 @@ class Supervisor:
                 return self._fail(b, "ERROR", "Stage 2 repair page cursor is invalid; preserving all evidence")
             if current.get("pending_answer") is not None:
                 return self._apply_stage2_repair_answer(b, state)
+            handled = self._stage2_repair_recover_launched(b, state, current)
+            if handled:
+                return
             if self._stage2_repair_noncandidate_attempts(current) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
                 return self._fail(b, "ERROR", "Stage 2 repair response retry limit reached; saved checkpoint and round evidence are preserved")
             page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
@@ -3392,7 +3434,7 @@ class Supervisor:
                         or correction.get("fingerprint") != current.get("fingerprint") \
                         or correction.get("page_keys") != page_keys \
                         or not isinstance(correction.get("requested_keys"), list) \
-                        or not correction["requested_keys"] \
+                        or not (correction["requested_keys"] or correction.get("requested_peer_keys")) \
                         or correction["requested_keys"] != sorted(set(correction["requested_keys"])) \
                         or any(key not in page_keys for key in correction["requested_keys"]) \
                         or not re.fullmatch(r"[a-f0-9]{64}", correction.get("response_sha256", "")) \
@@ -3414,13 +3456,16 @@ class Supervisor:
                         return self._fail(b, "ERROR", "Stage 2 repair correction is not bound to its rejected source attempt; preserving all evidence")
             current["attempts"] = current.get("attempts", 0) + 1
             current["page_keys"] = page_keys
+            prior_run = self._last_run(b)
             attempt = {"cursor": cursor, "attempt": current["attempts"],
-                       "fingerprint": current["fingerprint"], "target_keys": page_keys, "status": "launched"}
+                       "fingerprint": current["fingerprint"], "target_keys": page_keys, "status": "launched",
+                       "prior_run_id": prior_run["id"] if prior_run else 0}
             if correction is not None:
                 attempt["correction_candidate_keys"] = correction["requested_keys"]
                 attempt["correction_response_sha256"] = correction["response_sha256"]
                 attempt["correction_kind"] = correction.get("kind", "schema")
                 attempt["correction_problems"] = self._stage2_repair_correction_problems(correction)
+                attempt["correction_peer_keys"] = correction.get("requested_peer_keys", [])
                 if "response_correction" in current:
                     attempt["correction_source_attempt"] = correction["source_attempt"]
                     attempt["correction_source_run_id"] = correction["source_run_id"]
@@ -3473,6 +3518,10 @@ class Supervisor:
                     "candidate_keys": sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in candidates),
                     "candidates": candidates})
         prompt_keys = {key for group in prompt_groups for key in group["candidate_keys"]}
+        peer_keys = set(correction.get("requested_peer_keys", [])) if isinstance(correction, dict) else set()
+        peers = [peer for group in page for candidate in group.get("candidates", [])
+                 for peer in candidate.get("same_group_peers", [])
+                 if f"{peer['source_sense_id']}\u0000{peer['candidate']}" in peer_keys]
         if prompt_keys != selected_keys:
             raise ValueError("Stage 2 repair prompt candidate keys differ from its persisted page/correction scope")
         if correction is None:
@@ -3480,9 +3529,16 @@ class Supervisor:
         diagnostics = [{key: row[key] for key in ("candidate_key", "code", "required_fields", "actual_fields",
                                                   "field_path", "condition", "message") if key in row}
                        for row in correction.get("diagnostics", [])]
-        return {"repair_correction": {"kind": correction.get("kind", "schema"),
-                                       "candidate_keys": sorted(selected_keys), "diagnostics": diagnostics},
-                "groups": prompt_groups}
+        payload = {"repair_correction": {"kind": correction.get("kind", "schema"),
+                                         "candidate_keys": sorted(selected_keys), "diagnostics": diagnostics},
+                   "groups": prompt_groups}
+        if peer_keys:
+            payload["repair_correction"]["peer_keys"] = sorted(peer_keys)
+            payload["repair_correction"]["peers"] = peers
+            payload["repair_correction"]["accepted_decisions"] = [
+                row for row in correction.get("accepted_answer", {}).get("decisions", [])
+                if row.get("source_sense_id") in {peer["source_sense_id"] for peer in peers}]
+        return payload
 
     def _stage2_repair_response(self, b, state: dict) -> dict | None:
         current = state["current"]
@@ -3769,7 +3825,8 @@ class Supervisor:
                 raise ValueError("repair-correction evidence is stale or belongs to another repair page")
             requested_keys = correction.get("requested_keys")
             accepted = correction.get("accepted_answer")
-            if not isinstance(requested_keys, list) or not requested_keys or any(
+            requested_peer_keys = correction.get("requested_peer_keys", [])
+            if not isinstance(requested_keys, list) or not (requested_keys or requested_peer_keys) or any(
                     not isinstance(key, str) or key.count("\u0000") != 1 for key in requested_keys) \
                     or len(set(requested_keys)) != len(requested_keys):
                 raise ValueError("repair-correction candidate keys are malformed")
@@ -3832,8 +3889,11 @@ class Supervisor:
             current["last_error"] = "unresolved: " + "; ".join(
                 f"{row['source_sense_id']}/{row['candidate']}: {row['reason']}" for row in unresolved_rows[:8])
             raise Stage2RepairUnresolvedError(current["last_error"])
-        if correction is not None and (peer_rows or unresolved_rows):
-            raise Stage2RepairContentError("repair-correction response may contain only the requested candidate rows")
+        requested_peer_keys = correction.get("requested_peer_keys", []) if correction is not None else []
+        if correction is not None and (unresolved_rows or any(
+                not isinstance(row, dict) or f"{row.get('source_sense_id')}\u0000{row.get('candidate')}" not in requested_peer_keys
+                for row in peer_rows)):
+            raise Stage2RepairContentError("repair-correction response may contain only the requested candidate and peer rows")
         missing = sorted(response_keys - seen)
 
         def affected_for(rows):
@@ -3849,7 +3909,7 @@ class Supervisor:
                     types.add(changed)
             return affected
 
-        affected_types = affected_for(valid_direct_rows)
+        affected_types = affected_for(list(accepted_rows) + list(valid_direct_rows))
         normalized_peers = set()
         for row in peer_rows:
             if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "decision"} \
@@ -3868,79 +3928,83 @@ class Supervisor:
         peer_texts = {key_text(row) for row in all_peers}
         cli_rows = list(accepted_rows) + list(valid_direct_rows)
 
+        peer_problem_texts = peer_texts | set(requested_peer_keys)
+
         def run_check(rows, peers):
-            """The official CLI check over the composed answer; candidate-local diagnostics and invalid peers only."""
+            """The official CLI check over the composed answer: candidate-local and peer diagnostics."""
             result = self._stage2_repair_check(b, current, rows, peers)
-            local, bad_peers = [], set()
+            local = []
             for entry in result["invalid_candidates"]:
                 key = entry["candidate_key"]
-                if key in peer_texts:
-                    bad_peers.add(key)
-                elif key in requested_texts:
-                    local.extend({"candidate_key": key, "field_path": problem["field_path"],
-                                  "condition": problem["condition"], "message": problem["message"], "source": "cli"}
-                                 for problem in entry["problems"])
-                else:
+                if key not in requested_texts and key not in peer_problem_texts:
                     raise Stage2RepairContentError(
                         f"previously accepted repair row {key.replace(chr(0), '/')} no longer passes the official check")
-            return result, local, bad_peers
+                local.extend({"candidate_key": key, "field_path": problem["field_path"],
+                              "condition": problem["condition"], "message": problem["message"], "source": "cli"}
+                             for problem in entry["problems"])
+            return result, local
 
-        check, cli_problems, bad_peers = None, [], set()
+        check, cli_problems = None, []
         if cli_rows:
-            check, cli_problems, bad_peers = run_check(cli_rows, all_peers)
-            if bad_peers:   # an invalid peer adjustment is dropped (its stored value stays); never a reason to re-ask
-                peer_rows = [row for row in peer_rows if key_text(row) not in bad_peers]
-                accepted_peers = [row for row in accepted_peers if key_text(row) not in bad_peers]
-                all_peers = [row for row in all_peers if key_text(row) not in bad_peers]
-                current["dropped_peer_adjustments"] = sorted(bad_peers)
-                check, cli_problems, bad_peers = run_check(cli_rows, all_peers)
-                if bad_peers:
-                    raise Stage2RepairContentError("peer adjustments still fail the official check after being removed")
+            check, cli_problems = run_check(cli_rows, all_peers)
 
         problems = [{"candidate_key": row["candidate_key"], "field_path": "row", "condition": row["code"],
                      "message": row["code"], "source": "wrapper"} for row in schema_diagnostics]
         problems += [{"candidate_key": f"{sense_id}\u0000{name}", "field_path": "row", "condition": "required",
                       "message": "the candidate row is missing", "source": "missing"} for sense_id, name in missing]
+        given_peer_texts = {key_text(row) for row in peer_rows}
+        problems += [{"candidate_key": key, "field_path": "row", "condition": "required",
+                      "message": "the peer adjustment row is missing", "source": "missing"}
+                     for key in requested_peer_keys if key not in given_peer_texts]
         problems += cli_problems
-        fallback_rows, fallback_keys = [], set()
+        fallback_rows, fallback_keys, fallback_peer_keys = [], set(), set()
         if problems:
             history = self._stage2_repair_requested_problems(current)
             by_key = {}
             for problem in problems:
                 by_key.setdefault(problem["candidate_key"], []).append(problem)
-            correction_keys = sorted(key for key, rows in by_key.items()
-                                     if not any((p["candidate_key"], p["field_path"], p["condition"]) in history for p in rows))
+            repeated_by_key = {key: next((p for p in rows if (p["candidate_key"], p["field_path"], p["condition"]) in history), None)
+                               for key, rows in by_key.items()}
+            correction_keys = sorted(key for key, rep in repeated_by_key.items() if rep is None and key not in peer_problem_texts)
+            correction_peer_keys = sorted(key for key, rep in repeated_by_key.items() if rep is None and key in peer_problem_texts)
             valid_by_key = {key_text(row): row for row in valid_direct_rows}
-            for key, rows in sorted(by_key.items()):
-                repeated = next((p for p in rows if (p["candidate_key"], p["field_path"], p["condition"]) in history), None)
+            peer_by_key = {key_text(row): row for row in peer_rows}
+            for key, repeated in sorted(repeated_by_key.items()):
                 if repeated is None:
                     continue
-                candidate = required[tuple(key.split("\u0000", 1))]
+                is_peer = key in peer_problem_texts
                 label = key.replace("\u0000", "/")
-                if candidate["already_accounted"]:
+                if not is_peer and required[tuple(key.split("\u0000", 1))]["already_accounted"]:
                     raise Stage2RepairContentError(f"{label}: a repeated optional-link problem cannot use a technical fallback")
+                source_row = peer_by_key.get(key) if is_peer else valid_by_key.get(key)
                 if repeated["source"] == "missing":
                     current_row = None
-                elif repeated["source"] == "cli" and key in valid_by_key:
-                    current_row = {"source_sense_id": valid_by_key[key]["source_sense_id"],
-                                   "candidate": valid_by_key[key]["candidate"], "decision": valid_by_key[key]["decision"]}
+                elif repeated["source"] == "cli" and source_row is not None:
+                    current_row = {"source_sense_id": source_row["source_sense_id"],
+                                   "candidate": source_row["candidate"], "decision": source_row["decision"]}
                 else:
                     raise Stage2RepairContentError(f"{label}: {repeated['field_path']} [{repeated['condition']}] repeated but cannot be re-verified by the official CLI")
                 evidence = self._stage2_repair_fallback_evidence(b, current, final, repeated, current_row)
                 if evidence is None:
                     raise Stage2RepairContentError(f"{label}: a repeated problem lacks completed correction-run evidence; refusing technical fallback")
                 source_sense_id, name = key.split("\u0000", 1)
+                if is_peer:   # keep the stored peer decision; only the failing adjustment is excluded
+                    fallback_peer_keys.add(key)
+                    current.setdefault("peer_fallbacks", []).append({"candidate_key": key, "evidence": evidence})
+                    continue
                 fallback_rows.append({"source_sense_id": source_sense_id, "candidate": name,
                     "decision": {"source_sense_id": source_sense_id, "candidate": name, "disposition": "drop", "reason": "f"},
                     "supervisor_fallback": evidence})
                 fallback_keys.add(key)
             correction_keys = [key for key in correction_keys if key not in fallback_keys]
             kept_rows = [row for row in cli_rows if key_text(row) not in fallback_keys and key_text(row) not in correction_keys]
-            if correction_keys:
-                requested = [p for p in problems if p["candidate_key"] in correction_keys]
+            kept_peers = [row for row in all_peers if key_text(row) not in correction_peer_keys
+                          and key_text(row) not in fallback_peer_keys]
+            if correction_keys or correction_peer_keys:
+                requested = [p for p in problems if p["candidate_key"] in correction_keys or p["candidate_key"] in correction_peer_keys]
                 wrapper_requested = [p for p in requested if p["source"] == "wrapper"]
                 missing_requested = [p for p in requested if p["source"] == "missing"]
-                if any(p["source"] == "cli" for p in requested):
+                if any(p["source"] == "cli" for p in requested) or correction_peer_keys:
                     correction_kind = "problems"
                 elif wrapper_requested and missing_requested:
                     correction_kind = "schema_and_coverage"
@@ -3956,6 +4020,10 @@ class Supervisor:
                             "message": problem["message"], "required_fields": [], "actual_fields": []})
                 diagnostics += [row for row in schema_diagnostics if row["candidate_key"] in correction_keys]
                 for problem in missing_requested:
+                    if problem["candidate_key"] in correction_peer_keys:
+                        diagnostics.append({"candidate_key": problem["candidate_key"], "code": "missing_peer_adjustment",
+                            "required_fields": ["source_sense_id", "candidate", "decision"], "actual_fields": []})
+                        continue
                     sense_id, name = problem["candidate_key"].split("\u0000", 1)
                     candidate_row = required[(sense_id, name)]
                     diagnostics.append({"candidate_key": problem["candidate_key"], "code": "missing_candidate",
@@ -3966,26 +4034,27 @@ class Supervisor:
                     "kind": correction_kind,
                     "fingerprint": current["fingerprint"], "page_keys": page_keys,
                     "requested_keys": correction_keys,
+                    "requested_peer_keys": correction_peer_keys,
                     "response_sha256": hashlib.sha256(final.encode("utf-8")).hexdigest(),
                     "source_attempt": current.get("attempt_log", [{}])[-1].get("attempt"),
                     "source_run_id": None,
                     "problems": [{"candidate_key": p["candidate_key"], "field_path": p["field_path"],
                                   "condition": p["condition"]} for p in requested],
                     "diagnostics": diagnostics,
-                    "accepted_answer": {"decisions": kept_rows + fallback_rows, "peer_adjustments": all_peers},
+                    "accepted_answer": {"decisions": kept_rows + fallback_rows, "peer_adjustments": kept_peers},
                 }
-                current["last_error"] = f"repair response needs correction for {len(correction_keys)} candidate(s)"
-                if any(p["source"] != "missing" for p in requested):
+                current["last_error"] = f"repair response needs correction for {len(correction_keys) + len(correction_peer_keys)} candidate(s)"
+                if correction_peer_keys or any(p["source"] != "missing" for p in requested):
                     raise Stage2RepairSchemaError(current["last_error"])
                 raise Stage2RepairMissingCandidatesError(current["last_error"])
             # Every problem is a proven repeat: finish with the technical fallback and re-check the composed page.
             final_rows = kept_rows + fallback_rows
             affected = affected_for([row for row in final_rows if key_text(row) not in fallback_keys])
-            all_peers = [row for row in all_peers if row["source_sense_id"] in affected
+            all_peers = [row for row in kept_peers if row["source_sense_id"] in affected
                          and allowed_peers[(row["source_sense_id"], row["candidate"])]["decision"].get("type")
                          in affected[row["source_sense_id"]]]
-            check, cli_problems, bad_peers = run_check(final_rows, all_peers)
-            if cli_problems or bad_peers:
+            check, cli_problems = run_check(final_rows, all_peers)
+            if cli_problems:
                 raise Stage2RepairContentError("the technical-fallback page does not pass the official check; refusing to apply")
             answer["decisions"] = final_rows
             answer["peer_adjustments"] = all_peers

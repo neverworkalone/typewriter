@@ -14,7 +14,7 @@ You are a fresh, short, answer-only Stage 2 semantic rejudgment session. The Sup
 - If a case cannot be judged from the supplied evidence, put its exact source sense and candidate in `unresolved` with a short reason and do not guess.
 - Do not use tools, edit files, call the admission CLI, or modify the checkpoint. Return only the answer below.
 - Each candidate in `repair_input` declares its exact `required_output_fields` and `forbidden_output_fields`. Follow those fields for that candidate; a page may contain both output shapes.
-- If `repair_input` contains `repair_correction`, return rows only for its listed candidate keys. The correction may request a missing candidate, a row with an invalid field shape, or a field that the official check rejected; each `diagnostics` entry names its `field_path`, `condition` and `message`. Fix exactly those fields. Correct only the listed cases. Do not repeat other candidates or add peer adjustments or unresolved rows; the Supervisor retains the already-valid rows from the earlier response.
+- If `repair_input` contains `repair_correction`, return rows only for its listed candidate keys. The correction may request a missing candidate, a row with an invalid field shape, or a field that the official check rejected; each `diagnostics` entry names its `field_path`, `condition` and `message`. Fix exactly those fields. Correct only the listed cases. If it lists `peer_keys`, return `decisions: []` and one corrected `peer_adjustments` row per listed peer (their current rows are in `peers`, related accepted rows in `accepted_decisions`). Otherwise do not repeat other candidates or add peer adjustments or unresolved rows; the Supervisor retains the already-valid rows from the earlier response.
 
 ## Required answer
 

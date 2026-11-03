@@ -444,6 +444,87 @@ class Stage2RepairCandidateProblems(unittest.TestCase):
         self.assertIsNotNone(self.state(w, batch)["pending_answer"], "the answer and its binding are preserved")
 
 
+class Stage2RepairPeersAndRestart(unittest.TestCase):
+    NAMES = ["candidate-0", "candidate-1", "candidate-2"]
+    PEER = {"source_sense_id": "source-sense", "candidate": "peer-x",
+            "decision": {"disposition": "relation", "type": "scene", "relevance": 5}}
+
+    run_text = Stage2RepairCandidateProblems.run_text
+    state = Stage2RepairCandidateProblems.state
+
+    def start(self, problem_of):
+        report = ordinary_report(FP, self.NAMES)
+        report["problems"][0]["candidates"][0]["same_group_peers"] = [copy.deepcopy(self.PEER)]
+        w, batch = start_repair(self, [report, clean_report("5" * 64)], candidate_count=3)
+        w.git.stage2_repair_checker = marker_checker(problem_of)
+        return w, batch
+
+    def response(self, peer_decision):
+        rows = [{"source_sense_id": "source-sense", "candidate": "candidate-0", "decision": {**GOOD, "type": "mood"}},
+                {"source_sense_id": "source-sense", "candidate": "candidate-1", "decision": GOOD},
+                {"source_sense_id": "source-sense", "candidate": "candidate-2", "decision": GOOD}]
+        peers = [] if peer_decision is None else [{"source_sense_id": "source-sense", "candidate": "peer-x", "decision": peer_decision}]
+        return f"repair @{FP}\n" + json.dumps({"decisions": rows, "peer_adjustments": peers, "unresolved": []})
+
+    def test_invalid_peer_is_corrected_then_kept_stored_only_after_a_proven_repeat(self):
+        bad = {"disposition": "relation", "type": "scene", "relevance": 7, "tag": "bad"}
+        w, batch = self.start(lambda decision: ("decision.relevance", "range") if decision.get("tag") else None)
+        launches = len(w.adapter.launches)
+        self.run_text(w, self.response(bad))
+        correction = self.state(w, batch)["response_correction"]
+        self.assertEqual((correction["requested_keys"], correction["requested_peer_keys"]),
+                         ([], ["source-sense\u0000peer-x"]))
+        self.assertEqual(len(w.adapter.launches), launches + 1, "the peer is asked about, not silently dropped")
+        prompt = repair_input(w.adapter.launches[-1]["prompt"])["repair_correction"]
+        self.assertEqual(prompt["peer_keys"], ["source-sense\u0000peer-x"])
+        self.assertEqual(prompt["diagnostics"][0]["field_path"], "decision.relevance")
+        self.assertEqual(w.git.stage2_repair_calls, [])
+
+        launches = len(w.adapter.launches)
+        run = w.adapter.launches[-1]
+        w.adapter.running[run["pid"]]["text"] = answer(
+            f"repair @{FP}\n" + json.dumps({"decisions": [], "peer_adjustments": [
+                {"source_sense_id": "source-sense", "candidate": "peer-x", "decision": bad}], "unresolved": []}))
+        w.adapter.finish(run["pid"])
+        w.tick()
+        self.assertEqual(len(w.adapter.launches), launches)
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW", w.store.batch(batch["id"])["error"])
+        applied = w.git.stage2_repair_calls[0]
+        self.assertEqual([row["candidate"] for row in applied["decisions"]], self.NAMES)
+        self.assertEqual(self.state(w, batch)["peer_fallbacks"][0]["candidate_key"], "source-sense\u0000peer-x")
+
+    def test_finished_run_is_judged_after_a_restart_without_a_second_ai_run(self):
+        w, batch = self.start(lambda decision: None)
+        run = w.adapter.launches[-1]
+        launches = len(w.adapter.launches)
+        w.adapter.running[run["pid"]]["text"] = answer(ordinary_text(FP, {n: GOOD for n in self.NAMES}))
+        w.adapter.finish(run["pid"])
+        w.store.update(batch["id"], pid=None)             # crash after the process ended, before the result was judged
+        w.store.finish_runs(batch["id"], "0")
+        w.sup = w.make_sup()
+        w.tick()
+        self.assertEqual(len(w.adapter.launches), launches)
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW", w.store.batch(batch["id"])["error"])
+        self.assertEqual([a["status"] for a in self.state(w, batch)["attempt_log"]], ["applied"])
+
+    def test_never_started_reservation_runs_once_and_a_running_worker_is_not_duplicated(self):
+        w, batch = self.start(lambda decision: None)
+        run = w.adapter.launches[-1]
+        launches = len(w.adapter.launches)
+        w.sup = w.make_sup()
+        w.tick()                                           # worker still alive: attach only
+        self.assertEqual(len(w.adapter.launches), launches)
+        state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+        state["current"]["attempt_log"][-1]["prior_run_id"] = max(r["id"] for r in w.store.runs(batch["id"]))
+        w.store.set(stage2.repair_state_key(batch["id"]), json.dumps(state, sort_keys=True))
+        w.adapter.finish(run["pid"])
+        w.store.update(batch["id"], pid=None)
+        w.store.finish_runs(batch["id"], "0")
+        w.sup._launch_stage2_repair_page(w.store.batch(batch["id"]))
+        self.assertEqual(len(w.adapter.launches), launches + 1, "the unstarted reservation is launched exactly once")
+        self.assertEqual([a["status"] for a in self.state(w, batch)["attempt_log"]], ["launched"])
+
+
 class Stage2RepairCliContract(unittest.TestCase):
     """`Git.stage2_repair` keeps exit 2 (candidate-local) apart from every global failure, without parsing text."""
 
