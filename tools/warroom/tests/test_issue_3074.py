@@ -254,3 +254,15 @@ class ParallelDRecovery(ParallelDHelpers, unittest.TestCase):
             self.assertFalse(w.sup.maint._archive_report(d, b))
             self.assertTrue(w.sup.maint._archive_report(d, b))
         self.assertFalse(paths[0].exists() or paths[1].exists())
+
+    def test_automatic_stop_keeps_failed_tasks_unacknowledged(self):
+        w = self.world(records=100)
+        w.runner.dchunk.failed = {2}
+        self.plan_all(w, range(1, 8))
+        w.start("single", "deepseek", "d")
+        w.tick()
+        w.sup.dp.stop_workers(w.row_())                       # what a detected shared-defect report does
+        self.assertNotIn('"ack"', w.store.task_row(w.row_()["id"], "002")["data"])
+        w.runner.dchunk.failed = set()
+        w.tick(3)                                             # an automatic release alone never re-enters the failure
+        self.assertEqual(w.store.task_row(w.row_()["id"], "002")["state"], "FAILED")

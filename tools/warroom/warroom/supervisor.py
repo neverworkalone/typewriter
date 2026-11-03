@@ -894,7 +894,7 @@ class Supervisor:
         if s2parallel.is_parallel(self.store, b):
             self.s2p.stop_workers(b)   # every task process; exits are confirmed by _reap_stopped
         if dparallel.is_parallel(self.store, b):
-            self.dp.stop_workers(b)
+            self.dp.stop_workers(b, acknowledge=True)   # the operator's Stop
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
         self.store.set_line(b["producer"], b["method"], run=0, retry_batch=None)  # Stop wins over Retry

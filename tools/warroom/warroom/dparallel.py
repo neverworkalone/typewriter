@@ -119,17 +119,18 @@ class ParallelD:
     def workers_alive(self, b) -> bool:
         return taskruns.workers_alive(self.store, self._adapter(b), b["id"])
 
-    def stop_workers(self, b) -> bool:
+    def stop_workers(self, b, acknowledge: bool = False) -> bool:
         """Ask every live task process to stop; True once all are confirmed gone and their runs closed.
 
         A run that had exited 0 keeps its status so the next poll still reads its result. Any other stopped run returns
         its task to what it can restart from: a correction stays a correction, a task with a session resumes it, a
         prepared task continues from its files, otherwise it is prepared again. Stored chunks and budgets are untouched."""
         self._seen.discard(b["id"])   # a stored chunk of a stopped worker is proved and accepted before any new assignment
-        for row in self.store.task_rows(b["id"]):   # the operator's Stop acknowledges failures: the next Retry re-enters them
-            data = self._data(row)
-            if row["state"] == "FAILED" and not data.get("ack"):
-                self._set(b, row["task"], data | {"ack": True})
+        if acknowledge:   # only the operator's own Stop acknowledges failures; an automatic stop (shared defect) keeps them
+            for row in self.store.task_rows(b["id"]):
+                data = self._data(row)
+                if row["state"] == "FAILED" and not data.get("ack"):
+                    self._set(b, row["task"], data | {"ack": True})
 
         def returned(run):
             row = self.store.task_row(b["id"], run["task"])
