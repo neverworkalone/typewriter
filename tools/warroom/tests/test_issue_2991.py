@@ -147,6 +147,8 @@ class RepairRejectionReasonCodes(unittest.TestCase):
         state = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
         state["current"]["fingerprint"] = FP
         state["history"][-1]["fingerprint"] = FP
+        state["current"]["cursor"] = 0
+        state["current"]["attempts"] = 1
         candidate = state["current"]["groups"][0]["candidates"][0]
         candidate["already_accounted"] = already_accounted
         candidate["decision"] = {"disposition": "existing" if already_accounted else "drop"}
