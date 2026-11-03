@@ -87,7 +87,12 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def cli(runner, env, worktree, *args, timeout: float = 900):
-    return runner.run(["node", CLI, *args], cwd=worktree, env=env, timeout=timeout)
+    return runner.run(["node", str(cli_path()), *args], cwd=worktree, env=env, timeout=timeout)
+
+
+def cli_path() -> Path:
+    """The current Supervisor checkout's official D CLI, run with the batch worktree as cwd."""
+    return Path(__file__).resolve().parents[3] / CLI
 
 
 def _json(res, what: str) -> dict:
@@ -265,8 +270,11 @@ def technical_skip_report(worktree, b) -> dict:
 def prepare(runner, env, worktree, b, chunk_no: int, db_path: str, head: str) -> dict:
     """`prepare` for one chunk. SEARCH_FAILED (exit 3) is returned as a result (the Supervisor pauses); other failures raise."""
     n = names(b)
-    res = cli(runner, env, worktree, "prepare", "--canonical", n.canonical, "--shard", b["shard"], "--batch", b["batch"],
-              "--chunk", str(chunk_no), "--db", db_path, "--model", b["producer"], "--head", head)
+    root = Path(worktree).resolve()
+    directory = str((root / n.directory).resolve())
+    res = cli(runner, env, worktree, "prepare", "--canonical", n.canonical, "--canonical-root", str(root),
+              "--shard", b["shard"], "--batch", b["batch"], "--chunk", str(chunk_no), "--dir", directory,
+              "--db", db_path, "--model", b["producer"], "--head", head)
     try:
         data = json.loads(res.out)
     except ValueError:
@@ -397,6 +405,142 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
     return diag
 
 
+def _json_sha(value) -> str:
+    return sha256_bytes(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+
+def reissue_legacy_rejection(store, runner, env, git, worktree, b, rec: dict) -> bool:
+    """Reissue only a legacy broad D rejection whose exact current evidence now proves a decision-only failure.
+
+    This runs only on an explicit operator Retry. It calls the current read-only D inspector from the Supervisor
+    checkout with the owner worktree as both cwd and Canonical root. No chunk, decision, search, view or active file is
+    migrated or rewritten. The sole write, when every proof matches, atomically changes `repair_scope` in rejected-NNN.
+    """
+    folder = Path(worktree)
+    n = chunk_names(b, rec["chunk_no"])
+    rejected_path = folder / n.rejected
+    try:
+        rejected_bytes = rejected_path.read_bytes()
+        old = json.loads(rejected_bytes)
+    except (OSError, ValueError) as error:
+        raise DChunkError("legacy_rejection_reissue_blocked[rejection_unavailable]") from error
+    if not isinstance(old, dict):
+        return False
+    if old.get("repair_scope") == "decisions":
+        if read_rejection(folder, b, rec) is None:
+            raise DChunkError("legacy_rejection_reissue_blocked[current_decision_diagnostic_stale]")
+        return False
+    if old.get("repair_scope") != "stop_and_report":
+        return False
+
+    decision_path = folder / n.decisions
+    root = folder.resolve()
+    try:
+        inspected = _json(cli(runner, env, folder, "inspect", "--in", str(decision_path.resolve()),
+                              "--dir", str((root / SCRATCH).resolve()), "--canonical-root", str(root)),
+                          "D current read-only rejection inspection")
+    except DChunkError as error:
+        raise DChunkError("legacy_rejection_reissue_blocked[current_inspection_failed]") from error
+    if inspected.get("status") != "REJECTED" or inspected.get("repair_scope") != "decisions":
+        reason = "search_failure" if inspected.get("search_failed") is True else "current_rejection_not_local"
+        raise DChunkError(f"legacy_rejection_reissue_blocked[{reason}]")
+
+    owner = store.batch(b["id"])
+    if (not owner or owner["method"] != "d" or owner["producer"] != b["producer"]
+            or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
+            or Path(owner["worktree"]) != folder or owner["branch"] != b["branch"]
+            or owner["session_id"] != b["session_id"] or owner["pid"] is not None
+            or owner["pr_number"] is not None or not str(owner["run_kind"] or "").startswith("d_chunk_")):
+        raise DChunkError("legacy_rejection_reissue_blocked[owner_mismatch]")
+    try:
+        raw_start = store.get(run_start_key(b["id"]))
+        start = json.loads(raw_start) if raw_start is not None else None
+        base_head = store.get(f"d_base_head_{b['id']}")
+        if (not isinstance(start, dict) or start.get("branch") != owner["branch"]
+                or Path(start.get("worktree", "")) != folder or start.get("chunk_no") != rec["chunk_no"]
+                or start.get("head") != rec["git_head"] or base_head != rec["git_head"]):
+            raise DChunkError("legacy_rejection_reissue_blocked[run_binding_mismatch]")
+        if git.registered(folder) != owner["branch"] or git.head(folder) != rec["git_head"]:
+            raise DChunkError("legacy_rejection_reissue_blocked[head_mismatch]")
+        if git.remote_head(owner["branch"]) != start.get("remote_head"):
+            raise DChunkError("legacy_rejection_reissue_blocked[remote_mismatch]")
+        if git.dirty(folder).strip():
+            raise DChunkError("legacy_rejection_reissue_blocked[worktree_dirty]")
+        runs = store.runs(b["id"])
+        if (not runs or runs[0]["kind"] != owner["run_kind"] or runs[0]["session_id"] != owner["session_id"]
+                or runs[0]["ended_at"] is None):
+            raise DChunkError("legacy_rejection_reissue_blocked[run_not_finished]")
+        done, _total = verified_prefix(folder, b)
+        if rec["chunk_no"] != done + 1:
+            raise DChunkError("legacy_rejection_reissue_blocked[prefix_mismatch]")
+        for chunk_no in range(1, done + 1):
+            expected_sha = store.get(f"d_chunk_sha_{b['id']}_{chunk_no}")
+            if expected_sha is None or expected_sha != chunk_sha(folder, b, chunk_no):
+                raise DChunkError(f"legacy_rejection_reissue_blocked[prefix_sha_{chunk_no:03d}]")
+    except DChunkError:
+        raise
+    except Exception as error:
+        raise DChunkError("legacy_rejection_reissue_blocked[owner_state_unavailable]") from error
+
+    active = read_active(folder, b)
+    if active != rec or active is None or active["chunk_no"] != done + 1:
+        raise DChunkError("legacy_rejection_reissue_blocked[active_mismatch]")
+    if old.get("chunk_no") != rec["chunk_no"] or old.get("view_sha256") != rec["view_sha256"] \
+            or old.get("git_head") != rec["git_head"]:
+        raise DChunkError("legacy_rejection_reissue_blocked[diagnostic_binding_mismatch]")
+
+    keys = {"diagnostic", "chunk_no", "view_sha256", "git_head", "repair_scope", "senses", "failed_records",
+            "decisions_sha256", "searches_sha256", "errors", "error_count"}
+    if set(old) != keys:
+        raise DChunkError("legacy_rejection_reissue_blocked[diagnostic_shape_mismatch]")
+    if inspected.get("search_failed") is not False or inspected.get("errors_complete") is not True:
+        raise DChunkError("legacy_rejection_reissue_blocked[errors_or_search_incomplete]")
+    old_errors = old.get("errors")
+    old_failed = old.get("failed_records")
+    old_senses = old.get("senses")
+    if (not isinstance(old_errors, list) or not isinstance(old_failed, list) or not old_failed
+            or not isinstance(old_senses, list) or not old_senses
+            or old.get("error_count") != len(old_errors) or not old_errors
+            or any(not isinstance(item, dict) or not isinstance(item.get("record_id"), str)
+                   or not isinstance(item.get("failed_sense_ids"), list) or not item["failed_sense_ids"]
+                   or any(not isinstance(sense_id, str) for sense_id in item["failed_sense_ids"])
+                   or not isinstance(item.get("errors"), list) or not item["errors"]
+                   for item in old_failed)):
+        raise DChunkError("legacy_rejection_reissue_blocked[diagnostic_errors_incomplete]")
+    if (old.get("diagnostic") != inspected.get("diagnostic")
+            or old.get("chunk_no") != inspected.get("chunk_no")
+            or old.get("view_sha256") != inspected.get("view_sha256")
+            or old.get("git_head") != inspected.get("git_head")
+            or old.get("senses") != inspected.get("senses")
+            or old.get("decisions_sha256") != inspected.get("decisions_sha256")
+            or old.get("searches_sha256") != inspected.get("searches_sha256")
+            or old.get("error_count") != inspected.get("error_count")
+            or _json_sha(old_errors) != inspected.get("errors_sha256")
+            or _json_sha(old_failed) != inspected.get("failed_records_sha256")):
+        raise DChunkError("legacy_rejection_reissue_blocked[diagnostic_evidence_mismatch]")
+
+    # Recheck every binding immediately before the atomic replace. A concurrent edit makes the operation fail closed.
+    if rejected_path.read_bytes() != rejected_bytes or read_active(folder, b) != active:
+        raise DChunkError("legacy_rejection_reissue_blocked[evidence_changed_during_inspection]")
+    if sha256_bytes(read_view(folder, b, active).encode("utf-8")) != active["view_sha256"]:
+        raise DChunkError("legacy_rejection_reissue_blocked[view_changed]")
+    if (sha256_bytes(decision_path.read_bytes()) != inspected.get("decisions_sha256")
+            or sha256_bytes((folder / n.searches).read_bytes()) != inspected.get("searches_sha256")):
+        raise DChunkError("legacy_rejection_reissue_blocked[search_or_decision_changed]")
+    temporary = rejected_path.with_name(rejected_path.name + ".tmp")
+    if temporary.exists():
+        raise DChunkError("legacy_rejection_reissue_blocked[temporary_exists]")
+    updated = dict(old)
+    updated["repair_scope"] = "decisions"
+    try:
+        temporary.write_text(json.dumps(updated, ensure_ascii=False, separators=(",", ":")), "utf-8")
+        os.replace(temporary, rejected_path)
+    except OSError as error:
+        temporary.unlink(missing_ok=True)
+        raise DChunkError("legacy_rejection_reissue_blocked[atomic_write_failed]") from error
+    return True
+
+
 def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     """Validate and write D's technical fallback inside War Room using its persisted retry count."""
     owner = store.batch(b["id"])
@@ -410,10 +554,12 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
         raise DChunkError("D technical skip lacks an exact current rejection or exhausted fix budget")
     n = chunk_names(b, rec["chunk_no"])
     payload = {"inputPath": str((Path(worktree) / n.decisions).resolve()),
-               "root": str((Path(worktree) / SCRATCH).resolve())}
+               "root": str((Path(worktree) / SCRATCH).resolve()),
+               "canonicalRoot": str(Path(worktree).resolve())}
     script = ("import { inspectActiveForSupervisor } from './scripts/relation/d-chunk-cli.mjs';\n"
               "let input = ''; for await (const part of process.stdin) input += part;\n"
-              "const result = await inspectActiveForSupervisor(JSON.parse(input));\n"
+              "const payload = JSON.parse(input);\n"
+              "const result = await inspectActiveForSupervisor({ inputPath: payload.inputPath, root: payload.root, canonicalRoot: payload.canonicalRoot });\n"
               "process.stdout.write(JSON.stringify(result) + '\\n');")
     supervisor_root = Path(__file__).resolve().parents[3]
     result = runner.run(["node", "--input-type=module", "-e", script], cwd=supervisor_root, env=env,

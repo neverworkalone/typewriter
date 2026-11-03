@@ -15,6 +15,7 @@ import {
   checkDecisions,
   hadaPrefetchForms,
   inspectActiveForSupervisor,
+  inspectRejectionForSupervisor,
   parseDecisions,
   prepareChunk,
   recordEvidence,
@@ -174,6 +175,75 @@ withWorld('prepare shares one record search across senses and judges each sense 
   assert.equal(saved.senses.length, 25 + 1); // w001 has two senses
   assert.equal(saved.view_sha256.length, 64);
   assert.equal(saved.records.length, 25);
+});
+
+withWorld('the current Supervisor D CLI uses explicit owner-worktree roots and sanitized read-only inspection', async (world) => {
+  const ownerRoot = world.root;
+  const officialCli = path.join(world.repositoryRoot, 'scripts/relation/d-chunk-cli.mjs');
+  const canonical = 'data/canonical/stdict-0001.jsonl';
+  const scratch = path.join(ownerRoot, '.warroom-scratch');
+  // Make the CLI module checkout's Canonical unusable: the explicit source root must remain the batch worktree.
+  await writeFile(path.join(world.repositoryRoot, canonical), '{ invalid Canonical that must not be loaded }\n');
+  const prepared = await runCli([
+    'prepare', '--canonical', canonical, '--canonical-root', ownerRoot, '--shard', '001', '--batch', '01',
+    '--chunk', '1', '--dir', path.join(scratch, 'd-001_01'), '--db', world.options.databasePath,
+    '--model', 'codex', '--head', 'a'.repeat(40),
+  ], '', {}, ownerRoot, officialCli);
+  assert.equal(prepared.code, 0, prepared.stderr);
+  const active = await meta({ ...world, directory: path.join(scratch, 'd-001_01') });
+  const firstSense = active.senses.find((sense) => !sense.auto);
+  const searched = await runCli(['search', firstSense.ref, '--contexts', '1', '--dir', scratch], '',
+    { TYPEWRITER_APPROVED_CORPUS_DB: world.options.databasePath }, ownerRoot, officialCli);
+  assert.equal(searched.code, 0, searched.stderr);
+  const searches = (await readFile(path.join(scratch, 'd-001_01/search-001.jsonl'), 'utf8'))
+    .split(/\r?\n/u).filter(Boolean).map(JSON.parse);
+  const byRecord = new Map();
+  for (const entry of searches) {
+    const previous = byRecord.get(entry.record_id) ?? { hits: 0, complete: true };
+    previous.hits += entry.hits;
+    previous.complete &&= entry.complete;
+    byRecord.set(entry.record_id, previous);
+  }
+  const decisions = active.senses.filter((sense) => !sense.auto).map((sense) => {
+    if (sense.record_id === 'w001') return `${sense.ref} V CANDIDATE_SECRET`;
+    if (sense.record_id === 'w005') return `${sense.ref} Z`; // hit-bearing Z is the legacy reclassification fixture
+    const evidence = byRecord.get(sense.record_id) ?? { hits: 0, complete: false };
+    return `${sense.ref} ${evidence.hits > 0 ? 'V' : evidence.complete ? 'Z' : 'V'}`;
+  }).join('\n') + '\n';
+  const decisionsPath = path.join(scratch, 'd-001_01/decision-001.txt');
+  await writeFile(decisionsPath, decisions);
+  const currentSource = await readFile(officialCli, 'utf8');
+  const currentRule = "const repairScope = searchFailed ? 'stop_and_report' : 'decisions';";
+  const oldRule = "const repairScope = hitBearingZ.length > 0 || searchFailed ? 'stop_and_report' : 'decisions';";
+  assert.equal(currentSource.split(currentRule).length, 2, 'the fixture tracks the pre-#2981 classification change');
+  const legacyCli = path.join(ownerRoot, 'scripts/relation/d-chunk-cli.mjs');
+  await writeFile(legacyCli, currentSource.replace(currentRule, oldRule));
+  const legacySave = await runCli(['save', '--in', decisionsPath], '', {}, ownerRoot, legacyCli);
+  assert.equal(legacySave.code, 2, legacySave.stdout);
+  const legacyDiagnostic = JSON.parse(await readFile(path.join(scratch, 'd-001_01/rejected-001.json'), 'utf8'));
+  assert.equal(legacyDiagnostic.repair_scope, 'stop_and_report');
+  const ownerCanonicalPath = path.join(ownerRoot, canonical);
+  const originalCanonical = await readFile(ownerCanonicalPath, 'utf8');
+  const changedCanonical = originalCanonical.replace('"lemma":"새벽안개"', '"lemma":"다른표제어"');
+  await writeFile(ownerCanonicalPath, changedCanonical);
+  const drifted = await runCli(['inspect', '--in', decisionsPath, '--dir', scratch, '--canonical-root', ownerRoot],
+    '', {}, ownerRoot, officialCli);
+  assert.notEqual(drifted.code, 0);
+  assert.match(drifted.stderr, /Canonical lemmas of this chunk changed/u);
+  await writeFile(ownerCanonicalPath, originalCanonical);
+  const inspected = await runCli(['inspect', '--in', decisionsPath, '--dir', scratch, '--canonical-root', ownerRoot],
+    '', {}, ownerRoot, officialCli);
+  assert.equal(inspected.code, 0, inspected.stderr);
+  const summary = JSON.parse(inspected.stdout);
+  assert.deepEqual([summary.status, summary.repair_scope, summary.search_failed, summary.errors_complete],
+    ['REJECTED', 'decisions', false, true]);
+  assert.equal(inspected.stdout.includes('CANDIDATE_SECRET'), false);
+  assert.equal('rows' in summary, false);
+  assert.equal('errors' in summary, false);
+
+  const direct = await inspectRejectionForSupervisor({ inputPath: decisionsPath, root: scratch, canonicalRoot: ownerRoot });
+  assert.equal(direct.decisions_sha256, summary.decisions_sha256);
+  assert.equal(direct.errors_sha256, summary.errors_sha256);
 });
 
 withWorld('automatic Z is only mechanically proven noun ZERO_HITS; view states expose exact decision evidence', async (world) => {

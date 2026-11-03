@@ -22,6 +22,7 @@ class FakeDChunkCli:
         self.padding = 0                     # extra view lines (to force the page fallback)
         self.validate_error: str | None = None
         self.validations = 0
+        self.inspection: dict | None = None
 
     # -- Canonical -------------------------------------------------------------------------------------------------
     def rows(self) -> list[dict]:
@@ -54,7 +55,8 @@ class FakeDChunkCli:
 
     def run(self, argv, cwd, env=None, input=None):
         self.calls.append(list(argv))
-        if argv[1] == "scripts/relation/candidate-contract.mjs":
+        script = Path(argv[1]).name
+        if script == "candidate-contract.mjs":
             self.validations += 1
             if self.validate_error:
                 return Result(1, "", self.validate_error)
@@ -63,7 +65,10 @@ class FakeDChunkCli:
             cands = sum(len(s["candidates"]) for r in rows for s in r["senses"])
             empty = sum(1 for r in rows for s in r["senses"] if not s["candidates"])
             return Result(0, f"Candidate v1 valid: {len(rows)} records, {senses} senses, {cands} candidates, {empty} empty senses, 0 source-lemma candidates.\n")
-        if argv[2] != "prepare":
+        command = argv[2]
+        if command == "inspect":
+            return Result(0, json.dumps(self.inspection or {"status": "VALID"}))
+        if command != "prepare":
             return Result(1, "", f"unknown command {argv[2]}")
         number = int(self.opt(argv, "--chunk"))
         total = -(-self.records // 25)
