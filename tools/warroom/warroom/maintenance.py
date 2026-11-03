@@ -18,7 +18,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from . import auth, defects, stage2, stage3
+from . import auth, dchunk, defects, stage2, stage3
 from .config import maintainer_id, maintainer_problem
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
@@ -489,10 +489,10 @@ class Maintenance:
                 continue   # the resolved report could not be set aside: never resume into a stale stop signal
             if run_start is None:
                 run_start = self._retargeted_run_start(b, head)
-            if (b["method"] == STAGE3_METHOD
-                    and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] == "s3_finalize")
-                    and run_start is None):
-                self._hold(d, b, "Stage 3의 원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
+            if run_start is None and ((b["method"] == STAGE3_METHOD
+                    and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] == "s3_finalize"))
+                    or (b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel")):
+                self._hold(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
                                   "checkpoint/view/commit과 소유 worktree를 보존하고 자동 재개하지 않습니다.")
                 continue
             if self.store.release_defect(d["id"], b["id"], head, run_start):
@@ -539,6 +539,8 @@ class Maintenance:
             key = stage3.run_start_key(b["id"])
         elif b["method"] == STAGE2_METHOD:
             key = stage2.run_start_key(b["id"])
+        elif b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":
+            key = dchunk.run_start_key(b["id"])
         else:
             return None
         raw = self.store.get(key)
@@ -582,7 +584,8 @@ class Maintenance:
             return None
         if base["head"] != new_head:
             base["head"] = new_head
-            self.store.log(b["id"], f"승인된 Maintainer 통합으로 Stage {2 if b['method'] == STAGE2_METHOD else 3} 실행 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
+            stage = {STAGE2_METHOD: "Stage 2", dchunk.METHOD: "D"}.get(b["method"], "Stage 3")
+            self.store.log(b["id"], f"승인된 Maintainer 통합으로 {stage} 실행 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
         return key, json.dumps(base, sort_keys=True)
 
     def adopt_released_baseline(self, b) -> None:
@@ -594,6 +597,8 @@ class Maintenance:
             key = stage3.run_start_key(b["id"])
         elif b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
             key = f"s3_finalize_released_head_{b['id']}"
+        elif b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":
+            key = dchunk.run_start_key(b["id"])
         else:
             return
         try:
@@ -624,6 +629,12 @@ class Maintenance:
         try:
             raw = f.read_text("utf-8", errors="replace")
         except FileNotFoundError:
+            # The primary file may already be set aside by an interrupted earlier attempt: still finish its twins.
+            try:
+                self._archive_twins(d, b, f, d["event_key"].split(":after:")[0])
+            except OSError as e:
+                self.store.log(b["id"], f"해결된 공통 결함의 동일 보고서 보관 실패로 재개를 미룹니다(재시도 예정): {e}", "warn")
+                return False
             return True
         except OSError as e:
             self.store.log(b["id"], f"해결된 공통 결함 보고서를 읽지 못해 재개를 미룹니다(재시도 예정): {e}", "warn")
@@ -635,12 +646,23 @@ class Maintenance:
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
             f.replace(dest)
+            self._archive_twins(d, b, f, base)
         except OSError as e:
             self.store.log(b["id"], f"해결된 공통 결함 보고서 보관 실패로 재개를 미룹니다(재시도 예정): {e}", "warn")
             return False
         self.store.log(b["id"], f"해결된 공통 결함 #{d['id']} 보고서를 {dest.relative_to(b['worktree'])}로 보관")
         self.store.delete(f"s2_defect_path_{b['id']}")
         return True
+
+    def _archive_twins(self, d, b, f: Path, base: str) -> None:
+        """Another task of the same parallel batch may have written the identical report: it is the same resolved event
+        and must not come back as a recurrence after the fix, so it is set aside with its twin (idempotent, OSError retries)."""
+        for other in self.sup._task_report_files(b):
+            twin = Path(b["worktree"]) / other
+            if twin != f and twin.is_file() and defects.report_event_key(
+                    b["id"], twin.read_text("utf-8", errors="replace")) == base:
+                (twin.parent / "resolved-defects").mkdir(parents=True, exist_ok=True)
+                twin.replace(twin.parent / "resolved-defects" / f"defect-{d['id']}-{twin.stem}.json")
 
     def resolved_note(self, b, short: bool = False) -> str:
         """Evidence-backed context: defects of this batch whose merged fix was applied and verified (RELEASED)."""

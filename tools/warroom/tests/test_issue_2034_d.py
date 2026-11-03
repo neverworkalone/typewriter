@@ -4,17 +4,23 @@ import json
 import unittest
 
 from pathlib import Path
+from unittest import mock
 
 from tests.fakes import HEAD1, HEAD2, World
 from warroom.github import GhError
-from warroom import control, dchunk, prompts
+from warroom import control, dchunk, dparallel, prompts
 
 REL = "data/relation-candidates/001/001_01_d_deepseek.jsonl"
 
 
 class DWorld(World):
-    def __init__(self, records=60, **kw):
+    def __init__(self, records=60, parallel=False, **kw):
         super().__init__(**kw)
+        if not parallel:   # a batch already in progress without the mode key finishes on the serial path (#3074)
+            patch = mock.patch.object(dparallel.ParallelD, "starts_fresh", lambda self, b: False)
+            patch.start()
+            cleanup = self.tmp.cleanup
+            self.tmp.cleanup = lambda: (patch.stop(), cleanup())[1]
         index = Path(self.tmp.name) / "approved.sqlite"
         index.write_bytes(b"x")
         self.cfg["corpus_index_path"] = str(index)

@@ -227,7 +227,7 @@ def card_text(st: dict) -> str:
     ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
                      f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
     lines = [title, records, bar, ops]
-    tasks = s2.get("tasks") if s2 else None
+    tasks = (s2.get("tasks") if s2 else None) or st.get("tasks")
     if tasks:   # parallel Stage 2 primary: running / queued / saved task counts
         lines.append(_fit(f"task 실행 {tasks['running']} · 대기 {tasks['queued']} · 저장 {tasks['saved']}/{tasks['total']}"
                           + (f" · 실패 {tasks['failed']}" if tasks["failed"] else "")))

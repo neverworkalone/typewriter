@@ -25,6 +25,7 @@ CLI = "scripts/relation/d-chunk-cli.mjs"
 CONTRACT_CLI = "scripts/relation/candidate-contract.mjs"
 # Same whole-prompt-as-one-argv bound as Method C (Linux MAX_ARG_STRLEN 128 KiB, kept clearly below).
 INLINE_MAX_PROMPT_BYTES = 100_000
+MAX_PARALLEL = 4   # fixed concurrent AI runs inside one active batch (#3074); not configurable
 MAX_FIXES = 1   # automatic same-session corrections per chunk (an operator Retry grants one more)
 MAX_DIAGNOSTIC_CHARS = 3000
 PR_LABEL = "batch"
@@ -605,13 +606,22 @@ def reissue_legacy_rejection(store, runner, env, git, worktree, b, rec: dict) ->
     return True
 
 
-def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
-    """Validate and write D's technical fallback inside War Room using its persisted retry count."""
+def supervisor_skip(store, runner, env, worktree, b, rec: dict, task_session: str | None = None) -> dict:
+    """Validate and write D's technical fallback inside War Room using its persisted retry count.
+
+    A parallel batch has no batch session: `task_session` is the session of this chunk's own task, and the fallback also
+    requires a finished `d_chunk_fix` run of exactly that task (the correction really ran) and that session on it."""
     owner = store.batch(b["id"])
     if (not owner or owner["method"] != "d" or owner["producer"] != b["producer"]
             or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
-            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b["session_id"]):
+            or Path(owner["worktree"]) != Path(worktree)
+            or owner["session_id"] != (b["session_id"] if task_session is None else None)):
         raise DChunkError("D technical skip requires the active War Room-owned batch")
+    if task_session is not None:
+        task = f"{rec['chunk_no']:03d}"
+        if not any(r["task"] == task and r["kind"] == "d_chunk_fix" and r["ended_at"] is not None
+                   and r["session_id"] == task_session for r in store.runs(b["id"])):
+            raise DChunkError("D technical skip requires a finished same-session correction run of this chunk's task")
     fix_attempts = int(store.get(fix_key(b["id"], rec["chunk_no"])) or 0)
     diag = read_rejection(worktree, b, rec)
     if diag is None or fix_attempts < MAX_FIXES:
@@ -780,7 +790,7 @@ def pr_title(label: str, b) -> str:
     return f"[D/{label}] {b['shard']}_{b['batch']}"
 
 
-def pr_body(label: str, b, coverage: dict) -> str:
+def pr_body(label: str, b, coverage: dict, parallel: bool = False) -> str:
     """The real model, shard/batch, counts and validation facts; never #1156, paths, contexts or search logs."""
     lines = [
         "- Method: D", f"- Model: {label}", f"- Shard: {b['shard']}", f"- Batch: {b['batch']}",
@@ -788,7 +798,8 @@ def pr_body(label: str, b, coverage: dict) -> str:
         f"- Candidates: {coverage['candidates']} ({coverage['empty_senses']} empty senses)",
         "- Source-sense check: 청크별 AI 판독(승인 문어 index read-only 검색). 독립 검증이 아니며 리뷰에서 확인합니다.",
         "- Candidate v1: validated (candidate-contract.mjs)",
-        "- Limits: 청크 병렬화 없음; ZERO_HITS/NO_VERIFIED 상세 집계는 포함하지 않습니다.",
+        "- Limits: " + (f"오너가 승인한 War Room Supervisor가 배치 내부 D 청크를 최대 {MAX_PARALLEL}개까지 분담 실행"
+                       if parallel else "청크 병렬화 없음") + "; ZERO_HITS/NO_VERIFIED 상세 집계는 포함하지 않습니다.",
     ]
     skips = coverage.get("technical_skips", [])
     if skips:

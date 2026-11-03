@@ -23,7 +23,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from . import prompts, stage2
+from . import prompts, stage2, taskruns
 from .gitops import GitError, GitTransient
 from .github import GhTransient
 from .store import STAGE2_METHOD
@@ -104,20 +104,14 @@ class ParallelStage2:
         return self.sup._adapter(b["producer"])
 
     def _recorded(self, run_row):
-        from .adapters import RunSpec
-        return RunSpec(run_row["model"], run_row["effort"], run_row["permission_profile"] or "") \
-            if run_row is not None and run_row["model"] else None
+        return taskruns.recorded_spec(run_row)
 
     def active_runs(self, b) -> list:
-        return self.store.open_task_runs(b["id"])
+        return taskruns.open_runs(self.store, b["id"])
 
     def workers_alive(self, b) -> bool:
         """True while any task run of the Part may still be alive (no recorded end, or its PID still lives)."""
-        ad = self._adapter(b)
-        for run in self.active_runs(b):
-            if run["pid"] is None or ad.alive(run["pid"]):
-                return True
-        return False
+        return taskruns.workers_alive(self.store, self._adapter(b), b["id"])
 
     def stop_workers(self, b) -> bool:
         """Ask every live task process to stop; True once all of them are confirmed gone and their runs closed.
@@ -125,18 +119,7 @@ class ParallelStage2:
         A run that had already finished successfully keeps its exit status so the next poll still reads its answer.
         Any other stopped run returns its task to the state it can restart from: a first run starts afresh, a
         correction resumes its own session; preserved answers, budgets and SAVED tasks are untouched."""
-        ad = self._adapter(b)
-        gone = True
-        for run in self.active_runs(b):
-            if run["pid"] is not None and ad.alive(run["pid"]):
-                ad.stop(run["pid"])
-                gone = False
-                continue
-            code = ad.exit_code(Path(run["exit_file"]))
-            if code == 0:
-                self.store.finish_run(run["id"], 0)
-                continue
-            self.store.finish_run(run["id"], "stopped")
+        def returned(run):
             row = self.store.task_row(b["id"], run["task"])
             if row is not None and row["state"] == "RUNNING" and row["run_id"] == run["id"]:
                 data = self._data(row)
@@ -144,7 +127,7 @@ class ParallelStage2:
                     self._set(b, row["task"], data, state="PENDING", run_id=None, session_id=None)
                 else:
                     self._set(b, row["task"], data, state="FIXQ", run_id=None)
-        return gone
+        return taskruns.stop_open_runs(self.store, self._adapter(b), b["id"], returned)
 
     # ---- Part start --------------------------------------------------------------------------------------------
     def begin(self, b) -> None:
@@ -259,26 +242,17 @@ class ParallelStage2:
         if run is None:
             return self._task_failed(b, row, data, "task 실행 기록(run)이 없습니다")
         log = Path(run["log_file"])
-        if run["ended_at"] is None:
-            sid = row["session_id"] or ad.session_id(log)
-            if sid and sid != row["session_id"]:
-                self.store.set_run_session_by_id(run["id"], sid)
-                self._set(b, task, session_id=sid)
-            tolerant = {"tolerate_denied": True} if getattr(ad, "supports_tolerate_denied", False) else {}
-            problem = ad.run_problem(log, self._recorded(run), row["session_id"] or sid, **tolerant)
-            if problem:   # the CLI contradicts its pins: stop it and keep everything for the operator
-                if run["pid"] is not None and ad.alive(run["pid"]):
-                    ad.stop(run["pid"])
-                    return
-                self.store.finish_run(run["id"], "stopped")
-                return self._task_failed(b, row, data, problem[1])
-            if run["pid"] is not None and ad.alive(run["pid"]):
-                return
-            code = ad.exit_code(Path(run["exit_file"]))
-            self.store.finish_run(run["id"], code)
-            run = self.store.run(run["id"])
-        else:
-            code = None if run["exit_status"] in (None, "unknown") else _int(run["exit_status"])
+        seen = taskruns.observe_run(self.store, ad, run, row["session_id"])
+        if seen[0] == "wait":
+            if seen[1] and seen[1] != row["session_id"]:
+                self._set(b, task, session_id=seen[1])
+            return
+        if seen[0] == "problem":
+            return self._task_failed(b, row, data, seen[1])
+        code, run = seen[1], seen[2]
+        if run["session_id"] and run["session_id"] != row["session_id"]:   # discovered on the poll that saw the exit
+            self._set(b, task, session_id=run["session_id"])
+            row = self.store.task_row(b["id"], task)
         if code is None:
             return self._task_failed(b, row, data, "AI 프로세스가 종료 상태 기록 없이 사라졌습니다. 응답·세션을 보존합니다.")
         if code != 0:
@@ -571,9 +545,3 @@ class ParallelStage2:
         """Enter (or re-enter after a restart) the existing optional-link -> repair -> finalize path."""
         self.sup._launch_stage2_next(b)
 
-
-def _int(value):
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
