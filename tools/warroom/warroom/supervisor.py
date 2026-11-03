@@ -4404,10 +4404,7 @@ class Supervisor:
             except Stage2RepairMissingCandidatesError as error:
                 current = state.get("current", {})
                 correction = self._stage2_repair_correction(current)
-                attempts = current.get("attempt_log")
-                last_attempt = attempts[-1] if isinstance(attempts, list) and attempts else {}
-                if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE \
-                        or (correction is not None and last_attempt.get("correction_candidate_keys")):
+                if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
                     return self._fail(b, "ERROR", f"Stage 2 repair coverage correction did not complete within its page attempt budget; preserving accepted rows and receipts: {error}")
                 if not isinstance(correction, dict) or correction.get("kind") not in {"coverage", "schema_and_coverage"}:
                     return self._fail(b, "ERROR", f"Stage 2 repair missing-candidate response has no exact correction scope; preserving all evidence: {error}")
