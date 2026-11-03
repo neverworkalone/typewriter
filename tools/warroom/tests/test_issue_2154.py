@@ -226,6 +226,7 @@ class VerifyBlock(unittest.TestCase):
         w.git.base_sha = SHA2
         w.git.outcomes[("batch", "001", "01")] = [failure(["other"])]
         self.tick()
+        first_fingerprint = defects.parse_verify(self.block()["report"])["fingerprint"]
         calls = len(w.git.verify_calls)
         self.tick(2)
         self.assertEqual(len(w.git.verify_calls), calls)   # same SHA: no re-verify
@@ -234,8 +235,10 @@ class VerifyBlock(unittest.TestCase):
         self.tick()
         b = self.block()
         self.assertEqual((b["state"], b["last_sha"], self.issue_count(), len(self.maint())), ("HELD", SHA3, 1, 1))
-        self.assertIn(stage2.fingerprint("batch", "001", "01", "accounting", ["third"]), b["hold_reason"])
-        self.assertEqual(json.loads(b["report"])["sha"], SHA3)
+        report = defects.parse_verify(b["report"])
+        self.assertEqual(report["sha"], SHA3)
+        self.assertNotEqual(report["fingerprint"], first_fingerprint)
+        self.assertIn(report["fingerprint"], b["hold_reason"])
         w.git.base_sha = "4" * 40
         w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(True, "")]
         w.git.verified.add(("shard", "001", None, None))

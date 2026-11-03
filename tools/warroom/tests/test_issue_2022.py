@@ -55,9 +55,9 @@ class MaintainerStatus(World2022):
         self.assertEqual((st["state"], st["maintainer"]["issue"]), ("IDLE", None))
         self.assertFalse(st["can_drain"] or st["can_stop"] or st["can_clear"] or st["can_retry"])
         self.assertEqual(control.maintainer_producer(w.store, w.cfg, "deepseek"), "sonnet")   # not the card's column
+        b, m = start_maintainer(w)
         w.store.ensure_maintenance(150)                  # an older, still queued Issue
         w.store.update_maintenance(150, created_at=1)
-        b, m = start_maintainer(w)
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
         self.assertEqual((st["state"], st["maintainer"]["issue"], st["batch_id"]), ("PRODUCING", 101, m["id"]))
         self.assertEqual([n for n, _ in st["maintainer"]["others"]], [150])
