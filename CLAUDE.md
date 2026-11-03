@@ -1,101 +1,12 @@
 # Claude Instructions
 
-## Repository Rules
-
-- For implementation, read and follow AGENTS.md.
-- For PR reviews, read REVIEW.md from the latest PR HEAD.
-- Do not read AGENTS.md during PR reviews.
-
-## Autonomous Execution
-
-- Make technical and architectural decisions independently.
-- Do not ask questions when existing requirements and
-  repository conventions provide sufficient guidance.
-- Choose and implement a reasonable solution rather than
-  presenting multiple options.
-- Ask the owner only when product requirements, security
-  trust boundaries, credentials, or external permissions
-  require an explicit decision.
-- If blocked, report the cause and a concrete recommendation.
-- Never weaken validation to complete a task.
-- Execute file edits, verification, commits, and pushes as
-separate tool operations, not as one compound shell command.
-
-## Root-Cause Fixes
-
-**Fix the cause, not the symptom.** For implementation defects and PR feedback:
-
-- Identify the underlying cause and violated invariant before editing.
-- Check other relevant paths in the affected module for the same cause. Fix the
-  shared function, contract, or boundary instead of only the reported example.
-- Add a shared regression for that defect class, including appropriate valid
-  and invalid inputs, so future cases are covered.
-- Before pushing, confirm the same cause is addressed across those paths.
-- Keep the fix focused: no unrelated refactors, extra validation layers, or
-  new issues. Preserve existing required checks.
-
-## Invariant-First Fixes
-
-Before editing, state in one sentence the rule the code must guarantee (in the PR
-body or commit message), then enumerate the whole set of inputs that can break
-it and close that set in one change. A reported example is one element of the
-set, not the scope of the fix.
-
-- Enumerate along these axes: every input form (all syntax, encodings and
-  notations), boundary values, results that span several records or lemmas, and
-  every consuming path (build, runtime, packaging, web).
-- Write the regression as a table over the enumerated set, not as the single
-  reported case, and include valid-but-unusual inputs and fail-closed controls.
-- Do not parse text with ad-hoc regular expressions when the input has a
-  grammar. Use a declared parser or an existing shared function, and search the
-  repository for an existing implementation of the same concept before writing
-  a new one.
-- If a second review finding in one PR belongs to the same class, change the
-  implementation approach instead of patching another variant.
-
-## Pre-push Verification
-
-Before pushing, check the issue's acceptance criteria one by one against
-multi-record or multi-lemma inputs, valid-but-unusual inputs, and every
-consuming path, and record the result in the PR.
-
-- Do not treat source-tree tests alone as proof. For code that is bundled,
-  copied file by file, or otherwise packaged, verify the real build output:
-  module resolution, required files, and schema or contract versions.
-- Verify invariants against real data with a sample large enough to include
-  the unusual cases, not only synthetic fixtures.
-- Report what was and was not verified (for example, no manual browser run).
-
-## Cross-agent invocation — all implementation work
-
-The prohibition on lexical subagents also applies to invoking **other AI agents
-or model CLIs**. In particular, Codex must not shell out to Claude CLI (or
-another LLM) for the B01–B04 retrospective audit or any other semantic review.
-Do not query agent authentication, account, subscription, email or usage status
-as a side effect of lexical production. Use the primary assigned agent's own
-source-bound semantic QA and deterministic validation. Existing reviewer labels
-are historical evidence, not instructions to start the named model.
-
-## Subagent Usage — Owner Decision (2026-10-02)
-
-- **Do not spawn subagents** for Typewriter implementation, lexical candidate
-  authoring, semantic QA, batch production or M10 throughput work. The owner
-  has withdrawn the previous optional-delegation permission because of token
-  cost. Only a *new explicit owner authorization* may make an exception.
-- Execute tasks directly in the main Claude context. Do not call self-checking
-  "independent review" or create fictional reviewer identities/runs.
-- For new M10 batches, implement honest AI-authored semantic QA provenance in
-  the shared producer, validators, and regressions before changing acceptance.
-  Do not retroactively modify M9 B05–B09 review history.
-- Retain source-bound semantic checks, fail-closed decisions, CI and canonical
-  invariants. Optimize total measured token usage, not just wall-clock speed.
-- The **PR review** process is separate: Stage 1 owns consolidated technical/data
-  review; Stage 2 owns the final HEAD/CI gate and merge. It is governed exclusively
-  by `REVIEW.md`; this instruction addresses *implementation* subagents, not
-  separately commissioned reviewers.
-
-## Communication
-
-- Prioritize execution over discussion.
-- Avoid unnecessary confirmation requests.
-- Document important decisions in the PR.
+- Read and follow `AGENTS.md` for implementation and assigned review fixes.
+- Do not perform PR reviews.
+- When the task and repository policy provide sufficient guidance, proceed
+  without unnecessary confirmation.
+- Do not spawn subagents or invoke other AI agents/model CLIs unless the owner
+  explicitly requests their use. Perform the work in the main Claude context.
+- If a received review event is truncated or incomplete, use `gh api` to fetch
+  and read the complete review/comment and any referenced inline feedback
+  before acting. Do not infer omitted findings from the preview. Use pagination
+  or bounded reads as needed so no remaining text is missed.
