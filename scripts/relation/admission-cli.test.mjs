@@ -1977,7 +1977,7 @@ test('preflight classifies a newly integrated cross-shard optional pair for loca
   assert.deepEqual(report.problems[0].conflicts[0].relations.map((row) => row.source_sense_id), ['w3-s1', 'w1-s1']);
 
   const originalDecision = candidate.decision;
-  const currentCandidate = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8')).items[0].candidates[0];
+  const repairCandidate = report.problems[0].candidates[0];
   const repairPath = '.warroom-scratch/remove-stale-optional-link.json';
   await writeFile(path.join(root, repairPath), JSON.stringify({
     version: 1,
@@ -1985,8 +1985,8 @@ test('preflight classifies a newly integrated cross-shard optional pair for loca
     supervisor_nonce: 'c'.repeat(64),
     decisions: [{
       source_sense_id: 'w1-s1', candidate: '공통말',
-      expected_decision: currentCandidate.decision,
-      expected_additional_relations: currentCandidate.additional_relations,
+      expected_decision: repairCandidate.decision,
+      expected_additional_relations: repairCandidate.additional_relations,
       decision: null,
       additional_relations: [],
     }],
