@@ -41,6 +41,9 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 --batch 01 --part 01 [--checkpoint <file.json>] [--allow-partial]
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--source-sense-id <id> --candidate <text>] [--format json|compact] [--out <file>]
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --optional [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
+  node scripts/relation/admission-cli.mjs plan-chunks --checkpoint <file.json> --target 250 --out <plan.json>
+  node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --task <plan.json> <task-id> --format compact --out <view>
+  node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --task <plan.json> <task-id> --in <decisions> --expect-view-sha256 <sha> [--supervisor-fallback]
   node scripts/relation/admission-cli.mjs inspect --checkpoint <file.json> --source-sense-id <id>[,<id>...] [--candidate <text> | --select <file.json>] [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> [--format json|compact]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> --format compact --supervisor-fallback
@@ -815,7 +818,8 @@ function parseArgs(argv) {
   const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, supervisorFallback: null,
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, relationsOnly: false, sourceSenseId: null, candidateText: null,
     selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0,
-    diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, from: null, fromShas: [], to: null };
+    diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, from: null, fromShas: [], to: null,
+    taskPlan: null, taskId: null, target: DEFAULT_CHUNK_CANDIDATES, expectViewSha256: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -843,6 +847,9 @@ function parseArgs(argv) {
     else if (flag === '--diff-to') options.diffTo = rest[++index];
     else if (flag === '--refresh') options.refreshPremerge = true;
     else if (flag === '--dry-run') options.dryRun = true;
+    else if (flag === '--task') { options.taskPlan = rest[++index]; options.taskId = rest[++index]; }
+    else if (flag === '--target') options.target = Number(rest[++index]);
+    else if (flag === '--expect-view-sha256') options.expectViewSha256 = rest[++index];
     else if (flag === '--from') options.from = rest[++index];
     else if (flag === '--from-sha') options.fromShas.push(rest[++index]);
     else if (flag === '--to') options.to = rest[++index];
@@ -853,19 +860,30 @@ function parseArgs(argv) {
   if (options.format === 'compact' && command === 'read-chunk' && !options.optional && options.sourceSenseId !== null) {
     throw new Error(`--format compact covers primary chunks only; read a revision as JSON\n${USAGE}`);
   }
+  if (options.taskPlan !== null) {
+    if (!['read-chunk', 'save-chunk'].includes(command) || !options.taskPlan || !options.taskId) throw new Error(`--task <plan> <task-id> is only valid for read-chunk/save-chunk\n${USAGE}`);
+    if (options.format !== null && options.format !== 'compact') throw new Error(`--task requires --format compact\n${USAGE}`);
+    if (options.optional || options.sourceSenseId !== null || options.candidateText !== null) throw new Error(`--task cannot be combined with --optional or a source candidate filter\n${USAGE}`);
+    options.format = 'compact';
+  }
   options.format ??= 'json';
+  if (options.expectViewSha256 !== null && !(command === 'save-chunk' && options.taskPlan !== null)) throw new Error(`--expect-view-sha256 is only valid for save-chunk --task\n${USAGE}`);
+  if (command === 'save-chunk' && options.taskPlan !== null && !/^[a-f0-9]{64}$/u.test(options.expectViewSha256 ?? '')) throw new Error(`save-chunk --task requires --expect-view-sha256 <64 hex>\n${USAGE}`);
+  if (command === 'plan-chunks' && (!Number.isInteger(options.target) || options.target < 1)) throw new Error(`--target must be a positive integer\n${USAGE}`);
+  if (command === 'plan-chunks' && !options.out) throw new Error(`plan-chunks requires --out\n${USAGE}`);
+  if (options.target !== DEFAULT_CHUNK_CANDIDATES && command !== 'plan-chunks') throw new Error(`--target is only valid for plan-chunks\n${USAGE}`);
   if (options.supervisorFallback !== null
       && (command !== 'save-chunk' || options.format !== 'compact')) {
     throw new Error('--supervisor-fallback requires save-chunk --format compact\n' + USAGE);
   }
-  if (!['prepare', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
+  if (!['prepare', 'plan-chunks', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify', 'reconcile'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
   if (options.part !== null && !['01', '02', '03', '04', '05'].includes(options.part)) throw new Error(`--part must be 01, 02, 03, 04 or 05\n${USAGE}`);
   if (options.part !== null && options.batch === null) throw new Error(`--part requires --batch\n${USAGE}`);
   if (options.part !== null && !['prepare', 'verify', 'reconcile'].includes(command)) throw new Error(`--part is only valid for prepare/verify/reconcile\n${USAGE}`);
   if (!Number.isInteger(options.maxCandidates) || options.maxCandidates < 1) throw new Error(`--max-candidates must be a positive integer\n${USAGE}`);
-  if (['inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
+  if (['plan-chunks', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
   if (['save-chunk', 'save-optional', 'amend', 'repair'].includes(command) && !options.input) throw new Error(`${command} requires --in\n${USAGE}`);
   if (command === 'cancel-revision' && !options.chunkId) throw new Error(`cancel-revision requires --chunk-id\n${USAGE}`);
   if (['inspect', 'read-chunk'].includes(command) && (!Number.isInteger(options.page) || options.page < 1)) throw new Error(`--page must be a positive integer\n${USAGE}`);
@@ -916,7 +934,7 @@ function parseArgs(argv) {
   }
   if (options.optional && (options.sourceSenseId !== null || options.candidateText !== null)) throw new Error(`--optional cannot be combined with a source candidate filter\n${USAGE}`);
   if (command === 'prepare' && options.part && options.out) throw new Error('Part prepare writes its checkpoint; use --checkpoint instead of --out');
-  if (options.out && !['inspect', 'read-chunk'].includes(command)) throw new Error(`--out is only valid for inspect/read-chunk\n${USAGE}`);
+  if (options.out && !['plan-chunks', 'inspect', 'read-chunk'].includes(command)) throw new Error(`--out is only valid for plan-chunks/inspect/read-chunk\n${USAGE}`);
   return options;
 }
 
@@ -988,8 +1006,14 @@ export async function run(argv, { root } = {}) {
     return inspectCheckpoint(checkpoint, options.out, repositoryRoot, ids, options.candidateText, options.selectPath,
       options.format, options.page, options.pageSize);
   }
+  if (options.command === 'plan-chunks') return planChunks(await readCheckpoint(checkpointPath), options.target, options.out, repositoryRoot);
   if (options.command === 'read-chunk' || options.command === 'save-chunk') {
     const checkpoint = await readCheckpoint(checkpointPath);
+    if (options.taskPlan !== null) {
+      const plan = await readTaskPlan(checkpoint, options.taskPlan, repositoryRoot);
+      if (options.command === 'read-chunk') return readTaskChunk(checkpoint, plan, options.taskId, options.out, repositoryRoot);
+      return saveTaskChunk(checkpoint, checkpointPath, plan, options.taskId, options.input, repositoryRoot, options.expectViewSha256, options.supervisorFallback);
+    }
     if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot,
       options.sourceSenseId, options.candidateText, options.format, options.optional, options.page, options.pageSize);
     return saveChunk(checkpoint, checkpointPath, options.input, repositoryRoot, options.format, options.supervisorFallback);
@@ -2106,9 +2130,8 @@ async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, s
   return payload;
 }
 
-async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json', supervisorFallbackRequested = false) {
-  const pending = checkpoint.pending_chunk;
-  if (!pending) throw new Error('checkpoint has no unread or unsaved chunk');
+/** Parse, normalize and validate one chunk's decisions without touching the checkpoint; throws the official diagnostic. */
+async function evaluateChunkDecisions(checkpoint, pending, inputPath, root, format, supervisorFallbackRequested) {
   const problems = [];
   let input;
   let model = null;
@@ -2214,16 +2237,192 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
     });
     throw new Error(`chunk ${pending.chunk_id} not saved, checkpoint unchanged: ${problems.length} problem(s)\n${lines.join('\n')}\ntypes: ${ADMISSION_TYPES.join('/')}; tier: one digit 1..9`);
   }
+  return { received, expected };
+}
+
+function applyChunkDecisions(received, expected) {
   for (const [key, decision] of received) {
     const { candidate } = expected.get(key);
     if (candidate.already_accounted === true) candidate.additional_relations.push(decision);
     else candidate.decision = decision;
   }
+}
+
+async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json', supervisorFallbackRequested = false) {
+  const pending = checkpoint.pending_chunk;
+  if (!pending) throw new Error('checkpoint has no unread or unsaved chunk');
+  const { received, expected } = await evaluateChunkDecisions(checkpoint, pending, inputPath, root, format, supervisorFallbackRequested);
+  applyChunkDecisions(received, expected);
   checkpoint.pending_chunk = null;
   checkpoint.next_chunk_number += 1;
   await writeJsonAtomically(checkpointPath, checkpoint);
   const result = { saved: received.size, ...checkpointProgressPayload(checkpoint), checkpoint: checkpointPath };
   console.log(`Saved ${received.size} decisions: ${result.decided}/${result.total} -> ${checkpointPath}`);
+  return result;
+}
+
+const TASK_PLAN_VERSION = 1;
+const TASK_PLAN_KEYS = 'base_items_digest,batch,part,plan_digest,shard,target,tasks,version';
+
+/** Digest of the immutable Part context; saved decisions and optional links are excluded so saving never invalidates a plan. */
+function baseItemsDigest(checkpoint) {
+  return stableDigest({
+    shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part, type_tier_policy: checkpoint.type_tier_policy ?? null,
+    items: checkpoint.items.map((item) => ({
+      ...item,
+      candidates: item.candidates.map(({ decision, additional_relations: additional, ...context }) => context),
+    })),
+  });
+}
+
+function firstUndecidedIndex(item) {
+  const index = item.candidates.findIndex((candidate) => candidate.decision === null);
+  return index === -1 ? item.candidates.length : index;
+}
+
+/**
+ * A fixed, deterministic split of the still-undecided candidates into tasks of about `target` candidates.
+ * Small Senses are balanced across tasks (LPT); a Sense larger than `target` becomes an ordered, dependent chain.
+ */
+function buildTaskPlan(checkpoint, target) {
+  const units = [];
+  checkpoint.items.forEach((item, order) => {
+    const start = firstUndecidedIndex(item);
+    if (start < item.candidates.length) units.push({ order, senseId: item.sense_id, start, count: item.candidates.length - start });
+  });
+  const drafts = [];
+  const small = [];
+  for (const unit of units) {
+    if (unit.count <= target) { small.push(unit); continue; }
+    const pieces = Math.ceil(unit.count / target);
+    let start = unit.start;
+    for (let piece = 0; piece < pieces; piece += 1) {
+      const size = Math.floor(unit.count / pieces) + (piece < unit.count % pieces ? 1 : 0);
+      drafts.push({ order: unit.order, piece, chain: unit.senseId, slices: [{ sense_id: unit.senseId, start, end: start + size }] });
+      start += size;
+    }
+  }
+  const bins = Array.from({ length: Math.ceil(small.reduce((sum, unit) => sum + unit.count, 0) / target) }, () => ({ load: 0, units: [] }));
+  for (const unit of [...small].sort((left, right) => right.count - left.count || left.order - right.order)) {
+    const bin = bins.reduce((least, entry) => (entry.load < least.load ? entry : least));
+    bin.load += unit.count;
+    bin.units.push(unit);
+  }
+  for (const bin of bins) {
+    const ordered = bin.units.sort((left, right) => left.order - right.order);
+    drafts.push({ order: ordered[0].order, piece: 0, chain: null,
+      slices: ordered.map((unit) => ({ sense_id: unit.senseId, start: unit.start, end: unit.start + unit.count })) });
+  }
+  drafts.sort((left, right) => left.order - right.order || left.piece - right.piece);
+  const prefix = `${checkpoint.shard}-${checkpoint.batch}-${checkpoint.part}`;
+  const idOf = (index) => `${prefix}-t${String(index + 1).padStart(2, '0')}`;
+  const tasks = drafts.map((draft, index) => ({
+    id: idOf(index), chunk_id: idOf(index), slices: draft.slices,
+    candidate_count: draft.slices.reduce((sum, slice) => sum + slice.end - slice.start, 0),
+    depends_on: draft.chain !== null && draft.piece > 0 ? [idOf(index - 1)] : [],
+  }));
+  const plan = { version: TASK_PLAN_VERSION, shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part, target,
+    base_items_digest: baseItemsDigest(checkpoint), tasks };
+  return { ...plan, plan_digest: stableDigest(plan) };
+}
+
+function assertTaskPlanFor(checkpoint, plan) {
+  const { plan_digest: digest, ...body } = isPlainObject(plan) ? plan : {};
+  if (!isPlainObject(plan) || keysOf(plan) !== TASK_PLAN_KEYS || plan.version !== TASK_PLAN_VERSION
+      || !Array.isArray(plan.tasks) || digest !== stableDigest(body)) throw new Error('task plan is malformed or was modified');
+  if (plan.shard !== checkpoint.shard || plan.batch !== checkpoint.batch || plan.part !== checkpoint.part
+      || plan.base_items_digest !== baseItemsDigest(checkpoint)) {
+    throw new Error(`task plan does not belong to Part ${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part} of this checkpoint`);
+  }
+}
+
+async function readTaskPlan(checkpoint, planPath, root) {
+  let plan;
+  try { plan = JSON.parse(await readFile(resolveRootPath(root, planPath), 'utf8')); }
+  catch (error) { throw new Error(`cannot read task plan: ${error.message}`); }
+  assertTaskPlanFor(checkpoint, plan);
+  return plan;
+}
+
+async function planChunks(checkpoint, target, out, root) {
+  if (checkpoint.merged) throw new Error('cannot plan chunks for a merged Part checkpoint');
+  if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} before planning tasks`);
+  const planPath = resolveRootPath(root, out);
+  let plan = null;
+  if (existsSync(planPath)) {
+    // An existing plan for this Part is reused as is, never rewritten.
+    try { plan = JSON.parse(await readFile(planPath, 'utf8')); } catch (error) { throw new Error(`cannot read existing task plan: ${error.message}`); }
+    assertTaskPlanFor(checkpoint, plan);
+  }
+  const reused = plan !== null;
+  plan ??= buildTaskPlan(checkpoint, target);
+  if (!reused) await writeJsonAtomically(planPath, plan);
+  const result = { version: 1, ok: true, plan: planPath, reused, target: plan.target, tasks: plan.tasks.length,
+    candidates: plan.tasks.reduce((sum, task) => sum + task.candidate_count, 0), plan_digest: plan.plan_digest };
+  console.log(JSON.stringify(result));
+  return result;
+}
+
+/** ready: every slice starts at its Sense's first undecided candidate; saved: every slice is decided; blocked: waits for an earlier task. */
+function taskState(checkpoint, task) {
+  const states = new Set(task.slices.map((slice) => {
+    const item = checkpoint.items.find((entry) => entry.sense_id === slice.sense_id);
+    const first = firstUndecidedIndex(item);
+    if (first === slice.start) return 'ready';
+    if (first >= slice.end) return 'saved';
+    return first < slice.start ? 'blocked' : 'partial';
+  }));
+  if (states.size === 1 && !states.has('partial')) return [...states][0];
+  return states.has('partial') || states.has('saved') ? 'partial' : 'blocked';
+}
+
+function taskContext(checkpoint, plan, taskId) {
+  if (checkpoint.merged) throw new Error('cannot use a task of a merged Part checkpoint');
+  if (checkpoint.pending_chunk) throw new Error(`checkpoint has an active chunk ${checkpoint.pending_chunk.chunk_id}; tasks and pending chunks cannot be mixed`);
+  const task = plan.tasks.find((entry) => entry.id === taskId);
+  if (!task) throw new Error(`task plan has no task ${taskId}`);
+  return { task, pending: { chunk_id: task.chunk_id, candidate_count: task.candidate_count, slices: task.slices }, state: taskState(checkpoint, task) };
+}
+
+const assertTaskNotBlocked = (task, state) => {
+  if (state === 'blocked') throw new Error(`task ${task.id} waits for unsaved earlier task(s) ${task.depends_on.join(', ') || '(none listed)'}`);
+  if (state === 'partial') throw new Error(`task ${task.id} is only partly saved; refusing to continue it`);
+};
+
+async function readTaskChunk(checkpoint, plan, taskId, out, root) {
+  const { task, pending, state } = taskContext(checkpoint, plan, taskId);
+  assertTaskNotBlocked(task, state);
+  if (state === 'saved') throw new Error(`task ${task.id} is already saved`);
+  const text = renderCompactChunk(checkpoint, pending);
+  const result = { task: task.id, chunk_id: pending.chunk_id, candidate_count: pending.candidate_count, view_sha256: sha256(Buffer.from(text, 'utf8')) };
+  if (out) {
+    await writeTextAtomically(resolveRootPath(root, out), text);
+    console.log(JSON.stringify(result));
+  } else console.log(text.trimEnd());
+  return { ...result, text };
+}
+
+async function saveTaskChunk(checkpoint, checkpointPath, plan, taskId, inputPath, root, expectViewSha256, supervisorFallbackRequested) {
+  const { task, pending, state } = taskContext(checkpoint, plan, taskId);
+  assertTaskNotBlocked(task, state);
+  const viewSha256 = sha256(Buffer.from(renderCompactChunk(checkpoint, pending), 'utf8'));
+  if (viewSha256 !== expectViewSha256) throw new Error(`task ${task.id} view changed since it was launched; not saved`);
+  const { received, expected } = await evaluateChunkDecisions(checkpoint, pending, inputPath, root, 'compact', supervisorFallbackRequested);
+  let alreadySaved = false;
+  if (state === 'saved') {
+    for (const [key, decision] of received) {
+      if (!isDeepStrictEqual(expected.get(key).candidate.decision, decision)) {
+        throw new Error(`task ${task.id} is already saved with a different result; refusing to overwrite it`);
+      }
+    }
+    alreadySaved = true;
+  } else {
+    applyChunkDecisions(received, expected);
+    checkpoint.next_chunk_number += 1;
+    await writeJsonAtomically(checkpointPath, checkpoint);
+  }
+  const result = { task: task.id, saved: received.size, already_saved: alreadySaved, ...checkpointProgressPayload(checkpoint), checkpoint: checkpointPath };
+  console.log(JSON.stringify(result));
   return result;
 }
 
