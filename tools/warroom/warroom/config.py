@@ -52,6 +52,8 @@ DEFAULTS = {
     "pr_head_lag_timeout_seconds": 1800,   # warning / "PR 생성 여부 미확정" threshold (#2092); never an ERROR by itself
     "rate_limit_retries": 3,
     "rate_limit_backoff_seconds": 120,
+    "stage2_chunk_candidates": 250,   # #3047: target candidates per parallel Stage 2 primary task (applies to the next new Part's plan)
+    "stage2_max_parallel": 16,        # #3047: concurrent primary task sessions (applies to the next assignment after reload)
 }
 
 
@@ -357,6 +359,9 @@ def config_problem(cfg: dict) -> str | None:
     for key in ("poll_seconds", "rate_limit_backoff_seconds", "pr_head_lag_timeout_seconds"):
         if not _number(cfg.get(key)) or cfg[key] < 0:
             bad.append(f"{key}는 0 이상의 숫자여야 합니다")
+    for key in ("stage2_chunk_candidates", "stage2_max_parallel"):
+        if not isinstance(cfg.get(key), int) or isinstance(cfg[key], bool) or cfg[key] < 1:
+            bad.append(f"{key}는 1 이상의 정수여야 합니다")
     r = cfg.get("rate_limit_retries")
     if not isinstance(r, int) or isinstance(r, bool) or r < 0:
         bad.append("rate_limit_retries는 0 이상의 정수여야 합니다")

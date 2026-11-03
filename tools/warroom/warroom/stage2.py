@@ -583,9 +583,9 @@ def extract_repair_answer(final_text: str | None, fingerprint_: str) -> dict | N
     return result
 
 
-def decision_file_state(worktree, chunk_id: str) -> str:
+def decision_file_state(worktree, chunk_id: str, rel: str = DECISIONS) -> str:
     """Classify the decisions file as `missing`, `current`, or fail-closed `corrupt` for a pending chunk."""
-    path = Path(worktree) / DECISIONS
+    path = Path(worktree) / rel
     if not path.exists() and not path.is_symlink():
         return "missing"
     try:
@@ -619,8 +619,8 @@ def decisions_header(worktree) -> str | None:
     return None
 
 
-def write_decisions(worktree, chunk_id: str, rows: list[str]) -> None:
-    path = Path(worktree) / DECISIONS
+def write_decisions(worktree, chunk_id: str, rows: list[str], rel: str = DECISIONS) -> None:
+    path = Path(worktree) / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(f"chunk {chunk_id}\n" + "".join(f"{row}\n" for row in rows), "utf-8")
@@ -637,12 +637,13 @@ def headerless_fix_row(final_text: str | None, expected_alias: str) -> str | Non
     return rows[0] if rows[0].split(None, 1)[0] == expected_alias else None
 
 
-def candidate_binding_from_view(worktree, chunk_id: str, alias: str, expected_sha256: str) -> dict | None:
+def candidate_binding_from_view(worktree, chunk_id: str, alias: str, expected_sha256: str,
+                                rel: str = CHUNK_VIEW) -> dict | None:
     """Bind one alias to its source record/sense and candidate from the exact saved compact view."""
     if not re.fullmatch(r"c\d+", alias) or not re.fullmatch(r"[a-f0-9]{64}", expected_sha256):
         return None
     try:
-        raw = (Path(worktree) / CHUNK_VIEW).read_bytes()
+        raw = (Path(worktree) / rel).read_bytes()
     except OSError:
         return None
     if hashlib.sha256(raw).hexdigest() != expected_sha256:
@@ -674,9 +675,9 @@ def clear_decisions(worktree) -> None:
     (Path(worktree) / DECISIONS).unlink(missing_ok=True)
 
 
-def read_rows(worktree) -> list[str]:
+def read_rows(worktree, rel: str = DECISIONS) -> list[str]:
     try:
-        return [line.strip() for line in (Path(worktree) / DECISIONS).read_text("utf-8").split("\n") if _ROW.match(line.strip())]
+        return [line.strip() for line in (Path(worktree) / rel).read_text("utf-8").split("\n") if _ROW.match(line.strip())]
     except OSError:
         return []
 
@@ -1063,3 +1064,49 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
         return Choice("wait", note="; ".join(dict.fromkeys(waiting)))
     return Choice("done", note="더 이상 진행할 Stage 2 Part가 없습니다." if not pin else f"샤드 {pin}의 Stage 2 Part가 모두 완료되었습니다.")
 
+
+
+# ---- Parallel primary tasks (Issue #3047) --------------------------------------------------------------------------
+# A new Part's primary decisions are split by `admission-cli plan-chunks` into fixed tasks. Each task is one answer-only
+# AI session; the Supervisor alone saves them (completion order) through `save-chunk --task`. A task's chunk ID is its
+# task ID (`SSS-BB-PP-tNN`), so the answer header, parser, diagnostics and save all use the same explicit ID.
+PLAN = ".warroom-scratch/s2-plan.json"
+TASKS_DIR = ".warroom-scratch/s2-tasks"
+PARALLEL = "parallel"
+
+
+def mode_key(batch_id: int) -> str:
+    """Written once when a Part starts after the parallel release; a Part without it finishes on the serial path."""
+    return f"s2_mode_{batch_id}"
+
+
+def task_path(task: str, name: str) -> str:
+    return f"{TASKS_DIR}/{task}/{name}"
+
+
+def read_plan(worktree) -> dict | None:
+    """The Part's fixed task plan, or None before `plan-chunks` has written it."""
+    try:
+        plan = json.loads((Path(worktree) / PLAN).read_text("utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as error:
+        raise ValueError(f"cannot read the Stage 2 task plan: {error}") from error
+    if not isinstance(plan, dict) or not isinstance(plan.get("tasks"), list) or not plan["tasks"]:
+        raise ValueError("malformed Stage 2 task plan")
+    return plan
+
+
+def ready_tasks(plan: dict, rows: dict[str, dict]) -> list[dict]:
+    """Plan tasks that may start: unstarted (PENDING) with every `depends_on` task SAVED, in scheduling priority.
+
+    Priority (#3047 §4-3): the currently runnable head of an unfinished large-Sense chain first (a task that has
+    dependencies, or is depended on), then more candidates, then plan order. Only the order changes; the plan,
+    dependencies, backoff and correction budgets are never bypassed."""
+    chained = {t["id"] for t in plan["tasks"] if t["depends_on"]} | \
+        {dep for t in plan["tasks"] for dep in t["depends_on"]}
+    order = {t["id"]: i for i, t in enumerate(plan["tasks"])}
+    ready = [t for t in plan["tasks"]
+             if rows.get(t["id"]) is not None and rows[t["id"]]["state"] == "PENDING"
+             and all(rows.get(dep) is not None and rows[dep]["state"] == "SAVED" for dep in t["depends_on"])]
+    return sorted(ready, key=lambda t: (t["id"] not in chained, -t["candidate_count"], order[t["id"]]))
