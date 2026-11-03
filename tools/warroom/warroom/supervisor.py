@@ -3543,10 +3543,18 @@ class Supervisor:
         if attempt.get("fingerprint") != current.get("fingerprint") or attempt.get("cursor") != current.get("cursor"):
             return False
         ad = self._adapter(b["producer"])
-        if b["pid"] is not None and ad.alive(b["pid"]):
-            return True   # still running: the poll loop re-attaches, never a second run
-        newer = [run for run in self.store.runs(b["id"]) if run["kind"] == "s2_repair_new" and run["id"] > attempt["prior_run_id"]]
+        prior_run_id = attempt.get("prior_run_id")
+        if type(prior_run_id) is not int or prior_run_id < 0:
+            self._fail(b, "ERROR", "Stage 2 repair launch has no valid prior-run boundary; preserving all evidence")
+            return True
+        newer = [run for run in self.store.runs(b["id"])
+                 if run["kind"] == "s2_repair_new" and run["id"] > prior_run_id]
+        if len(newer) > 1:
+            self._fail(b, "ERROR", "Stage 2 repair launch matches multiple newer runs; preserving all evidence")
+            return True
         if not newer:
+            if b["pid"] is not None and ad.alive(b["pid"]):
+                return True   # the process may be between spawn and its durable run row
             if b["pid"] is not None:
                 self._fail(b, "ERROR", "Stage 2 repair attempt has a process but no recorded run; preserving all evidence")
                 return True
@@ -3562,6 +3570,22 @@ class Supervisor:
             self._save_stage2_repair_state(b, state)
             return False
         run = newer[0]
+        spawn = attempt.get("spawn")
+        if not isinstance(spawn, dict) or not isinstance(spawn.get("log_file"), str) \
+                or not isinstance(spawn.get("exit_file"), str) \
+                or str(run["log_file"]) != spawn["log_file"] \
+                or str(run["exit_file"]) != spawn["exit_file"] \
+                or str(run["log_file"]) != str(b["log_file"]) \
+                or str(run["exit_file"]) != str(b["exit_file"]) \
+                or (attempt.get("run_id") is not None and attempt.get("run_id") != run["id"]) \
+                or (b["pid"] is not None and run["pid"] != b["pid"]):
+            self._fail(b, "ERROR", "Stage 2 repair run does not match its exact persisted launch binding; preserving all evidence")
+            return True
+        if attempt.get("run_id") is None:
+            attempt["run_id"] = run["id"]
+            self._save_stage2_repair_state(b, state)
+        if b["pid"] is not None and ad.alive(b["pid"]):
+            return True   # run identity is now durable; the poll loop re-attaches without a second run
         if run["ended_at"] is None:
             code = ad.exit_code(Path(b["exit_file"])) if b["exit_file"] else None
             if code is None:
@@ -3708,8 +3732,9 @@ class Supervisor:
                 if row.get("source_sense_id") in {peer["source_sense_id"] for peer in peers}]
         return payload
 
-    def _stage2_repair_response_run(self, b, current: dict):
+    def _stage2_repair_response_run(self, b, state: dict):
         """Resolve the response only from the exact completed run recorded for this active page attempt."""
+        current = state.get("current")
         attempts = current.get("attempt_log")
         attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
         groups, cursor = current.get("groups"), current.get("cursor")
@@ -3720,8 +3745,7 @@ class Supervisor:
         page_keys = sorted({key for group in page if isinstance(group, dict)
                             for key in group.get("candidate_keys", [])})
         if not page_keys or attempt.get("fingerprint") != current.get("fingerprint") \
-                or attempt.get("cursor") != cursor or attempt.get("target_keys") != page_keys \
-                or type(attempt.get("run_id")) is not int:
+                or attempt.get("cursor") != cursor or attempt.get("target_keys") != page_keys:
             raise ValueError("repair response attempt does not bind the active fingerprint, page, and run")
         try:
             baseline = json.loads(self.store.get(stage2.repair_run_start_key(b["id"])) or "")
@@ -3733,7 +3757,25 @@ class Supervisor:
                 or baseline.get("cursor") != cursor or baseline.get("page_keys") != page_keys \
                 or baseline.get("attempt") != attempt.get("attempt"):
             raise ValueError("repair response does not match its persisted Supervisor page/run-start boundary")
-        run = next((row for row in self.store.runs(b["id"]) if row["id"] == attempt["run_id"]), None)
+        runs = self.store.runs(b["id"])
+        run_id = attempt.get("run_id")
+        if run_id is None:
+            prior_run_id = attempt.get("prior_run_id")
+            spawn = attempt.get("spawn")
+            if type(prior_run_id) is not int or prior_run_id < 0 or not isinstance(spawn, dict) \
+                    or not isinstance(spawn.get("log_file"), str) or not isinstance(spawn.get("exit_file"), str):
+                raise ValueError("repair response has no recoverable persisted run identity")
+            candidates = [row for row in runs if row["kind"] == "s2_repair_new" and row["id"] > prior_run_id]
+            if len(candidates) != 1 or str(candidates[0]["log_file"]) != spawn["log_file"] \
+                    or str(candidates[0]["exit_file"]) != spawn["exit_file"]:
+                raise ValueError("repair response cannot be rebound to one exact launched run")
+            run = candidates[0]
+            attempt["run_id"] = run["id"]
+            self._save_stage2_repair_state(b, state)
+        else:
+            if type(run_id) is not int:
+                raise ValueError("repair response attempt has a malformed run ID")
+            run = next((row for row in runs if row["id"] == run_id), None)
         if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
                 or str(run["exit_status"]) != "0" or not run["log_file"] \
                 or str(run["log_file"]) != str(b["log_file"]):
@@ -3841,7 +3883,7 @@ class Supervisor:
         current = state["current"]
         if current.get("pending_answer") is not None:
             return current["pending_answer"]
-        run = self._stage2_repair_response_run(b, current)
+        run = self._stage2_repair_response_run(b, state)
         final = self._adapter(b["producer"]).final_answer(Path(run["log_file"]))
         current["last_response"] = final
         self._save_stage2_repair_state(b, state)

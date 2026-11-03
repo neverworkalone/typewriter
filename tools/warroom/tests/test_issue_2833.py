@@ -126,6 +126,30 @@ class RepairFormatRetry(unittest.TestCase):
         self.assertEqual(len(w.git.stage2_repair_calls), 0)
         self.assertNotEqual(original_run_id, state["current"]["attempt_log"][-1]["run_id"])
 
+    def test_restart_rebinds_the_unique_run_written_before_attempt_run_id(self):
+        w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
+        run = w.adapter.launches[-1]
+        state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+        attempt = state["current"]["attempt_log"][-1]
+        persisted_run_id = attempt.pop("run_id")
+        self.assertIsInstance(persisted_run_id, int)
+        w.store.set(stage2.repair_state_key(batch["id"]), json.dumps(state, sort_keys=True))
+        w.adapter.running[run["pid"]]["text"] = answer(valid_body())
+        w.adapter.finish(run["pid"])
+        launch_count = len(w.adapter.launches)
+        w.sup = w.make_sup()
+
+        w.tick()
+
+        saved = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+        final_attempt = saved["current"]["attempt_log"][-1]
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
+        self.assertEqual(len(w.adapter.launches), launch_count)
+        self.assertEqual(final_attempt["status"], "applied")
+        self.assertEqual(final_attempt["run_id"], persisted_run_id)
+        self.assertEqual(len(w.git.stage2_repair_calls), 1)
+        self.assertEqual(len(w.gh.created_prs), 1)
+
     def test_two_format_failures_error_and_never_exceed_the_budget(self):
         w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
         launches = len(w.adapter.launches)
