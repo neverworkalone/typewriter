@@ -1820,6 +1820,8 @@ class Supervisor:
                             except ValueError as error:
                                 return self._fail(b, "ERROR", f"Stage 2 수정 재개 기준이 손상되어 중단합니다: {error}")
                             detail = correction.get("initial_failure") if correction is not None else None
+                            if correction is not None and correction["version"] == 2:
+                                detail = stage2.compact_fix_diagnostic(detail)
                         if not sid or not checkpoint["pending_chunk"] or not detail:
                             raise prompts.PromptError("수정 요청에 기존 세션·pending 청크·오류 목록이 모두 필요합니다")
                         file_state = stage2.decision_file_state(wt, checkpoint["pending_chunk"])
@@ -4205,49 +4207,93 @@ class Supervisor:
             state = json.loads(raw)
         except (TypeError, ValueError) as error:
             raise ValueError("Stage 2 correction budget is malformed") from error
-        required = {"version", "batch_id", "shard", "batch", "chunk_id", "retry_count",
-                    "initial_failure", "candidate", "retry_answer_applied", "retry_answer_alias",
-                    "initial_decisions_b64", "retry_decisions_sha256", "retry_save_failed",
-                    "header_repaired", "retry_run_id"}
-        if not isinstance(state, dict) or set(state) != required or type(state.get("version")) is not int or state.get("version") != 1 \
+        common = {"batch_id", "shard", "batch", "chunk_id", "retry_count", "initial_failure",
+                  "initial_decisions_b64", "retry_decisions_sha256", "retry_answer_applied", "retry_run_id"}
+        if not isinstance(state, dict) or type(state.get("version")) is not int \
                 or type(state.get("batch_id")) is not int or type(state.get("retry_count")) is not int \
                 or state.get("batch_id") != b["id"] or state.get("shard") != b["shard"] \
                 or state.get("batch") != b["batch"] or state.get("chunk_id") != pending \
-                or state.get("retry_count") != stage2.MAX_CANDIDATE_RETRIES or not isinstance(state.get("initial_failure"), str) \
+                or state.get("retry_count") != stage2.MAX_CANDIDATE_RETRIES \
+                or not isinstance(state.get("initial_failure"), str) \
                 or not isinstance(state.get("initial_decisions_b64"), str) \
-                or not isinstance(state.get("candidate"), dict) \
                 or not isinstance(state.get("retry_answer_applied"), bool) \
-                or (state.get("retry_answer_alias") is not None and not isinstance(state.get("retry_answer_alias"), str)) \
                 or (state.get("retry_decisions_sha256") is not None
                     and (not isinstance(state.get("retry_decisions_sha256"), str)
                          or not re.fullmatch(r"[a-f0-9]{64}", state["retry_decisions_sha256"]))) \
-                or not isinstance(state.get("retry_save_failed"), bool) \
-                or not isinstance(state.get("header_repaired"), bool) \
                 or (state.get("retry_run_id") is not None and type(state.get("retry_run_id")) is not int):
             raise ValueError("Stage 2 correction budget is damaged or belongs to another pending chunk")
-        candidate = state["candidate"]
-        if set(candidate) != {"alias", "record_id", "sense_id", "candidate"} \
-                or not all(isinstance(candidate.get(name), str) and candidate[name]
-                           for name in ("alias", "record_id", "sense_id", "candidate")):
-            raise ValueError("Stage 2 correction candidate binding is malformed")
         try:
             snapshot = base64.b64decode(state["initial_decisions_b64"], validate=True)
             snapshot.decode("utf-8")
         except (ValueError, UnicodeError):
             raise ValueError("Stage 2 correction decision snapshot is malformed") from None
-        applied = state["retry_answer_applied"]
-        if (applied and (state["retry_answer_alias"] != candidate["alias"]
-                         or state["retry_decisions_sha256"] is None)) \
-                or (not applied and (state["retry_answer_alias"] is not None
-                                     or state["retry_decisions_sha256"] is not None
-                                     or state["retry_save_failed"] or state["header_repaired"])) \
-                or (state["retry_save_failed"] and not applied):
-            raise ValueError("Stage 2 correction outcome fields are inconsistent")
+        if state["version"] == 1:
+            required = common | {"version", "candidate", "retry_answer_alias", "retry_save_failed", "header_repaired"}
+            candidate = state.get("candidate")
+            if set(state) != required or not isinstance(candidate, dict) \
+                    or set(candidate) != {"alias", "record_id", "sense_id", "candidate"} \
+                    or not all(isinstance(candidate.get(name), str) and candidate[name]
+                               for name in ("alias", "record_id", "sense_id", "candidate")) \
+                    or (state.get("retry_answer_alias") is not None
+                        and not isinstance(state.get("retry_answer_alias"), str)) \
+                    or not isinstance(state.get("retry_save_failed"), bool) \
+                    or not isinstance(state.get("header_repaired"), bool):
+                raise ValueError("Stage 2 correction candidate binding is malformed")
+            applied = state["retry_answer_applied"]
+            if (applied and (state["retry_answer_alias"] != candidate["alias"]
+                             or state["retry_decisions_sha256"] is None)) \
+                    or (not applied and (state["retry_answer_alias"] is not None
+                                         or state["retry_decisions_sha256"] is not None
+                                         or state["retry_save_failed"] or state["header_repaired"])) \
+                    or (state["retry_save_failed"] and not applied):
+                raise ValueError("Stage 2 correction outcome fields are inconsistent")
+        elif state["version"] == 2:
+            required = common | {"version", "candidates", "retry_answer_aliases", "retry_save_failed",
+                                 "retry_save_failed_alias", "fallback_attempted"}
+            candidates = state.get("candidates")
+            if set(state) != required or not isinstance(candidates, list) or len(candidates) < 2 \
+                    or not isinstance(state.get("retry_answer_aliases"), list) \
+                    or not isinstance(state.get("retry_save_failed"), bool) \
+                    or (state.get("retry_save_failed_alias") is not None
+                        and not isinstance(state.get("retry_save_failed_alias"), str)) \
+                    or not isinstance(state.get("fallback_attempted"), bool):
+                raise ValueError("Stage 2 multi-candidate correction evidence is malformed")
+            aliases = []
+            for candidate in candidates:
+                if not isinstance(candidate, dict) or set(candidate) != {"alias", "record_id", "sense_id", "candidate"} \
+                        or not all(isinstance(candidate.get(name), str) and candidate[name]
+                                   for name in ("alias", "record_id", "sense_id", "candidate")):
+                    raise ValueError("Stage 2 multi-candidate binding is malformed")
+                aliases.append(candidate["alias"])
+            if len(set(aliases)) != len(aliases) \
+                    or stage2.candidate_local_failure_aliases(state["initial_failure"], pending) != aliases:
+                raise ValueError("Stage 2 multi-candidate failure evidence is incomplete or inconsistent")
+            lines = state["initial_failure"].replace("\r\n", "\n").splitlines()[1:]
+            if any(not any(line.startswith(f"{candidate['alias']} {candidate['candidate']}:") for line in lines)
+                   for candidate in candidates):
+                raise ValueError("Stage 2 multi-candidate names differ from the saved failure evidence")
+            applied = state["retry_answer_applied"]
+            if (applied and (state["retry_answer_aliases"] != aliases
+                             or state["retry_decisions_sha256"] is None
+                             or state["retry_run_id"] is None)) \
+                    or (not applied and (state["retry_answer_aliases"] or state["retry_decisions_sha256"] is not None
+                                         or state["retry_save_failed"]
+                                         or state["retry_save_failed_alias"] is not None
+                                         or state["fallback_attempted"])) \
+                    or (state["retry_save_failed"] and (not applied
+                        or state["retry_save_failed_alias"] not in aliases)) \
+                    or (not state["retry_save_failed"] and state["retry_save_failed_alias"] is not None) \
+                    or (state["fallback_attempted"] and not state["retry_save_failed"]):
+                raise ValueError("Stage 2 multi-candidate correction outcome fields are inconsistent")
+        else:
+            raise ValueError("Stage 2 correction state version is unsupported")
         return state
 
     def _stage2_reserve_candidate_correction(self, b, pending: str, diagnostic: str) -> dict | None:
-        alias = stage2.single_candidate_failure_alias(diagnostic, pending)
-        if alias is None:
+        aliases = stage2.candidate_local_failure_aliases(diagnostic, pending)
+        if aliases is None:
+            return None
+        if len(aliases) > 1 and len(stage2.compact_fix_diagnostic(diagnostic)) > stage2.MAX_CANDIDATE_FIX_DIAGNOSTIC_CHARS:
             return None
         try:
             baseline = json.loads(self.store.get(stage2.run_start_key(b["id"])) or "null")
@@ -4258,10 +4304,15 @@ class Supervisor:
                 or not isinstance(baseline.get("remote_head"), (str, type(None))) \
                 or not self._stage2_checkpoint_unchanged(b, pending, baseline):
             return None
-        candidate = stage2.candidate_binding_from_view(
-            b["worktree"], pending, alias, baseline.get("chunk_view_sha256", ""))
-        if candidate is None or stage2.single_candidate_failure_alias(diagnostic, pending, candidate) != alias:
-            return None
+        candidates = []
+        problem_lines = diagnostic.replace("\r\n", "\n").splitlines()[1:]
+        for alias in aliases:
+            candidate = stage2.candidate_binding_from_view(
+                b["worktree"], pending, alias, baseline.get("chunk_view_sha256", ""))
+            if candidate is None or not any(line.startswith(f"{alias} {candidate['candidate']}:")
+                                            for line in problem_lines):
+                return None
+            candidates.append(candidate)
         decisions_path = Path(b["worktree"]) / stage2.DECISIONS
         try:
             initial_decisions = decisions_path.read_bytes()
@@ -4270,16 +4321,21 @@ class Supervisor:
         except OSError:
             return None
         state = {
-            "version": 1, "batch_id": b["id"], "shard": b["shard"], "batch": b["batch"],
+            "version": 1 if len(candidates) == 1 else 2,
+            "batch_id": b["id"], "shard": b["shard"], "batch": b["batch"],
             "chunk_id": pending, "retry_count": stage2.MAX_CANDIDATE_RETRIES, "initial_failure": diagnostic,
-            "candidate": candidate, "retry_answer_applied": False,
+            "retry_answer_applied": False,
             "initial_decisions_b64": base64.b64encode(initial_decisions).decode("ascii"),
-            "retry_answer_alias": None, "retry_decisions_sha256": None, "retry_save_failed": False,
-            "header_repaired": False, "retry_run_id": None,
+            "retry_decisions_sha256": None, "retry_run_id": None,
         }
+        if len(candidates) == 1:
+            state.update(candidate=candidates[0], retry_answer_alias=None, retry_save_failed=False, header_repaired=False)
+        else:
+            state.update(candidates=candidates, retry_answer_aliases=[], retry_save_failed=False,
+                         retry_save_failed_alias=None, fallback_attempted=False)
         self.store.set(stage2.correction_key(b["id"]), json.dumps(state, ensure_ascii=False, sort_keys=True))
-        evidence = {**candidate, "chunk_id": pending, "failure_reason": diagnostic,
-                    "retry_count": 1, "deterministic_header_repair": "pending"}
+        evidence = {"candidates": candidates, "chunk_id": pending, "failure_reason": diagnostic,
+                    "retry_count": 1, "correction_runs_max": 1}
         self.store.log(b["id"], "Stage 2 후보 단위 수정 1회를 결속했습니다: " + json.dumps(evidence, ensure_ascii=False, sort_keys=True), "warn")
         return state
 
@@ -4300,7 +4356,7 @@ class Supervisor:
 
     def _stage2_mark_candidate_correction(self, b, pending: str, alias: str, *, header_repaired: bool) -> bool:
         state = self._stage2_correction_state(b, pending)
-        if state is None or state["candidate"]["alias"] != alias:
+        if state is None or state["version"] != 1 or state["candidate"]["alias"] != alias:
             return False
         state["retry_answer_applied"] = True
         state["retry_answer_alias"] = alias
@@ -4308,6 +4364,30 @@ class Supervisor:
         state["retry_decisions_sha256"] = hashlib.sha256(decisions_path.read_bytes()).hexdigest()
         state["retry_save_failed"] = False
         state["header_repaired"] = bool(header_repaired)
+        self.store.set(stage2.correction_key(b["id"]), json.dumps(state, ensure_ascii=False, sort_keys=True))
+        return True
+
+    def _stage2_mark_multi_candidate_correction(self, b, pending: str, aliases: list[str]) -> bool:
+        state = self._stage2_correction_state(b, pending)
+        if state is None or state["version"] != 2 \
+                or aliases != [candidate["alias"] for candidate in state["candidates"]] \
+                or not self._stage2_correction_run_completed(b, state):
+            return False
+        decisions_path = Path(b["worktree"]) / stage2.DECISIONS
+        try:
+            decisions = decisions_path.read_bytes()
+            rows = stage2.read_rows(b["worktree"])
+        except OSError:
+            return False
+        row_aliases = [stage2.alias_of(row) for row in rows]
+        if len(row_aliases) != len(set(row_aliases)) or not set(aliases).issubset(row_aliases):
+            return False
+        state["retry_answer_applied"] = True
+        state["retry_answer_aliases"] = aliases
+        state["retry_decisions_sha256"] = hashlib.sha256(decisions).hexdigest()
+        state["retry_save_failed"] = False
+        state["retry_save_failed_alias"] = None
+        state["fallback_attempted"] = False
         self.store.set(stage2.correction_key(b["id"]), json.dumps(state, ensure_ascii=False, sort_keys=True))
         return True
 
@@ -4324,6 +4404,27 @@ class Supervisor:
         except OSError:
             return False
         correction["retry_save_failed"] = True
+        self.store.set(stage2.correction_key(b["id"]), json.dumps(correction, ensure_ascii=False, sort_keys=True))
+        return True
+
+    def _stage2_mark_multi_candidate_failure(self, b, pending: str, diagnostic: str, correction: dict) -> bool:
+        if correction["version"] != 2 or not correction["retry_answer_applied"] \
+                or correction["retry_answer_aliases"] != [candidate["alias"] for candidate in correction["candidates"]] \
+                or not self._stage2_correction_run_completed(b, correction):
+            return False
+        alias = stage2.single_candidate_failure_alias(diagnostic, pending)
+        candidate = next((item for item in correction["candidates"] if item["alias"] == alias), None)
+        if candidate is None or stage2.single_candidate_failure_alias(diagnostic, pending, candidate) != alias:
+            return False
+        decisions_path = Path(b["worktree"]) / stage2.DECISIONS
+        try:
+            if not decisions_path.is_file() \
+                    or hashlib.sha256(decisions_path.read_bytes()).hexdigest() != correction["retry_decisions_sha256"]:
+                return False
+        except OSError:
+            return False
+        correction["retry_save_failed"] = True
+        correction["retry_save_failed_alias"] = alias
         self.store.set(stage2.correction_key(b["id"]), json.dumps(correction, ensure_ascii=False, sort_keys=True))
         return True
 
@@ -4404,12 +4505,16 @@ class Supervisor:
             if runs and runs[0]["kind"] == "s2_chunk_fix":
                 correction["retry_run_id"] = runs[0]["id"]
                 self.store.set(stage2.correction_key(b["id"]), json.dumps(correction, ensure_ascii=False, sort_keys=True))
-                evidence = {**correction["candidate"], "chunk_id": pending,
-                            "retry_count": correction["retry_count"], "retry_run_id": correction["retry_run_id"]}
+                evidence = {"candidates": correction.get("candidates", [correction.get("candidate")]),
+                            "chunk_id": pending, "retry_count": correction["retry_count"],
+                            "retry_run_id": correction["retry_run_id"]}
                 self.store.log(b["id"], "Stage 2 후보 수정 run 결속: " + json.dumps(evidence, ensure_ascii=False, sort_keys=True))
             return result
         if correction["retry_answer_applied"] and not correction["retry_save_failed"]:
-            if not self._stage2_mark_candidate_failure(b, pending, diagnostic, correction):
+            marked = (self._stage2_mark_multi_candidate_failure(b, pending, diagnostic, correction)
+                      if correction["version"] == 2
+                      else self._stage2_mark_candidate_failure(b, pending, diagnostic, correction))
+            if not marked:
                 return self._fail(b, "ERROR", "수정 응답을 적용한 decisions.txt와 현재 후보 단위 save-chunk 실패를 함께 증명하지 못했습니다. Fallback 없이 기록을 보존합니다.")
         result = self._stage2_technical_fallback(b, pending, diagnostic, correction)
         if result is not None:
@@ -4430,7 +4535,9 @@ class Supervisor:
             return None
         if not self._stage2_correction_run_completed(b, correction):
             return self._fail(b, "ERROR", "현재 headerless 응답을 완료된 단일 Retry run에 결속하지 못해 복구하지 않습니다.")
-        candidate = correction["candidate"]
+        candidate = correction.get("candidate")
+        if not isinstance(candidate, dict):
+            return None
         row = stage2.headerless_fix_row(final_text, candidate["alias"])
         if row is None or correction["retry_count"] != stage2.MAX_CANDIDATE_RETRIES:
             return None
@@ -4480,6 +4587,8 @@ class Supervisor:
 
     def _stage2_technical_fallback(self, b, pending: str, diagnostic: str, correction: dict):
         """Apply reason f to the one retried candidate through the restricted official save-chunk path."""
+        if correction.get("version") == 2:
+            return self._stage2_multi_candidate_technical_fallback(b, pending, diagnostic, correction)
         candidate = correction["candidate"]
         alias = candidate["alias"]
         if not correction["retry_answer_applied"] or not correction["retry_save_failed"] \
@@ -4536,6 +4645,69 @@ class Supervisor:
             return self._stage2_saved_or_fail(b)
         stage2.write_decisions(b["worktree"], pending, original_rows)
         self.store.log(b["id"], f"Stage 2 technical Fallback CLI 저장이 거부되어 원래 판정 행을 복원했습니다: {detail[:800]}", "warn")
+        return self._fail(b, "ERROR", f"reason f Fallback도 공식 save-chunk 검증을 통과하지 못했습니다. 판정 파일과 checkpoint를 보존합니다: {detail[:800]}")
+
+    def _stage2_multi_candidate_technical_fallback(self, b, pending: str, diagnostic: str, correction: dict):
+        """Allow one existing-policy Fallback only for a single candidate still rejected after the shared repair run."""
+        alias = correction.get("retry_save_failed_alias")
+        candidate = next((item for item in correction.get("candidates", []) if item["alias"] == alias), None)
+        if candidate is None or not correction["retry_answer_applied"] or not correction["retry_save_failed"] \
+                or correction["retry_answer_aliases"] != [item["alias"] for item in correction["candidates"]] \
+                or correction["retry_count"] != stage2.MAX_CANDIDATE_RETRIES \
+                or correction["fallback_attempted"] or not self._stage2_correction_run_completed(b, correction) \
+                or stage2.single_candidate_failure_alias(diagnostic, pending, candidate) != alias:
+            return None
+        try:
+            baseline = json.loads(self.store.get(stage2.run_start_key(b["id"])) or "null")
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] \
+                or baseline.get("worktree") != str(b["worktree"]) \
+                or baseline.get("chunk_view_sha256") is None \
+                or not self._stage2_checkpoint_unchanged(b, pending, baseline):
+            return None
+        actual = stage2.candidate_binding_from_view(b["worktree"], pending, alias, baseline["chunk_view_sha256"])
+        if actual != candidate:
+            return None
+        rows = stage2.read_rows(b["worktree"])
+        matching = [row for row in rows if stage2.alias_of(row) == alias]
+        if len(matching) != 1 or stage2.decisions_header(b["worktree"]) != pending:
+            return None
+        decisions_path = Path(b["worktree"]) / stage2.DECISIONS
+        try:
+            if hashlib.sha256(decisions_path.read_bytes()).hexdigest() != correction["retry_decisions_sha256"]:
+                return None
+        except OSError:
+            return None
+        proof = {
+            "alias": alias, "candidate": candidate["candidate"], "chunk_id": pending,
+            "failure_reason": diagnostic, "record_id": candidate["record_id"],
+            "retry_count": correction["retry_count"], "sense_id": candidate["sense_id"],
+        }
+        original_rows = rows
+        # Persist before invoking the CLI so a crash or owner Retry cannot spend this one Fallback twice.
+        correction["fallback_attempted"] = True
+        self.store.set(stage2.correction_key(b["id"]), json.dumps(correction, ensure_ascii=False, sort_keys=True))
+        try:
+            stage2.write_decisions(b["worktree"], pending, [row for row in rows if stage2.alias_of(row) != alias])
+            ok, detail = self._stage2_save(b, supervisor_fallback=proof)
+        except TRANSIENT:
+            raise
+        except (OSError, ValueError, GitError, KeyError, TypeError) as error:
+            try:
+                stage2.write_decisions(b["worktree"], pending, original_rows)
+            except OSError as restore_error:
+                return self._fail(b, "ERROR", f"Stage 2 multi-candidate Fallback 처리 및 원래 판정 복원이 실패했습니다: {error}; {restore_error}")
+            return self._fail(b, "ERROR", f"Stage 2 multi-candidate Fallback 처리에 실패해 원래 판정을 복원했습니다: {error}")
+        if ok or self._stage2_chunk_saved(b):
+            event = {**candidate, "chunk_id": pending, "failure_reason": diagnostic,
+                     "initial_failure": correction["initial_failure"], "retry_count": correction["retry_count"],
+                     "drop_reason": "f"}
+            self.store.log(b["id"], "Stage 2 단일 후보 technical Drop Fallback 저장: " +
+                           json.dumps(event, ensure_ascii=False, sort_keys=True), "warn")
+            return self._stage2_saved_or_fail(b)
+        stage2.write_decisions(b["worktree"], pending, original_rows)
+        self.store.log(b["id"], f"multi-candidate Fallback CLI 저장이 거부되어 원래 판정 행을 복원했습니다: {detail[:800]}", "warn")
         return self._fail(b, "ERROR", f"reason f Fallback도 공식 save-chunk 검증을 통과하지 못했습니다. 판정 파일과 checkpoint를 보존합니다: {detail[:800]}")
 
     def _stage2_invalid_format(self, b, problem: str) -> None:
@@ -4620,26 +4792,41 @@ class Supervisor:
                     baseline = None
                 if not isinstance(baseline, dict) or not self._stage2_checkpoint_unchanged(b, pending, baseline):
                     return self._fail(b, "ERROR", "수정 응답의 시작 checkpoint가 현재 pending 청크와 다릅니다. 판정 파일과 checkpoint를 보존합니다.")
-                candidate = correction["candidate"]
+                candidates = correction["candidates"] if correction["version"] == 2 else [correction["candidate"]]
+                targets = [candidate["alias"] for candidate in candidates]
                 if not self._stage2_restore_unchanged_decisions(b, pending, correction):
                     return self._fail(b, "ERROR", "Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. 수정 응답과 저장을 중단하고 checkpoint를 보존합니다.")
                 ok, detail = self._stage2_save(b)   # the same rejection the fix prompt was built from, to find its rows
                 if ok:
                     return self._stage2_saved_or_fail(b)
-                if stage2.single_candidate_failure_alias(detail, pending, candidate) != candidate["alias"]:
-                    return self._fail(b, "ERROR", f"수정 전 저장 진단이 처음 실패한 후보와 달라져 응답을 병합하지 않습니다: {detail[:800]}")
-                targets = [candidate["alias"]]
-                if len(rows) != 1 or stage2.alias_of(rows[0]) != candidate["alias"]:
-                    return self._fail(b, "ERROR", "Stage 2 수정 응답이 실패한 후보 하나의 행과 정확히 일치하지 않습니다. 아무 행도 병합하지 않고 보존합니다.")
+                if correction["version"] == 1:
+                    candidate = candidates[0]
+                    if stage2.single_candidate_failure_alias(detail, pending, candidate) != candidate["alias"]:
+                        return self._fail(b, "ERROR", f"수정 전 저장 진단이 처음 실패한 후보와 달라져 응답을 병합하지 않습니다: {detail[:800]}")
+                    if len(rows) != 1 or stage2.alias_of(rows[0]) != candidate["alias"]:
+                        return self._fail(b, "ERROR", "Stage 2 수정 응답이 실패한 후보 하나의 행과 정확히 일치하지 않습니다. 아무 행도 병합하지 않고 보존합니다.")
+                else:
+                    if detail != correction["initial_failure"] \
+                            or stage2.candidate_local_failure_aliases(detail, pending) != targets:
+                        return self._fail(b, "ERROR", f"수정 전 전체 저장 진단이 최초 후보 집합과 달라져 응답을 병합하지 않습니다: {detail[:800]}")
+                    response_aliases = [stage2.alias_of(row) for row in rows]
+                    if len(rows) != len(targets) or len(set(response_aliases)) != len(response_aliases) \
+                            or set(response_aliases) != set(targets):
+                        return self._fail(b, "ERROR", "Stage 2 수정 응답은 실패한 후보 각각의 행 하나만 포함해야 합니다. 아무 행도 병합하지 않고 보존합니다.")
                 if not self._stage2_restore_unchanged_decisions(b, pending, correction):
                     return self._fail(b, "ERROR", "Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. 수정 응답 병합을 중단하고 checkpoint를 보존합니다.")
                 merged, ignored = stage2.merge_fix(stage2.read_rows(b["worktree"]), rows, targets)
-                if ignored:
+                if ignored and correction["version"] == 1:
                     self.store.log(b["id"], f"수정 응답의 허용 범위 밖 행 {len(ignored)}개를 무시했습니다: "
                                    f"{', '.join(stage2.alias_of(r) for r in ignored[:10])}", "warn")
+                if ignored:
+                    return self._fail(b, "ERROR", "Stage 2 수정 응답의 허용 별칭 집합이 달라 병합하지 않고 보존합니다.")
                 stage2.write_decisions(b["worktree"], pending, merged)
-                if not self._stage2_mark_candidate_correction(b, pending, candidate["alias"], header_repaired=False):
-                    return self._fail(b, "ERROR", "Stage 2 수정 행을 적용한 decisions.txt와 단일 후보 Retry에 결속하지 못해 보존합니다.")
+                marked = (self._stage2_mark_multi_candidate_correction(b, pending, targets)
+                          if correction["version"] == 2
+                          else self._stage2_mark_candidate_correction(b, pending, targets[0], header_repaired=False))
+                if not marked:
+                    return self._fail(b, "ERROR", "Stage 2 수정 행을 적용한 decisions.txt와 후보 Retry에 결속하지 못해 보존합니다.")
             else:
                 if file_state != "missing":
                     return self._fail(b, "ERROR", "전체 Stage 2 응답을 쓸 판정 파일이 이미 있거나 손상됐습니다. "

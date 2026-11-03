@@ -334,8 +334,12 @@ class FakeGit:
             n = int(alias[1:]) if alias[1:].isdigit() else 0
             if not 1 <= n <= count:
                 problems.append(f"{alias}: names no candidate")
-            elif len(found) > 1 or " BAD" in found[0] or " T999" in found[0]:
-                problems.append(f"{alias} candidate-{n - 1}: bad decision")
+            elif len(found) > 1:
+                problems.append(f"{alias} candidate-{n - 1}: repeated decision row")
+            elif " BAD" in found[0]:
+                problems.append(f"{alias} candidate-{n - 1}: relation field is malformed")
+            elif " T999" in found[0]:
+                problems.append(f"{alias} candidate-{n - 1}: target_resolution must name an available target")
         problems += [f"c{n} candidate-{n - 1}: chunk has missing decisions" for n in range(1, count + 1) if f"c{n}" not in rows]
         problems.sort(key=lambda p: int(p.split()[0][1:]) if p.split()[0][1:].isdigit() else 0)
         if problems:

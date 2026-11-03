@@ -266,7 +266,8 @@ def write_pages(worktree, view: str, pages: list[str]) -> list[str]:
 
 DECISIONS = ".warroom-scratch/decisions.txt"
 MAX_FIXES = 2   # existing optional-link correction runs
-MAX_CANDIDATE_RETRIES = 1   # one persisted correction run for one source-bound primary candidate
+MAX_CANDIDATE_RETRIES = 1   # one persisted same-session repair; plural failures share this single run
+MAX_CANDIDATE_FIX_DIAGNOSTIC_CHARS = 6_000  # bound the one shared correction prompt for one pending chunk
 MAX_REPAIR_ROUNDS = 4
 REPAIR_GROUPS_PER_RUN = 8
 REPAIR_ATTEMPTS_PER_PAGE = 2
@@ -689,29 +690,44 @@ def error_aliases(diagnostic: str) -> list[str]:
     return list(dict.fromkeys(_ERROR_ALIAS.findall(diagnostic)))
 
 
-def single_candidate_failure_alias(diagnostic: str, chunk_id: str, candidate: dict | None = None) -> str | None:
-    """Return one alias only for the official save-chunk's complete, candidate-local rejection shape."""
+def candidate_local_failure_aliases(diagnostic: str, chunk_id: str) -> list[str] | None:
+    """Return every uniquely named candidate alias only for a complete candidate-local save-chunk diagnostic."""
     if not isinstance(diagnostic, str):
         return None
-    lines = diagnostic.splitlines()
-    prefix = f"chunk {chunk_id} not saved, checkpoint unchanged: "
-    suffix = " problem(s)"
-    if not lines or not lines[0].startswith(prefix) or not lines[0].endswith(suffix):
+    lines = diagnostic.replace("\r\n", "\n").split("\n")
+    header = re.fullmatch(
+        rf"chunk {re.escape(chunk_id)} not saved, checkpoint unchanged: ([1-9]\d*) problem\(s\)",
+        lines[0] if lines else "",
+    )
+    if header is None:
         return None
-    try:
-        problem_count = int(lines[0][len(prefix):-len(suffix)])
-    except ValueError:
+    problem_lines = [line.strip() for line in lines[1:] if line.strip()]
+    if problem_lines and problem_lines[-1].startswith("types:"):
+        problem_lines.pop()
+    count = int(header.group(1))
+    if count != len(problem_lines) or not problem_lines:
         return None
-    problem_lines = [line.strip() for line in lines[1:] if line.strip() and not line.strip().startswith("types:")]
-    if problem_count != len(problem_lines) or not problem_lines:
+    aliases = []
+    for line in problem_lines:
+        match = re.match(r"^(c\d+)\s+(.+?):\s+\S", line)
+        if match is None:
+            return None
+        aliases.append(match.group(1))
+    if len(set(aliases)) != len(aliases):
         return None
-    aliases = [_ERROR_ALIAS.match(line).group(1) if _ERROR_ALIAS.match(line) else None for line in problem_lines]
-    if any(alias is None for alias in aliases) or len(set(aliases)) != 1:
+    return aliases
+
+
+def single_candidate_failure_alias(diagnostic: str, chunk_id: str, candidate: dict | None = None) -> str | None:
+    """Return one alias only for the official save-chunk's complete, candidate-local rejection shape."""
+    aliases = candidate_local_failure_aliases(diagnostic, chunk_id)
+    if aliases is None or len(aliases) != 1:
         return None
     alias = aliases[0]
     if candidate is not None:
+        lines = diagnostic.replace("\r\n", "\n").splitlines()[1:]
         if candidate.get("alias") != alias or not isinstance(candidate.get("candidate"), str) \
-                or not any(line.startswith(f"{alias} {candidate['candidate']}:") for line in problem_lines):
+                or not any(line.startswith(f"{alias} {candidate['candidate']}:") for line in lines):
             return None
     return alias
 
