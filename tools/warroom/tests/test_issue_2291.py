@@ -29,21 +29,6 @@ class IssuePublication(unittest.TestCase):
         self.assertEqual(w.row()["state"], before["state"])
         self.assertEqual(w.row()["pause_reason"], "")
 
-    def test_unavailable_github_keeps_persisted_request_and_processes_it_after_restart(self):
-        w = self.w
-        w.gh.fail_list = True
-        request_id = w.sup.maint.report_issue("목록", "C000123", event_key="list:retry")
-        w.tick(2)
-        self.assertEqual(w.store.issue_requests()[0]["title"], "목록")
-        self.assertEqual(w.gh.created, [])
-
-        w.sup = w.make_sup()
-        w.gh.fail_list = False
-        w.tick(2)
-        request = w.store.issue_requests()[0]
-        self.assertEqual((request["id"], request["issue_number"]), (request_id, 101))
-        self.assertEqual(w.gh.created, [101])
-        self.assertEqual(w.store.maintenance_rows(), [])
 
     def test_lost_create_response_is_reconciled_without_a_second_issue(self):
         w = self.w

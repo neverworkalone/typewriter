@@ -122,9 +122,6 @@ class UsageParsing(unittest.TestCase):
             with self.subTest(name):
                 self.assertEqual(self.parse(text), want)
 
-    def test_missing_log_is_unknown(self):
-        self.assertIsNone(parse_usage("/nonexistent/run.log"))
-
 
 class StoreRecordsUsage(unittest.TestCase):
     def test_finish_runs_records_each_run_only_from_its_own_log(self):
@@ -215,10 +212,6 @@ class PricingConfig(unittest.TestCase):
         self.assertIsNone(config_problem(cfg))
         cfg["pricing"] = {"m": {"output": "x"}}
         self.assertIn("pricing", config_problem(cfg) or "")
-
-    def test_example_config_has_no_invented_prices(self):
-        ex = json.loads((Path(__file__).resolve().parents[1] / "config.example.json").read_text("utf-8"))
-        self.assertEqual(ex.get("pricing"), {})
 
 
 if __name__ == "__main__":

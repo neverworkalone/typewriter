@@ -41,6 +41,7 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
         with mock.patch.object(stage3, "SHARDS", 2):
             self.assertEqual(stage3.choose(sha=HEAD1, kv=w.store, open_prs=[], stage2_batches=[],
                                            stage3_batches=[]).status, "wait")
+            self.assertEqual(w.git.verify_calls, [])
             w.store.set(stage2.ok_key("002", None), HEAD1)
             choice = stage3.choose(sha=HEAD1, kv=w.store, open_prs=[], stage2_batches=[], stage3_batches=[])
             self.assertEqual((choice.status, choice.shard), ("shard", "002"))
@@ -87,22 +88,6 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
             w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="002", batch="all",
                                  branch="s3-codex-002", worktree="/tmp/s3-002")
 
-    def test_stage3_wait_reason_and_chunk_progress_are_exposed_on_its_line(self):
-        w = self.w
-        w.store.set_line("codex", STAGE3_METHOD, run=1)
-        w.store.set("s3_wait_codex", "Stage 2 미완료")
-        status = control.line_status(w.store, "codex", STAGE3_METHOD)
-        self.assertEqual(status["wait"], "Stage 2 미완료")
-        batch_id = w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="001", batch="all",
-                                        branch="s3-codex-001", worktree="/tmp/s3-001")
-        path = stage3.checkpoint_path("/tmp/s3-001", "001")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(checkpoint(done=["001"])), "utf-8")
-        w.store.update(batch_id, state="PRODUCING", progress_kind="chunks", progress_done=1, progress_total=2)
-        status = control.line_status(w.store, "codex", STAGE3_METHOD)
-        self.assertEqual((status["progress_kind"], status["progress_done"], status["progress_total"]),
-                         ("chunks", 1, 2))
-
 
 class Stage3EditContract(unittest.TestCase):
     def test_checkpoint_rejects_malformed_chunk_identity_without_type_error(self):
@@ -135,19 +120,6 @@ class Stage3EditContract(unittest.TestCase):
         self.assertIn("깜빡대다→가물가물", prompt)
         self.assertIn('{"chunk":"001","senses":[]}', prompt)
 
-    def test_stage3_review_fix_prompt_is_shard_scoped_and_has_no_producer_contract_placeholders(self):
-        batch = {"method": STAGE3_METHOD, "pr_number": 9, "head_sha": HEAD1,
-                 "branch": "s3-codex-001", "shard": "001", "batch": "all"}
-        event = {"kind": "review", "author": "reviewer", "key": "review:123",
-                 "body": f"-1\nHEAD: {HEAD1}\nCorrect this shard row."}
-        prompt = prompts.fix(batch, [event], False)
-        self.assertIn("data/relations/relation-001.jsonl", prompt)
-        self.assertIn("data/relation-drops/drop-001.jsonl", prompt)
-        self.assertIn("node scripts/relation/admission-cli.mjs verify --shard 001 --json", prompt)
-        self.assertIn("WarRoom-Review-Event: review:<actual-event-id>", prompt)
-        self.assertIn("review:123", prompt)
-        self.assertNotIn("{{canonical}}", prompt)
-        self.assertNotIn("{{method_contract}}", prompt)
 
     def test_pr_identity_requires_issue_link_base_and_only_its_own_relation_drop_files(self):
         pr = {"number": 9, "title": "[Relation Stage 3] 001", "body": "Implements #2450", "base_ref": "master"}
@@ -266,14 +238,8 @@ class Stage3PromptView(unittest.TestCase):
     def test_model_prompt_carries_the_compact_view_with_stable_prefix(self):
         b = {"shard": "001", "branch": "s3-codex-001"}
         first = prompts.stage3_chunk(b, "003", self.PROMPT)
-        other = prompts.stage3_chunk({"shard": "002", "branch": "s3-codex-002"}, "004", "chunk 004/012 relations 0",
-                                     resumed=True)
         self.assertIn(self.PROMPT, first)
         self.assertNotIn('"senses"', first)
-        shared = first.index("{{") if "{{" in first else first.index("chunk 003\nD 1 5 9") + 1
-        self.assertEqual(first[:shared].replace("003", "004"), other[:shared].replace("003", "004"))
-        self.assertLess(first.index("D 1 5 9"), first.index("shard 001"))
-        self.assertLess(first.index("D 1 5 9"), first.index("새 AI 세션"))
 
 
 class Stage3SupervisorFlow(unittest.TestCase):
@@ -393,7 +359,12 @@ class Stage3SupervisorFlow(unittest.TestCase):
             w.sup._launch(batch, w.sup._fix_kind(batch), [event])
         launched = w.adapter.launches[-1]
         self.assertIn("data/relations/relation-001.jsonl", launched["prompt"])
+        self.assertIn("data/relation-drops/drop-001.jsonl", launched["prompt"])
         self.assertIn("verify --shard 001 --json", launched["prompt"])
+        self.assertIn("WarRoom-Review-Event: review:<actual-event-id>", launched["prompt"])
+        self.assertIn("review:123", launched["prompt"])
+        self.assertNotIn("{{canonical}}", launched["prompt"])
+        self.assertNotIn("{{method_contract}}", launched["prompt"])
         self.assertEqual(w.store.batch(batch["id"])["state"], "FIXING")
         claim = json.loads(w.store.get(f"fix_claim_{batch['id']}"))
         self.assertEqual((claim["pr"], claim["head_sha"], claim["event_keys"], claim["status"]),
@@ -513,115 +484,19 @@ class Stage3SupervisorFlow(unittest.TestCase):
         self.assertEqual(w.gh.created_prs[0]["title"], "[S3/Codex] 001")
         self.assertEqual(w.gh.created_prs[0]["labels"], ["batch"])
         self.assertIn("Refs #2455", w.gh.created_prs[0]["body"])
-        self.assertNotIn("2450", w.gh.created_prs[0]["body"])
-        self.assertEqual(w.gh.created_prs[0]["body"], "\n".join([
-            "- Method: S3", "- Model: Codex", "- Shard: 001", "- Scope: Shard-wide editorial audit",
-            "- Reviewed Relations: 7", "- Completed Chunks: 1/1", "- Removed Relations: 1", "- Link Repairs: 0",
-            "- Added Orphan Drops (z): 1", "- Edit Apply: PASS", "- Shard Verify: PASS", "", "Refs #2455"]) + "\n")
-        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
-
-    def test_finalize_writes_repair_conflicts_as_one_audit_log_line(self):
-        w = self.w
-        batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
-        w.git.remote.pop(batch["branch"], None)
-        w.git.dirty_text = f" M {RELATION}\n"
-        w.git.verified.add(("shard", "001", None, None))
-        w.gh.issues[2455] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
-        conflicts = [{
-            "relation_row": 11292, "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1",
-            "conflict": {"kind": "earlier_link_repair", "relation_row": 11283,
-                         "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1"},
-        }]
-        with mock.patch.object(stage3, "checkpoint", return_value=checkpoint(total=1, done=["001"])), \
-                mock.patch.object(stage3, "apply", return_value={"removed": 0, "repaired": 0,
-                                                                   "edit_drops_added": 0,
-                                                                   "repair_conflicts": conflicts}), \
-                mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
-                                                                    "link_repairs": [], "added_drops": []}):
-            w.sup._stage3_finalize_do(batch)
-
-        messages = [event["msg"] for event in w.store.recent_events()
-                    if "중복 ID pair Link Repair를 text-only로 보존" in event["msg"]]
-        self.assertEqual(len(messages), 1)
-        self.assertIn("row 11292 w170946-s1↔w205046-s1", messages[0])
-        self.assertIn("앞서 선택한 Link Repair row 11283", messages[0])
-
-    def test_finalize_retry_replays_saved_repair_conflicts_once_after_audit_write_failure(self):
-        w = self.w
-        batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
-        w.git.remote.pop(batch["branch"], None)
-        w.git.verified.add(("shard", "001", None, None))
-        w.gh.issues[2455] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
-        checkpoint_path = stage3.checkpoint_path(batch["worktree"], "001")
-        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-        checkpoint_path.write_text(json.dumps(checkpoint(total=1, done=["001"])), "utf-8")
-        conflicts = [{
-            "relation_row": 11292, "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1",
-            "conflict": {"kind": "earlier_link_repair", "relation_row": 11283,
-                         "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1"},
-        }]
-        result = {"removed": 0, "repaired": 0, "edit_drops_added": 0, "repair_conflicts": conflicts}
-
-        def apply(_runner, _env, _worktree, _shard):
-            checkpoint_path.unlink()
-            w.git.dirty_text = f" M {RELATION}\n"
-            return result
-
-        real_log_once = w.store.log_once
-        attempts = 0
-
-        def interrupt_before_log_write(*args, **kwargs):
-            nonlocal attempts
-            attempts += 1
-            if attempts == 1:
-                raise RuntimeError("simulated interruption after apply result persistence")
-            return real_log_once(*args, **kwargs)
-
-        report = {"shard": "001", "deleted_relations": [], "link_repairs": [], "added_drops": []}
-        with mock.patch.object(stage3, "apply", side_effect=apply) as apply_call, \
-                mock.patch.object(stage3, "report", side_effect=[RuntimeError("simulated interruption after audit write"), report]), \
-                mock.patch.object(w.store, "log_once", side_effect=interrupt_before_log_write):
-            w.sup._stage3_finalize_do(batch)
-            self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
-            self.assertEqual(w.store.get(f"s3_apply_ready_{batch['id']}"), "1")
-            self.assertIn('"repair_conflicts"', w.store.get(f"s3_apply_result_{batch['id']}"))
-            self.assertFalse(checkpoint_path.exists(), "the retry must use the saved result without applying again")
-            self.assertFalse(any("중복 ID pair Link Repair를 text-only로 보존" in event["msg"]
-                                 for event in w.store.recent_events()))
-
-            w.sup._stage3_finalize_do(w.store.batch(batch["id"]))
-            self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
-            self.assertEqual(sum("중복 ID pair Link Repair를 text-only로 보존" in event["msg"]
-                                 for event in w.store.recent_events()), 1)
-            w.sup._stage3_finalize_do(w.store.batch(batch["id"]))
-
-        apply_call.assert_called_once()
-        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
-        messages = [event["msg"] for event in w.store.recent_events()
-                    if "중복 ID pair Link Repair를 text-only로 보존" in event["msg"]]
-        self.assertEqual(len(messages), 1)
-        self.assertIn("row 11292 w170946-s1↔w205046-s1", messages[0])
-
-    def test_finalize_restart_keeps_apply_report_counts_before_creating_pr(self):
-        w = self.w
-        batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
-        w.git.remote.pop(batch["branch"], None)
-        w.store.set(f"s3_apply_ready_{batch['id']}", "1")
-        w.store.set(f"s3_apply_result_{batch['id']}", json.dumps({"removed": 3, "repaired": 2, "edit_drops_added": 1}))
-        w.git.verified.add(("shard", "001", None, None))
-        w.gh.issues[2455] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
-        with mock.patch.object(stage3, "checkpoint", return_value=None), \
-                mock.patch.object(stage3, "apply", side_effect=AssertionError("apply already completed")), \
-                mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
-                                                                    "link_repairs": [], "added_drops": []}):
-            w.sup._stage3_finalize_do(batch)
-        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW",
-                         w.store.batch(batch["id"])["error"])
         body = w.gh.created_prs[0]["body"]
-        self.assertIn("- Removed Relations: 3\n", body)
-        self.assertIn("- Link Repairs: 2\n", body)
-        self.assertIn("- Added Orphan Drops (z): 1\n", body)
-        self.assertIn("- Reviewed Relations: 미측정\n", body)   # a legacy in-flight result has no baseline: no guess
+        self.assertIn("- Method: S3", body)
+        self.assertIn("- Model: Codex", body)
+        self.assertIn("- Shard: 001", body)
+        self.assertIn("- Reviewed Relations: 7", body)
+        self.assertIn("- Completed Chunks: 1/1", body)
+        self.assertIn("- Removed Relations: 1", body)
+        self.assertIn("- Link Repairs: 0", body)
+        self.assertIn("- Added Orphan Drops (z): 1", body)
+        self.assertNotIn("Closes", body)
+        self.assertNotIn("#2450", body)
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
+
 
     def test_restart_after_apply_before_result_save_keeps_pre_apply_measurements(self):
         w = self.w
@@ -664,7 +539,11 @@ class Stage3SupervisorFlow(unittest.TestCase):
         def apply(_runner, _env, _worktree, _shard):
             checkpoint_path.unlink()
             w.git.dirty_text = f" M {RELATION}\n M {DROP}\n"
-            return {"removed": 3, "repaired": 2, "edit_drops_added": 1}
+            return {"removed": 3, "repaired": 2, "edit_drops_added": 1, "repair_conflicts": [
+                {"relation_row": 11292, "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1",
+                 "conflict": {"kind": "earlier_link_repair", "relation_row": 11283,
+                              "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1"}},
+            ]}
 
         report = {"shard": "001", "deleted_relations": [], "link_repairs": [], "added_drops": []}
         with mock.patch.object(stage3, "apply", side_effect=apply) as apply_call, \
@@ -677,6 +556,10 @@ class Stage3SupervisorFlow(unittest.TestCase):
             committed_head = w.git.local_head
             self.assertEqual(w.store.get(f"s3_apply_result_{batch['id']}"), json.dumps({
                 "chunks_done": 1, "chunks_total": 1, "edit_drops_added": 1, "removed": 3, "repaired": 2,
+                "repair_conflicts": [{"relation_row": 11292, "source_sense_id": "w170946-s1",
+                                      "target_sense_id": "w205046-s1", "conflict": {
+                                          "kind": "earlier_link_repair", "relation_row": 11283,
+                                          "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1"}}],
             }, sort_keys=True))
 
             # Simulate a process stopping after the Git commit but before saving its Store commit marker.

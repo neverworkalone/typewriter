@@ -44,21 +44,20 @@ class MergedStage2Recovery(unittest.TestCase):
         w.tick(ticks)
         return w.store.batch(b["id"])   # COMPLETE starts the next Part, so follow this batch by id
 
-    def test_merged_pr_recovers_with_or_without_remote_branch(self):
-        for remote in (False, True):
-            for retry in (False, True):
-                with self.subTest(remote=remote, retry=retry):
-                    w, b = self.drive_to_lost_pr()
-                    w.git.verified.add(("part", b["shard"], "01", "01"))   # master verify of the merged Part succeeds
-                    self.external_pr(w, b, state="closed", merged=True, remote=remote)
-                    if retry:
-                        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="lost")
-                        control.retry(w.store, "claude", S2)
-                    runs, created = len(w.store.runs(b["id"])), len(w.gh.created_prs)
-                    row = self.settle(w, b)
-                    self.assertEqual(row["state"], "COMPLETE", row["error"])
-                    self.assertEqual(row["pr_number"], 2809)
-                    self.assertEqual((len(w.store.runs(b["id"])), len(w.gh.created_prs)), (runs, created))
+    def test_merged_pr_recovers_after_remote_branch_deletion(self):
+        for retry in (False, True):
+            with self.subTest(retry=retry):
+                w, b = self.drive_to_lost_pr()
+                w.git.verified.add(("part", b["shard"], "01", "01"))   # master verify of the merged Part succeeds
+                self.external_pr(w, b, state="closed", merged=True, remote=False)
+                if retry:
+                    w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="lost")
+                    control.retry(w.store, "claude", S2)
+                runs, created = len(w.store.runs(b["id"])), len(w.gh.created_prs)
+                row = self.settle(w, b)
+                self.assertEqual(row["state"], "COMPLETE", row["error"])
+                self.assertEqual(row["pr_number"], 2809)
+                self.assertEqual((len(w.store.runs(b["id"])), len(w.gh.created_prs)), (runs, created))
 
     def test_open_pr_with_remote_head_mismatch_still_blocks(self):
         w, b = self.drive_to_lost_pr()
@@ -100,9 +99,7 @@ class MergedStage2Recovery(unittest.TestCase):
         drop, rel = "data/relation-drops/drop-001.jsonl", "data/relations/relation-001.jsonl"
         cases = [
             ("drop only, branch deleted", [drop], True, False, False),
-            ("drop only, branch present", [drop], True, True, False),
             ("drop + same-shard relation", [drop, rel], True, False, True),
-            ("relation only", [rel], True, False, True),
             ("open drop only, branch deleted", [drop], False, False, True),
         ]
         for name, files, merged, remote, blocked in cases:

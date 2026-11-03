@@ -107,23 +107,19 @@ class MissingPrRecovery(unittest.TestCase):
         if state == "open":
             w.git.remote[branch] = head
 
-    def test_batch_198_exit_1_merged_pr_reaches_complete_without_rerunning_ai(self):
+    def test_merged_pr_recovers_after_nonzero_exit_without_rerunning_ai(self):
         w, b = self.running_producer()
-        branch = "b-deepseek-024-02"
-        w.store.update(b["id"], shard="024", batch="02", branch=branch)
-        w.git.reg[b["worktree"]] = branch
-        b = w.row(method="b")
-        self.install_pr(w, b)
+        self.install_pr(w, b, number=7)
         w.adapter.finish(b["pid"])
         w.tick()
 
         w.tick(2)
 
         self.assertEqual(w.row(method="b")["state"], "COMPLETE")
-        self.assertEqual(w.row(method="b")["pr_number"], 1594)
+        self.assertEqual(w.row(method="b")["pr_number"], 7)
         self.assertEqual(len(w.adapter.launches), 1)
         self.assertEqual(w.store.runs(b["id"])[0]["exit_status"], "1")
-        self.assertEqual(w.git.removed[0][1], branch)
+        self.assertEqual(w.git.removed[0][1], b["branch"])
 
     def test_failed_run_with_open_pr_returns_to_normal_review_gate(self):
         w, b = self.running_producer()

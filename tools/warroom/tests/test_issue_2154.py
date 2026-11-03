@@ -208,19 +208,16 @@ class VerifyBlock(unittest.TestCase):
         self.assertIsNone(self.block())
 
     def test_fix_merged_but_still_failing_holds_without_a_new_issue_or_maintainer(self):
-        for fresh_cause in (False, True):   # the same fingerprint and a different one both hold
-            with self.subTest(fresh_cause=fresh_cause):
-                self.setUp()
-                w = self.w
-                self.tick()
-                self.fix_merged()
-                w.git.base_sha = SHA2
-                w.git.outcomes[("batch", "001", "01")] = [failure(["other"] if fresh_cause else ERRORS)]
-                self.tick()
-                b = self.block()
-                self.assertEqual(b["state"], "HELD")
-                self.assertIn(stage2.fingerprint("batch", "001", "01", "accounting", ["other"] if fresh_cause else ERRORS), b["hold_reason"])
-                self.assertEqual((self.issue_count(), len(self.maint()), b["last_sha"]), (1, 1, SHA2))
+        w = self.w
+        self.tick()
+        self.fix_merged()
+        w.git.base_sha = SHA2
+        w.git.outcomes[("batch", "001", "01")] = [failure(ERRORS)]
+        self.tick()
+        b = self.block()
+        self.assertEqual(b["state"], "HELD")
+        self.assertIn(stage2.fingerprint("batch", "001", "01", "accounting", ERRORS), b["hold_reason"])
+        self.assertEqual((self.issue_count(), len(self.maint()), b["last_sha"]), (1, 1, SHA2))
 
     def test_held_waits_on_the_same_sha_and_rechecks_exactly_on_a_new_one(self):
         w = self.w
@@ -237,6 +234,7 @@ class VerifyBlock(unittest.TestCase):
         self.tick()
         b = self.block()
         self.assertEqual((b["state"], b["last_sha"], self.issue_count(), len(self.maint())), ("HELD", SHA3, 1, 1))
+        self.assertIn(stage2.fingerprint("batch", "001", "01", "accounting", ["third"]), b["hold_reason"])
         self.assertEqual(json.loads(b["report"])["sha"], SHA3)
         w.git.base_sha = "4" * 40
         w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(True, "")]

@@ -705,8 +705,11 @@ class Migration(unittest.TestCase):
             for _ in range(2):                                      # second open must change nothing
                 s = Store(db)
                 self.assertEqual([b["state"] for b in s.all_batches()], ["COMPLETE", "PAUSED"])
+                paused = s.all_batches()[1]
+                self.assertEqual((paused["pause_reason"], paused["defect_id"]), ("", None))
                 ln = s.line("deepseek", "a")
                 self.assertEqual((ln["mode"], ln["run"], ln["drain"]), ("continuous", 1, 1))
+                self.assertEqual(ln["shard_pin"], "")
                 runs = s.line_runs("deepseek", "a")
                 self.assertEqual(len(runs), 2)
                 old = [r for r in runs if r["started_at"] == 100][0]
@@ -715,8 +718,8 @@ class Migration(unittest.TestCase):
                 self.assertEqual(s.get("heartbeat"), "5")
             with sqlite3.connect(db) as migrated:
                 self.assertEqual(migrated.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
-                self.assertIsNotNone(migrated.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='drain_schedules'").fetchone())
+                tables = {r[0] for r in migrated.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                self.assertTrue({"drain_schedules", "defects", "maintenance"} <= tables)
             self.assertEqual(s.active_batch("deepseek", "a")["batch"], "02")
 
 

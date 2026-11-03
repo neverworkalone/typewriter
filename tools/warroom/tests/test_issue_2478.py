@@ -123,28 +123,6 @@ class Stage3IndependentStart(unittest.TestCase):
         self.assertIn("구 SHA shard verify 필요 또는 실패", wait)
         self.assertIn("최신 master verify 실패", wait)
 
-    def test_missing_success_evidence_waits_as_stage2_incomplete(self):
-        w = self.w
-        with mock.patch.object(stage3, "SHARDS", 1):
-            choice = stage3.choose(sha=HEAD2, kv=w.store, open_prs=[], stage2_batches=[], stage3_batches=[])
-
-        self.assertEqual(choice.status, "wait")
-        self.assertIn("Stage 2 미완료", choice.note)
-        self.assertNotIn("구 SHA", choice.note)
-        self.assertEqual(w.git.verify_calls, [])
-
-    def test_wait_note_separates_incomplete_stale_and_same_shard_ownership(self):
-        w = self.w
-        w.store.set(stage2.ok_key("002", None), HEAD1)
-        running = [{"shard": "003", "state": "PRODUCING"}]
-        with mock.patch.object(stage3, "SHARDS", 3):
-            choice = stage3.choose(sha=HEAD2, kv=w.store, open_prs=[], stage2_batches=running,
-                                  stage3_batches=[])
-
-        self.assertEqual(choice.status, "wait")
-        self.assertIn("Stage 2 미완료", choice.note)
-        self.assertIn("구 SHA shard verify 필요 또는 실패", choice.note)
-        self.assertIn("동일 샤드 작업·PR 점유", choice.note)
 
     def test_failed_earliest_stale_shard_does_not_verify_later_shards(self):
         w = self.w

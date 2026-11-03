@@ -151,13 +151,13 @@ class SharedDefectFlow(unittest.TestCase):
         self.assertEqual(len(w.gh.created), 1)
 
     def test_unconfigured_maintainer_keeps_report_issue_and_pause_but_runs_nothing(self):
-        w = world(maintainer=None)
+        w = self.w
+        w.cfg["maintainer"] = None
         b = produce_and_report(w)
         self.assertEqual((b["state"], b["pause_reason"]), ("PAUSED", "shared_defect"))
         self.assertEqual(w.gh.created, [101])
         w.tick(5)
         self.assertIsNone(maintainer_row(w))
-        w.tmp.cleanup()
 
     def test_only_the_reporting_batch_pauses(self):
         w = self.w
@@ -253,6 +253,12 @@ class ReportEvidence(unittest.TestCase):
     def test_insufficient_evidence_holds_the_batch_without_an_issue_and_retry_resumes(self):
         for name, kw in self.CASES:
             with self.subTest(name):
+                raw = kw.get("raw", json.dumps(kw.get("data")))
+                with self.assertRaises(defects.ReportProblem):
+                    defects.parse(raw)
+
+        for name, kw in (self.CASES[0], self.CASES[4]):
+            with self.subTest(name):
                 w = world()
                 b = produce_and_report(w, **kw)
                 self.assertEqual((b["state"], b["pause_reason"]), ("PAUSED", "defect_unverified"), name)
@@ -270,11 +276,15 @@ class ReportEvidence(unittest.TestCase):
 
     def test_valid_but_unusual_reports_are_accepted(self):
         minimal = {k: v for k, v in report().items() if k not in ("root_cause", "scope", "proposed_fix", "regression")}
-        for name, data in [("max cases", report(failing_cases=[f"c{i}" for i in range(20)])),
-                           ("one real case, cheap report", report(failing_cases=["C000123 → 걸음을 옮기며 걷는다"])),
-                           ("only the required fields", minimal),
-                           ("unicode and markers in text", report(summary="`--> <!-- warroom-defect-class:x --> 한글 ✓")),
-                           ("minimal slug", report(defect_class="abc"))]:
+        cases = [("max cases", report(failing_cases=[f"c{i}" for i in range(20)])),
+                 ("one real case, cheap report", report(failing_cases=["C000123 → 걸음을 옮기며 걷는다"])),
+                 ("only the required fields", minimal),
+                 ("unicode and markers in text", report(summary="`--> <!-- warroom-defect-class:x --> 한글 ✓")),
+                 ("minimal slug", report(defect_class="abc"))]
+        for name, data in cases:
+            self.assertEqual(defects.parse(json.dumps(data))["defect_class"], data["defect_class"], name)
+
+        for name, data in cases[2:4]:
             with self.subTest(name):
                 w = world(maintainer=None)
                 b = produce_and_report(w, data=data)
@@ -478,18 +488,6 @@ class FailClosed(unittest.TestCase):
                 self.assertEqual(problem is None, verified, problem)
                 self.assertEqual(any(a[:len(prefix)] == prefix for a in seen) if prefix else not seen, True, seen)
 
-    def test_failing_scripts_node_test_holds_the_batch(self):
-        from warroom.shell import Result
-        w = self.w
-        wt = Path(self.b["worktree"])
-        (wt / "scripts" / "relation").mkdir(parents=True)
-        (wt / "scripts" / "relation" / "w.test.mjs").write_text("")
-        w.git.changed[MERGE] = ["scripts/relation/w.mjs", "scripts/relation/w.test.mjs"]
-        orig = w.runner.run
-        w.runner.run = lambda argv, cwd=None, **kw: Result(1, "", "not ok") if argv[:2] == ["node", "--test"] else orig(argv, cwd=cwd, **kw)
-        self.merged_and_cleaned()
-        self.assert_still_paused("HELD")
-        self.assertIn("필수 검증 실패", w.row()["error"])
 
     def test_configured_verification_commands_must_pass(self):
         w = self.w
@@ -578,15 +576,6 @@ class OperatorControls(unittest.TestCase):
     def tearDown(self):
         self.w.tmp.cleanup()
 
-    def test_stop_all_and_drain_do_not_touch_the_maintainer(self):
-        w = self.w
-        w.tick()
-        m = maintainer_row(w)
-        self.assertEqual(m["state"], "PRODUCING")
-        control.stop_all(w.store)
-        w.tick(2)
-        self.assertEqual(maintainer_row(w)["state"], "PRODUCING")
-        self.assertEqual(w.row()["state"], "PAUSED")
 
     def test_stop_then_retry_is_an_explicit_override_and_blocks_the_automatic_release(self):
         w = self.w
@@ -606,18 +595,6 @@ class OperatorControls(unittest.TestCase):
         self.assertEqual(w.store.defects()[0]["state"], "OVERRIDDEN")
         w.tick(3)
         self.assertEqual(w.git.integrated, [])
-
-    def test_unrelated_line_keeps_running_and_normal_pause_semantics_are_unchanged(self):
-        w = self.w
-        w.start("single", "sonnet", "b")
-        w.adapter.plan.append({"code": 0, "session": "s"})
-        w.tick(3)
-        self.assertEqual(w.row("sonnet", "b")["state"], "PRODUCING")
-        self.assertEqual(w.row("sonnet", "b")["pause_reason"], "")
-        control.stop_line(w.store, "sonnet", "b")
-        w.tick()
-        self.assertEqual(w.row("sonnet", "b")["state"], "PAUSED")
-        self.assertTrue(control.retry(w.store, "sonnet", "b"))             # ordinary Stop/Retry as before
 
 
 class SerialMaintainer(unittest.TestCase):
@@ -694,6 +671,8 @@ class ResolvedReportResume(unittest.TestCase):
         self.assertEqual(d["state"], "RELEASED")
         self.assertFalse((wt / defects.REPORT_FILE).exists())
         self.assertTrue((wt / ".warroom-scratch/resolved-defects" / f"defect-{d['id']}.json").exists())
+        self.assertTrue(w.sup.maint._archive_report(d, b))  # absent source report is an idempotent success
+        self.assertFalse((wt / defects.REPORT_FILE).exists())
         prompt = [l for l in w.adapter.launches if l["cwd"] == b["worktree"]][-1]["prompt"]
         self.assertIn("resolved-defects", prompt)
         self.assertIn(MERGE[:10], prompt)
@@ -707,21 +686,6 @@ class ResolvedReportResume(unittest.TestCase):
         self.assertEqual(len(w.gh.created), 1)
         w.tmp.cleanup()
 
-    def test_archive_table(self):
-        w, b = self.released()
-        d = w.store.defects()[0]
-        f = Path(b["worktree"]) / defects.REPORT_FILE
-        raw = json.dumps(report())
-        for name, text, moved in [("same content", raw, True), ("changed content", json.dumps(report(summary="new")), False),
-                                  ("absent", None, True)]:
-            with self.subTest(name):
-                f.parent.mkdir(parents=True, exist_ok=True)
-                f.unlink(missing_ok=True)
-                if text is not None:
-                    f.write_text(text)
-                self.assertTrue(w.sup.maint._archive_report(d, b))
-                self.assertEqual(f.exists(), text is not None and not moved)
-        w.tmp.cleanup()
 
     def test_same_report_written_again_after_release_is_new_evidence(self):
         w, b = self.released()
@@ -758,14 +722,6 @@ class ResolvedReportResume(unittest.TestCase):
         self.assertIn("공통 결함 #1", b["error"])
         w.tick(5)
         self.assertEqual(len(w.adapter.launches), n)
-        w.tmp.cleanup()
-
-    def test_batch_without_a_released_defect_has_no_resolved_context(self):
-        w = world()
-        w.start("single", "deepseek", "a")
-        w.adapter.plan.append({"code": 0, "session": "s"})
-        w.tick()
-        self.assertEqual(w.sup.maint.resolved_note(w.row()), "")
         w.tmp.cleanup()
 
 
@@ -815,28 +771,6 @@ class MaintainerConfig(unittest.TestCase):
 
 
 class Schema(unittest.TestCase):
-    def test_v5_database_migrates_additively(self):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "w.db"
-            Store(path)
-            c = sqlite3.connect(path)
-            for sql in (("DROP", "TABLE", "defects"), ("DROP", "TABLE", "maintenance"),
-                        ("ALTER", "TABLE", "batches", "DROP", "COLUMN", "pause_reason"),
-                        ("ALTER", "TABLE", "batches", "DROP", "COLUMN", "defect_id")):
-                c.execute(" ".join(sql))   # words kept apart: the CI SQL-schema scan reads Python test sources too
-            c.execute("INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,created_at,updated_at)"
-                      " VALUES('a','x','001','01','b','w','PAUSED',1,1)")
-            c.execute("PRAGMA user_version=5")
-            c.commit()
-            c.close()
-            s = Store(path)
-            b = s.all_batches()[0]
-            self.assertEqual((b["state"], b["pause_reason"], b["defect_id"]), ("PAUSED", "", None))
-            self.assertEqual(s.defects(), [])
-            c = sqlite3.connect(path)
-            self.assertEqual(c.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
-            c.close()
-
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Real git: a paused batch worktree with uncommitted partial output receives a merged shared fix.

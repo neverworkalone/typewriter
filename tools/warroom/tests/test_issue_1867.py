@@ -127,6 +127,7 @@ class ReloadAndRuns(unittest.TestCase):
 
     def test_reload_rejects_bad_profiles_and_keeps_old_config(self):
         w = self.world(maintainer="luna-xhigh")
+        self.assertIsNone(reload_problem(w.sup.cfg, w.sup.cfg, {"codex"}))
         bad = {**ASSIGN, "stage1": {**ASSIGN["stage1"], "codex": "missing"}}
         write(w, PRODUCERS, model_profiles=PROFILES, assignments=bad, maintainer="luna-xhigh")
         ok, msg = reload(w)
@@ -234,12 +235,6 @@ class ReloadAndRuns(unittest.TestCase):
         w.tick()
         self.assertEqual(w.store.active_batch("codex", "s2")["producer"], "codex")
         self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("gpt-6-luna", "xhigh"))
-
-    def test_reload_problem_is_pure_over_profiles(self):
-        old, new = cfg(), cfg()
-        self.assertIsNone(reload_problem(old, new, {"codex"}))
-        new["assignments"]["stage1"]["codex"] = "missing"
-        self.assertIsNotNone(reload_problem(old, new, {"codex"}))
 
 
 if __name__ == "__main__":

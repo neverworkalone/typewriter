@@ -195,11 +195,6 @@ class StageTwoSelection(unittest.TestCase):
         self.assertNotIn(("part", "001", "01", "01"), calls)
         self.assertEqual(w.store.get(stage2.ok_key("001", "01", "01")), new_sha)
 
-    def test_part_five_of_batch_one_then_batch_two_part_one(self):
-        self.w = w = s2_world(self)
-        w.git.verified |= {("part", "001", "01", f"{p:02d}") for p in range(1, 6)} | {("batch", "001", "01", None)}
-        b = self.pick(w)
-        self.assertEqual(b["batch"], "02-01")
 
     def test_batch_and_shard_verify_close_the_last_part(self):
         self.w = w = s2_world(self, canon={1: 100})
@@ -251,16 +246,6 @@ class StageTwoSelection(unittest.TestCase):
         self.assertIsNone(w.store.active_batch("claude", S2))
         self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)   # waiting, not finished
 
-    def test_single_is_bound_to_the_first_shard_and_stops_when_it_is_complete(self):
-        self.w = w = s2_world(self, canon={1: 100, 2: 100})
-        b = self.pick(w)
-        self.assertEqual(b["shard"], "001")
-        self.assertEqual(w.store.peek_line("claude", S2)["shard_pin"], "001")
-        self.finish_part(w, "claude", "001", "01", "01")
-        w.git.verified |= {("batch", "001", "01", None), ("shard", "001", None, None)}
-        w.tick(2)
-        self.assertEqual((w.store.incomplete_batches(), w.store.peek_line("claude", S2)["run"]), ([], 0))   # shard 002 untouched
-        self.assertEqual(w.store.claimed_keys(S2, "claude"), {("001", "01-01")})
 
     def test_pin_is_stored_with_the_part_so_a_restart_stays_in_the_shard(self):
         self.w = w = s2_world(self, canon={1: 100, 2: 100})
@@ -276,6 +261,7 @@ class StageTwoSelection(unittest.TestCase):
         w.git.verified |= {("batch", "001", "01", None), ("shard", "001", None, None)}
         w.tick(2)
         self.assertEqual((w.store.incomplete_batches(), w.store.peek_line("claude", S2)["run"]), ([], 0))
+        self.assertEqual(w.store.claimed_keys(S2, "claude"), {("001", "01-01")})  # shard 002 never started
 
     def test_continuous_goes_on_to_the_next_shard(self):
         self.w = w = s2_world(self, canon={1: 100, 2: 100})
@@ -461,21 +447,6 @@ class StageTwoPromptLoader(unittest.TestCase):
 
 
 class StageTwoMigration(unittest.TestCase):
-    def test_v6_database_gains_the_shard_pin_column(self):
-        import tempfile
-        from pathlib import Path
-        with tempfile.TemporaryDirectory() as d:
-            db = Path(d) / "w.db"
-            Store(db)
-            with sqlite3.connect(db) as c:
-                c.execute("ALTER TABLE lines DROP COLUMN shard_pin")
-                c.execute("INSERT INTO lines(model,method) VALUES('claude','s2')")
-                c.execute("PRAGMA user_version=6")
-            s = Store(db)
-            self.assertEqual(s.peek_line("claude", "s2")["shard_pin"], "")
-            with sqlite3.connect(db) as c:
-                self.assertEqual(c.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
-
 
 if __name__ == "__main__":
     unittest.main()

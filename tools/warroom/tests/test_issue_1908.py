@@ -59,16 +59,12 @@ class SavedStage2Progress(unittest.TestCase):
                          ("candidates", 1, 3))
         self.assertEqual((saved["progress_kind"], saved["progress_done"], saved["progress_total"]),
                          ("candidates", 1, 3))
-        path.write_text("{broken", "utf-8")
-        progress._cache.clear()
-        self.assertIsNone(progress.observe(b["worktree"], "001", "01-01", S2, "claude"))
-
-    def test_wrong_part_and_unsupported_checkpoint_are_unconfirmed(self):
-        b = self.w.store.active_batch("claude", S2)
-        path = write_state(b, decided=1)
         data = json.loads(path.read_text())
         data["part"] = "02"
         path.write_text(json.dumps(data), "utf-8")
+        progress._cache.clear()
+        self.assertIsNone(progress.observe(b["worktree"], "001", "01-01", S2, "claude"))
+        path.write_text("{broken", "utf-8")
         progress._cache.clear()
         self.assertIsNone(progress.observe(b["worktree"], "001", "01-01", S2, "claude"))
 
@@ -91,6 +87,10 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertEqual((b["run_kind"], b["branch"], b["state"]),
                          ("s2_chunk_new", "s2-claude-001-01-01", "PRODUCING"))
         first = w.adapter.launches[-1]
+        wt = str(b["worktree"])
+        self.assertEqual(w.git.chunk_views, [(wt, "001", "01", "01", True)])
+        self.assertTrue((Path(wt) / ".warroom-scratch" / "active-chunk.txt").is_file())
+        self.assertIn("chunk 001-01-01-001", first["prompt"])
         w.adapter.finish(first["pid"])
         w.tick()
         w.tick()  # capture the new session id while the independent second run is live
@@ -98,6 +98,7 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertEqual((b["run_kind"], b["session_id"], b["state"]), ("s2_chunk_new", "ses_chunk_2", "PRODUCING"))
         second = w.adapter.launches[-1]
         self.assertEqual(second["kind"], "start")  # a fresh CLI session, never --resume after a saved chunk
+        self.assertEqual(w.git.chunk_views[-1], (wt, "001", "01", "01", False))
         self.assertEqual((first["stage2_chunk_git"], second["stage2_chunk_git"]), ("1", "1"))
         self.assertEqual((first["git_shim"], second["git_shim"], first["real_git"], second["real_git"]),
                          (None,) * 4)
@@ -161,26 +162,6 @@ class Stage2ChunkRuns(unittest.TestCase):
 class Stage2ChunkView(unittest.TestCase):
     """The Supervisor renders the compact chunk view itself; the AI only reads it, judges and saves."""
 
-    def test_supervisor_prepares_and_renders_each_chunk_before_a_self_contained_prompt(self):
-        w = s2_world(self)
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.adapter.plan.append({"code": 0, "session": "ses_chunk_1", "effect": lambda: write_state(
-            w.store.active_batch("claude", S2), decided=1, total=2, next_chunk=2)})
-        w.tick()
-        b = w.store.active_batch("claude", S2)
-        wt = str(b["worktree"])
-        self.assertEqual(w.git.chunk_views, [(wt, "001", "01", "01", True)])
-        self.assertTrue((Path(wt) / ".warroom-scratch" / "active-chunk.txt").is_file())
-        prompt = w.adapter.launches[-1]["prompt"]
-        for needed in ("<<<CHUNK_VIEW_BEGIN>>>", "chunk 001-01-01-001", "연상 Tier 1"):
-            self.assertIn(needed, prompt)
-        for gone in ("docs/relation-factory.md을 읽", "prepare --shard", "read-chunk --checkpoint", "cat .warroom-scratch",
-                     "save-chunk --checkpoint"):
-            self.assertNotIn(gone, prompt)
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
-        self.assertEqual(w.git.chunk_views[-1], (wt, "001", "01", "01", False))  # an existing checkpoint is reused
-        self.assertEqual(w.store.batch(b["id"])["run_kind"], "s2_chunk_new")
 
     def test_a_failed_chunk_view_starts_no_ai(self):
         w = s2_world(self)

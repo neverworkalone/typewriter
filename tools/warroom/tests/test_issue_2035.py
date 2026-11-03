@@ -132,21 +132,6 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.row_()["state"], "ERROR")
         self.assertEqual(len(w.adapter.launches), 4)
 
-    def test_save_chunk_automatically_removes_definite_self_repeats_without_an_ai_retry(self):
-        w = self.w
-        w.start("single", "deepseek", "a")
-        w.ai(w.block(1, {"S5": "S5\t표제4"}), session="ses_1")                  # a self-repeat of the source lemma at S5 (record w0005)
-        w.tick()
-        w.finish_last()
-        w.tick()
-        saved = [json.loads(l) for l in (w.wt() / stage1ab.names(w.row_()).directory / "candidates/chunk-001.jsonl").read_text().splitlines()]
-        flat = {s["sense_id"]: s["candidates"] for r in saved for s in r["senses"]}
-        self.assertEqual(flat["w0001-s1"], ["후보1-1"])
-        self.assertEqual(flat["w0004-s1"], [])
-        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_new"])            # chunk 2 starts a NEW session
-        events = [entry for entry in w.store.recent_events() if entry["batch_id"] == w.row_()["id"]]
-        self.assertTrue(any("자동 정제 1개" in entry["msg"] and 'S5 "표제4" (source lemma repeat)' in entry["msg"]
-                            for entry in events))
 
     def test_three_source_lemma_repeats_are_removed_together_and_other_rows_are_preserved(self):
         w = self.w
@@ -162,6 +147,7 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_new"])
         logs = [entry["msg"] for entry in w.store.recent_events() if entry["batch_id"] == w.row_()["id"]]
         self.assertTrue(any("자동 정제 3개" in line and all(alias in line for alias in ("S2", "S5", "S9")) for line in logs))
+        self.assertTrue(any('S5 "표제4" (source lemma repeat)' in line for line in logs))
 
     def test_third_correction_removes_only_the_exact_rejected_candidate_then_revalidates(self):
         w = self.w
@@ -171,7 +157,12 @@ class SerialChunks(unittest.TestCase):
         for _ in range(3):
             w.ai(retry, session="ses_1")
         w.tick()
-        for _ in range(4):
+        w.finish_last()
+        w.tick()
+        st = stage1ab.load_state(w.store, w.row_()["id"], 1)
+        self.assertEqual((st["tries"], st["requested"]), (1, ["S5"]))
+        self.assertIn('" bad"', st["problem"])
+        for _ in range(3):
             w.finish_last()
             w.tick()
         b = w.row_()
@@ -186,16 +177,6 @@ class SerialChunks(unittest.TestCase):
         self.assertTrue(any("정정 3회 뒤 식별된 부적격 후보 1개" in entry["msg"] and 'S5 " bad"' in entry["msg"]
                             for entry in events))
 
-    def test_the_rejection_reason_survives_a_restart(self):
-        w = self.w
-        w.start("single", "deepseek", "a")
-        w.ai(w.block(1, {"S5": "S5\t bad"}), session="ses_1")
-        w.tick()
-        w.finish_last()
-        w.tick()
-        st = stage1ab.load_state(w.store, w.row_()["id"], 1)
-        self.assertEqual((st["tries"], st["requested"]), (1, ["S5"]))
-        self.assertIn('" bad"', st["problem"])
 
     def test_a_correction_may_not_change_an_unrequested_row(self):
         w = self.w
@@ -367,27 +348,6 @@ class WriteAndScope(unittest.TestCase):
         self.assertEqual(w.row_()["state"], "ERROR")
         self.assertIn("직접 쓰기", w.row_()["error"])
         self.assertEqual(len(w.adapter.launches), 1)
-
-    def test_fix_scope_names_only_the_listed_sense_not_its_siblings(self):
-        w = ABWorld()
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", "deepseek", "a")
-        w.run_chunks(3)
-        wt = w.wt()
-        # w0003 has two senses (s1, s2); naming one must not admit the other, nor a bare record id any sense
-        cases = [("w0003/w0003-s1 후보1-3 삭제", {("w0003", "w0003-s1")}), ("w0003-s2.", {("w0003", "w0003-s2")}),
-                 ("w0003 전체를 보라", set()), ("w0003-s1 와 w0003-s2", {("w0003", "w0003-s1"), ("w0003", "w0003-s2")}),
-                 ("w9999-s1 없음", set())]
-        for text, want in cases:
-            with self.subTest(text):
-                allowed, context = stage1ab.fix_scope(wt, w.row_(), text)
-                self.assertEqual(allowed, want)
-        before = (wt / REL).read_text()
-        rows = [json.loads(l) for l in before.splitlines()]
-        sibling = next(r for r in rows if r["record_id"] == "w0003")
-        sibling["senses"][1]["candidates"] = ["몰래"]
-        after = "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n"
-        self.assertFalse(hasattr(stage1ab, "out_of_scope_changes"))   # #2092: no post-fix scope gate exists any more
 
 
 class Helpers(unittest.TestCase):

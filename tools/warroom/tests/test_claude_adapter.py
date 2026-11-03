@@ -410,6 +410,15 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         self.assertFalse(w.adapter.alive(pid))
         self.assertEqual(w.git.removed, [])   # the MERGED transition does not remove the worktree
 
+    def test_denial_pauses_for_the_operator(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PAUSED")
+
 class RealProcessLaunch(unittest.TestCase):
     def test_pins_reach_the_real_child_process(self):
         with tempfile.TemporaryDirectory() as d:

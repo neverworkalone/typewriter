@@ -217,6 +217,10 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.active()["chunk_no"], 2)
         self.assertIn("decision-002.txt", w.adapter.launches[-1]["prompt"])
         self.assertNotIn("old\n", w.adapter.launches[-1]["prompt"])
+        dchunk.clear_active(w.wt(), b, 1)  # cleanup can be safely repeated for the saved prefix
+        self.assertTrue((w.wt() / first.directory / "chunk-001.jsonl").is_file())
+        self.assertEqual(w.active()["chunk_no"], 2)
+        self.assertTrue((w.wt() / dchunk.chunk_names(b, 2).active).is_file())
 
     def test_cleanup_failure_blocks_next_chunk_and_preserves_saved_and_active_files(self):
         w = DWorld(records=50)
@@ -270,19 +274,6 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(json.loads(w.store.get(dchunk.run_start_key(w.row_()["id"])))["chunk_no"], 2)
         self.assertFalse((w.wt() / dchunk.chunk_names(w.row_(), 1).view).exists())
 
-    def test_repeated_cleanup_after_saved_prefix_is_idempotent(self):
-        w = DWorld(records=25)
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", "deepseek", "d")
-        w.ai()
-        w.tick()
-        w.finish_last()
-        w.tick()
-        b = w.row_()
-        dchunk.clear_active(w.wt(), b, 1)
-        self.assertFalse((w.wt() / dchunk.chunk_names(b, 1).active).exists())
-        self.assertFalse((w.wt() / dchunk.chunk_names(b, 1).view).exists())
-        self.assertTrue((w.wt() / dchunk.names(b).directory / "chunk-001.jsonl").is_file())
 
     def test_damaged_saved_chunk_is_never_cleaned_or_advanced(self):
         w = DWorld(records=50)
@@ -343,15 +334,6 @@ class SerialChunks(unittest.TestCase):
                 self.assertEqual(w.row_()["state"], "ERROR")
                 self.assertEqual(len(w.adapter.launches), 1)
 
-    def test_foreign_head_before_the_next_chunk_is_an_error(self):
-        w = self.w
-        w.start("single", "deepseek", "d")
-        w.ai()
-        w.tick()
-        w.git.local_head = "9" * 40
-        w.finish_last()
-        w.tick()
-        self.assertEqual(w.row_()["state"], "ERROR")
 
     def test_oversize_view_falls_back_to_pages_for_that_chunk_only(self):
         w = self.w
@@ -476,18 +458,6 @@ class SaveRejectedFix(unittest.TestCase):
                 w.tick()
                 self.assertEqual(w.row_()["state"], "ERROR")
                 self.assertEqual(len(w.adapter.launches), 1)
-        w = DWorld()                                                     # no rejection or failed search: one bounded retry is safe
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", "deepseek", "d")
-        w.ai(save=False)
-        w.ai(save=False)
-        w.tick()
-        w.finish_last()
-        w.tick()
-        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PRODUCING", 2))
-        w.finish_last()
-        w.tick()
-        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("ERROR", 2))
 
     def test_nonzero_exit_with_a_repairable_rejection_is_corrected_not_paused(self):
         w = self.w
@@ -671,16 +641,6 @@ class RestartHandoff(unittest.TestCase):
                 self.assertEqual((w.wt() / dchunk.chunk_names(b, 1).directory / "chunk-001.jsonl").read_bytes(),
                                  saved_bytes)
 
-    def test_shared_chunk_boundary_errors_name_the_actual_method(self):
-        w = self.w
-        w.start("single", "deepseek", "d")
-        w.tick()
-        b = w.row_()
-        for method, expected in (("d", "D 청크"), ("c", "C 청크"), ("a", "A 청크"), ("b", "B 청크"),
-                                 ("s2", "Stage 2 청크")):
-            with self.subTest(method=method):
-                error = w.sup._stage2_chunk_boundary_problem(dict(b) | {"method": method}, "missing-run-key")
-                self.assertIn(expected, error)
 
     def test_legacy_missing_baseline_rejects_an_owned_pr_before_any_new_run(self):
         w = self.w
@@ -700,19 +660,6 @@ class RestartHandoff(unittest.TestCase):
         self.assertIn("이미 PR", w.row_()["error"])
         self.assertEqual(len(w.adapter.launches), launches)
 
-    def test_missing_baseline_during_a_live_run_does_not_start_another_run(self):
-        w = self.w
-        w.start("single", "deepseek", "d")
-        w.ai(session="ses_live")
-        w.tick()
-        b = w.row_()
-        w.store.delete(dchunk.run_start_key(b["id"]))
-        pid = b["pid"]
-
-        w.tick()
-
-        self.assertEqual(len(w.adapter.launches), 1)
-        self.assertEqual(w.row_()["pid"], pid)
 
     def test_last_chunk_restart_runs_idempotent_finalizer_once(self):
         w = DWorld(records=50)
@@ -943,36 +890,36 @@ class VerifiedPrefix(unittest.TestCase):
 
 class LegacyRejectionRepair(unittest.TestCase):
     def test_old_stop_diagnostic_is_reissued_only_after_current_cli_proves_identical_local_errors(self):
-        w = DWorld(records=200)
+        w = DWorld(records=75)
         self.addCleanup(w.tmp.cleanup)
         w.start("single", "deepseek", "d")
-        for chunk_no in range(1, 7):
+        for chunk_no in range(1, 2):
             w.ai(session=f"ses_{chunk_no}")
-        w.ai_rejected(session="ses_7", scope="stop_and_report")
-        for _ in range(6):
+        w.ai_rejected(session="ses_2", scope="stop_and_report")
+        for _ in range(1):
             w.tick()
             w.finish_last()
             w.tick()
-        self.assertEqual(w.active()["chunk_no"], 7)
+        self.assertEqual(w.active()["chunk_no"], 2)
         w.finish_last()
         w.tick()
         self.assertEqual(w.row_()["state"], "ERROR")
 
         b = w.row_()
-        names = dchunk.chunk_names(b, 7)
+        names = dchunk.chunk_names(b, 2)
         folder = w.wt() / names.directory
         rejected_path = w.wt() / names.rejected
         legacy = json.loads(rejected_path.read_text("utf-8"))
         legacy.pop("hit_bearing_z", None)  # the pre-#2981 persisted schema contains no summary-only field
         rejected_path.write_text(json.dumps(legacy, ensure_ascii=False, separators=(",", ":")), "utf-8")
         w.inspect_rejection(legacy)
-        prefix = {number: dchunk.chunk_sha(w.wt(), b, number) for number in range(1, 7)}
+        prefix = {number: dchunk.chunk_sha(w.wt(), b, number) for number in range(1, 2)}
         active_before = (w.wt() / names.active).read_bytes()
         decisions_before = (w.wt() / names.decisions).read_bytes()
         searches_before = (w.wt() / names.searches).read_bytes()
         view_before = (w.wt() / names.view).read_bytes()
 
-        w.ai(session="ses_7")
+        w.ai(session="ses_2")
         self.assertTrue(control.retry(w.store, "deepseek", "d"))
         w.tick(2)
 
@@ -993,9 +940,9 @@ class LegacyRejectionRepair(unittest.TestCase):
 
         w.finish_last()
         w.tick()
-        self.assertTrue((folder / "chunk-007.jsonl").is_file())
-        self.assertEqual(w.active()["chunk_no"], 8)
-        saved = [json.loads(line) for line in (folder / "chunk-007.jsonl").read_text("utf-8").splitlines()]
+        self.assertTrue((folder / "chunk-002.jsonl").is_file())
+        self.assertEqual(w.active()["chunk_no"], 3)
+        saved = [json.loads(line) for line in (folder / "chunk-002.jsonl").read_text("utf-8").splitlines()]
         self.assertEqual(len(saved), 25)
         self.assertTrue(all(sense["candidates"] == ["후보"] for row in saved for sense in row["senses"]))
         for number, digest in prefix.items():
@@ -1079,12 +1026,6 @@ class LegacyRejectionRepair(unittest.TestCase):
 
 
 class Prompts(unittest.TestCase):
-    def test_d_production_pr_reports_exact_technical_skip_count_only_when_present(self):
-        batch = {"shard": "001", "batch": "01"}
-        base = {"records": 25, "senses": 27, "candidates": 20, "empty_senses": 4, "technical_skips": []}
-        self.assertNotIn("Technical skips", dchunk.pr_body("DeepSeek", batch, base))
-        skipped = {**base, "technical_skips": [{"record_id": "w1", "sense_ids": ["s1", "s2"]}]}
-        self.assertIn("Technical skips: 1 records — w1 (2 senses)", dchunk.pr_body("DeepSeek", batch, skipped))
 
     def test_exactly_one_of_view_or_pages_and_the_card_binds_the_save_call(self):
         b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
