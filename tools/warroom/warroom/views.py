@@ -212,8 +212,15 @@ def card_text(st: dict) -> str:
     done, total, unit = progress_of(st)
     observed = done is not None and bool(total)
     if observed:
-        progress = f"{owner} · {done} / {total} {unit}" if (is_stage2 or is_stage3) else f"{done} / {total} {unit}"
-        records = _two_sided(progress, f"{done / total * 100:.1f}%")
+        if is_stage2:
+            progress = f"{done} / {total} · {done / total * 100:.1f}%"
+            records = _two_sided(owner, progress)
+        elif is_stage3:
+            progress = f"{owner} · {done} / {total} {unit}"
+            records = _two_sided(progress, f"{done / total * 100:.1f}%")
+        else:
+            progress = f"{done} / {total} {unit}"
+            records = _two_sided(progress, f"{done / total * 100:.1f}%")
         bar = progress_bar(done, total)
     else:
         records, bar = (f"{owner} · 진행량 확인 중" if (is_stage2 or is_stage3) else "진행량 확인 중"), ""
@@ -308,8 +315,13 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
     if st["pr"]:
         head.append(f"PR #{st['pr']}")
     if st["progress"]:
-        head.append(st["progress"])
-    lines = ["   ".join(head)]
+        if s2:
+            done, total, _unit = progress_of(st)
+            head.append(f"{done} / {total} {done / total * 100:.1f}%" if done is not None and total
+                        else st["progress"])
+        else:
+            head.append(st["progress"])
+    lines = [("  " if s2 else "   ").join(head)]
     second = [control.MODES.get(st["mode"], "Single")]
     if st["state"] == "COMPLETE":
         second.append(f"완료 {_when(st['updated'])}")
