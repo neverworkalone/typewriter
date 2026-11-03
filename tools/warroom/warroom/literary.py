@@ -416,6 +416,26 @@ def view_ids(text: str) -> tuple[list[str], list[str], list[str]]:
     return ids, failed, unsearchable
 
 
+def view_for_senses(text: str, sense_ids: list[str]) -> str:
+    """Select only requested Sense blocks from a validated active view; malformed scope fails closed."""
+    if not sense_ids or len(set(sense_ids)) != len(sense_ids) or not all(_ID.fullmatch(i) for i in sense_ids):
+        raise LiteraryError("새 세션의 미완료 Sense 목록이 올바르지 않습니다")
+    header, separator, body = text.partition("\n\n")
+    if not separator or not header.startswith("batch="):
+        raise LiteraryError("미완료 Sense용 chunk view 형식이 올바르지 않습니다")
+    blocks = {}
+    for block in re.split(r"\n\n(?=## )", body):
+        match = _HEADER.match(block.split("\n", 1)[0])
+        if not match or match.group(1) in blocks:
+            raise LiteraryError("미완료 Sense용 chunk view에 잘못된 항목이 있습니다")
+        blocks[match.group(1)] = block
+    if any(sense_id not in blocks for sense_id in sense_ids):
+        raise LiteraryError("미완료 Sense가 저장된 chunk view에 없습니다")
+    selected = "\n\n".join(blocks[sense_id] for sense_id in sense_ids)
+    suffix = "\n" if text.endswith("\n") else ""
+    return f"{header}\n\n{selected}{suffix}"
+
+
 def progress_numbers(text: str) -> tuple[int, int, int, int]:
     """(done, total, zero_hit, not_yet_read) from the view's first line."""
     m = re.match(r"batch=\d+_\d+ done=(\d+)/(\d+) zero_hit=(\d+) not_yet_read=(\d+)\n", text)

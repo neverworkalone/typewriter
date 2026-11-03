@@ -4961,9 +4961,19 @@ class Supervisor:
         else:
             remaining = list(rec["sense_ids"])
             note = rec.get("note", "")
-            if self.store.get(literary.run_start_key(b["id"])):
+            missing_session_resume = self.store.get(literary.run_start_key(b["id"])) is not None
+            if missing_session_resume and not rec.get("repair"):
+                state = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
+                remaining = [sense["sense_id"] for sense in state["senses"] if not sense["done"]]
+                if not remaining:
+                    raise prompts.PromptError("새 세션을 시작할 미완료 Sense가 없습니다")
+                view = literary.view_for_senses(view, remaining)
+                note += ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크의 미완료 Sense만 이어간다. "
+                         "제공된 view와 제출 배열에는 아래 남은 ID만 포함하고, checkpoint에 저장된 Sense는 "
+                         "다시 판독하거나 제출하지 않는다: " + ", ".join(remaining) + "\n")
+            elif missing_session_resume:
                 note += ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. 이미 checkpoint에 완료된 Sense와 "
-                         "기존 제출·판정은 보존하고, 남은 Sense만 처리한다.\n")
+                         "Candidate v1 복구 대상 Sense만 처리한다.\n")
             card_bytes = len(prompts.c_chunk(b, rec["chunk_no"], checkpoint, view="", note=note).encode("utf-8"))
             if literary.delivery(card_bytes, view) == "inline":
                 prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, view=view, note=note)

@@ -374,9 +374,12 @@ class SerialChunks(unittest.TestCase):
     def test_missing_session_is_a_changed_recovery_condition_for_the_same_chunk(self):
         w = self.w
         w.start("single", "deepseek", "c")
-        w.adapter.plan.extend([{"code": 0, "session": "ses_c"}, {"code": 0, "session": "ses_c"}])
+        w.ai(mark=5)
+        w.adapter.plan.append({"code": 0, "session": "ses_c"})  # one automatic resume without further progress
         w.tick()
-        chunk_no = w.active()["chunk_no"]
+        active = w.active()
+        chunk_no = active["chunk_no"]
+        ids = list(active["sense_ids"])
         w.finish_last()
         w.tick()
         w.finish_last()
@@ -385,16 +388,30 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(b["state"], "ERROR")
         self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
 
+        checkpoint_path = w.wt() / f".warroom-scratch/{CP_NAME}"
+        before = json.loads(checkpoint_path.read_text())
+        before_by_id = {sense["sense_id"]: sense["submission"] for record in before["records"]
+                        for sense in record["senses"]}
         w.store.update(b["id"], session_id=None)
         self.assertTrue(control.line_status(w.store, "deepseek", "c")["can_retry"])
-        w.ai(session="ses_new")
+        w.adapter.plan.append({"code": 0, "session": "ses_new",
+                               "effect": lambda: w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", ids[5:])})
         self.assertTrue(control.retry(w.store, "deepseek", "c"))
         w.tick(2)
-        self.assertEqual((w.adapter.launches[-1]["kind"], w.active()["chunk_no"]), ("start", chunk_no))
-        self.assertIn("이전 세션을 찾지 못해 새 세션", w.adapter.launches[-1]["prompt"])
+        launch = w.adapter.launches[-1]
+        self.assertEqual((launch["kind"], w.active()["chunk_no"]), ("start", chunk_no))
+        self.assertIn("이전 세션을 찾지 못해 새 세션", launch["prompt"])
+        for sense_id in ids[:5]:
+            self.assertNotIn(sense_id, launch["prompt"])
+        for sense_id in ids[5:]:
+            self.assertIn(sense_id, launch["prompt"])
         w.finish_last()
-        w.tick(2)
-        self.assertEqual(w.row("deepseek", "c")["state"], "PRODUCING")
+        w.tick()
+        after = json.loads(checkpoint_path.read_text())
+        after_by_id = {sense["sense_id"]: sense["submission"] for record in after["records"]
+                       for sense in record["senses"]}
+        self.assertEqual({sense_id: after_by_id[sense_id] for sense_id in ids[:5]},
+                         {sense_id: before_by_id[sense_id] for sense_id in ids[:5]})
 
     def test_repaired_submit_resets_the_budget_and_next_chunk_starts_new(self):
         w = self.w
