@@ -1043,6 +1043,41 @@ class LegacyRejectionRepair(unittest.TestCase):
                 self.assertEqual(rejected_path.read_bytes(), prior_bytes)
                 self.assertTrue((w.wt() / names.active).is_file())
 
+    def test_malformed_or_unsupported_rejection_files_block_retry_without_rewrite_or_launch(self):
+        cases = (
+            ("JSON scalar", '"not an object"\n', "diagnostic_shape_mismatch"),
+            ("unknown repair scope", None, "unsupported_repair_scope"),
+        )
+        for label, replacement, reason in cases:
+            with self.subTest(label=label):
+                w = DWorld(records=50)
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", "d")
+                w.ai_rejected(scope="stop_and_report")
+                w.tick()
+                w.finish_last()
+                w.tick()
+
+                b = w.row_()
+                names = dchunk.chunk_names(b, 1)
+                rejected_path = w.wt() / names.rejected
+                if replacement is None:
+                    diagnostic = json.loads(rejected_path.read_text("utf-8"))
+                    diagnostic["repair_scope"] = "unsupported_future_scope"
+                    replacement = json.dumps(diagnostic, ensure_ascii=False, separators=(",", ":")) + "\n"
+                rejected_path.write_text(replacement, encoding="utf-8")
+                prior_bytes = rejected_path.read_bytes()
+                launches = len(w.adapter.launches)
+
+                self.assertTrue(control.retry(w.store, "deepseek", "d"))
+                w.tick(2)
+
+                self.assertEqual(w.row_()["state"], "ERROR")
+                self.assertIn(f"legacy_rejection_reissue_blocked[{reason}]", w.row_()["error"])
+                self.assertEqual(len(w.adapter.launches), launches)
+                self.assertEqual(rejected_path.read_bytes(), prior_bytes)
+                self.assertTrue((w.wt() / names.active).is_file())
+
 
 class Prompts(unittest.TestCase):
     def test_d_production_pr_reports_exact_technical_skip_count_only_when_present(self):

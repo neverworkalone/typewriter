@@ -425,13 +425,13 @@ def reissue_legacy_rejection(store, runner, env, git, worktree, b, rec: dict) ->
     except (OSError, ValueError) as error:
         raise DChunkError("legacy_rejection_reissue_blocked[rejection_unavailable]") from error
     if not isinstance(old, dict):
-        return False
+        raise DChunkError("legacy_rejection_reissue_blocked[diagnostic_shape_mismatch]")
     if old.get("repair_scope") == "decisions":
         if read_rejection(folder, b, rec) is None:
             raise DChunkError("legacy_rejection_reissue_blocked[current_decision_diagnostic_stale]")
         return False
     if old.get("repair_scope") != "stop_and_report":
-        return False
+        raise DChunkError("legacy_rejection_reissue_blocked[unsupported_repair_scope]")
 
     decision_path = folder / n.decisions
     root = folder.resolve()
