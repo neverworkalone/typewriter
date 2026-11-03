@@ -90,6 +90,46 @@ async function sixCandidateRepository(t) {
   return { root, sourceCandidates };
 }
 
+async function crossShardRepository(t) {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-cross-shard-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const shardOne = [
+    { id: 'w1', lemma: '출발어', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '출발 의미' }] },
+    { id: 'w2', lemma: '공통말', senses: [{ id: 'w2-s1', pos: 'noun', gloss: '첫 표적 뜻' }] },
+  ];
+  const shardTwo = [
+    { id: 'w3', lemma: '공통말', senses: [{ id: 'w3-s1', pos: 'noun', gloss: '다른 표적 뜻' }] },
+  ];
+  for (const directory of [
+    'data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops',
+  ]) await mkdir(path.join(root, directory), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(shardOne));
+  await writeFile(path.join(root, 'data/canonical/stdict-0002.jsonl'), jsonl(shardTwo));
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(shardOne.map((record) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id,
+        candidates: producer === 'a_codex' && record.id === 'w1' ? ['공통말'] : [] }],
+    }))));
+  }
+  const existing = {
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+    type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
+    candidate_assignment_version: 1, candidate_forms: ['공통말'], reverse_candidate_forms: [],
+  };
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([existing]));
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), '');
+  return { root, existing };
+}
+
+function crossShardCounterpart() {
+  return {
+    source_record_id: 'w3', source_sense_id: 'w3-s1', target_record_id: 'w1', target_sense_id: 'w1-s1',
+    type: 'scene', relevance: 4, reverse_type: 'scene', reverse_relevance: 4,
+    candidate_assignment_version: 1, candidate_forms: ['출발어'], reverse_candidate_forms: [],
+  };
+}
+
 async function saveAllPrimaryAsDrops(root, checkpoint) {
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const decisions = chunk.items.flatMap((item) => item.candidates.map((candidate) => ({
@@ -1904,6 +1944,96 @@ test('preflight repair accepts Supervisor sorted-state round-trip and remains st
   assert.equal(clear.ok, true);
   assert.equal(clear.total, 0);
   assert.deepEqual(clear.unclassified, []);
+});
+
+test('preflight classifies a newly integrated cross-shard optional pair for local repair without changing primary decisions', async (t) => {
+  const { root } = await crossShardRepository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const savedCheckpoint = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  const candidate = savedCheckpoint.items[0].candidates[0];
+  assert.equal(candidate.text, '공통말');
+  assert.equal(candidate.already_accounted, true, 'the primary decision is already covered by the original shard-local Relation');
+  assert.deepEqual(candidate.unlinked_target_sense_ids, ['w3-s1']);
+  assert.deepEqual(prepared.items[0].candidates[0].decision, { disposition: 'existing' });
+
+  const view = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional'], { root }));
+  const compactView = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional', '--format', 'compact'], { root }));
+  const targetAlias = /^T(\d+)\tw3-s1\t/mu.exec(compactView.text)?.[1];
+  assert.ok(targetAlias, 'the stale link target is presented as an unlinked compact target');
+  const optionalInput = '.warroom-scratch/optional-decisions.txt';
+  await writeFile(path.join(root, optionalInput), `links @${view.digest}\nc1 R association 3 T${targetAlias}\n`);
+  await quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', optionalInput], { root }));
+  await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), relationJsonl([crossShardCounterpart()]));
+
+  const report = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  assert.equal(report.ok, false);
+  assert.equal(report.repairable, true);
+  assert.deepEqual(report.unclassified, []);
+  assert.equal(report.problems.length, 1);
+  assert.deepEqual(report.problems[0].conflicts.map((conflict) => conflict.code), ['id-pair-conflict']);
+  assert.match(report.problems[0].conflicts[0].message, /already owned by another shard/u);
+  assert.deepEqual(report.problems[0].conflicts[0].relations.map((row) => row.source_sense_id), ['w3-s1', 'w1-s1']);
+
+  const originalDecision = candidate.decision;
+  const repairCandidate = report.problems[0].candidates[0];
+  const repairPath = '.warroom-scratch/remove-stale-optional-link.json';
+  await writeFile(path.join(root, repairPath), JSON.stringify({
+    version: 1,
+    fingerprint: report.fingerprint,
+    supervisor_nonce: 'c'.repeat(64),
+    decisions: [{
+      source_sense_id: 'w1-s1', candidate: '공통말',
+      expected_decision: repairCandidate.decision,
+      expected_additional_relations: repairCandidate.additional_relations,
+      decision: null,
+      additional_relations: [],
+    }],
+  }));
+  await quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairPath, '--json'], { root }));
+  const repairedCandidate = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8')).items[0].candidates[0];
+  assert.deepEqual(repairedCandidate.decision, originalDecision, 'repair preserves the completed primary answer');
+  assert.deepEqual(repairedCandidate.additional_relations, [], 'repair removes only the now-conflicting optional link');
+
+  const clear = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  assert.equal(clear.ok, true);
+  assert.equal(clear.total, 0);
+  await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+  assert.equal(verified.missing, 0);
+});
+
+test('relation-only integration validation skips incomplete accounting and rejects stale cross-shard combined results', async (t) => {
+  const { root } = await crossShardRepository(t);
+  const forward = {
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w3', target_sense_id: 'w3-s1',
+    type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
+    candidate_assignment_version: 1, candidate_forms: ['공통말'], reverse_candidate_forms: [],
+  };
+  const reverse = crossShardCounterpart();
+  const relationOne = path.join(root, 'data/relations/relation-001.jsonl');
+  const relationTwo = path.join(root, 'data/relations/relation-002.jsonl');
+
+  await writeFile(relationOne, relationJsonl([forward]));
+  const firstHead = await quiet(() => run(['verify', '--shard', '001', '--relations-only', '--json'], { root }));
+  assert.equal(firstHead.scope, 'relation-integrity');
+  await writeFile(relationOne, '');
+  await writeFile(relationTwo, relationJsonl([reverse]));
+  const secondHead = await quiet(() => run(['verify', '--shard', '002', '--relations-only', '--json'], { root }));
+  assert.equal(secondHead.scope, 'relation-integrity');
+
+  await writeFile(relationOne, relationJsonl([forward]));
+  await assert.rejects(
+    () => quiet(() => run(['verify', '--shard', '001', '--relations-only', '--json'], { root })),
+    /duplicate or reverse-duplicate ID relation[\s\S]*other shard Relation w3\/w3-s1 -> w1\/w1-s1 \[scene\/4; ver:1; fm:\["출발어"\]; rfm:\[\]\]/u,
+    'the combined integration result reports the exact counterpart row and its classification/provenance',
+  );
+  await assert.rejects(
+    () => quiet(() => run(['verify', '--shard', '002'], { root })),
+    /Stage 1 inputs are incomplete/u,
+    'the regular verifier remains an accounting gate for unfinished Stage 1/2 work',
+  );
 });
 
 test('repair rejects a changed optional relation after the presented state was captured', async (t) => {
