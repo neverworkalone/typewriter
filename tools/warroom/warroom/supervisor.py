@@ -56,6 +56,10 @@ class Stage2RepairContentError(ValueError):
     """The parsed answer has invalid target, coverage, or peer-adjustment content."""
 
 
+class Stage2RepairMissingCandidatesError(Stage2RepairContentError):
+    """The response is otherwise valid, but omits one or more requested page candidates."""
+
+
 def acquire_lock(path: Path):
     """Single War Room instance: returns an open locked file, or None if held."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1907,11 +1911,15 @@ class Supervisor:
                         raise prompts.PromptError("Stage 2 repair page cursor is outside its saved conflict list")
                     page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
                     page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
+                    correction = self._stage2_repair_correction(current)
                     bb, pp = stage2.split_key(b["batch"])
                     cp_path = Path(wt) / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json"
                     baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(Path(wt)),
                                 "remote_head": remote, "checkpoint_sha256": hashlib.sha256(cp_path.read_bytes()).hexdigest(),
-                                "fingerprint": current["fingerprint"], "cursor": cursor, "page_keys": page_keys}
+                                "fingerprint": current["fingerprint"], "cursor": cursor, "page_keys": page_keys,
+                                "attempt": current["attempts"],
+                                "correction_candidate_keys": correction["requested_keys"] if correction else None,
+                                "correction_response_sha256": correction.get("response_sha256") if correction else None}
                     self.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                     repair_input = self._stage2_repair_prompt_input(current, page, page_keys)
                     prompt = prompts.stage2_repair(
@@ -2127,6 +2135,8 @@ class Supervisor:
                 if current.get("pending_answer") is not None:
                     return self._apply_stage2_repair_answer(b, state)
                 if problem := self._stage2_repair_boundary_problem(b):
+                    return self._fail(b, "ERROR", problem)
+                if problem := self._stage2_repair_replay_missing_response(b, state):
                     return self._fail(b, "ERROR", problem)
                 return self._launch_stage2_repair_page(b)
             except TRANSIENT:
@@ -2743,6 +2753,15 @@ class Supervisor:
             raise ValueError("Stage 2 repair state does not match the owned Part")
         return state
 
+    @staticmethod
+    def _stage2_repair_correction(current: dict) -> dict | None:
+        """Read the generic correction state and the pre-#3044 schema-only state."""
+        correction = current.get("response_correction")
+        legacy = current.get("schema_repair")
+        if correction is not None and legacy is not None:
+            raise ValueError("Stage 2 repair has conflicting correction evidence")
+        return correction if correction is not None else legacy
+
     def _save_stage2_repair_state(self, b, state: dict) -> None:
         self.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, ensure_ascii=False, sort_keys=True))
 
@@ -2788,6 +2807,28 @@ class Supervisor:
             if not isinstance(current, dict) or current.get("fingerprint") != baseline.get("fingerprint") \
                     or current.get("cursor") != baseline.get("cursor"):
                 return "Stage 2 repair round or target page changed while AI was running"
+            attempts = current.get("attempt_log")
+            attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+            if "attempt" in baseline and (not isinstance(attempt, dict)
+                    or attempt.get("attempt") != baseline.get("attempt")
+                    or attempt.get("fingerprint") != baseline.get("fingerprint")
+                    or attempt.get("cursor") != baseline.get("cursor")
+                    or attempt.get("target_keys") != baseline.get("page_keys")
+                    or attempt.get("correction_candidate_keys") != baseline.get("correction_candidate_keys")
+                    or attempt.get("correction_response_sha256") != baseline.get("correction_response_sha256")):
+                return "Stage 2 repair run does not match its persisted attempt and correction scope"
+            if current.get("pending_answer") is not None and "attempt" in baseline:
+                if not isinstance(attempt, dict) or attempt.get("status") != "answer_saved" \
+                        or type(attempt.get("run_id")) is not int \
+                        or not re.fullmatch(r"[a-f0-9]{64}", attempt.get("response_sha256", "")) \
+                        or hashlib.sha256((current.get("last_response") or "").encode("utf-8")).hexdigest() \
+                        != attempt.get("response_sha256"):
+                    return "Stage 2 pending repair answer is not bound to its completed attempt output"
+                run = next((row for row in self.store.runs(b["id"]) if row["id"] == attempt["run_id"]), None)
+                if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
+                        or str(run["exit_status"]) != "0" or run.get("log_file") != b["log_file"] \
+                        or self._adapter(b["producer"]).final_answer(Path(run["log_file"])) != current.get("last_response"):
+                    return "Stage 2 pending repair answer differs from its completed output run"
         except TRANSIENT:
             raise
         except Exception as error:
@@ -2822,6 +2863,11 @@ class Supervisor:
         attempt["run_id"] = run["id"]
         attempt["run_exit_status"] = str(run["exit_status"])
         attempt["run_ended_at"] = run["ended_at"]
+        correction = self._stage2_repair_correction(current)
+        if correction is not None and correction.get("source_attempt") == attempt.get("attempt"):
+            attempt["correction_candidate_keys"] = correction["requested_keys"]
+            attempt["correction_kind"] = correction["kind"]
+            correction["source_run_id"] = run["id"]
         self._save_stage2_repair_state(b, state)
 
     @staticmethod
@@ -2966,7 +3012,7 @@ class Supervisor:
             return None
         if attempt.get("rejection_version") != 1:
             return "Stage 2 rejected attempt evidence version is invalid"
-        if attempt.get("reason_code") not in {"format", "schema", "unresolved", "content"} \
+        if attempt.get("reason_code") not in {"format", "schema", "unresolved", "content", "coverage"} \
                 or not re.fullmatch(r"[a-f0-9]{64}", attempt.get("response_sha256", "")) \
                 or not re.fullmatch(r"[a-f0-9]{64}", attempt.get("error_sha256", "")) \
                 or type(attempt.get("run_id")) is not int \
@@ -2991,6 +3037,15 @@ class Supervisor:
         parsed_answer = stage2.extract_repair_answer(response, current_fp)
         if attempt["reason_code"] != "format" and parsed_answer is None:
             return "Stage 2 rejected answer fingerprint differs from its run output"
+        if attempt["reason_code"] == "coverage":
+            response_keys = self._stage2_repair_answer_keys(parsed_answer) if parsed_answer is not None else None
+            targets = attempt.get("target_keys")
+            requested = attempt.get("correction_candidate_keys")
+            if not isinstance(targets, list) or not isinstance(requested, list) or response_keys is None \
+                    or len(response_keys) != len(set(response_keys)) or not set(response_keys).issubset(targets) \
+                    or sorted(set(targets) - set(response_keys)) != requested or not requested \
+                    or attempt.get("correction_kind") != "coverage":
+                return "Stage 2 coverage rejection does not prove the exact missing candidate set"
         if reconciliation is not None:
             prefix = "Stage 2 repair answer rejected; no checkpoint change was made:"
             matches = [event for event in self.store.batch_events(b["id"])
@@ -3066,7 +3121,7 @@ class Supervisor:
             cursor = current.get("cursor")
             if not isinstance(groups, list) or not groups or type(cursor) is not int or cursor != len(groups) \
                     or current.get("pending_answer") is not None or current.get("apply_intent") is not None \
-                    or current.get("schema_repair") is not None or current.get("last_error") is not None \
+                    or self._stage2_repair_correction(current) is not None or current.get("last_error") is not None \
                     or current.get("attempts") != 0 or "last_response" in current:
                 return "Stage 2 repair page is unfinished; preserving its answer and apply boundary"
 
@@ -3155,6 +3210,63 @@ class Supervisor:
                                        for key in group.get("candidate_keys", [])})
                 if not page_targets or attempt.get("target_keys") != page_targets:
                     return "Stage 2 repair attempt targets do not match their page"
+                if "correction_source_attempt" in attempt:
+                    source_attempt = next((row for row in attempt_log if isinstance(row, dict)
+                                           and row.get("cursor") == attempt["cursor"]
+                                           and row.get("attempt") == attempt.get("correction_source_attempt")), None)
+                    source_run = runs_by_id.get(attempt.get("correction_source_run_id"))
+                    requested = attempt.get("correction_candidate_keys")
+                    correction_kind = attempt.get("correction_kind")
+                    if not isinstance(source_attempt, dict) or source_attempt.get("status") != "rejected" \
+                            or source_attempt.get("run_id") != attempt.get("correction_source_run_id") \
+                            or source_attempt.get("response_sha256") != attempt.get("correction_response_sha256") \
+                            or source_attempt.get("fingerprint") != current_fp \
+                            or source_attempt.get("target_keys") != page_targets \
+                            or not isinstance(requested, list) or requested != sorted(set(requested)) \
+                            or not set(requested).issubset(page_targets) \
+                            or correction_kind not in {"coverage", "schema", "schema_and_coverage"} \
+                            or source_run is None or source_run["kind"] != "s2_repair_new" \
+                            or source_run["ended_at"] is None or str(source_run["exit_status"]) != "0":
+                        return "Stage 2 repair correction is not bound to its rejected source attempt"
+                    source_response = self._adapter(b["producer"]).final_answer(Path(source_run["log_file"]))
+                    if not isinstance(source_response, str) \
+                            or hashlib.sha256(source_response.encode("utf-8")).hexdigest() != attempt["correction_response_sha256"]:
+                        return "Stage 2 repair correction source response hash does not match its run"
+                    if correction_kind in {"coverage", "schema", "schema_and_coverage"}:
+                        source_answer = stage2.extract_repair_answer(source_response, current_fp)
+                        response_keys = self._stage2_repair_answer_keys(source_answer) if source_answer is not None else None
+                        missing = sorted(set(page_targets) - set(response_keys or [])) if response_keys is not None else None
+                        page_candidates = {f"{candidate['source_sense_id']}\u0000{candidate['candidate']}": candidate
+                                           for group in page if isinstance(group, dict)
+                                           for candidate in group.get("candidates", []) if isinstance(candidate, dict)}
+                        schema_invalid = []
+                        if source_answer is not None:
+                            for row in source_answer["decisions"]:
+                                key = f"{row.get('source_sense_id')}\u0000{row.get('candidate')}"
+                                candidate = page_candidates.get(key)
+                                if candidate is None:
+                                    return "Stage 2 repair correction source contains a candidate outside its page"
+                                required_fields = ({"source_sense_id", "candidate", "additional_relations"}
+                                                   if candidate.get("already_accounted")
+                                                   else {"source_sense_id", "candidate", "decision"})
+                                bad_shape = set(row) != required_fields
+                                if not bad_shape and candidate.get("already_accounted"):
+                                    bad_shape = not isinstance(row.get("additional_relations"), list)
+                                elif not bad_shape:
+                                    bad_shape = not isinstance(row.get("decision"), dict)
+                                if bad_shape:
+                                    schema_invalid.append(key)
+                        expected_correction = (set(missing or []) if correction_kind == "coverage"
+                                               else set(schema_invalid) if correction_kind == "schema"
+                                               else set(missing or []) | set(schema_invalid))
+                        correction_causes_match = (
+                            (correction_kind == "coverage" and not schema_invalid and bool(missing))
+                            or (correction_kind == "schema" and not missing and bool(schema_invalid))
+                            or (correction_kind == "schema_and_coverage" and bool(missing) and bool(schema_invalid)))
+                        if source_answer is None or response_keys is None or len(response_keys) != len(set(response_keys)) \
+                                or not set(response_keys).issubset(page_targets) or source_answer["unresolved"] \
+                                or not correction_causes_match or set(requested) != expected_correction:
+                            return "Stage 2 repair correction does not preserve the exact missing candidate set"
                 if attempt["status"] == "rejected":
                     if problem := self._stage2_repair_explicit_rejection_problem(
                             b, current_fp, attempt, runs_by_id):
@@ -3247,24 +3359,43 @@ class Supervisor:
             page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
             if not page_keys:
                 return self._fail(b, "ERROR", "Stage 2 repair page has no target candidates")
-            schema_repair = current.get("schema_repair")
-            if schema_repair is not None and (
-                    not isinstance(schema_repair, dict)
-                    or schema_repair.get("fingerprint") != current.get("fingerprint")
-                    or schema_repair.get("page_keys") != page_keys
-                    or not isinstance(schema_repair.get("requested_keys"), list)
-                    or not schema_repair["requested_keys"]
-                    or any(key not in page_keys for key in schema_repair["requested_keys"])
-                    or not re.fullmatch(r"[a-f0-9]{64}", schema_repair.get("response_sha256", ""))
-                    or hashlib.sha256((current.get("last_response") or "").encode("utf-8")).hexdigest()
-                    != schema_repair.get("response_sha256")):
-                return self._fail(b, "ERROR", "Stage 2 repair schema-correction evidence does not match the active page; preserving all evidence")
+            correction = self._stage2_repair_correction(current)
+            if correction is not None:
+                if not isinstance(correction, dict) \
+                        or correction.get("fingerprint") != current.get("fingerprint") \
+                        or correction.get("page_keys") != page_keys \
+                        or not isinstance(correction.get("requested_keys"), list) \
+                        or not correction["requested_keys"] \
+                        or correction["requested_keys"] != sorted(set(correction["requested_keys"])) \
+                        or any(key not in page_keys for key in correction["requested_keys"]) \
+                        or not re.fullmatch(r"[a-f0-9]{64}", correction.get("response_sha256", "")) \
+                        or hashlib.sha256((current.get("last_response") or "").encode("utf-8")).hexdigest() \
+                        != correction.get("response_sha256"):
+                    return self._fail(b, "ERROR", "Stage 2 repair correction evidence does not match the active page; preserving all evidence")
+                if "response_correction" in current:
+                    attempts = current.get("attempt_log")
+                    previous = attempts[-1] if isinstance(attempts, list) and attempts else None
+                    if not isinstance(previous, dict) or previous.get("status") != "rejected" \
+                            or previous.get("fingerprint") != current.get("fingerprint") \
+                            or previous.get("cursor") != cursor or previous.get("target_keys") != page_keys \
+                            or previous.get("attempt") != correction.get("source_attempt") \
+                            or previous.get("run_id") != correction.get("source_run_id") \
+                            or previous.get("response_sha256") != correction.get("response_sha256") \
+                            or (previous.get("reason_code") not in {"coverage", "schema"}
+                                and not (previous.get("reason_code") == "content"
+                                         and correction.get("source_replayed") is True)):
+                        return self._fail(b, "ERROR", "Stage 2 repair correction is not bound to its rejected source attempt; preserving all evidence")
             current["attempts"] = current.get("attempts", 0) + 1
             current["page_keys"] = page_keys
             attempt = {"cursor": cursor, "attempt": current["attempts"],
                        "fingerprint": current["fingerprint"], "target_keys": page_keys, "status": "launched"}
-            if schema_repair is not None:
-                attempt["correction_candidate_keys"] = schema_repair["requested_keys"]
+            if correction is not None:
+                attempt["correction_candidate_keys"] = correction["requested_keys"]
+                attempt["correction_response_sha256"] = correction["response_sha256"]
+                attempt["correction_kind"] = correction.get("kind", "schema")
+                if "response_correction" in current:
+                    attempt["correction_source_attempt"] = correction["source_attempt"]
+                    attempt["correction_source_run_id"] = correction["source_run_id"]
             current.setdefault("attempt_log", []).append(attempt)
             self._save_stage2_repair_state(b, state)
             info = self._find_recovery_pr(b)
@@ -3279,7 +3410,10 @@ class Supervisor:
             remote = self.git.remote_head(b["branch"])
             baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
                         "remote_head": remote, "checkpoint_sha256": hashlib.sha256(cp.read_bytes()).hexdigest(),
-                        "fingerprint": current["fingerprint"], "cursor": cursor, "page_keys": page_keys}
+                        "fingerprint": current["fingerprint"], "cursor": cursor, "page_keys": page_keys,
+                        "attempt": current["attempts"],
+                        "correction_candidate_keys": correction["requested_keys"] if correction else None,
+                        "correction_response_sha256": correction.get("response_sha256") if correction else None}
             self.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
             return self._launch(self.store.batch(b["id"]), "s2_repair_new")
         except TRANSIENT:
@@ -3288,9 +3422,9 @@ class Supervisor:
             return self._fail(b, "ERROR", f"Stage 2 repair page 준비 실패: {error}. worktree와 checkpoint를 보존합니다.")
 
     def _stage2_repair_prompt_input(self, current: dict, page: list, page_keys: list[str]) -> dict:
-        """Render only the active page, or only its schema-invalid rows for a bounded correction."""
-        schema_repair = current.get("schema_repair")
-        selected_keys = set(schema_repair["requested_keys"]) if isinstance(schema_repair, dict) else set(page_keys)
+        """Render only the active page, or only its persisted correction candidates."""
+        correction = self._stage2_repair_correction(current)
+        selected_keys = set(correction["requested_keys"]) if isinstance(correction, dict) else set(page_keys)
         prompt_groups = []
         for group in page:
             candidates = []
@@ -3313,11 +3447,12 @@ class Supervisor:
         prompt_keys = {key for group in prompt_groups for key in group["candidate_keys"]}
         if prompt_keys != selected_keys:
             raise ValueError("Stage 2 repair prompt candidate keys differ from its persisted page/correction scope")
-        if schema_repair is None:
+        if correction is None:
             return {"groups": prompt_groups}
-        diagnostics = [{key: row[key] for key in ("candidate_key", "code", "required_fields", "actual_fields")}
-                       for row in schema_repair.get("diagnostics", [])]
-        return {"schema_correction": {"candidate_keys": sorted(selected_keys), "diagnostics": diagnostics},
+        diagnostics = [{key: row[key] for key in ("candidate_key", "code", "required_fields", "actual_fields")
+                        if key in row} for row in correction.get("diagnostics", [])]
+        return {"repair_correction": {"kind": correction.get("kind", "schema"),
+                                       "candidate_keys": sorted(selected_keys), "diagnostics": diagnostics},
                 "groups": prompt_groups}
 
     def _stage2_repair_response(self, b, state: dict) -> dict | None:
@@ -3345,6 +3480,10 @@ class Supervisor:
             current["last_error"] = str(error)
             self._stage2_repair_mark_rejected(b, state, final, error, "unresolved")
             raise
+        except Stage2RepairMissingCandidatesError as error:
+            current["last_error"] = str(error)
+            self._stage2_repair_mark_rejected(b, state, final, error, "coverage")
+            raise
         except Stage2RepairContentError as error:
             current["last_error"] = str(error)
             self._stage2_repair_mark_rejected(b, state, final, error, "content")
@@ -3355,6 +3494,81 @@ class Supervisor:
             self._stage2_repair_mark_rejected(b, state, final, error, "format")
             return None
         return answer
+
+    def _stage2_repair_replay_missing_response(self, b, state: dict) -> str | None:
+        """On operator Retry, recover an old rejected missing-row response without rerunning the full page."""
+        current = state.get("current")
+        if not isinstance(current, dict) or current.get("pending_answer") is not None \
+                or self._stage2_repair_correction(current) is not None:
+            return None
+        attempts = current.get("attempt_log")
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+        error = current.get("last_error")
+        if not isinstance(attempt, dict) or attempt.get("status") != "rejected" \
+                or attempt.get("reason_code") != "content" \
+                or not isinstance(error, str) \
+                or not error.startswith("repair response does not cover every requested candidate ("):
+            return None
+        groups, cursor = current.get("groups"), current.get("cursor")
+        if not isinstance(groups, list) or type(cursor) is not int or not 0 <= cursor < len(groups):
+            return "Rejected Stage 2 repair response has no valid persisted page; preserving all evidence"
+        page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+        page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
+        final = current.get("last_response")
+        run_id = attempt.get("run_id")
+        response_sha256 = hashlib.sha256(final.encode("utf-8")).hexdigest() if isinstance(final, str) else None
+        run = next((row for row in self.store.runs(b["id"]) if row["id"] == run_id), None) if type(run_id) is int else None
+        if run is None or attempt.get("fingerprint") != current.get("fingerprint") or attempt.get("cursor") != cursor \
+                or attempt.get("target_keys") != page_keys or not page_keys \
+                or response_sha256 is None or response_sha256 != attempt.get("response_sha256") \
+                or attempt.get("rejection_version") != 1 \
+                or attempt.get("run_exit_status") != "0" or attempt.get("run_ended_at") != run["ended_at"] \
+                or hashlib.sha256(error.encode("utf-8")).hexdigest() != attempt.get("error_sha256") \
+                or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
+                or str(run["exit_status"]) != "0" or str(run["log_file"]) != str(b["log_file"]) \
+                or self._adapter(b["producer"]).final_answer(Path(run["log_file"])) != final:
+            return "Rejected Stage 2 repair response cannot be rebound to its exact page, run, and output hash"
+        try:
+            answer = self._stage2_repair_validate_response(b, state, final)
+            if answer is not None:
+                return "Previously rejected Stage 2 repair response no longer reproduces its coverage failure"
+            return "Previously rejected Stage 2 repair response has no complete output"
+        except (Stage2RepairSchemaError, Stage2RepairMissingCandidatesError) as correction_error:
+            correction = self._stage2_repair_correction(current)
+            if not isinstance(correction, dict) or correction.get("kind") not in {"coverage", "schema_and_coverage"} \
+                    or correction.get("requested_keys") != sorted(set(correction.get("requested_keys", []))):
+                return f"Rejected Stage 2 repair response did not produce an exact missing-candidate scope: {correction_error}"
+            correction["source_run_id"] = run_id
+            correction["source_replayed"] = True
+            self._save_stage2_repair_state(b, state)
+            return None
+        except (ValueError, KeyError, TypeError) as validation_error:
+            return f"Rejected Stage 2 repair response failed revalidation; preserving all evidence: {validation_error}"
+
+    def _stage2_repair_mark_answer_saved(self, b, state: dict, final: str) -> None:
+        """Bind a validated pending answer to its exact completed repair run and output hash."""
+        current = state.get("current")
+        attempts = current.get("attempt_log") if isinstance(current, dict) else None
+        if not isinstance(attempts, list) or not attempts or not isinstance(attempts[-1], dict) \
+                or attempts[-1].get("status") != "answer_saved":
+            raise ValueError("validated repair answer has no matching persisted attempt")
+        run = self._last_run(b)
+        attempt = attempts[-1]
+        if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
+                or str(run["exit_status"]) != "0" \
+                or attempt.get("run_id") not in (None, run["id"]) \
+                or str(run["log_file"]) != str(b["log_file"]):
+            raise ValueError("validated repair answer has no matching completed output run")
+        attempt.update({
+            "response_sha256": hashlib.sha256(final.encode("utf-8")).hexdigest(),
+            "run_id": run["id"],
+            "run_exit_status": str(run["exit_status"]),
+            "run_ended_at": run["ended_at"],
+        })
+        correction = self._stage2_repair_correction(current)
+        if correction is not None and correction.get("source_run_id") is None \
+                and correction.get("source_attempt") == attempt.get("attempt"):
+            correction["source_run_id"] = run["id"]
 
     def _stage2_repair_validate_response(self, b, state: dict, final: str) -> dict | None:
         current = state["current"]
@@ -3373,33 +3587,33 @@ class Supervisor:
         direct_rows = answer["decisions"]
         unresolved_rows = answer["unresolved"]
         peer_rows = answer["peer_adjustments"]
-        schema_repair = current.get("schema_repair")
+        correction = self._stage2_repair_correction(current)
         page_keys = sorted(f"{sense_id}\u0000{candidate}" for sense_id, candidate in required)
-        if schema_repair is None:
+        if correction is None:
             response_keys = set(required)
             accepted_rows, accepted_peers = [], []
         else:
-            if not isinstance(schema_repair, dict) or schema_repair.get("fingerprint") != current["fingerprint"] \
-                    or schema_repair.get("page_keys") != page_keys:
-                raise ValueError("schema-correction evidence is stale or belongs to another repair page")
-            requested_keys = schema_repair.get("requested_keys")
-            accepted = schema_repair.get("accepted_answer")
+            if not isinstance(correction, dict) or correction.get("fingerprint") != current["fingerprint"] \
+                    or correction.get("page_keys") != page_keys:
+                raise ValueError("repair-correction evidence is stale or belongs to another repair page")
+            requested_keys = correction.get("requested_keys")
+            accepted = correction.get("accepted_answer")
             if not isinstance(requested_keys, list) or not requested_keys or any(
                     not isinstance(key, str) or key.count("\u0000") != 1 for key in requested_keys) \
                     or len(set(requested_keys)) != len(requested_keys):
-                raise ValueError("schema-correction candidate keys are malformed")
+                raise ValueError("repair-correction candidate keys are malformed")
             response_keys = {tuple(key.split("\u0000", 1)) for key in requested_keys}
             if not response_keys.issubset(set(required)) or not isinstance(accepted, dict) \
                     or not isinstance(accepted.get("decisions"), list) \
                     or not isinstance(accepted.get("peer_adjustments"), list):
-                raise ValueError("schema-correction answer evidence is malformed")
+                raise ValueError("repair-correction answer evidence is malformed")
             accepted_rows = accepted["decisions"]
             accepted_peers = accepted["peer_adjustments"]
             accepted_keys = {(row.get("source_sense_id"), row.get("candidate")) for row in accepted_rows
                              if isinstance(row, dict)}
             if len(accepted_keys) != len(accepted_rows) or accepted_keys & response_keys \
                     or accepted_keys | response_keys != set(required):
-                raise ValueError("schema-correction evidence does not cover the unchanged page exactly once")
+                raise ValueError("repair-correction evidence does not cover the unchanged page exactly once")
         seen = set()
         valid_direct_rows = []
         schema_diagnostics = []
@@ -3447,11 +3661,9 @@ class Supervisor:
             current["last_error"] = "unresolved: " + "; ".join(
                 f"{row['source_sense_id']}/{row['candidate']}: {row['reason']}" for row in unresolved_rows[:8])
             raise Stage2RepairUnresolvedError(current["last_error"])
-        if schema_repair is not None and (peer_rows or unresolved_rows):
-            raise Stage2RepairContentError("schema-correction response may contain only the requested candidate rows")
-        if seen != response_keys:
-            missing = sorted(response_keys - seen)
-            raise Stage2RepairContentError(f"repair response does not cover every requested candidate ({len(missing)} missing)")
+        if correction is not None and (peer_rows or unresolved_rows):
+            raise Stage2RepairContentError("repair-correction response may contain only the requested candidate rows")
+        missing = sorted(response_keys - seen)
         affected_types = {}
         for row in valid_direct_rows:
             candidate = required[(row["source_sense_id"], row["candidate"])]
@@ -3473,22 +3685,45 @@ class Supervisor:
                     or peer["decision"].get("type") not in affected_types[row["source_sense_id"]]:
                 raise Stage2RepairContentError("peer adjustment is outside the directly affected same-source UI group")
             normalized_peers.add(key)
-        if schema_diagnostics:
-            if schema_repair is not None:
-                current["last_error"] = "schema correction rejected: " + ", ".join(
-                    f"{row['candidate_key']} [{row['code']}]" for row in schema_diagnostics)
+        if schema_diagnostics or missing:
+            if correction is not None:
+                if schema_diagnostics:
+                    current["last_error"] = "repair correction schema rejected: " + ", ".join(
+                        f"{row['candidate_key']} [{row['code']}]" for row in schema_diagnostics)
+                    raise Stage2RepairSchemaError(current["last_error"])
+                raise Stage2RepairMissingCandidatesError(
+                    f"repair correction still omits {len(missing)} requested candidate(s)")
+            diagnostics = list(schema_diagnostics)
+            for key in missing:
+                source_sense_id, candidate = key.split("\u0000", 1)
+                candidate_row = required[(source_sense_id, candidate)]
+                required_fields = (["source_sense_id", "candidate", "additional_relations"]
+                                   if candidate_row["already_accounted"]
+                                   else ["source_sense_id", "candidate", "decision"])
+                diagnostics.append({"candidate_key": key, "code": "missing_candidate",
+                                    "required_fields": required_fields, "actual_fields": []})
+            requested_keys = sorted({row["candidate_key"] for row in diagnostics})
+            if schema_diagnostics and missing:
+                correction_kind = "schema_and_coverage"
+            elif schema_diagnostics:
+                correction_kind = "schema"
             else:
-                current["schema_repair"] = {
-                    "fingerprint": current["fingerprint"], "page_keys": page_keys,
-                    "requested_keys": sorted(row["candidate_key"] for row in schema_diagnostics),
-                    "response_sha256": hashlib.sha256((final or "").encode("utf-8")).hexdigest(),
-                    "diagnostics": schema_diagnostics,
-                    "accepted_answer": {"decisions": valid_direct_rows, "peer_adjustments": peer_rows},
-                }
-                current["last_error"] = "schema correction required: " + ", ".join(
-                    f"{row['candidate_key']} [{row['code']}]" for row in schema_diagnostics)
-            raise Stage2RepairSchemaError(current["last_error"])
-        if schema_repair is not None:
+                correction_kind = "coverage"
+            current["response_correction"] = {
+                "kind": correction_kind,
+                "fingerprint": current["fingerprint"], "page_keys": page_keys,
+                "requested_keys": requested_keys,
+                "response_sha256": hashlib.sha256(final.encode("utf-8")).hexdigest(),
+                "source_attempt": current.get("attempt_log", [{}])[-1].get("attempt"),
+                "source_run_id": None,
+                "diagnostics": diagnostics,
+                "accepted_answer": {"decisions": valid_direct_rows, "peer_adjustments": peer_rows},
+            }
+            current["last_error"] = f"repair response needs correction for {len(requested_keys)} candidate(s)"
+            if schema_diagnostics:
+                raise Stage2RepairSchemaError(current["last_error"])
+            raise Stage2RepairMissingCandidatesError(current["last_error"])
+        if correction is not None:
             answer["decisions"] = accepted_rows + valid_direct_rows
             answer["peer_adjustments"] = accepted_peers
         else:
@@ -3498,6 +3733,7 @@ class Supervisor:
         current["pending_answer"] = answer
         if current.get("attempt_log"):
             current["attempt_log"][-1]["status"] = "answer_saved"
+        self._stage2_repair_mark_answer_saved(b, state, final)
         current.pop("last_error", None)
         self._save_stage2_repair_state(b, state)
         return answer
@@ -3573,6 +3809,7 @@ class Supervisor:
             current.pop("apply_intent", None)
             current.pop("last_response", None)
             current.pop("schema_repair", None)
+            current.pop("response_correction", None)
             if state.get("history"):
                 state["history"][-1]["applied_candidate_keys"] = list(current["applied_candidate_keys"])
             if current.get("attempt_log"):
@@ -4163,6 +4400,18 @@ class Supervisor:
                 if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
                     return self._fail(b, "ERROR", f"Stage 2 repair schema correction exhausted its page attempt budget; preserving prior decisions and receipts: {error}")
                 self.store.log(b["id"], f"Stage 2 repair output schema rejected ({error}); requesting only the identified candidate rows within the existing attempt budget", "warn")
+                return self._launch_stage2_repair_page(b)
+            except Stage2RepairMissingCandidatesError as error:
+                current = state.get("current", {})
+                correction = self._stage2_repair_correction(current)
+                attempts = current.get("attempt_log")
+                last_attempt = attempts[-1] if isinstance(attempts, list) and attempts else {}
+                if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE \
+                        or (correction is not None and last_attempt.get("correction_candidate_keys")):
+                    return self._fail(b, "ERROR", f"Stage 2 repair coverage correction did not complete within its page attempt budget; preserving accepted rows and receipts: {error}")
+                if not isinstance(correction, dict) or correction.get("kind") not in {"coverage", "schema_and_coverage"}:
+                    return self._fail(b, "ERROR", f"Stage 2 repair missing-candidate response has no exact correction scope; preserving all evidence: {error}")
+                self.store.log(b["id"], f"Stage 2 repair response omitted {len(correction['requested_keys'])} candidates; requesting only those keys on the same page", "warn")
                 return self._launch_stage2_repair_page(b)
             except stage2.RepairFormatError:
                 answer = None

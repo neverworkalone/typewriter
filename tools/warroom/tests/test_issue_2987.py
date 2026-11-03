@@ -90,7 +90,7 @@ class Stage2RepairSchemaCorrection(unittest.TestCase):
         self.assertEqual(checkpoint.read_bytes(), before)
         self.assertEqual(w.git.stage2_repair_calls, [])
         state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
-        correction = state["current"]["schema_repair"]
+        correction = state["current"]["response_correction"]
         self.assertEqual(correction["fingerprint"], FP)
         self.assertEqual(correction["requested_keys"], ["source-sense\u0000candidate-0"])
         self.assertEqual(correction["diagnostics"][0]["code"], "already_accounted_fields_mismatch")
@@ -99,11 +99,11 @@ class Stage2RepairSchemaCorrection(unittest.TestCase):
                          ["candidate-1", "candidate-2"])
 
         prompt = w.adapter.launches[-1]["prompt"]
-        self.assertIn("schema_correction", prompt)
+        self.assertIn("repair_correction", prompt)
         self.assertIn("already_accounted_fields_mismatch", prompt)
         match = re.search(r"<<<PREFLIGHT_CASES_BEGIN>>>(.*?)<<<PREFLIGHT_CASES_END>>>", prompt, re.DOTALL)
         prompt_input = json.loads(match.group(1))
-        self.assertEqual(prompt_input["schema_correction"]["candidate_keys"], ["source-sense\u0000candidate-0"])
+        self.assertEqual(prompt_input["repair_correction"]["candidate_keys"], ["source-sense\u0000candidate-0"])
         self.assertEqual([row["candidate"] for row in prompt_input["groups"][0]["candidates"]], ["candidate-0"])
         self.assertEqual(prompt_input["groups"][0]["candidates"][0]["forbidden_output_fields"], ["decision"])
 
