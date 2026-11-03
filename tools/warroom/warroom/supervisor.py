@@ -1949,6 +1949,11 @@ class Supervisor:
                     current = state.get("current")
                     if not isinstance(current, dict) or current.get("pending_answer") is not None:
                         raise prompts.PromptError("Stage 2 repair needs one unapplied, persisted repair page")
+                    reserved = current.get("attempt_log") or []
+                    if reserved and isinstance(reserved[-1], dict) and reserved[-1].get("status") == "launched":
+                        # bind this launch's log/exit files before any process exists, so an orphan can be recognised
+                        reserved[-1]["spawn"] = {"log_file": str(log), "exit_file": str(ex)}
+                        self._save_stage2_repair_state(b, state)
                     cursor = current.get("cursor")
                     groups = current.get("groups")
                     if type(cursor) is not int or not isinstance(groups, list) or cursor >= len(groups):
@@ -3444,6 +3449,12 @@ class Supervisor:
         if not newer:
             if b["pid"] is not None:
                 self._fail(b, "ERROR", "Stage 2 repair attempt has a process but no recorded run; preserving all evidence")
+                return True
+            spawn = attempt.get("spawn")
+            if not isinstance(spawn, dict) or any(Path(spawn.get(key) or "/nonexistent/").exists()
+                                                  for key in ("log_file", "exit_file")):
+                self._fail(b, "ERROR", "Stage 2 repair attempt has no recorded run, but its launch may have started a "
+                           "process (log/exit files exist or the launch binding is missing); not re-running, preserving all evidence")
                 return True
             # reserved but never started: drop the stale reservation and let the caller launch the same request once
             attempts.pop()

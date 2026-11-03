@@ -520,6 +520,15 @@ class Stage2RepairPeersAndRestart(unittest.TestCase):
         w.adapter.finish(run["pid"])
         w.store.update(batch["id"], pid=None)
         w.store.finish_runs(batch["id"], "0")
+        spawn = state["current"]["attempt_log"][-1]["spawn"]
+        # process spawned, Supervisor died before the batch pid / run row were written: orphan evidence on disk
+        Path(spawn["log_file"]).touch()
+        w.sup._launch_stage2_repair_page(w.store.batch(batch["id"]))
+        self.assertEqual(len(w.adapter.launches), launches, "an orphaned launch is never duplicated")
+        self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+        for key in ("log_file", "exit_file"):
+            Path(spawn[key]).unlink(missing_ok=True)
+        w.store.update(batch["id"], state="PRODUCING", error=None)
         w.sup._launch_stage2_repair_page(w.store.batch(batch["id"]))
         self.assertEqual(len(w.adapter.launches), launches + 1, "the unstarted reservation is launched exactly once")
         self.assertEqual([a["status"] for a in self.state(w, batch)["attempt_log"]], ["launched"])
