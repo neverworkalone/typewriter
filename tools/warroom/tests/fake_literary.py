@@ -165,7 +165,10 @@ class FakeLiteraryCli:
             return Result(0, json.dumps({"batch": cp["batch"], "all_done": all(s["done"] for s in senses), "senses": senses}))
         if cmd == "chunk":
             wanted = self.opt(argv, "--sense-ids")
-            pool = wanted.split(",") if wanted else [i for i in cp["ids"] if cp["status"][i] not in DONE]
+            excluded = set((self.opt(argv, "--exclude-sense-ids") or "").split(",")) - {""}
+            pending = [i for i in cp["ids"] if cp["status"][i] not in DONE]
+            pool = wanted.split(",") if wanted else [i for i in pending if i not in excluded]
+            reserved = len([i for i in pending if i in excluded]) if not wanted else 0
             limit = int(self.opt(argv, "--limit") or 12)
             shown = pool[:limit]
             blocks = []
@@ -176,7 +179,8 @@ class FakeLiteraryCli:
                     blocks.append(f"## {i} — 표제 [noun]\n뜻 {i}\nhits=3 unseen=0\n[abcdef123456] 작품 / 작가\n원문 {i} 한국어 발췌")
             done = sum(1 for s in cp["status"].values() if s in DONE)
             return Result(0, f"batch={shard or cp['batch']['shard']}_{cp['batch']['batch']} done={done}/{len(cp['ids'])} zero_hit=0 "
-                             f"not_yet_read={max(0, len(pool) - len(shown))}\n\n" + "\n\n".join(blocks) + "\n")
+                             f"not_yet_read={max(0, len(pool) - len(shown))}"
+                             f"{f' excluded_pending={reserved}' if reserved else ''}\n\n" + "\n\n".join(blocks) + "\n")
         if cmd == "export":
             if self.export_error:
                 return Result(1, "", self.export_error)

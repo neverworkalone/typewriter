@@ -120,6 +120,13 @@ Save the `chunk` response once, then format every returned sense and its full
 contexts in one `jq` call. Items with only `sense_id` and `status`, such as
 `SEARCH_FAILED`, remain visible in the same output:
 
+Checkpoint writes (`init`, `chunk`, `submit`, `add-form`, `export`, `clear-candidates`, Supervisor technical skip) run
+under `<checkpoint>.lock`, so several workers of one batch may overlap on different Senses. `chunk` applies ZERO_HITS
+and `shown` only to Senses unchanged since its lookup and lists only those; `submit` is refused as a whole with
+`checkpoint_sense_changed` if a Sense it saves changed meanwhile. The Supervisor-only `chunk --exclude-sense-ids a,b`
+leaves reserved Senses out of the selection and adds ` excluded_pending=N` to the text header when N > 0; worker
+commands accept an optional `--chunk NNN` that confines them to `c-active-NNN.json`.
+
 ```sh
 node scripts/relation/literary-context-cli.mjs chunk --db "$TYPEWRITER_APPROVED_LITERARY_DB" --checkpoint CP > .warroom-scratch/chunk-01.read.json
 jq -r '

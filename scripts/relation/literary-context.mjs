@@ -1,7 +1,8 @@
-import { createHash } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash, randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { createReadStream } from 'node:fs';
-import { mkdir, readFile, realpath, rename, stat, writeFile } from 'node:fs/promises';
+import { link, mkdir, open, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -73,6 +74,7 @@ function failSubmission(reason, senseId, field, entryNumber = null, details = {}
     ['duplicate_sense', 'correct_submission_shape'],
     ['unknown_sense', 'correct_source_sense_id'],
     ['missing_search_forms', 'stop_and_report'],
+    ['checkpoint_sense_changed', 'stop_and_report'],
   ]).get(reason) ?? 'resubmit_affected_sense';
   throw error;
 }
@@ -127,6 +129,129 @@ async function writeJsonAtomic(filePath, value) {
   const temporary = `${filePath}.${process.pid}.tmp`;
   await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
   await rename(temporary, filePath);
+}
+
+// ---- checkpoint lock ---------------------------------------------------------------------------------------------
+// Several chunk workers of one batch share the single checkpoint file. Every mutation is a short load -> change -> save
+// under `<checkpoint>.lock`; only the owner's token removes it, and a dead owner's lock is reclaimed by exactly one
+// process through `<lock>.reclaim`.
+const CHECKPOINT_LOCK_TIMEOUT_MS = 30_000;
+const UNREADABLE_LOCK_GRACE_MS = 10_000;
+const heldLocks = new AsyncLocalStorage();
+const sleep = (milliseconds) => new Promise((resolve) => { setTimeout(resolve, milliseconds); });
+
+function pidAlive(pid) {
+  if (!Number.isSafeInteger(pid) || pid < 1) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
+  }
+}
+
+async function readLockFile(file) {
+  let text;
+  try {
+    text = await readFile(file, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+  let info = null;
+  try {
+    const parsed = JSON.parse(text);
+    if (Number.isSafeInteger(parsed?.pid) && typeof parsed.token === 'string') info = parsed;
+  } catch { /* a lock that was created but never written */ }
+  return { text, info };
+}
+
+/** Reclaimable: its owner is gone, or it never became readable (a crash between create and write). */
+async function lockIsStale(file, snapshot) {
+  if (snapshot.info) return !pidAlive(snapshot.info.pid);
+  const modified = await stat(file).then((item) => item.mtimeMs, () => Date.now());
+  return Date.now() - modified > UNREADABLE_LOCK_GRACE_MS;
+}
+
+async function createLockFile(file) {
+  const token = randomBytes(16).toString('hex');
+  let handle;
+  try {
+    handle = await open(file, 'wx', 0o600);
+  } catch (error) {
+    if (error.code === 'EEXIST') return null;
+    throw error;
+  }
+  try {
+    await handle.writeFile(JSON.stringify({ pid: process.pid, token, acquired_at: new Date().toISOString() }));
+  } finally {
+    await handle.close();
+  }
+  return token;
+}
+
+async function releaseLockFile(file, token) {
+  const snapshot = await readLockFile(file);
+  if (snapshot?.info?.token === token) await unlink(file).catch((error) => { if (error.code !== 'ENOENT') throw error; });
+}
+
+/** Remove a dead reclaimer's file. The rename claims the exact file looked at; a live replacement is put back untouched. */
+async function removeStaleReclaim(file, staleText) {
+  const grave = `${file}.${process.pid}.${randomBytes(4).toString('hex')}.dead`;
+  try {
+    await rename(file, grave);
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  const claimed = await readFile(grave, 'utf8').catch(() => null);
+  if (claimed !== staleText) await link(grave, file).catch(() => {});
+  await unlink(grave).catch(() => {});
+}
+
+async function reclaimStaleLock(lockFile, staleText) {
+  const reclaimFile = `${lockFile}.reclaim`;
+  const token = await createLockFile(reclaimFile);
+  if (token === null) {
+    const other = await readLockFile(reclaimFile);
+    if (other && await lockIsStale(reclaimFile, other)) await removeStaleReclaim(reclaimFile, other.text);
+    return;
+  }
+  try {
+    // Only the reclaim holder may delete, and only the very lock it saw (same token, dead owner).
+    const current = await readLockFile(lockFile);
+    if (current && current.text === staleText && await lockIsStale(lockFile, current)) {
+      await unlink(lockFile).catch((error) => { if (error.code !== 'ENOENT') throw error; });
+    }
+  } finally {
+    await releaseLockFile(reclaimFile, token);
+  }
+}
+
+/**
+ * Run one top-level checkpoint mutation exclusively. Never nested: inside `fn` only `writeCheckpointLocked` saves.
+ * A wait beyond the limit fails with LITERARY_CHECKPOINT_LOCK_TIMEOUT and changes nothing.
+ */
+export async function withCheckpointLock(checkpointPath, fn, { timeoutMs = CHECKPOINT_LOCK_TIMEOUT_MS } = {}) {
+  const lockFile = `${path.resolve(checkpointPath)}.lock`;
+  const held = heldLocks.getStore() ?? new Set();
+  if (held.has(lockFile)) throw codedError('LITERARY_CHECKPOINT_LOCK_NESTED', 'checkpoint lock is already held by this operation');
+  await mkdir(path.dirname(lockFile), { recursive: true });
+  const deadline = Date.now() + timeoutMs;
+  let delay = 5;
+  let token;
+  while ((token = await createLockFile(lockFile)) === null) {
+    const snapshot = await readLockFile(lockFile);
+    if (snapshot && await lockIsStale(lockFile, snapshot)) await reclaimStaleLock(lockFile, snapshot.text);
+    if (Date.now() >= deadline) throw codedError('LITERARY_CHECKPOINT_LOCK_TIMEOUT', 'timed out waiting for the checkpoint lock');
+    await sleep(delay + Math.floor(Math.random() * delay));
+    delay = Math.min(delay * 2, 200);
+  }
+  try {
+    return await heldLocks.run(new Set([...held, lockFile]), fn);
+  } finally {
+    await releaseLockFile(lockFile, token);
+  }
 }
 
 function tableColumns(database, table) {
@@ -949,7 +1074,10 @@ export async function initializeLiteraryCheckpoint({ canonicalPath, shard, batch
     })),
     output: null,
   };
-  await writeJsonAtomic(resolvedCheckpoint, checkpoint);
+  await withCheckpointLock(resolvedCheckpoint, async () => {
+    if (await stat(resolvedCheckpoint).then(() => true, () => false)) fail('checkpoint already exists; refusing to overwrite it');
+    await writeCheckpointLocked(resolvedCheckpoint, checkpoint);
+  });
   return { checkpoint, summary: checkpointSummary(checkpoint), index_summary: inspectedIndex.summary, path: resolvedCheckpoint };
 }
 
@@ -963,7 +1091,8 @@ export async function loadLiteraryCheckpoint(checkpointPath, { scratchDirectory 
   return { checkpoint, path: resolvedPath };
 }
 
-async function saveCheckpoint(checkpointPath, checkpoint) {
+/** Save while the caller holds the checkpoint lock; never acquires it again. */
+async function writeCheckpointLocked(checkpointPath, checkpoint) {
   await writeJsonAtomic(checkpointPath, checkpoint);
 }
 
@@ -1058,7 +1187,18 @@ const TECHNICAL_SKIP_REASONS = new Set([
  * Supervisor-only transition for a single source-Sense rejected by the current submit CLI.
  * The public producer CLI intentionally exposes no technical-skip command.
  */
-export async function applySupervisorTechnicalSkip({
+export async function applySupervisorTechnicalSkip(options) {
+  const scratchDirectory = options.scratchDirectory ?? path.resolve(CHECKPOINT_SCRATCH_DIRECTORY);
+  let lockPath;
+  try {
+    lockPath = assertScratchPath(options.checkpointPath, scratchDirectory);
+  } catch {
+    return applySupervisorTechnicalSkipLocked(options);   // refuses an invalid path itself, before any lock is created
+  }
+  return withCheckpointLock(lockPath, () => applySupervisorTechnicalSkipLocked(options));
+}
+
+async function applySupervisorTechnicalSkipLocked({
   checkpointPath,
   inputPath,
   diagnosticPath,
@@ -1211,7 +1351,7 @@ export async function applySupervisorTechnicalSkip({
   };
   targetSense.submission = { status: 'TECHNICAL_SKIPPED', candidates: [], technical_skip: technicalSkip };
   markOutputStale(checkpoint, 'supervisor technical skip');
-  await saveCheckpoint(resolvedCheckpoint, checkpoint);
+  await writeCheckpointLocked(resolvedCheckpoint, checkpoint);
   return { status: 'TECHNICAL_SKIPPED', record_id: targetRecord.record_id, sense_id: targetId,
     diagnostic: diagnostic.diagnostic, reason: diagnostic.reason, field: affected.field,
     retry_attempts: 2, pending_senses: 0 };
@@ -1220,21 +1360,24 @@ export async function applySupervisorTechnicalSkip({
 /** Add a source-bound additional inflection before the sense has been read and submitted. */
 export async function addSearchForm(checkpointPath, senseId, form, basis, options = {}) {
   if (typeof form !== 'string' || form.trim() === '' || typeof basis !== 'string' || basis.trim() === '') fail('additional form and its source/basis are required');
-  const { checkpoint, path: resolvedPath } = await loadLiteraryCheckpoint(checkpointPath, options);
-  const { sense } = findSense(checkpoint, senseId);
-  const normalized = form.normalize('NFC').trim();
-  const alreadyKnown = sense.search_forms.includes(normalized) || sense.added_forms.some((item) => item.form === normalized);
-  if (!alreadyKnown) {
-    if ((sense.contexts?.length ?? 0) > 0 || sense.submission?.status === 'SUBMITTED') fail('add reviewed search forms before reading and submitting the sense so its 16-context sample stays exact');
-    markOutputStale(checkpoint, 'search forms changed');
-    sense.added_forms.push({ form: normalized, basis: basis.trim(), added_at: new Date().toISOString() });
-    sense.added_forms.sort((left, right) => compare(left.form, right.form));
-    sense.submission = null;
-    sense.search = null;
-    sense.shown = null;
-    await saveCheckpoint(resolvedPath, checkpoint);
-  }
-  return { sense_id: senseId, query_form_count: senseForms(sense).length };
+  const resolvedPath = assertScratchPath(checkpointPath, options.scratchDirectory ?? path.resolve(CHECKPOINT_SCRATCH_DIRECTORY));
+  return withCheckpointLock(resolvedPath, async () => {
+    const { checkpoint } = await loadLiteraryCheckpoint(resolvedPath, options);
+    const { sense } = findSense(checkpoint, senseId);
+    const normalized = form.normalize('NFC').trim();
+    const alreadyKnown = sense.search_forms.includes(normalized) || sense.added_forms.some((item) => item.form === normalized);
+    if (!alreadyKnown) {
+      if ((sense.contexts?.length ?? 0) > 0 || sense.submission?.status === 'SUBMITTED') fail('add reviewed search forms before reading and submitting the sense so its 16-context sample stays exact');
+      markOutputStale(checkpoint, 'search forms changed');
+      sense.added_forms.push({ form: normalized, basis: basis.trim(), added_at: new Date().toISOString() });
+      sense.added_forms.sort((left, right) => compare(left.form, right.form));
+      sense.submission = null;
+      sense.search = null;
+      sense.shown = null;
+      await writeCheckpointLocked(resolvedPath, checkpoint);
+    }
+    return { sense_id: senseId, query_form_count: senseForms(sense).length };
+  });
 }
 
 function boundedInteger(value, defaultValue, minimum, maximum, label) {
@@ -1245,11 +1388,35 @@ function boundedInteger(value, defaultValue, minimum, maximum, label) {
 
 const sourceLabel = (source) => [source.title, source.author].filter(Boolean).join(' / ');
 
+/** What a worker saw of one Sense when it began; the lock-time application compares only the Sense it changes. */
+function senseSnapshot(sense) {
+  return {
+    forms: formsDigest(senseForms(sense)),
+    shown: JSON.stringify(sense.shown ?? null),
+    submission: JSON.stringify(sense.submission ?? null),
+  };
+}
+
+function assertSkipPrefix(prior, digest, allUnitRowIds, skippedContexts) {
+  if (!prior || prior.forms_sha256 !== digest || !Array.isArray(prior.unit_rowids)
+    || prior.unit_rowids.length < skippedContexts) {
+    fail('skip requires matching previously shown context evidence for this sense');
+  }
+  const priorPrefix = prior.unit_rowids.slice(0, skippedContexts);
+  if (priorPrefix.length !== skippedContexts
+    || priorPrefix.some((unitRowId, index) => unitRowId !== allUnitRowIds[index])) {
+    fail('skip context order no longer matches previously shown evidence for this sense');
+  }
+}
+
 /**
  * Read the next chunk of unsubmitted senses with all their sampled contexts in one result and one index connection.
- * Zero-hit senses are recorded in the same single write; senses with hits are never recorded until the AI submits them.
+ * The searches run on a snapshot; ZERO_HITS and `shown` are then applied under the checkpoint lock to the latest
+ * Sense objects, and only the Senses that were really applied appear in the returned view. A Sense whose forms,
+ * submission (or, for an explicit re-read, `shown`) changed meanwhile is left as not yet read.
+ * `excludeSenseIds` (general selection only) keeps Senses reserved by other workers out of the selection.
  */
-export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds, limit, contexts, skip, format = 'json', outputBudget, snippetChars, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds, excludeSenseIds, limit, contexts, skip, format = 'json', outputBudget, snippetChars, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const senseLimit = boundedInteger(limit, CHUNK_DEFAULT_SENSES, 1, 50, 'chunk limit');
   const contextLimit = boundedInteger(contexts, CHUNK_DEFAULT_CONTEXTS, 1, MAX_CONTEXTS_PER_SENSE, 'contexts per sense');
   const skipProvided = skip !== undefined;
@@ -1259,25 +1426,32 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
   if (skipProvided && (typeof senseIds !== 'string' || senseIds.length === 0)) fail('--sense-ids is required when skip is specified');
   if (skipProvided && !['json', 'text'].includes(format)) fail('chunk output format must be json or text');
   const snippetLimit = validateSnippetChars(snippetChars);
+  const idPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
   const requested = senseIds === undefined ? null : String(senseIds).split(',');
-  if (requested && (requested.length === 0 || requested.some((item) => !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(item)))) {
+  if (requested && (requested.length === 0 || requested.some((item) => !idPattern.test(item)))) {
     fail('--sense-ids must be a comma-separated list of valid ids');
   }
   if (requested && new Set(requested).size !== requested.length) fail('--sense-ids must contain unique ids');
+  const excluded = excludeSenseIds === undefined ? null : new Set(String(excludeSenseIds).split(','));
+  if (excluded && requested) fail('--exclude-sense-ids cannot be combined with --sense-ids');
+  if (excluded && [...excluded].some((item) => !idPattern.test(item))) fail('--exclude-sense-ids must be a comma-separated list of valid ids');
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
   if (requested) for (const senseId of requested) findSense(checkpoint, senseId);
   const targets = checkpoint.records.flatMap((record) => record.senses
-    .filter((sense) => (requested ? requested.includes(sense.sense_id) : !senseDone(sense)))
+    .filter((sense) => (requested ? requested.includes(sense.sense_id) : !senseDone(sense) && !excluded?.has(sense.sense_id)))
     .map((sense) => ({ record, sense })));
   const { database, metadata } = openLiteraryIndex(databasePath);
+  let items;
+  let zeroUpdates;
+  let shownUpdates;
+  let unqueried = 0;
+  const response = {};
   try {
     await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata);
-    const items = [];
+    items = [];
+    zeroUpdates = [];
+    shownUpdates = [];
     let usedChars = 0;
-    let zeroHitRecorded = 0;
-    let shownRecorded = 0;
-    const shownUpdates = [];
-    let unqueried = 0;
     let full = false;
     for (const { record, sense } of targets) {
       if (full || items.length >= senseLimit) {
@@ -1297,26 +1471,12 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
         continue;
       }
       if (result.total_hits === 0) {
-        if (!sense.submission) {
-          sense.submission = { status: 'ZERO_HITS', submitted_at: new Date().toISOString(), total_hits: 0, candidates: [] };
-          zeroHitRecorded += 1;
-        }
+        if (!sense.submission) zeroUpdates.push({ senseId: sense.sense_id, start: senseSnapshot(sense) });
         continue;
       }
       const digest = formsDigest(forms);
       const allUnitRowIds = result.results.map((row) => row._private.locator.unit_rowid);
-      if (skippedContexts > 0) {
-        const prior = sense.shown;
-        if (!prior || prior.forms_sha256 !== digest || !Array.isArray(prior.unit_rowids)
-          || prior.unit_rowids.length < skippedContexts) {
-          fail('skip requires matching previously shown context evidence for this sense');
-        }
-        const priorPrefix = prior.unit_rowids.slice(0, skippedContexts);
-        if (priorPrefix.length !== skippedContexts
-          || priorPrefix.some((unitRowId, index) => unitRowId !== allUnitRowIds[index])) {
-          fail('skip context order no longer matches previously shown evidence for this sense');
-        }
-      }
+      if (skippedContexts > 0) assertSkipPrefix(sense.shown, digest, allUnitRowIds, skippedContexts);
       const visibleResults = result.results.slice(skippedContexts);
       const item = {
         sense_id: sense.sense_id,
@@ -1336,19 +1496,20 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
       }
       usedChars += size;
       items.push(item);
-      shownUpdates.push({ sense, digest, totalHits: result.total_hits, unitRowIds: allUnitRowIds });
+      shownUpdates.push({ senseId: sense.sense_id, digest, totalHits: result.total_hits, unitRowIds: allUnitRowIds, start: senseSnapshot(sense) });
     }
     const progress = checkpointSummary(checkpoint).coverage;
-    const response = {
+    Object.assign(response, {
       contract: LITERARY_CONTEXT_CONTRACT,
       status: 'READY',
       batch: { shard: checkpoint.batch.shard, batch: checkpoint.batch.batch },
       done_senses: progress.senses - targetsPending(checkpoint),
       total_senses: progress.senses,
-      zero_hit_recorded: zeroHitRecorded,
+      zero_hit_recorded: zeroUpdates.length,
       not_yet_read: unqueried,
+      excluded_pending: 0,
       items,
-    };
+    });
     if (enforceOutputBudget && format === 'text') {
       const actualChars = renderChunkText(response).length;
       if (actualChars > maxOutputChars) {
@@ -1376,19 +1537,60 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
         throw error;
       }
     }
-    const returnedSenseIds = enforceOutputBudget ? new Set(response.items.map((item) => item.sense_id)) : null;
-    for (const { sense, digest, totalHits, unitRowIds } of shownUpdates) {
-      if (returnedSenseIds && !returnedSenseIds.has(sense.sense_id)) continue;
-      // Keep the accumulated lookup order. For skip reads the first `skip` row ids were already shown and verified above.
-      const earlier = sense.shown?.forms_sha256 === digest ? sense.shown.unit_rowids : [];
-      sense.shown = { forms_sha256: digest, total_hits: totalHits, unit_rowids: [...new Set([...earlier, ...unitRowIds])] };
-      shownRecorded += 1;
-    }
-    if (zeroHitRecorded > 0 || shownRecorded > 0) await saveCheckpoint(resolvedCheckpoint, checkpoint);
-    return response;
   } finally {
     database.close();
   }
+
+  // Only a shown Sense that survived the output budget is recorded (and listed).
+  const returnedSenseIds = new Set(response.items.map((item) => item.sense_id));
+  const pendingShown = shownUpdates.filter((update) => returnedSenseIds.has(update.senseId));
+  const explicitReread = requested !== null;
+  const unchanged = (sense, start) => {
+    if (!explicitReread && senseDone(sense)) return false;
+    const now = senseSnapshot(sense);
+    return now.forms === start.forms && now.submission === start.submission && (!explicitReread || now.shown === start.shown);
+  };
+  const applied = await withCheckpointLock(resolvedCheckpoint, async () => {
+    const { checkpoint: latest } = await loadLiteraryCheckpoint(resolvedCheckpoint, { scratchDirectory });
+    const appliedZero = new Set();
+    const appliedShown = new Set();
+    const locate = (senseId) => (checkpointHasSense(latest, senseId) ? findSense(latest, senseId).sense : null);
+    for (const { senseId, start } of zeroUpdates) {
+      const sense = locate(senseId);
+      if (!sense || sense.submission || !unchanged(sense, start)) continue;
+      sense.submission = { status: 'ZERO_HITS', submitted_at: new Date().toISOString(), total_hits: 0, candidates: [] };
+      appliedZero.add(senseId);
+    }
+    for (const { senseId, start, digest, totalHits, unitRowIds } of pendingShown) {
+      const sense = locate(senseId);
+      if (!sense || !unchanged(sense, start)) continue;
+      if (skippedContexts > 0) assertSkipPrefix(sense.shown, digest, unitRowIds, skippedContexts);
+      // Keep the accumulated lookup order. For skip reads the first `skip` row ids were already shown and verified above.
+      const earlier = sense.shown?.forms_sha256 === digest ? sense.shown.unit_rowids : [];
+      sense.shown = { forms_sha256: digest, total_hits: totalHits, unit_rowids: [...new Set([...earlier, ...unitRowIds])] };
+      appliedShown.add(senseId);
+    }
+    if (appliedZero.size > 0 || appliedShown.size > 0) await writeCheckpointLocked(resolvedCheckpoint, latest);
+    return { latest, appliedZero, appliedShown };
+  });
+
+  const { latest, appliedZero, appliedShown } = applied;
+  const dropped = zeroUpdates.filter((update) => !appliedZero.has(update.senseId)).length
+    + pendingShown.filter((update) => !appliedShown.has(update.senseId)).length;
+  const shownIds = new Set(shownUpdates.map((update) => update.senseId));
+  response.items = response.items.filter((item) => !shownIds.has(item.sense_id) || appliedShown.has(item.sense_id));
+  if (response.truncated) {
+    response.returned = response.items.length;
+  }
+  const progress = checkpointSummary(latest).coverage;
+  response.done_senses = progress.senses - targetsPending(latest);
+  response.total_senses = progress.senses;
+  response.zero_hit_recorded = appliedZero.size;
+  response.not_yet_read = unqueried + dropped;
+  response.excluded_pending = excluded
+    ? latest.records.reduce((count, record) => count + record.senses.filter((sense) => !senseDone(sense) && excluded.has(sense.sense_id)).length, 0)
+    : 0;
+  return response;
 }
 
 function targetsPending(checkpoint) {
@@ -1457,6 +1659,8 @@ export function resolveVerifiedContextKey(key, senseId, results, entryNumber = n
 /**
  * Save the whole chunk in one write: VERIFIED context keys (re-resolved against the index, so only real
  * contexts of that sense can be cited) and the final candidates. Nothing is written unless every sense is valid.
+ * Validation runs on a snapshot; under the checkpoint lock each submitted Sense is compared with the state it was
+ * validated against (other Senses may change freely) and the whole submission is refused if any differs.
  */
 export async function submitLiteraryChunk({ databasePath, checkpointPath, submission, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
@@ -1499,7 +1703,9 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
       if (result.total_hits === 0 && candidates.size > 0) failSubmission('no_literary_hits', entry.sense_id, 'candidates', entryNumber);
       if (candidates.size > 0 && verified.length === 0) failSubmission('missing_verified', entry.sense_id, 'verified', entryNumber);
       accepted.push({
-        sense,
+        senseId: entry.sense_id,
+        entryNumber,
+        start: senseSnapshot(sense),
         submission: {
           status: result.total_hits === 0 ? 'ZERO_HITS' : 'SUBMITTED',
           submitted_at: new Date().toISOString(),
@@ -1514,16 +1720,26 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
   } finally {
     database.close();
   }
-  for (const { sense, submission: saved } of accepted) sense.submission = saved;
-  markOutputStale(checkpoint, 'chunk submission changed');
-  await saveCheckpoint(resolvedCheckpoint, checkpoint);
-  return {
-    status: 'SAVED',
-    senses: accepted.length,
-    verified_contexts: accepted.reduce((sum, item) => sum + item.submission.verified.length, 0),
-    candidates: accepted.reduce((sum, item) => sum + item.submission.candidates.length, 0),
-    pending_senses: targetsPending(checkpoint),
-  };
+  return withCheckpointLock(resolvedCheckpoint, async () => {
+    const { checkpoint: latest } = await loadLiteraryCheckpoint(resolvedCheckpoint, { scratchDirectory });
+    const targets = accepted.map((item) => {
+      const now = checkpointHasSense(latest, item.senseId) ? senseSnapshot(findSense(latest, item.senseId).sense) : null;
+      if (!now || now.forms !== item.start.forms || now.shown !== item.start.shown || now.submission !== item.start.submission) {
+        failSubmission('checkpoint_sense_changed', item.senseId, 'sense', item.entryNumber);
+      }
+      return { sense: findSense(latest, item.senseId).sense, saved: item.submission };
+    });
+    for (const { sense, saved } of targets) sense.submission = saved;
+    markOutputStale(latest, 'chunk submission changed');
+    await writeCheckpointLocked(resolvedCheckpoint, latest);
+    return {
+      status: 'SAVED',
+      senses: accepted.length,
+      verified_contexts: accepted.reduce((sum, item) => sum + item.submission.verified.length, 0),
+      candidates: accepted.reduce((sum, item) => sum + item.submission.candidates.length, 0),
+      pending_senses: targetsPending(latest),
+    };
+  });
 }
 
 export function summarizeLiteraryCheckpoint(checkpoint) {
@@ -1610,9 +1826,33 @@ export function reportLiteraryCheckpointSenses(checkpoint, senseIdList) {
   };
 }
 
+/**
+ * Worker-side `--chunk NNN` scope: the request must stay inside the Senses of `c-active-NNN.json`, which is bound to this
+ * checkpoint's batch and model. Without `--chunk` nothing is checked (serial cards, manual use, singleton repair).
+ */
+export async function assertActiveChunkScope({ checkpointPath, chunkNo, senseIds, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+  const scopeError = (message) => codedError('LITERARY_CHUNK_SCOPE', message);
+  if (!Number.isSafeInteger(chunkNo) || chunkNo < 1) throw scopeError('invalid chunk number');
+  const { checkpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
+  let active;
+  try {
+    active = JSON.parse(await readFile(path.join(scratchDirectory, `c-active-${String(chunkNo).padStart(3, '0')}.json`), 'utf8'));
+  } catch {
+    throw scopeError('active chunk record is unavailable');
+  }
+  const { shard, batch, model } = checkpoint.batch;
+  if (active?.shard !== shard || active?.batch !== batch || active?.model !== model || active?.chunk_no !== chunkNo
+    || !Array.isArray(active.sense_ids)) {
+    throw scopeError('active chunk record is not bound to this batch');
+  }
+  const allowed = new Set(active.sense_ids);
+  if (senseIds.length === 0 || senseIds.some((id) => !allowed.has(id))) throw scopeError('sense is outside the active chunk');
+}
+
 /** Text view of the returned `chunk` items in the documented one-call `jq` format. */
 export function renderChunkText(result) {
-  const head = `batch=${result.batch.shard}_${result.batch.batch} done=${result.done_senses}/${result.total_senses} zero_hit=${result.zero_hit_recorded} not_yet_read=${result.not_yet_read}${result.truncated ? ' truncated=true' : ''}\n\n`;
+  const reserved = result.excluded_pending > 0 ? ` excluded_pending=${result.excluded_pending}` : '';
+  const head = `batch=${result.batch.shard}_${result.batch.batch} done=${result.done_senses}/${result.total_senses} zero_hit=${result.zero_hit_recorded} not_yet_read=${result.not_yet_read}${reserved}${result.truncated ? ' truncated=true' : ''}\n\n`;
   const items = result.items.map((item) => {
     if (!Array.isArray(item.contexts)) return `## ${item.sense_id} — ${item.status}`;
     return `## ${item.sense_id} — ${item.lemma} [${item.pos}]\n${item.gloss}\n`
@@ -1742,6 +1982,8 @@ function removeValidatedCandidateIssues(checkpoint, candidateRows, issues) {
 
 /** Export after every sense is read and submitted (or has zero hits); Candidate v1 runs once over the whole batch. */
 export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, outputPath, repositoryDirectory = process.cwd(), scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+  const lockPath = assertScratchPath(checkpointPath, scratchDirectory);
+  return withCheckpointLock(lockPath, async () => {
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
   const expectedName = `${checkpoint.batch.shard}_${checkpoint.batch.batch}_c_${checkpoint.batch.model}.jsonl`;
   if (path.basename(outputPath) !== expectedName) fail(`output filename must be ${expectedName}`);
@@ -1762,7 +2004,7 @@ export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, 
       throw error;
     }
     markOutputStale(checkpoint, 'Candidate v1 rejected source-bound candidate content');
-    await saveCheckpoint(resolvedCheckpoint, checkpoint);
+    await writeCheckpointLocked(resolvedCheckpoint, checkpoint);
     candidateRows = candidateRowsFromCheckpoint(checkpoint);
   }
   const resolvedOutput = path.resolve(outputPath);
@@ -1792,12 +2034,15 @@ export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, 
     exported_at: new Date().toISOString(),
     validation_status: validation.status,
   };
-  await saveCheckpoint(resolvedCheckpoint, checkpoint);
+  await writeCheckpointLocked(resolvedCheckpoint, checkpoint);
   return { status: 'OUTPUT', output: checkpoint.output, coverage: { records: validation.recordCount, senses: validation.senseCount, candidates: validation.candidateCount, empty_senses: validation.emptySenseCount } };
+  });
 }
 
 /** Clear candidates only for exact, source-bound senses after a repeated Candidate v1 repair failure. */
 export async function clearLiteraryCandidateSenses({ checkpointPath, canonicalPath, senseIds, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+  const lockPath = assertScratchPath(checkpointPath, scratchDirectory);
+  return withCheckpointLock(lockPath, async () => {
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
   if (checkpoint.contract !== CHECKPOINT_CONTRACT) fail('candidate fallback requires a v3 literary checkpoint');
   if (!Array.isArray(senseIds) || senseIds.length === 0 || new Set(senseIds).size !== senseIds.length
@@ -1820,9 +2065,10 @@ export async function clearLiteraryCandidateSenses({ checkpointPath, canonicalPa
   }
   if (removed > 0) {
     markOutputStale(checkpoint, 'repeated Candidate v1 content error fallback');
-    await saveCheckpoint(resolvedCheckpoint, checkpoint);
+    await writeCheckpointLocked(resolvedCheckpoint, checkpoint);
   }
   return { status: 'CLEARED', senses: senseIds.length, candidates: removed };
+  });
 }
 
 /** Validate an existing Candidate file with the shared Candidate v1 batch contract (for a hand-edited file). */

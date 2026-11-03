@@ -538,18 +538,37 @@ def view_for_senses(text: str, sense_ids: list[str]) -> str:
     return f"{header}\n\n{selected}{suffix}"
 
 
+_PROGRESS = re.compile(r"batch=\d+_\d+ done=(\d+)/(\d+) zero_hit=(\d+) not_yet_read=(\d+)(?: excluded_pending=(\d+))?"
+                       r"(?: truncated=true)?\n")
+
+
 def progress_numbers(text: str) -> tuple[int, int, int, int]:
-    """(done, total, zero_hit, not_yet_read) from the view's first line."""
-    m = re.match(r"batch=\d+_\d+ done=(\d+)/(\d+) zero_hit=(\d+) not_yet_read=(\d+)\n", text)
+    """(done, total, zero_hit, not_yet_read) from the view's first line; serial views and views with an
+    `excluded_pending` field are both accepted."""
+    m = _PROGRESS.match(text)
     if not m:
         raise LiteraryError("chunk view의 진행 헤더를 읽을 수 없습니다")
-    return tuple(int(x) for x in m.groups())  # type: ignore[return-value]
+    return tuple(int(x) for x in m.groups()[:4])  # type: ignore[return-value]
 
 
-def render_chunk(runner, env, worktree, b, db_path: str, sense_ids: list[str] | None = None) -> str:
+def excluded_pending(text: str) -> int:
+    """Unfinished Senses left out of the selection by `--exclude-sense-ids` (0 when the header has no such field)."""
+    m = _PROGRESS.match(text)
+    if not m:
+        raise LiteraryError("chunk view의 진행 헤더를 읽을 수 없습니다")
+    return int(m.group(5) or 0)
+
+
+def render_chunk(runner, env, worktree, b, db_path: str, sense_ids: list[str] | None = None,
+                 exclude: list[str] | set[str] | None = None) -> str:
     """One `chunk` call with the fixed limits; the view is the exact CLI stdout (UTF-8, never trimmed).
-    `sense_ids` (a Candidate v1 repair) re-reads exactly those senses with the 16-context maximum."""
+    `sense_ids` (a Candidate v1 repair) re-reads exactly those senses with the 16-context maximum.
+    `exclude` keeps Senses reserved by other chunks out of a general selection; read `excluded_pending(view)`."""
+    if sense_ids and exclude:
+        raise LiteraryError("sense_ids와 exclude는 함께 쓸 수 없습니다")
     extra = ["--sense-ids", ",".join(sense_ids), "--contexts", "16"] if sense_ids else ["--contexts", str(CHUNK_CONTEXTS)]
+    if exclude:
+        extra += ["--exclude-sense-ids", ",".join(sorted(exclude))]
     res = cli(runner, env, worktree, "chunk", "--db", db_path, "--checkpoint", names(b).checkpoint, "--limit",
               str(CHUNK_LIMIT), *extra, "--format", "text")
     if not res.ok:
@@ -578,32 +597,38 @@ def checkpoint_head(worktree, b) -> str:
     return head
 
 
+def _active_paths(chunk_no: int | None) -> tuple[str, str]:
+    """(active record, view) of the numbered parallel chunk, or of the singleton when no number is given."""
+    if chunk_no is None:
+        return ACTIVE, VIEW
+    return f"{SCRATCH}/c-active-{chunk_no:03d}.json", f"{SCRATCH}/c-active-{chunk_no:03d}.txt"
+
+
 def write_active(worktree, b, view: str, ids: list[str], head: str, chunk_no: int, *, repair: bool = False,
-                 checkpoint_sha: str | None = None, note: str = "") -> dict:
-    """Store the view and the minimal active-chunk record AFTER the view was generated (chunk may advance ZERO_HITS)."""
+                 checkpoint_sha: str | None = None, note: str = "", numbered: bool = False) -> dict:
+    """Store the view and the minimal active-chunk record AFTER the view was generated (chunk may advance ZERO_HITS).
+    `numbered` writes `c-active-NNN.*` for a parallel chunk instead of the singleton `c-active-chunk.*`."""
     wt = Path(worktree)
+    active, view_path = _active_paths(chunk_no if numbered else None)
     (wt / SCRATCH).mkdir(parents=True, exist_ok=True)
-    (wt / VIEW).write_bytes(view.encode("utf-8"))
+    (wt / view_path).write_bytes(view.encode("utf-8"))
     record = {"chunk_id": f"{b['shard']}-{b['batch']}-{chunk_no:03d}", "chunk_no": chunk_no, "sense_ids": ids,
               "view_sha256": sha256_text(view), "view_bytes": len(view.encode("utf-8")), "git_head": head,
               "shard": b["shard"], "batch": b["batch"], "model": b["producer"]}
     if repair:   # senses already done: the repair is finished only when a later submit changed the checkpoint
         record.update(repair=True, checkpoint_sha=checkpoint_sha, note=note[:600])
-    tmp = wt / (ACTIVE + ".tmp")
+    tmp = wt / (active + ".tmp")
     tmp.write_text(json.dumps(record, sort_keys=True), "utf-8")
-    tmp.replace(wt / ACTIVE)
+    tmp.replace(wt / active)
     return record
 
 
-def read_active(worktree, b) -> dict | None:
-    """The active record bound to this batch, None when there is none; a damaged or foreign one raises."""
-    path = Path(worktree) / ACTIVE
-    if not path.exists():
-        return None
+def _load_active(path: Path, b, chunk_no: int | None) -> dict:
     try:
         rec = json.loads(path.read_text("utf-8"))
         ok = (isinstance(rec, dict) and (rec.get("shard"), rec.get("batch"), rec.get("model")) ==
               (b["shard"], b["batch"], b["producer"]) and isinstance(rec.get("chunk_no"), int)
+              and not isinstance(rec.get("chunk_no"), bool) and (chunk_no is None or rec["chunk_no"] == chunk_no)
               and isinstance(rec.get("view_sha256"), str) and isinstance(rec.get("git_head"), str)
               and isinstance(rec.get("sense_ids"), list) and rec["sense_ids"]
               and all(isinstance(i, str) and _ID.fullmatch(i) for i in rec["sense_ids"]))
@@ -612,6 +637,35 @@ def read_active(worktree, b) -> dict | None:
     if not ok:
         raise LiteraryError("활성 청크 기록이 손상되었거나 다른 배치/모델의 것입니다")
     return rec
+
+
+def read_active(worktree, b, chunk_no: int | None = None) -> dict | None:
+    """The active record bound to this batch (the numbered one, else the singleton), None when there is none;
+    a damaged or foreign one raises."""
+    path = Path(worktree) / _active_paths(chunk_no)[0]
+    if not path.exists():
+        return None
+    return _load_active(path, b, chunk_no)
+
+
+_ACTIVE_NUMBERED = re.compile(r"c-active-(\d{3,})\.json")
+
+
+def active_chunks(worktree, b) -> dict[int, dict]:
+    """Every numbered active chunk of this batch. A normal `.tmp` is ignored; a damaged final file raises."""
+    found: dict[int, dict] = {}
+    for path in sorted((Path(worktree) / SCRATCH).glob("c-active-*.json")):
+        m = _ACTIVE_NUMBERED.fullmatch(path.name)
+        if not m:
+            continue
+        number = int(m.group(1))
+        found[number] = _load_active(path, b, number)
+    return found
+
+
+def reserved_sense_ids(worktree, b) -> set[str]:
+    """Senses already assigned to a numbered active chunk (the exclusion for the next general selection)."""
+    return {sense_id for rec in active_chunks(worktree, b).values() for sense_id in rec["sense_ids"]}
 
 
 def chunk_finished(runner, env, worktree, b, rec: dict) -> bool:
@@ -623,10 +677,10 @@ def chunk_finished(runner, env, worktree, b, rec: dict) -> bool:
     return sense_report(runner, env, worktree, b, rec["sense_ids"])["all_done"]
 
 
-def read_view(worktree, rec: dict) -> str:
+def read_view(worktree, rec: dict, chunk_no: int | None = None) -> str:
     """The saved view, proven byte-for-byte to be the one the active record was written for."""
     try:
-        data = (Path(worktree) / VIEW).read_bytes()
+        data = (Path(worktree) / _active_paths(chunk_no)[1]).read_bytes()
     except OSError as e:
         raise LiteraryError(f"활성 청크 view를 읽을 수 없습니다: {e}") from e
     if hashlib.sha256(data).hexdigest() != rec["view_sha256"]:
@@ -634,10 +688,12 @@ def read_view(worktree, rec: dict) -> str:
     return data.decode("utf-8")
 
 
-def clear_active(worktree) -> None:
-    for rel in (ACTIVE, VIEW):
+def clear_active(worktree, chunk_no: int | None = None) -> None:
+    active, view = _active_paths(chunk_no)
+    for rel in (active, view):
         (Path(worktree) / rel).unlink(missing_ok=True)
-    for stale in (Path(worktree) / SCRATCH).glob("c-active-chunk.p*of*.txt"):
+    stem = Path(view).stem
+    for stale in (Path(worktree) / SCRATCH).glob(f"{stem}.p*of*.txt"):
         stale.unlink()
 
 
@@ -647,12 +703,12 @@ def delivery(card_bytes: int, view: str) -> str:
     return "inline" if card_bytes + len(view.encode("utf-8")) <= INLINE_MAX_PROMPT_BYTES else "pages"
 
 
-def write_pages(worktree, view: str) -> list[str]:
+def write_pages(worktree, view: str, chunk_no: int | None = None) -> list[str]:
     """Fallback pages (Stage 2's 36,000 byte / 28,000 char pages); joining them equals the view exactly."""
     pages = stage2.chunk_pages(view)
     if "".join(pages) != view:
         raise LiteraryError("page 분할 결과가 원본 view와 일치하지 않습니다")
-    return stage2.write_pages(worktree, VIEW, pages)
+    return stage2.write_pages(worktree, _active_paths(chunk_no)[1], pages)
 
 
 # ---- deterministic, idempotent finalization ----------------------------------------------------------------------

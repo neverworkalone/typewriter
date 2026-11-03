@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
-import { spawnSync } from 'node:child_process';
+import { copyFile, mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, unlink, writeFile } from 'node:fs/promises';
+import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
@@ -21,6 +21,7 @@ import {
   submitLiteraryChunk,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
+  withCheckpointLock,
 } from './literary-context.mjs';
 
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
@@ -1709,4 +1710,257 @@ test('a damaged checkpoint is refused by every consumer (plain report, chunk, ex
   } finally {
     await cleanup(fixture);
   }
+});
+
+// ---- #3076: concurrent chunk workers share one checkpoint -----------------------------------------------------------
+const THREE_SENSES = ['one', 'two', 'three'];
+const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+/** Hold a live lock by hand, start the operation (it must wait), change the checkpoint, then release. */
+async function changeWhileOperationWaits(fixture, startOperation, mutate) {
+  const lockFile = `${fixture.checkpointPath}.lock`;
+  await writeFile(lockFile, JSON.stringify({ pid: process.pid, token: 'test-holder', acquired_at: new Date().toISOString() }));
+  const operation = startOperation();
+  const settled = operation.then(() => null, (error) => error);
+  await sleep(600);
+  const checkpoint = JSON.parse(await readFile(fixture.checkpointPath, 'utf8'));
+  mutate(checkpoint);
+  await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint, null, 2));
+  await unlink(lockFile);
+  return { operation, error: await settled };
+}
+
+const addFormInPlace = (checkpoint, senseId, form) => {
+  const sense = checkpoint.records.flatMap((record) => record.senses).find((item) => item.sense_id === senseId);
+  sense.added_forms.push({ form, basis: 'test', added_at: new Date().toISOString() });
+  sense.submission = null;
+  sense.shown = null;
+};
+
+function runChild(source, args = []) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, ['--input-type=module', '-e', source, ...args], { cwd: process.cwd() });
+    let stderr = '';
+    child.stderr.on('data', (chunkData) => { stderr += chunkData; });
+    child.on('close', (status) => resolve({ status, stderr }));
+  });
+}
+
+test('mutations of different Senses overlap without losing each other (submit, add-form, chunk --skip)', async () => {
+  const fixture = await makeFixture({ unitCount: 20, firstSenseGlosses: THREE_SENSES });
+  try {
+    const first = await chunk(fixture, { contexts: 8 });
+    const [one, , three] = first.items;
+    assert.equal(first.items.length, 3);
+    await Promise.all([
+      submit(fixture, [{ sense_id: 'sense-000001', verified: [one.contexts[0].k], candidates: ['서리'] }]),
+      addSearchForm(fixture.checkpointPath, 'sense-000001-2', '가나다라', 'test basis', { scratchDirectory: fixture.scratchDirectory }),
+      chunk(fixture, { senseIds: three.sense_id, contexts: 16, skip: 8 }),
+    ]);
+    const senses = (await load(fixture)).records[0].senses;
+    assert.equal(senses[0].submission.status, 'SUBMITTED');
+    assert.deepEqual(senses[1].added_forms.map((item) => item.form), ['가나다라']);
+    assert.equal(senses[1].submission, null);
+    assert.equal(senses[2].shown.unit_rowids.length, 16);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('checkpoint lock: exclusive across processes, one reclaimer of a dead owner, timeout leaves the checkpoint untouched', async () => {
+  const fixture = await makeFixture({ unitCount: 2 });
+  try {
+    const counter = path.join(fixture.scratchDirectory, 'lock-counter.txt');
+    await writeFile(counter, '0');
+    const lockFile = `${fixture.checkpointPath}.lock`;
+    const dead = spawnSync(process.execPath, ['-e', '']).pid;
+    await writeFile(lockFile, JSON.stringify({ pid: dead, token: 'dead-owner', acquired_at: new Date().toISOString() }));
+    const worker = `
+      import { readFile, writeFile } from 'node:fs/promises';
+      import { withCheckpointLock } from ${JSON.stringify(path.resolve('scripts/relation/literary-context.mjs'))};
+      const [checkpoint, counter] = process.argv.slice(1);
+      for (let index = 0; index < 15; index += 1) {
+        await withCheckpointLock(checkpoint, async () => {
+          const value = Number(await readFile(counter, 'utf8'));
+          await new Promise((resolve) => setTimeout(resolve, 2));
+          await writeFile(counter, String(value + 1));
+        });
+      }`;
+    const results = await Promise.all([1, 2, 3].map(() => runChild(worker, [fixture.checkpointPath, counter])));
+    assert.deepEqual(results.map((item) => item.status), [0, 0, 0], results.map((item) => item.stderr).join());
+    assert.equal(await readFile(counter, 'utf8'), '45', 'no update was lost');
+    await assert.rejects(stat(lockFile), { code: 'ENOENT' });
+    await assert.rejects(stat(`${lockFile}.reclaim`), { code: 'ENOENT' });
+
+    // A live owner is never reclaimed; the waiter fails with a coded timeout and changes nothing.
+    await writeFile(lockFile, JSON.stringify({ pid: process.pid, token: 'live-owner', acquired_at: new Date().toISOString() }));
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    const timeout = await runChild(`
+      import { withCheckpointLock } from ${JSON.stringify(path.resolve('scripts/relation/literary-context.mjs'))};
+      try { await withCheckpointLock(process.argv[1], async () => {}, { timeoutMs: 150 }); } catch (error) { console.error(error.code); process.exit(7); }`,
+    [fixture.checkpointPath]);
+    assert.equal(timeout.status, 7);
+    assert.match(timeout.stderr, /LITERARY_CHECKPOINT_LOCK_TIMEOUT/u);
+    assert.match(await readFile(lockFile, 'utf8'), /live-owner/u);
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+    await unlink(lockFile);
+
+    await withCheckpointLock(fixture.checkpointPath, async () => {
+      await assert.rejects(withCheckpointLock(fixture.checkpointPath, async () => {}), { code: 'LITERARY_CHECKPOINT_LOCK_NESTED' });
+    });
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('init refuses to overwrite an existing checkpoint', async () => {
+  const fixture = await makeFixture({ unitCount: 2 });
+  try {
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    await assert.rejects(initializeLiteraryCheckpoint({
+      canonicalPath: fixture.canonicalPath, shard: '001', batch: '01', model: 'codex', databasePath: fixture.databasePath,
+      checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory,
+    }), /already exists/u);
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('chunk lists only the Senses it really recorded: forms changed during the lookup leave the Sense unread', async () => {
+  const fixture = await makeFixture({ unitCount: 6, firstSenseGlosses: THREE_SENSES });
+  try {
+    const { operation, error } = await changeWhileOperationWaits(fixture,
+      () => chunk(fixture, { contexts: 4 }),
+      (checkpoint) => addFormInPlace(checkpoint, 'sense-000001-2', '가나다라'));
+    assert.equal(error, null);
+    const view = await operation;
+    assert.deepEqual(view.items.map((item) => item.sense_id), ['sense-000001', 'sense-000001-3']);
+    assert.equal(view.not_yet_read, 1);
+    const senses = (await load(fixture)).records[0].senses;
+    assert.equal(senses[1].shown, null, 'no shown evidence is recorded for the Sense that was not listed');
+    assert.ok(senses[0].shown && senses[2].shown);
+    assert.equal((await chunk(fixture, { contexts: 4 })).items.some((item) => item.sense_id === 'sense-000001-2'), true, 'it is selected again');
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('an explicit re-read of a submitted Sense with 16 contexts allows a later submit of an added context key', async () => {
+  const fixture = await makeFixture({ unitCount: 20 });
+  try {
+    const first = (await chunk(fixture, { contexts: 8 })).items[0];
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [first.contexts[0].k], candidates: ['서리'] }]);
+    const wide = (await chunk(fixture, { senseIds: 'sense-000001', contexts: 16 })).items[0];
+    assert.equal(wide.contexts.length, 16);
+    assert.equal((await load(fixture)).records[0].senses[0].shown.unit_rowids.length, 16);
+    const saved = await submit(fixture, [{ sense_id: 'sense-000001', verified: [first.contexts[0].k, wide.contexts[15].k], candidates: ['서리'] }]);
+    assert.equal(saved.verified_contexts, 2);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('submit is refused when its own Sense changed during validation, while other Senses may change freely', async () => {
+  const fixture = await makeFixture({ unitCount: 6, firstSenseGlosses: THREE_SENSES });
+  try {
+    const items = (await chunk(fixture, { contexts: 4 })).items;
+    const entries = [{ sense_id: 'sense-000001', verified: [items[0].contexts[0].k], candidates: ['서리'] }];
+    const other = await changeWhileOperationWaits(fixture, () => submit(fixture, entries),
+      (checkpoint) => addFormInPlace(checkpoint, 'sense-000001-3', '가나다라'));
+    assert.equal(other.error, null);
+    assert.equal((await load(fixture)).records[0].senses[0].submission.status, 'SUBMITTED');
+
+    const own = await changeWhileOperationWaits(fixture,
+      () => submit(fixture, [{ sense_id: 'sense-000001-2', verified: [items[1].contexts[0].k], candidates: ['눈'] }]),
+      (checkpoint) => addFormInPlace(checkpoint, 'sense-000001-2', '가나다마'));
+    assert.equal(own.error?.code, 'LITERARY_SUBMISSION_VALIDATION');
+    assert.equal(own.error.reason, 'checkpoint_sense_changed');
+    assert.equal(own.error.affected.sense_id, 'sense-000001-2');
+    const senses = (await load(fixture)).records[0].senses;
+    assert.equal(senses[1].submission, null, 'nothing was partially saved');
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('chunk --exclude-sense-ids selects around reserved Senses and reports excluded_pending in both formats', async () => {
+  const fixture = await makeFixture({ unitCount: 4, firstSenseGlosses: THREE_SENSES });
+  try {
+    const partial = await chunk(fixture, { excludeSenseIds: 'sense-000001' });
+    assert.deepEqual(partial.items.map((item) => item.sense_id), ['sense-000001-2', 'sense-000001-3']);
+    assert.equal(partial.excluded_pending, 1);
+    const all = await chunk(fixture, { excludeSenseIds: 'sense-000001,sense-000001-2,sense-000001-3' });
+    assert.deepEqual({ items: all.items.length, excluded: all.excluded_pending, unread: all.not_yet_read }, { items: 0, excluded: 3, unread: 0 });
+    assert.match(renderChunkText(all), /^batch=001_01 done=\d+\/\d+ zero_hit=0 not_yet_read=0 excluded_pending=3\n/u);
+    assert.doesNotMatch(renderChunkText({ ...all, excluded_pending: 0 }), /excluded_pending/u, 'serial headers keep their old shape');
+    await assert.rejects(chunk(fixture, { senseIds: 'sense-000001', excludeSenseIds: 'sense-000001-2' }), /cannot be combined/u);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('--chunk keeps chunk/add-form/submit inside the active chunk record; omitting it keeps the old behavior', async () => {
+  const fixture = await makeFixture({ unitCount: 6, firstSenseGlosses: THREE_SENSES });
+  try {
+    const items = (await chunk(fixture, { contexts: 4 })).items;
+    await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.json'), JSON.stringify({
+      chunk_id: '001-01-001', chunk_no: 1, sense_ids: ['sense-000001'], shard: '001', batch: '01', model: 'codex',
+    }));
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    const diagnostic = (result) => JSON.parse(result.stderr);
+    const outside = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001-2', '--chunk', '1']));
+    assert.equal(outside.status, 1);
+    assert.equal(diagnostic(outside).diagnostic, 'chunk_scope');
+    const outsideForm = runCli(fixture, ['add-form', '--checkpoint', fixture.checkpointPath, '--sense-id', 'sense-000001-2',
+      '--form', '가나다라', '--basis', 'test', '--chunk', '1']);
+    assert.equal(diagnostic(outsideForm).diagnostic, 'chunk_scope');
+    const outsideSubmit = await submitCliWithChunk(fixture, [{ sense_id: 'sense-000001-2', verified: [items[1].contexts[0].k], candidates: ['눈'] }], 1);
+    assert.equal(diagnostic(outsideSubmit).diagnostic, 'chunk_scope');
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+    for (const malformed of [[], [{ verified: [], candidates: [] }]]) {
+      const shape = await submitCliWithChunk(fixture, malformed, 1);
+      assert.equal(shape.status, 1);
+      const shapeDiagnostic = diagnostic(shape);
+      assert.equal(shapeDiagnostic.diagnostic, 'submit_validation');
+      assert.equal(shapeDiagnostic.repair_scope, 'correct_submission_shape');
+    }
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+
+    const inside = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--chunk', '1']));
+    assert.equal(inside.status, 0, inside.stderr);
+    const insideSubmit = await submitCliWithChunk(fixture, [{ sense_id: 'sense-000001', verified: [items[0].contexts[0].k], candidates: ['서리'] }], 1);
+    assert.equal(insideSubmit.status, 0, insideSubmit.stderr);
+    const unscoped = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001-2']));
+    assert.equal(unscoped.status, 0, unscoped.stderr);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+async function submitCliWithChunk(fixture, senses, chunkNo) {
+  const inputPath = path.join(fixture.scratchDirectory, 'submit-input.json');
+  await writeFile(inputPath, JSON.stringify({ senses }));
+  return spawnSync(process.execPath, [path.resolve('scripts/relation/literary-context-cli.mjs'), 'submit',
+    '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, '--input', inputPath, '--chunk', String(chunkNo)],
+  { cwd: fixture.root, encoding: 'utf8' });
+}
+
+test('the order in which fixed Sense submissions are applied does not change the exported bytes', async () => {
+  const outputs = [];
+  for (const reverse of [false, true]) {
+    const fixture = await makeFixture({ unitCount: 6, firstSenseGlosses: THREE_SENSES });
+    try {
+      const items = (await chunk(fixture, { contexts: 4 })).items;
+      const entries = items.map((item, index) => ({ sense_id: item.sense_id, verified: [item.contexts[0].k], candidates: [['서리'], ['눈'], ['바람']][index] }));
+      for (const entry of reverse ? [...entries].reverse() : entries) await submit(fixture, [entry]);
+      await exportOutput(fixture);
+      const checkpoint = await load(fixture);
+      const business = checkpoint.records[0].senses.map(({ sense_id: id, submission }) => [id, { ...submission, submitted_at: undefined }]);
+      outputs.push([await readFile(path.join(fixture.scratchDirectory, '001_01_c_codex.jsonl'), 'utf8'), JSON.stringify(business)]);
+    } finally {
+      await cleanup(fixture);
+    }
+  }
+  assert.deepEqual(outputs[0], outputs[1]);
 });
