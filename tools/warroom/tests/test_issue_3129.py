@@ -250,6 +250,7 @@ class Issue3129(Helpers, unittest.TestCase):
             self.assertIn("최대 16개", text)
             self.assertIn("SAMPLED_NO_VERIFIED", text)
             self.assertIn("--skip 8 --contexts 16", text)
+        self.assertIn("unshown_empty_sample", resume)
 
 
 if __name__ == "__main__":

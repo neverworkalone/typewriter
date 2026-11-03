@@ -877,9 +877,17 @@ test('an empty submission completes a fully sampled sense with no verified conte
 test('SAMPLED_NO_VERIFIED requires 16 distinct contexts exposed for the current forms', async () => {
   const unopened = await makeFixture({ unitCount: 20 });
   try {
-    const saved = await submit(unopened, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
-    assert.equal(saved.status, 'SAVED');
-    assert.equal((await load(unopened)).records[0].senses[0].submission.status, 'SUBMITTED');
+    const before = await readFile(unopened.checkpointPath, 'utf8');
+    await rejectsSubmitAs(submit(unopened, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]), 'unshown_empty_sample');
+    assert.equal(await readFile(unopened.checkpointPath, 'utf8'), before);
+    const cliFailure = await submitCli(unopened, { senses: [{ sense_id: 'sense-000001', verified: [], candidates: [] }] });
+    assert.equal(cliFailure.status, 1);
+    const diagnostic = JSON.parse(cliFailure.stderr);
+    assert.equal(diagnostic.reason, 'unshown_empty_sample');
+    assert.equal(diagnostic.repair_scope, 'resubmit_affected_sense');
+    const report = reportLiteraryCheckpointSenses(await load(unopened), 'sense-000001');
+    assert.equal(report.all_done, false);
+    assert.equal(report.senses[0].status, 'PENDING');
   } finally {
     await cleanup(unopened);
   }
@@ -889,14 +897,29 @@ test('SAMPLED_NO_VERIFIED requires 16 distinct contexts exposed for the current 
     await chunk(reformed, { senseIds: 'sense-000001', contexts: 8 });
     await addSearchForm(reformed.checkpointPath, 'sense-000001', '새로운 검색 형태', 'reviewed fixture form',
       { scratchDirectory: reformed.scratchDirectory });
-    const saved = await submit(reformed, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
-    assert.equal(saved.status, 'SAVED');
+    await rejectsSubmitAs(submit(reformed, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]), 'unshown_empty_sample');
     const sense = (await load(reformed)).records[0].senses[0];
     assert.equal(sense.shown, null);
-    assert.equal(sense.submission.status, 'SUBMITTED');
-    assert.equal(sense.submission.contexts_available, 16);
+    assert.equal(sense.submission, null);
+    const report = reportLiteraryCheckpointSenses(await load(reformed), 'sense-000001');
+    assert.equal(report.all_done, false);
+    assert.equal(report.senses[0].done, false);
   } finally {
     await cleanup(reformed);
+  }
+
+  const completeSmallSet = await makeFixture({ unitCount: 5 });
+  try {
+    const read = await chunk(completeSmallSet, { senseIds: 'sense-000001', contexts: 8 });
+    assert.equal(read.items[0].contexts.length, 5);
+    assert.equal(read.items[0].unseen_hits, 0);
+    const saved = await submit(completeSmallSet, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
+    assert.equal(saved.status, 'SAVED');
+    const sense = (await load(completeSmallSet)).records[0].senses[0];
+    assert.equal(sense.submission.status, 'SUBMITTED');
+    assert.equal(reportLiteraryCheckpointSenses(await load(completeSmallSet), 'sense-000001').all_done, true);
+  } finally {
+    await cleanup(completeSmallSet);
   }
 });
 

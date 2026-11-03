@@ -15,6 +15,7 @@
 - 작품·작가·장르·화자·장면이 다양하도록 VERIFIED를 고르고, 한 작품에서는 최대 2개 문맥을 선호한다.
 - 항목이 `SEARCH_FAILED`면 판독하지 말고 제출 없이 그 사실만 보고하고 종료한다. `UNSEARCHABLE`이면 그 Sense에 한해 검토된 활용형을 `add-form --checkpoint <checkpoint> --sense-id <id> --form <활용형> --basis '<근거>'`로 추가한 뒤 `chunk --sense-ids <id>`로 다시 읽는다. 해결할 수 없으면 후보를 비워 제출하지 말고 보고하고 종료한다.
 - 검색 결과가 없거나(`ZERO_HITS`) 아직 읽지 않은 Sense를 정상적인 빈 결과로 위장하지 않는다. 각 Sense는 서로 다른 문맥을 **최대 16개**까지만 판독한다. 16개를 모두 읽었는데 VERIFIED가 하나도 없으면, 미조회 hit(`unseen_hits`)가 남아 있어도 그 Sense를 `"verified": []`, `"candidates": []`로 제출한다. 이는 정상 표본 완료(`SAMPLED_NO_VERIFIED`)이며, 검색 실패·UNSEARCHABLE·승인 DB 접근 실패와 다르다. 후보가 있는 Sense는 반드시 실제 VERIFIED 근거가 있어야 한다.
+- Positive hit가 있는 Sense에서 빈 `verified`/`candidates` 제출은 **현재 search forms에 결속된 `shown` 근거가 전체 hit(최대 16개)를 실제로 노출한 경우에만** 허용된다. `shown`이 없거나 forms 변경으로 무효화됐거나, hit가 남았는데 현재 표본이 16개보다 적으면 빈 제출을 하지 말고 현재 forms의 문맥을 더 조회해 판독한다. 내부 full-search fallback은 모델에게 문맥을 노출한 증거가 아니다.
 
 ## 같은 Sense의 추가 문맥 조회
 
@@ -39,6 +40,7 @@
 - `submit_validation`이 거부되면 `affected.entry_number`와 `issues[].entry_number`를 제출 파일의 같은 배열 항목과 대조한다. 진단된 항목·필드만 고치고 나머지 올바른 VERIFIED 문맥과 후보는 그대로 보존한다. 위치가 `null`인 최상위 오류는 진단된 최상위 모양만 고친다. JSON 문법 오류는 `json_syntax`의 `line`/`column`(제출 파일 기준; CRLF·LF·CR 모두 줄바꿈) 주변의 필요한 문법 토큰(괄호·쉼표·따옴표·이스케이프)만 국소 수정하고 내용은 바꾸지 않는다.
 - `unknown_sense`는 해당 항목을 무조건 삭제하지 않는다. 그 위치의 ID를 활성 청크에 표시된 정확한 Sense ID 목록과 대조해 추가 항목인지, 의도한 ID의 오기인지 판별한다. 기대 ID가 제출에 없고 문제 항목이 추가분인 것이 확인되면 그 추가 항목만 제외한다. 누락 ID와 미지 ID가 각각 하나뿐이라는 사실만으로 서로 대응한다고 추측하지 않는다. 기존 source-sense 근거로 원래 ID를 확정할 수 있을 때만 교정하며, 대응을 확정할 수 없으면 중단해 보고한다.
 - 수정 후 제출 배열에 이번 실행 view의 제출 가능 Sense가 각각 한 번씩 모두 있고 다른 청크 항목이나 미지 ID가 없는지 확인한다. 제출 거부는 checkpoint에 부분 저장되지 않는다. 성공(`SAVED`)하면 즉시 종료하고 다음 청크는 시작하지 않는다. 이미 checkpoint에 저장된 Sense와 지난 청크 결과는 다시 만들거나 덮어쓰지 않는다.
+- `unshown_empty_sample`은 빈 제출을 허용할 현재-forms `shown` 표본이 없다는 뜻이다. 진단된 Sense만 공식 `chunk --sense-ids <id> --contexts 16 --format text`로 다시 읽고, 처음 8개가 같은 forms로 노출된 상태라면 `--skip 8 --contexts 16`으로 9–16번째를 읽는다. Forms가 바뀌었다면 skip 없이 현재 forms의 첫 표본부터 읽는다. 표본을 실제 판독한 뒤에도 VERIFIED가 없을 때만 빈 제출한다.
 - technical-skip은 오너 Supervisor가 실제 완료된 same-session 재제출 횟수를 확인한 뒤 처리하는 내부 fallback이다. producer CLI에는 이 명령이 없으며, producer는 내부 API를 호출하거나 제출 JSON에 skip 상태/표식을 넣어서는 안 된다. 출발 Sense 처리·후보 판단·검색 증거를 생략하지 않는다.
 
 ## 이번 실행의 동적 정보와 입력

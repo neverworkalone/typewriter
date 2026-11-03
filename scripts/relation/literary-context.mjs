@@ -1453,6 +1453,20 @@ function senseSnapshot(sense) {
   };
 }
 
+function completeShownSample(sense, digest, result) {
+  const shown = sense.shown;
+  const unitRowIds = shown?.unit_rowids;
+  const expected = Math.min(result.total_hits, MAX_CONTEXTS_PER_SENSE);
+  return Number.isSafeInteger(result.total_hits) && result.total_hits > 0
+    && shown?.forms_sha256 === digest && shown.total_hits === result.total_hits
+    && Object.keys(shown).length === 3
+    && Array.isArray(unitRowIds) && unitRowIds.length === expected
+    && unitRowIds.every((rowId) => Number.isSafeInteger(rowId) && rowId > 0)
+    && new Set(unitRowIds).size === expected
+    && result.results.length === expected
+    && result.results.every((row, index) => row._private?.locator?.unit_rowid === unitRowIds[index]);
+}
+
 function assertSkipPrefix(prior, digest, allUnitRowIds, skippedContexts) {
   if (!prior || prior.forms_sha256 !== digest || !Array.isArray(prior.unit_rowids)
     || prior.unit_rowids.length < skippedContexts) {
@@ -1758,6 +1772,10 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
       }
       if (result.total_hits === 0 && candidates.size > 0) failSubmission('no_literary_hits', entry.sense_id, 'candidates', entryNumber);
       if (candidates.size > 0 && verified.length === 0) failSubmission('missing_verified', entry.sense_id, 'verified', entryNumber);
+      const shownSampleComplete = completeShownSample(sense, digest, result);
+      if (result.total_hits > 0 && verified.length === 0 && candidates.size === 0 && !shownSampleComplete) {
+        failSubmission('unshown_empty_sample', entry.sense_id, 'verified', entryNumber);
+      }
       accepted.push({
         senseId: entry.sense_id,
         entryNumber,
@@ -1765,10 +1783,7 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
         submission: {
           status: result.total_hits === 0 ? 'ZERO_HITS'
             : verified.length === 0 && candidates.size === 0
-              && sense.shown?.forms_sha256 === digest
-              && Array.isArray(sense.shown.unit_rowids)
-              && sense.shown.unit_rowids.length === MAX_CONTEXTS_PER_SENSE
-              && new Set(sense.shown.unit_rowids).size === MAX_CONTEXTS_PER_SENSE
+              && shownSampleComplete
               && result.results.length === MAX_CONTEXTS_PER_SENSE
               && result.total_hits > result.results.length ? 'SAMPLED_NO_VERIFIED' : 'SUBMITTED',
           submitted_at: new Date().toISOString(),
