@@ -1812,6 +1812,7 @@ class Supervisor:
             return self._fail(b, "ERROR", f"AI 실행 환경 설정 실패: {e}")
         fix_context_digests = {}
         extra = {}
+        c_recovery_marker_key = None
         if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
             try:
                 extra["git_dir"] = self.git.worktree_gitdir(Path(wt))
@@ -1981,10 +1982,14 @@ class Supervisor:
             elif b["method"] == literary.METHOD and kind in ("c_chunk_new", "c_chunk_resume", "c_chunk_recovery"):
                 prompt, baseline = self._c_chunk_prompt(b, kind, remote)
                 self.store.set(literary.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                if kind == "c_chunk_recovery":
+                    c_recovery_marker_key = literary.no_submission_recovery_key(b["id"], baseline["chunk_id"])
                 title = f"C {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
                 if kind == "c_chunk_resume":
                     h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
+                    if kind == "c_chunk_recovery":
+                        self._c_begin_recovery_launch(b, c_recovery_marker_key, log)
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif b["method"] == dchunk.METHOD and kind == "d_chunk_fix":
                 # Correction of the unsaved active chunk: same session, same run-start baseline (not rewritten), the CLI's
@@ -2069,6 +2074,8 @@ class Supervisor:
         self.store.update(b["id"], **fields)
         run_id = self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
                                     model=run.model, effort=run.effort, permission_profile=run.permission_profile)
+        if c_recovery_marker_key is not None:
+            self._c_record_recovery_launch(c_recovery_marker_key, log, run_id)
         if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
             repair_state = self._stage2_repair_state(b, required=True)
             current = repair_state.get("current")
@@ -5285,7 +5292,7 @@ class Supervisor:
                                          note=note)
         baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
                     "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote,
-                    "chunk_no": rec["chunk_no"],
+                    "chunk_id": rec["chunk_id"], "chunk_no": rec["chunk_no"],
                     "retry_state": literary.retry_state(wt, b, rec, remaining,
                                                          session_available=bool(b["session_id"]))}
         if kind == "c_chunk_recovery":
@@ -5330,6 +5337,51 @@ class Supervisor:
             final_answer=final_answer(Path(log_file)) if log_file else None,
             submit_call_count=submit_attempts(Path(log_file)) if log_file else None,
         )
+
+    def _c_recovery_launch_registered(self, b, marker) -> bool:
+        """Whether a recovery launch intent has a durable run or batch record."""
+        launch_log = marker.get("launch_log_file") if isinstance(marker, dict) else None
+        launch_run_id = marker.get("launch_run_id") if isinstance(marker, dict) else None
+        source_run_id = marker.get("source_run_id") if isinstance(marker, dict) else None
+        for run in self.store.runs(b["id"]):
+            if run["kind"] != "c_chunk_recovery":
+                continue
+            if launch_run_id is not None and run["id"] == launch_run_id:
+                return True
+            if launch_log and run["log_file"] == launch_log:
+                return True
+            # Old markers have no launch identity. A later recovery run is still durable evidence that it started.
+            if not launch_log and type(source_run_id) is int and run["id"] > source_run_id:
+                return True
+        current = self.store.batch(b["id"])
+        return bool(current and current["run_kind"] == "c_chunk_recovery" and current["pid"] is not None
+                    and (not launch_log or current["log_file"] == launch_log))
+
+    def _c_begin_recovery_launch(self, b, marker_key: str, log: Path) -> None:
+        """Persist a unique launch intent before spawning; unresolved intents must never spawn twice."""
+        try:
+            marker = json.loads(self.store.get(marker_key) or "null")
+        except ValueError:
+            marker = None
+        if (not isinstance(marker, dict) or marker.get("status") != "used"
+                or marker.get("launch_state") != "not_started"
+                or self._c_recovery_launch_registered(b, marker)):
+            raise prompts.PromptError("C 무제출 복구의 시작 상태가 불명확해 두 번째 프로세스를 시작하지 않습니다")
+        marker["launch_state"] = "starting"
+        marker["launch_log_file"] = str(log)
+        self.store.set(marker_key, json.dumps(marker, sort_keys=True))
+
+    def _c_record_recovery_launch(self, marker_key: str, log: Path, run_id: int) -> None:
+        """Link the pre-spawn intent to the run row after both durable launch records exist."""
+        try:
+            marker = json.loads(self.store.get(marker_key) or "null")
+        except ValueError:
+            marker = None
+        if (isinstance(marker, dict) and marker.get("launch_state") == "starting"
+                and marker.get("launch_log_file") == str(log)):
+            marker["launch_state"] = "registered"
+            marker["launch_run_id"] = run_id
+            self.store.set(marker_key, json.dumps(marker, sort_keys=True))
 
     def _c_legacy_recovery_evidence(self, b, marker):
         """Revalidate the one owner-claimed bridge from a pre-policy no-submit guard."""
@@ -5387,6 +5439,7 @@ class Supervisor:
         if latest is None or latest["id"] != outcome.get("source_run_id"):
             return False
         marker = {"policy_version": literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION, "status": "used",
+                  "launch_state": "not_started",
                   "source_run_id": latest["id"], "chunk_id": rec["chunk_id"],
                   "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"],
                   "pending_sense_ids": list(pending)}
@@ -5710,21 +5763,29 @@ class Supervisor:
             except ValueError:
                 recovery = None
             if isinstance(recovery, dict) and recovery.get("status") in ("claimed", "used"):
-                latest = self._last_run(b)
-                not_launched_yet = (recovery.get("status") == "claimed"
-                                    or (latest is not None and latest["id"] == recovery.get("source_run_id")
-                                        and b.get("run_kind") != "c_chunk_recovery"))
-                if not not_launched_yet:
+                launch_recorded = self._c_recovery_launch_registered(b, recovery)
+                if recovery.get("status") == "claimed" and launch_recorded:
+                    return self._fail(b, "ERROR", "C 무제출 복구의 미사용 표식과 실행 기록이 충돌합니다. "
+                                      "중복 실행을 차단하고 worktree/checkpoint를 보존합니다.")
+                if recovery.get("status") == "used" and launch_recorded:
+                    if not self._c_chunk_saved(b):
+                        return self._fail(b, "ERROR", "C 무제출 복구 프로세스는 이미 시작됐지만 청크 완료가 확인되지 않았습니다. "
+                                          "두 번째 복구는 시작하지 않고 worktree/checkpoint를 보존합니다.")
                     recovery = None
+                elif (recovery.get("status") == "used"
+                      and recovery.get("launch_state") != "not_started"):
+                    return self._fail(b, "ERROR", "C 무제출 복구의 프로세스 시작 여부를 확인할 수 없어 중복 실행을 차단합니다. "
+                                      "실행 기록과 worktree/checkpoint를 보존합니다.")
                 elif not self._c_legacy_recovery_evidence(b, {**recovery, "status": "claimed"}):
                     return self._fail(b, "ERROR", "기존 C 무제출 재개 증거가 바뀌어 1회 복구를 시작하지 않습니다. "
                                       "기존 worktree/checkpoint를 보존합니다.")
                 else:
                     if recovery.get("status") == "claimed":
                         recovery["status"] = "used"
-                        self.store.set(key, json.dumps(recovery, sort_keys=True))
-                        self.store.update(b["id"], retries=0, retry_after=None, error=None)
                         self.store.log(b["id"], "기존 C 무제출 guard의 오너 요청 1회를 새 self-contained 세션으로 실행합니다.", "warn")
+                    recovery["launch_state"] = "not_started"
+                    self.store.set(key, json.dumps(recovery, sort_keys=True))
+                    self.store.update(b["id"], retries=0, retry_after=None, error=None)
                     return self._launch(self.store.batch(b["id"]), "c_chunk_recovery")
         if self._c_chunk_saved(b):
             try:

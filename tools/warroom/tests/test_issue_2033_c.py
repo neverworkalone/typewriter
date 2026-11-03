@@ -8,7 +8,7 @@ from pathlib import Path
 from tests.fakes import HEAD1, HEAD2, World
 from warroom.github import GhError
 from warroom import control, literary, prompts, stage2
-from warroom.supervisor import RecoveryBlocked
+from warroom.supervisor import RecoveryBlocked, Supervisor
 
 CP_NAME = "001_01_c_deepseek.checkpoint.json"
 
@@ -353,6 +353,50 @@ class SerialChunks(unittest.TestCase):
         self.assertFalse(control.retry(w.store, "deepseek", "c"))
         w.tick(2)
         self.assertEqual(len(w.adapter.launches), 2)
+
+    def test_recovery_launch_intent_blocks_duplicate_after_crash_before_run_registration(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.adapter.plan.append({"code": 0, "session": "ses_c"})
+        w.tick()
+        active = w.active()
+        w.finish_last()
+        w.write_codex_log()
+        batch_id = w.row("deepseek", "c")["id"]
+        recovery_key = literary.no_submission_recovery_key(batch_id, active["chunk_id"])
+
+        original_update = w.store.update
+
+        class SimulatedSupervisorCrash(BaseException):
+            pass
+
+        def crash_after_process_start(bid, **fields):
+            if bid == batch_id and fields.get("run_kind") == "c_chunk_recovery" and fields.get("pid") is not None:
+                raise SimulatedSupervisorCrash()
+            return original_update(bid, **fields)
+
+        w.store.update = crash_after_process_start
+        with self.assertRaises(SimulatedSupervisorCrash):
+            w.tick()
+        w.store.update = original_update
+
+        self.assertEqual(len(w.adapter.launches), 2)
+        marker = json.loads(w.store.get(recovery_key))
+        recovery_launch = w.adapter.launches[-1]
+        self.assertEqual(marker["launch_state"], "starting")
+        self.assertNotEqual(marker["launch_log_file"], str(w.store.runs(batch_id)[0]["log_file"]))
+        self.assertEqual(len(w.store.runs(batch_id)), 1)   # only the source run was durably registered
+        self.assertTrue(w.adapter.alive(recovery_launch["pid"]))   # detached recovery process survived the crash
+
+        # A restarted Supervisor sees the stale source-run row, then must fail closed on owner retry.
+        w.sup = Supervisor(w.paths, w.cfg, w.store, w.runner, w.adapter, w.gh, w.git,
+                           {"GH_CONFIG_DIR": "x"}, clock=lambda: w.now)
+        w.tick()
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(w.row("deepseek", "c")["state"], "ERROR")
+        w.sup._relaunch_c(w.store.batch(batch_id))
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertIn("시작 여부를 확인할 수 없어 중복 실행을 차단", w.row("deepseek", "c")["error"])
 
     def test_fresh_no_submission_recovery_completes_active_chunk_without_repeating_view_query(self):
         w = self.w
