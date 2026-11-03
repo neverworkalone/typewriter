@@ -249,6 +249,25 @@ no repository selected by producer code grants fallback authority. `report`
 includes exact technical exclusions so export and the production PR can
 disclose them.
 
+The Supervisor runs C CLI commands from its own current source checkout while
+keeping the assigned batch worktree as the command's working directory. This
+lets an older assigned worktree use the same supported checkpoint reader,
+submit validator, report, and export implementation as the Supervisor. Before
+the internal technical-skip transition, it requires the checkpoint HEAD,
+active-chunk HEAD, actual worktree HEAD, and a recomputed procedure digest from
+the clean worktree to agree. The current submit command revalidates the exact
+unchanged bytes against the checkpoint-bound, read-only approved index and
+refreshes the diagnostic with that input digest. The internal transition then
+checks the single-Sense diagnostic, active view, exhausted same-session retry
+budget from the fixed Supervisor Store, and saved state of every unaffected
+Sense. The Store binding must identify the current idle batch, its finished C
+chunk run, and the same session; a caller-provided retry count is never
+accepted. It records both the source and current procedure digests. Any stale
+input, changed worktree, missing capability, or identity mismatch remains an
+explicit error; the Supervisor does not rewrite or reinitialize the
+checkpoint. Producers use the CLI path provided in each C chunk card, so later
+chunks and export keep using the same current implementation.
+
 Index access, identity, schema, metadata, and search failures use an index
 diagnostic with `repair_scope: stop_and_report`; stop the batch and report those
 instead of changing producer input or retrying the same chunk. An unexpected

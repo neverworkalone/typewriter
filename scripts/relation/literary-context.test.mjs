@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
+import { tmpdir } from 'node:os';
 
 import {
   addSearchForm,
@@ -25,7 +26,8 @@ import {
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
 
 async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', firstSenseGlosses,
-  firstSearchForms = [], secondLemma, workCount = 1, supervisorWorktree = false } = {}) {
+  firstSearchForms = [], secondLemma, workCount = 1, supervisorWorktree = false,
+  senseCount = 500, repeatFirstLemma = false } = {}) {
   const fixtureRoot = path.resolve('.warroom-scratch');
   await mkdir(fixtureRoot, { recursive: true });
   const containerRoot = await mkdtemp(path.join(fixtureRoot, 'typewriter-literary-context-'));
@@ -37,6 +39,7 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
       'scripts/relation/candidate-contract.mjs',
       'scripts/relation/literary-context-cli.mjs',
       'scripts/relation/literary-context.mjs',
+      'scripts/relation/literary-context-supervisor-cli.mjs',
       'scripts/relation/d-chunk-cli.mjs',
       'scripts/relation/corpus-utility.mjs',
       'docs/relation-literary-context.md',
@@ -65,9 +68,10 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
   const scratchDirectory = path.join(root, '.warroom-scratch');
   await mkdir(canonicalDirectory, { recursive: true });
   await mkdir(scratchDirectory, { recursive: true });
+  const extraSenseCount = Math.max(0, senseCount - 500);
   const records = Array.from({ length: 500 }, (_, index) => {
     const ordinal = String(index + 1).padStart(6, '0');
-    const lemma = index === 0 ? firstForm : index === 1 && secondLemma ? secondLemma : `표제${ordinal}`;
+    const lemma = repeatFirstLemma ? firstForm : index === 0 ? firstForm : index === 1 && secondLemma ? secondLemma : `표제${ordinal}`;
     const senses = index === 0 && firstSenseGlosses
       ? firstSenseGlosses.map((gloss, senseIndex) => ({
         id: senseIndex === 0 ? `sense-${ordinal}` : `sense-${ordinal}-${senseIndex + 1}`,
@@ -75,7 +79,10 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
         gloss,
         relations: [],
       }))
-      : [{ id: `sense-${ordinal}`, pos: 'noun', gloss: `fixture gloss ${ordinal}`, relations: [] }];
+      : Array.from({ length: index < extraSenseCount ? 2 : 1 }, (_, senseIndex) => ({
+        id: senseIndex === 0 ? `sense-${ordinal}` : `sense-${ordinal}-extra`,
+        pos: 'noun', gloss: senseIndex === 0 ? `fixture gloss ${ordinal}` : `fixture extra gloss ${ordinal}`, relations: [],
+      }));
     return {
       id: `record-${ordinal}`,
       lemma,
@@ -1213,6 +1220,317 @@ const runCli = (fixture, args, environment = {}, cwd = fixture.root) => spawnSyn
   [path.join(fixture.repositoryRoot ?? process.cwd(), 'scripts/relation/literary-context-cli.mjs'), ...args],
   { cwd, env: { ...process.env, ...environment }, encoding: 'utf8' });
 const cliChunkArgs = (fixture, extra = []) => ['chunk', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, ...extra];
+const PRE_2889_C_HEAD = '54518330f83c4fb31aabc9cb067b328a58125dd6';
+const runScriptAt = (cwd, script, args) => spawnSync(process.execPath, [script, ...args], { cwd, encoding: 'utf8' });
+
+test('pre-#2889 C worktree is revalidated and resumed through the current Supervisor CLI', async () => {
+  const fixture = await makeFixture({ supervisorWorktree: true, senseCount: 613, repeatFirstLemma: true });
+  const temporaryRoot = await realpath(await mkdtemp(path.join(tmpdir(), 'typewriter-c-legacy-test-')));
+  const legacyRoot = path.join(temporaryRoot, 'worktree');
+  const supervisorRoot = path.join(temporaryRoot, 'supervisor');
+  const repoRoot = path.resolve('.');
+  const checkpoint = '.warroom-scratch/044_01_c_codex.checkpoint.json';
+  const input = '.warroom-scratch/c-chunk-014.submit.json';
+  const diagnostic = `${input}.diag.json`;
+  const currentCli = path.join(supervisorRoot, 'scripts/relation/literary-context-cli.mjs');
+  const supervisorCli = path.join(supervisorRoot, 'scripts/relation/literary-context-supervisor-cli.mjs');
+  const supervisorStorePath = path.join(supervisorRoot, 'tools/warroom/.local/warroom.db');
+  const supervisorBatchId = 1140;
+  const supervisorRunId = 1401;
+  const supervisorSessionId = 'fixture-session';
+  const supervisorBranch = 'codex/test-c-044-01';
+  let supervisorStore;
+  let currentHead = '';
+  const supervisorSkip = (head = null, storePath = supervisorStorePath, extraArgs = []) => runScriptAt(legacyRoot,
+    supervisorCli, [
+      '--checkpoint', checkpoint, '--input', input, '--diagnostic', diagnostic,
+      '--active', '.warroom-scratch/c-active-chunk.json', '--view', '.warroom-scratch/c-active-chunk.txt',
+      '--chunk-no', '14', '--supervisor-store', storePath, '--batch-id', String(supervisorBatchId),
+      '--branch', supervisorBranch, '--session-id', supervisorSessionId, '--run-id', String(supervisorRunId),
+      '--expected-head', head ?? currentHead, ...extraArgs,
+    ]);
+  try {
+    const legacyFiles = [
+      'scripts/relation/candidate-contract.mjs',
+      'scripts/relation/literary-context-cli.mjs',
+      'scripts/relation/literary-context.mjs',
+      'docs/relation-literary-context.md',
+      'docs/relation-factory.md',
+      'tools/warroom/prompts/c.md',
+    ];
+    await mkdir(supervisorRoot, { recursive: true });
+    for (const file of [...legacyFiles, 'scripts/relation/literary-context-supervisor-cli.mjs']) {
+      const target = path.join(supervisorRoot, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(path.join(repoRoot, file), target);
+    }
+    await mkdir(path.dirname(supervisorStorePath), { recursive: true });
+    supervisorStore = new DatabaseSync(supervisorStorePath);
+    supervisorStore.exec(`
+      CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE batches (
+        id INTEGER PRIMARY KEY, method TEXT, producer TEXT, shard TEXT, batch TEXT, branch TEXT, worktree TEXT,
+        state TEXT, session_id TEXT, pid INTEGER, run_kind TEXT
+      );
+      CREATE TABLE runs (id INTEGER PRIMARY KEY, batch_id INTEGER, kind TEXT, session_id TEXT, ended_at REAL);
+    `);
+    supervisorStore.prepare('INSERT INTO kv(key, value) VALUES(?, ?)').run(`c_resubmit_${supervisorBatchId}`, '2');
+    supervisorStore.prepare(`INSERT INTO batches
+      (id, method, producer, shard, batch, branch, worktree, state, session_id, pid, run_kind)
+      VALUES(?, 'c', 'codex', '044', '01', ?, ?, 'PRODUCING', ?, NULL, 'c_chunk_new')`)
+      .run(supervisorBatchId, supervisorBranch, legacyRoot, supervisorSessionId);
+    supervisorStore.prepare(`INSERT INTO runs(id, batch_id, kind, session_id, ended_at)
+      VALUES(?, ?, 'c_chunk_new', ?, 1)`)
+      .run(supervisorRunId, supervisorBatchId, supervisorSessionId);
+    const setSupervisorState = ({ retryAttempts = '2', pid = null, endedAt = 1 } = {}) => {
+      supervisorStore.prepare('UPDATE kv SET value=? WHERE key=?').run(retryAttempts, `c_resubmit_${supervisorBatchId}`);
+      supervisorStore.prepare('UPDATE batches SET pid=? WHERE id=?').run(pid, supervisorBatchId);
+      supervisorStore.prepare('UPDATE runs SET ended_at=? WHERE id=?').run(endedAt, supervisorRunId);
+    };
+    const archived = spawnSync('git', ['archive', '--format=tar', PRE_2889_C_HEAD, ...legacyFiles], {
+      cwd: repoRoot, encoding: null, maxBuffer: 16 * 1024 * 1024,
+    });
+    assert.equal(archived.status, 0, archived.stderr?.toString());
+    await mkdir(legacyRoot, { recursive: true });
+    const extracted = spawnSync('tar', ['-xf', '-'], { cwd: legacyRoot, input: archived.stdout, encoding: 'utf8' });
+    assert.equal(extracted.status, 0, extracted.stderr);
+    const initializedGit = spawnSync('git', ['init', '--quiet'], { cwd: legacyRoot, encoding: 'utf8' });
+    assert.equal(initializedGit.status, 0, initializedGit.stderr);
+    const stagedLegacy = spawnSync('git', ['add', '--', ...legacyFiles], { cwd: legacyRoot, encoding: 'utf8' });
+    assert.equal(stagedLegacy.status, 0, stagedLegacy.stderr);
+    const committedLegacy = spawnSync('git', ['-c', 'user.name=Typewriter Test', '-c', 'user.email=test@example.invalid',
+      'commit', '--quiet', '-m', 'legacy C CLI source fixture'], { cwd: legacyRoot, encoding: 'utf8' });
+    assert.equal(committedLegacy.status, 0, committedLegacy.stderr);
+    currentHead = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: legacyRoot, encoding: 'utf8' }).stdout.trim();
+    const oldCli = path.join(legacyRoot, 'scripts/relation/literary-context-cli.mjs');
+    const oldModule = path.join(legacyRoot, 'scripts/relation/literary-context.mjs');
+    for (const file of legacyFiles) {
+      const source = spawnSync('git', ['show', `${PRE_2889_C_HEAD}:${file}`], { cwd: repoRoot, encoding: null });
+      assert.equal(source.status, 0, source.stderr?.toString());
+      assert.deepEqual(await readFile(path.join(legacyRoot, file)), source.stdout, `legacy source snapshot: ${file}`);
+    }
+    assert.doesNotMatch(await readFile(oldCli, 'utf8'), /input_sha256/u, 'the checked-out CLI is the actual pre-#2889 source');
+    assert.doesNotMatch(await readFile(oldModule, 'utf8'), /TECHNICAL_SKIPPED/u, 'the legacy checkpoint reader lacks the new state');
+
+    await mkdir(path.join(legacyRoot, 'data/canonical'), { recursive: true });
+    await mkdir(path.join(legacyRoot, '.warroom-scratch'), { recursive: true });
+    await mkdir(path.join(legacyRoot, 'data/relation-candidates/044'), { recursive: true });
+    await writeFile(path.join(legacyRoot, 'data/canonical/stdict-0044.jsonl'), jsonl(fixture.records));
+    await copyFile(fixture.databasePath, path.join(legacyRoot, 'approved.sqlite'));
+
+    const initialized = runScriptAt(legacyRoot, oldCli, [
+      'init', '--canonical', 'data/canonical/stdict-0044.jsonl', '--shard', '044', '--batch', '01', '--model', 'codex',
+      '--db', 'approved.sqlite', '--checkpoint', checkpoint,
+    ]);
+    assert.equal(initialized.status, 0, initialized.stderr);
+    let cp = JSON.parse(await readFile(path.join(legacyRoot, checkpoint), 'utf8'));
+    const allSenses = cp.records.flatMap((record) => record.senses);
+    assert.equal(allSenses.length, 613);
+    const priorSenses = allSenses.slice(0, 435);
+    for (const [index, sense] of priorSenses.entries()) {
+      sense.submission = { status: 'SUBMITTED', verified: [{ locator_key: `prior-${index}` }], candidates: ['겨울'] };
+    }
+    const priorBefore = structuredClone(priorSenses.map((sense) => sense.submission));
+    await writeFile(path.join(legacyRoot, checkpoint), `${JSON.stringify(cp, null, 2)}\n`);
+
+    const chunkArgs = ['chunk', '--db', 'approved.sqlite', '--checkpoint', checkpoint, '--limit', '12'];
+    const chunkJson = runScriptAt(legacyRoot, oldCli, [...chunkArgs, '--format', 'json']);
+    assert.equal(chunkJson.status, 0, chunkJson.stderr);
+    const items = JSON.parse(chunkJson.stdout).items;
+    assert.equal(items.length, 12);
+    const activeIds = items.map((item) => item.sense_id);
+    const activeView = runScriptAt(legacyRoot, oldCli, [...chunkArgs, '--format', 'text']);
+    assert.equal(activeView.status, 0, activeView.stderr);
+    const viewBytes = Buffer.from(activeView.stdout, 'utf8');
+    const viewSha256 = createHash('sha256').update(viewBytes).digest('hex');
+    const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: legacyRoot, encoding: 'utf8' }).stdout.trim();
+    await writeFile(path.join(legacyRoot, '.warroom-scratch/c-active-chunk.txt'), viewBytes);
+    await writeFile(path.join(legacyRoot, '.warroom-scratch/c-active-chunk.json'), `${JSON.stringify({
+      chunk_id: '044-01-014', chunk_no: 14, sense_ids: activeIds, view_sha256: viewSha256,
+      view_bytes: viewBytes.length, git_head: head, shard: '044', batch: '01', model: 'codex',
+    })}\n`);
+    const entryById = new Map(items.map((item) => [item.sense_id, item]));
+    const entries = activeIds.map((senseId, index) => ({
+      sense_id: senseId,
+      verified: [index === 7 ? 'zzzzzzzzzzzz' : entryById.get(senseId).contexts[0].k],
+      candidates: ['겨울'],
+    }));
+    const fullSubmission = { senses: entries };
+    const inputBytes = Buffer.from(JSON.stringify(fullSubmission), 'utf8');
+    await writeFile(path.join(legacyRoot, input), inputBytes);
+
+    const legacyRejected = runScriptAt(legacyRoot, oldCli, [
+      'submit', '--db', 'approved.sqlite', '--checkpoint', checkpoint, '--input', input,
+    ]);
+    assert.notEqual(legacyRejected.status, 0);
+    let currentDiagnostic = JSON.parse(await readFile(path.join(legacyRoot, diagnostic), 'utf8'));
+    assert.equal(currentDiagnostic.reason, 'context_key_not_found');
+    assert.equal(currentDiagnostic.affected.entry_number, 8);
+    assert.equal(Object.hasOwn(currentDiagnostic, 'input_sha256'), false, 'legacy CLI reproduces the missing digest');
+    const beforeRevalidation = JSON.parse(await readFile(path.join(legacyRoot, checkpoint), 'utf8'));
+    const legacySkip = supervisorSkip();
+    assert.notEqual(legacySkip.status, 0);
+    assert.equal(JSON.parse(legacySkip.stdout).reason_code, 'input_digest_mismatch',
+      'a legacy diagnostic without a digest cannot authorize a skip');
+
+    const refreshed = runScriptAt(legacyRoot, currentCli, [
+      'submit', '--db', 'approved.sqlite', '--checkpoint', checkpoint, '--input', input,
+    ]);
+    assert.notEqual(refreshed.status, 0);
+    currentDiagnostic = JSON.parse(await readFile(path.join(legacyRoot, diagnostic), 'utf8'));
+    const inputSha = createHash('sha256').update(inputBytes).digest('hex');
+    assert.equal(currentDiagnostic.input_sha256, inputSha);
+    assert.deepEqual(JSON.parse(await readFile(path.join(legacyRoot, checkpoint), 'utf8')), beforeRevalidation,
+      'rejected current validation leaves the legacy checkpoint unchanged');
+
+    await writeFile(path.join(legacyRoot, input), Buffer.concat([inputBytes, Buffer.from(' ')]));
+    const stale = supervisorSkip(head);
+    assert.notEqual(stale.status, 0);
+    assert.equal(JSON.parse(stale.stdout).reason_code, 'input_digest_mismatch');
+    assert.deepEqual(JSON.parse(await readFile(path.join(legacyRoot, checkpoint), 'utf8')), beforeRevalidation,
+      'a stale sidecar does not mutate the checkpoint');
+
+    await writeFile(path.join(legacyRoot, input), inputBytes);
+    const refreshedAgain = runScriptAt(legacyRoot, currentCli, [
+      'submit', '--db', 'approved.sqlite', '--checkpoint', checkpoint, '--input', input,
+    ]);
+    assert.notEqual(refreshedAgain.status, 0);
+
+    const validDiagnostic = await readFile(path.join(legacyRoot, diagnostic));
+    const validCheckpoint = await readFile(path.join(legacyRoot, checkpoint));
+    const expectBlockedWithoutMutation = async (invoke, reason) => {
+      const checkpointBefore = await readFile(path.join(legacyRoot, checkpoint));
+      const result = invoke();
+      assert.notEqual(result.status, 0);
+      assert.equal(JSON.parse(result.stdout).reason_code, reason);
+      assert.deepEqual(await readFile(path.join(legacyRoot, checkpoint)), checkpointBefore);
+    };
+    const multipleIssueDiagnostic = JSON.parse(validDiagnostic.toString('utf8'));
+    multipleIssueDiagnostic.issues.push({ ...multipleIssueDiagnostic.issues[0] });
+    await writeFile(path.join(legacyRoot, diagnostic), JSON.stringify(multipleIssueDiagnostic));
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'diagnostic_not_single_sense');
+    await writeFile(path.join(legacyRoot, diagnostic), validDiagnostic);
+
+    const wrongAffectedDiagnostic = JSON.parse(validDiagnostic.toString('utf8'));
+    wrongAffectedDiagnostic.affected.sense_id = activeIds[0];
+    await writeFile(path.join(legacyRoot, diagnostic), JSON.stringify(wrongAffectedDiagnostic));
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'diagnostic_not_single_sense');
+    await writeFile(path.join(legacyRoot, diagnostic), validDiagnostic);
+
+    await expectBlockedWithoutMutation(() => supervisorSkip('b'.repeat(40)), 'worktree_identity_mismatch');
+
+    await expectBlockedWithoutMutation(() => supervisorSkip(null, path.join(temporaryRoot, 'fake-warroom.db')),
+      'supervisor_store_identity_mismatch');
+    setSupervisorState({ retryAttempts: '1' });
+    await expectBlockedWithoutMutation(() => supervisorSkip(null, supervisorStorePath, ['--retry-attempts', '2']),
+      'supervisor_skip_operation_failed');
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'resubmit_budget_not_exhausted');
+    setSupervisorState({ pid: 21644 });
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'supervisor_batch_not_idle');
+    setSupervisorState({ endedAt: null });
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'supervisor_run_not_finished');
+    setSupervisorState();
+
+    let invalidCheckpoint = JSON.parse(validCheckpoint.toString('utf8'));
+    invalidCheckpoint.batch.git_head = 'b'.repeat(40);
+    await writeFile(path.join(legacyRoot, checkpoint), JSON.stringify(invalidCheckpoint));
+    await expectBlockedWithoutMutation(() => supervisorSkip(head), 'checkpoint_or_active_binding_mismatch');
+    await writeFile(path.join(legacyRoot, checkpoint), validCheckpoint);
+
+    invalidCheckpoint = JSON.parse(validCheckpoint.toString('utf8'));
+    invalidCheckpoint.batch.procedure_sha256 = 'b'.repeat(64);
+    await writeFile(path.join(legacyRoot, checkpoint), JSON.stringify(invalidCheckpoint));
+    await expectBlockedWithoutMutation(() => supervisorSkip(head), 'source_procedure_digest_mismatch');
+    await writeFile(path.join(legacyRoot, checkpoint), validCheckpoint);
+
+    const indexFailure = runScriptAt(legacyRoot, currentCli, [
+      'submit', '--db', 'missing-approved.sqlite', '--checkpoint', checkpoint, '--input', input,
+    ]);
+    assert.notEqual(indexFailure.status, 0);
+    assert.equal(await stat(path.join(legacyRoot, diagnostic)).then(() => true, () => false), false,
+      'an approved index failure clears the previous retry diagnostic');
+    await expectBlockedWithoutMutation(() => supervisorSkip(head), 'current_evidence_unavailable');
+    await writeFile(path.join(legacyRoot, diagnostic), validDiagnostic);
+
+    const unaffected = entries.filter((_, index) => index !== 7);
+    const unaffectedInput = '.warroom-scratch/c-chunk-014.supervisor-submit.json';
+    await writeFile(path.join(legacyRoot, unaffectedInput), JSON.stringify({ senses: unaffected }));
+    const saved = runScriptAt(legacyRoot, currentCli, [
+      'submit', '--db', 'approved.sqlite', '--checkpoint', checkpoint, '--input', unaffectedInput,
+    ]);
+    assert.equal(saved.status, 0, saved.stderr);
+    const skipped = supervisorSkip(head);
+    assert.equal(skipped.status, 0, skipped.stderr);
+    assert.equal(JSON.parse(skipped.stdout).status, 'TECHNICAL_SKIPPED');
+
+    cp = JSON.parse(await readFile(path.join(legacyRoot, checkpoint), 'utf8'));
+    const savedSenses = new Map(cp.records.flatMap((record) => record.senses.map((sense) => [sense.sense_id, sense])));
+    assert.deepEqual(cp.records.flatMap((record) => record.senses).slice(0, 435).map((sense) => sense.submission), priorBefore,
+      'all 435 earlier senses remain unchanged');
+    const targetId = activeIds[7];
+    assert.equal(savedSenses.get(targetId).submission.status, 'TECHNICAL_SKIPPED');
+    assert.deepEqual(savedSenses.get(targetId).submission.candidates, []);
+    const skip = savedSenses.get(targetId).submission.technical_skip;
+    assert.equal(skip.input_sha256, inputSha);
+    assert.equal(skip.source_procedure_sha256, cp.batch.procedure_sha256);
+    assert.match(skip.runtime_procedure_sha256, /^[a-f0-9]{64}$/u);
+    assert.match(skip.supervisor_cli_sha256, /^[a-f0-9]{64}$/u);
+    for (const entry of unaffected) {
+      const savedSense = savedSenses.get(entry.sense_id).submission;
+      assert.equal(savedSense.status, 'SUBMITTED');
+      assert.deepEqual(savedSense.candidates, entry.candidates);
+      assert.equal(savedSense.verified.length, 1);
+      assert.ok(savedSense.verified[0].locator_key.startsWith(entry.verified[0]));
+    }
+    const latestReport = runScriptAt(legacyRoot, currentCli, ['report', '--checkpoint', checkpoint,
+      '--sense-ids', activeIds.join(',')]);
+    assert.equal(latestReport.status, 0, latestReport.stderr);
+    assert.equal(JSON.parse(latestReport.stdout).all_done, true);
+    const oldReport = runScriptAt(legacyRoot, oldCli, ['report', '--checkpoint', checkpoint]);
+    assert.notEqual(oldReport.status, 0, 'legacy CLI cannot report the new state');
+
+    const currentChunk = runScriptAt(legacyRoot, currentCli, [
+      'chunk', '--db', 'approved.sqlite', '--checkpoint', checkpoint, '--limit', '12', '--contexts', '1',
+    ]);
+    assert.equal(currentChunk.status, 0, currentChunk.stderr);
+    assert.equal(JSON.parse(currentChunk.stdout).items.some((item) => item.sense_id === targetId), false,
+      'restart does not requeue the technical exclusion');
+    let finishedChunks = 0;
+    while (true) {
+      const next = runScriptAt(legacyRoot, currentCli, [
+        'chunk', '--db', 'approved.sqlite', '--checkpoint', checkpoint, '--limit', '12', '--contexts', '1',
+      ]);
+      assert.equal(next.status, 0, next.stderr);
+      const nextItems = JSON.parse(next.stdout).items;
+      if (nextItems.length === 0) break;
+      const nextEntries = nextItems.map((item) => ({ sense_id: item.sense_id,
+        verified: [item.contexts[0].k], candidates: ['겨울'] }));
+      const nextInput = `.warroom-scratch/next-${finishedChunks}.submit.json`;
+      await writeFile(path.join(legacyRoot, nextInput), JSON.stringify({ senses: nextEntries }));
+      const nextSave = runScriptAt(legacyRoot, currentCli, [
+        'submit', '--db', 'approved.sqlite', '--checkpoint', checkpoint, '--input', nextInput,
+      ]);
+      assert.equal(nextSave.status, 0, nextSave.stderr);
+      finishedChunks += 1;
+    }
+    const output = 'data/relation-candidates/044/044_01_c_codex.jsonl';
+    const exported = runScriptAt(legacyRoot, currentCli, [
+      'export', '--checkpoint', checkpoint, '--canonical', 'data/canonical/stdict-0044.jsonl', '--output', output,
+    ]);
+    assert.equal(exported.status, 0, exported.stderr);
+    assert.equal(JSON.parse(exported.stdout).status, 'OUTPUT');
+    const finalReport = JSON.parse(runScriptAt(legacyRoot, currentCli, ['report', '--checkpoint', checkpoint]).stdout);
+    assert.equal(finalReport.coverage.senses, 613);
+    assert.equal(finalReport.coverage.sense_statuses.TECHNICAL_SKIPPED, 1);
+    assert.equal(finalReport.coverage.sense_statuses.SUBMITTED, 612);
+    assert.equal(finalReport.output.validation_status, 'VALID');
+    assert.equal((await readFile(path.join(legacyRoot, output), 'utf8')).trim().split('\n').length, 500);
+  } finally {
+    supervisorStore?.close();
+    await rm(temporaryRoot, { recursive: true, force: true });
+    await cleanup(fixture);
+  }
+});
 
 test('chunk CLI accepts --skip and emits only the unseen context suffix', async () => {
   const fixture = await makeFixture({ unitCount: 20 });

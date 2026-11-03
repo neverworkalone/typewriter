@@ -7,6 +7,7 @@ Values are substituted in one pass, so a value that itself contains `{{x}}` (e.g
 from __future__ import annotations
 
 import re
+import shlex
 from pathlib import Path
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"   # independent of the process cwd
@@ -19,7 +20,7 @@ _STAGE3 = {"shard", "branch", "chunk_id", "chunk_input", "session_note", "s3_pol
 _STAGE3_FIX = {"pr", "head", "branch", "shard", "review_events", "session_note", "relation_path",
                "drop_path", "verify_command"}
 _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contract"}
-_C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract"}
+_C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract", "cli_path"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
            "fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context",
                    "s2_policy_card"},
@@ -38,7 +39,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "s2_links_fix": {"digest", "problem", "relation_direction_rule"},
            "s2_repair": _STAGE2 | {"fingerprint", "repair_input", "round_info"},
            "s3_policy_card": set(), "s3_chunk": _STAGE3,
-           "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note"},
+           "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note", "cli_path"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input", "method_contract"},
            "d_chunk_resume": {"chunk_no", "decisions", "searches"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
            "a_chunk": _AB_CHUNK, "b_chunk": _AB_CHUNK, "ab_chunk_retry": {"chunk_no", "requested", "problem", "chunk_input"}}
@@ -102,7 +103,8 @@ def _method_fix_scope(method: str, b) -> str:
         checkpoint = literary.names(b).checkpoint
         return ("C: 리뷰가 지목한 Sense에 한해 #1155의 기존 판정·수정 규칙을 적용한다. 후보 형태 지적과 "
                 "VERIFIED/source-sense 지적을 구분하며, C의 수정 범위를 삭제 전용으로 제한하지 않는다. "
-                "추가 문학 문맥이 필요한 경우에만 다음 명령을 사용한다: `node scripts/relation/literary-context-cli.mjs "
+                "추가 문학 문맥이 필요한 경우에만 다음 명령을 사용한다: `node "
+                f"{shlex.quote(str(literary.cli_path()))} "
                 f"chunk --db \"$TYPEWRITER_APPROVED_LITERARY_DB\" --checkpoint {checkpoint} "
                 "--sense-ids <id,...> --contexts 16 --format text`. 승인 DB 환경변수가 없으면 추측하지 않고 "
                 "설정 오류로 중단한다.")
@@ -269,6 +271,7 @@ def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages
                        "하나라도 받지 못했거나 truncated 경고가 보이면 제출하지 말고 그 사실을 보고한 뒤 종료한다.\n" + reads)
     return render("c_chunk", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
                               "chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
+                              "cli_path": shlex.quote(str(literary.cli_path())),
                               "chunk_contexts": literary.CHUNK_CONTEXTS, "session_note": note,
                               "chunk_input": chunk_input, "method_contract": method_contract("c", directory)}, directory)
 
@@ -276,8 +279,11 @@ def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages
 def c_chunk_resume(chunk_no: int, checkpoint: str, remaining: list[str], *, note: str = "",
                    directory: Path | None = None) -> str:
     """Resuming the same session: only the still-open sense ids, never the chunk body again."""
+    from . import literary
+
     return render("c_chunk_resume", {"chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
                                      "remaining": "남은 Sense ID: " + ", ".join(remaining),
+                                     "cli_path": shlex.quote(str(literary.cli_path())),
                                      "session_note": note}, directory)
 
 

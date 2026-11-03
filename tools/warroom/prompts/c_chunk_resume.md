@@ -1,6 +1,7 @@
 #1155 C — 같은 청크 이어서
 
 중단된 청크 {{chunk_no}}를 이 세션에서 이어간다. 청크 본문과 카드는 이 세션에 이미 있으므로 다시 읽거나 요청하지 않는다. 일반 중단에서는 이미 저장된 Sense를 다시 만들지 않는다. session note가 Candidate v1 복구를 지목하면 그 note에 포함된 Sense만 수정한다.
+C CLI 명령은 Supervisor가 지정한 `{{cli_path}}`를 사용한다. 이 경로가 현재 checkpoint를 읽고 쓸 공식 도구다. worktree 내부의 오래된 CLI로 대체하지 않는다.
 {{session_note}}
 {{remaining}}
 직전 제출 결과가 `submit_validation`/`candidate_validation` 거부라면 `.warroom-scratch/c-chunk-{{chunk_no}}.submit.json`에 `submit`을 다시 실행해 진단을 확인하고, 진단된 위치만 국소 수정해 재제출한다. 진단이 `repair_scope: stop_and_report`이면 재제출하지 말고 중단해 보고한다.

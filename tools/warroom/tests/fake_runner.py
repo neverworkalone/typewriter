@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 from tests.fake_dchunk import FakeDChunkCli
 from tests.fake_literary import FakeLiteraryCli
@@ -44,7 +45,9 @@ class ScriptedRunner(Runner):
         if argv[:3] == ["node", "--input-type=module", "-e"]:
             if "inspectActiveForSupervisor" in argv[3]:
                 return self.dchunk.inspect_internal(argv, input)
-        if argv[:2] == ["node", "scripts/relation/literary-context-cli.mjs"]:
+        if len(argv) > 1 and Path(argv[1]).name == "literary-context-cli.mjs":
+            return self.literary.run(argv, cwd, env, input)
+        if len(argv) > 1 and Path(argv[1]).name == "literary-context-supervisor-cli.mjs":
             return self.literary.run(argv, cwd, env, input)
         if argv[:2] == WORKBENCH_CLI:
             return self.workbench.run(argv, cwd)
