@@ -844,6 +844,72 @@ class Git:
             raise IntegrationBlocked("merge 후에도 수정 commit이 HEAD에 포함되지 않았습니다")
         return self.head(path)
 
+    def verified_supervisor_integration(self, path: Path, branch: str, base: str,
+                                        old_head: str, new_head: str) -> bool:
+        """Prove a saved Stage 2 base advanced only through Supervisor-style merges from origin/base.
+
+        The finalization marker is stored separately by Supervisor. This check supplies the Git-side evidence: the
+        owned branch's reflog must contain an uninterrupted chain of `git merge <origin/base commit>` fast-forwards
+        from the old Repair identity to the saved finalization HEAD. Missing/expired reflog evidence fails closed.
+        """
+        path = self._owned(path)
+        if self.registered(path) != branch or self.head(path) != new_head:
+            return False
+        if not re.fullmatch(r"[a-f0-9]{40}", old_head or "") or \
+                not re.fullmatch(r"[a-f0-9]{40}", new_head or "") or old_head == new_head:
+            return False
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", base or ""):
+            return False
+        if not self._git("merge-base", "--is-ancestor", old_head, new_head, cwd=path, check=False).ok:
+            return False
+
+        remote_tip = self._git("rev-parse", "--verify", f"refs/remotes/origin/{base}^{{commit}}",
+                               cwd=path, check=False)
+        if not remote_tip.ok or not re.fullmatch(r"[a-f0-9]{40}", remote_tip.out.strip()):
+            return False
+        if not self._git("merge-base", "--is-ancestor", new_head, remote_tip.out.strip(),
+                         cwd=path, check=False).ok:
+            return False
+
+        reflog = self._git("reflog", "show", "--format=%H%x09%gs", f"refs/heads/{branch}",
+                           cwd=path, check=False)
+        if not reflog.ok:
+            return False
+        rows = []
+        for line in reversed(reflog.out.splitlines()):  # reflog show is newest first
+            result, sep, subject = line.partition("\t")
+            if not sep or not re.fullmatch(r"[a-f0-9]{40}", result):
+                return False
+            rows.append((result, subject))
+        if not rows or rows[-1][0] != new_head:
+            return False
+        try:
+            start = next(i for i, row in enumerate(rows) if row[0] == old_head)
+        except StopIteration:
+            return False
+        end = max((i for i, row in enumerate(rows) if row[0] == new_head), default=-1)
+        if end <= start:
+            return False
+
+        cursor = old_head
+        transitions = rows[start + 1:end + 1]
+        for result, subject in transitions:
+            match = re.fullmatch(r"merge ([a-f0-9]{7,40}): Fast-forward", subject)
+            if not match:
+                return False
+            target = self._git("rev-parse", "--verify", f"{match.group(1)}^{{commit}}",
+                               cwd=path, check=False)
+            if not target.ok or not re.fullmatch(r"[a-f0-9]{40}", target.out.strip()):
+                return False
+            target_sha = target.out.strip()
+            if result != target_sha or not self._git("merge-base", "--is-ancestor", cursor, target_sha,
+                                                      cwd=path, check=False).ok or \
+                    not self._git("merge-base", "--is-ancestor", target_sha, remote_tip.out.strip(),
+                                  cwd=path, check=False).ok:
+                return False
+            cursor = result
+        return cursor == new_head
+
     def push_approved_maintainer_integration(self, path: Path, branch: str, pr_head_sha: str,
                                              batch_head_sha: str, merge_sha: str,
                                              protected_paths: set[str], *, recheck=None) -> str:

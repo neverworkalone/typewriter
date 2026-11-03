@@ -2767,6 +2767,189 @@ class Supervisor:
             return f"Stage 2 repair boundary check failed: {error}"
         return None
 
+    def _stage2_repair_rebind_problem(self, b, state: dict, checkpoint: dict, fingerprint: str) -> str | None:
+        """Advance a completed Repair identity only after current-base preflight and durable owner evidence."""
+        try:
+            identity = state.get("identity")
+            if not isinstance(identity, dict):
+                return "Stage 2 repair has no owner identity to rebind"
+            old_head = identity.get("base_head")
+            if not re.fullmatch(r"[a-f0-9]{40}", old_head or ""):
+                return "Stage 2 repair owner baseline is invalid; preserving prior decisions and receipts"
+            wt = Path(b["worktree"])
+            if self.git.registered(wt) != b["branch"]:
+                return "Stage 2 repair rebind worktree is not registered to its owned branch"
+            self.git.worktree_gitdir(wt)
+            if self.git.dirty(wt).strip():
+                return "Stage 2 repair rebind found a dirty worktree; preserving prior decisions and receipts"
+
+            head = self.git.head(wt)
+            remote = self.git.remote_head(b["branch"])
+            if identity.get("remote_head") != remote:
+                return "Stage 2 repair remote branch identity changed; preserving prior decisions and receipts"
+            if head == old_head:
+                return None
+            finalize_base = self.store.get(f"s2_finalize_base_{b['id']}")
+            if not re.fullmatch(r"[a-f0-9]{40}", finalize_base or "") or finalize_base != head:
+                return "Stage 2 repair rebind lacks the matching Supervisor finalization HEAD baseline"
+
+            bb, pp = stage2.split_key(b["batch"])
+            expected_part = f"{b['shard']}/{bb}/{pp}"
+            premerge = checkpoint.get("premerge")
+            if checkpoint.get("merged") or not isinstance(premerge, dict) or \
+                    premerge.get("status") != "ready" or premerge.get("identity") != expected_part:
+                return "Stage 2 repair rebind requires the current Part's ready premerge snapshot"
+
+            histories = state.get("history")
+            current = state.get("current")
+            if not isinstance(histories, list) or not histories or not isinstance(current, dict):
+                return "Stage 2 repair rebind has no completed repair history; preserving state"
+            groups = current.get("groups")
+            cursor = current.get("cursor")
+            if not isinstance(groups, list) or not groups or type(cursor) is not int or cursor != len(groups) \
+                    or current.get("pending_answer") is not None or current.get("apply_intent") is not None \
+                    or current.get("attempts") != 0 or "last_response" in current:
+                return "Stage 2 repair page is unfinished; preserving its answer and apply boundary"
+
+            checkpoint_path = wt / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json"
+            raw_checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+            if not isinstance(raw_checkpoint, dict) or raw_checkpoint.get("merged") is not False or \
+                    raw_checkpoint.get("optional_review_complete") is not True:
+                return "Stage 2 repair rebind checkpoint is incomplete or already merged"
+            receipts = raw_checkpoint.get("repair_receipts")
+            if not isinstance(receipts, list):
+                return "Stage 2 repair receipt list is missing; preserving state"
+            receipt_by_id, receipts_by_fingerprint = {}, {}
+            for receipt in receipts:
+                if not isinstance(receipt, dict):
+                    return "Stage 2 repair receipt is malformed; preserving state"
+                request_id = receipt.get("request_id")
+                receipt_fp = receipt.get("fingerprint")
+                nonce = receipt.get("supervisor_nonce")
+                keys = receipt.get("candidate_keys")
+                if not re.fullmatch(r"[a-f0-9]{64}", request_id or "") or \
+                        not re.fullmatch(r"[a-f0-9]{64}", receipt_fp or "") or \
+                        not re.fullmatch(r"[a-f0-9]{64}", nonce or "") or \
+                        not isinstance(keys, list) or not keys or any(not isinstance(key, str) or key.count("\u0000") != 1
+                                                                     or not all(key.split("\u0000")) for key in keys) \
+                        or keys != sorted(set(keys)) or request_id in receipt_by_id:
+                    return "Stage 2 repair receipt identity or candidate set does not match; preserving state"
+                receipt_by_id[request_id] = receipt
+                receipts_by_fingerprint.setdefault(receipt_fp, set()).update(keys)
+
+            history_fingerprints = set()
+            for entry in histories:
+                if not isinstance(entry, dict):
+                    return "Stage 2 repair history is malformed; preserving state"
+                entry_fp = entry.get("fingerprint")
+                targets, applied = entry.get("target_keys"), entry.get("applied_candidate_keys")
+                if not re.fullmatch(r"[a-f0-9]{64}", entry_fp or "") or entry_fp in history_fingerprints \
+                        or not isinstance(targets, list) or not isinstance(applied, list) \
+                        or any(not isinstance(key, str) for key in targets + applied) \
+                        or len(set(targets)) != len(targets) or len(set(applied)) != len(applied):
+                    return "Stage 2 repair history or applied candidate set is malformed; preserving state"
+                history_fingerprints.add(entry_fp)
+                receipt_keys = receipts_by_fingerprint.get(entry_fp, set())
+                if set(applied) != receipt_keys or not set(targets).issubset(receipt_keys):
+                    return "Stage 2 repair receipt does not match its persisted history; preserving state"
+            if set(receipts_by_fingerprint) - history_fingerprints:
+                return "Stage 2 checkpoint contains an untracked repair receipt; preserving state"
+
+            last_history = histories[-1]
+            current_fp = current.get("fingerprint")
+            current_applied = current.get("applied_candidate_keys")
+            if last_history.get("fingerprint") != current_fp or not isinstance(current_applied, list) or \
+                    set(current_applied) != set(last_history.get("applied_candidate_keys", [])):
+                return "Stage 2 current repair does not match its saved history; preserving state"
+            expected_targets = sorted({key for group in groups if isinstance(group, dict)
+                                       for key in group.get("candidate_keys", [])})
+            if expected_targets != current.get("target_keys") or not set(expected_targets).issubset(set(current_applied)):
+                return "Stage 2 completed repair targets do not match their applied receipt set"
+
+            attempt_log = current.get("attempt_log")
+            if not isinstance(attempt_log, list) or not attempt_log:
+                return "Stage 2 completed repair has no persisted page attempts"
+            covered = set()
+            for attempt in attempt_log:
+                if not isinstance(attempt, dict) or attempt.get("fingerprint") != current_fp \
+                        or type(attempt.get("cursor")) is not int or not 0 <= attempt["cursor"] < len(groups) \
+                        or attempt.get("status") not in {"applied", "rejected"}:
+                    return "Stage 2 repair has an unfinished or mismatched page attempt"
+                if attempt["status"] == "rejected":
+                    continue
+                receipt = receipt_by_id.get(attempt.get("receipt"))
+                page = groups[attempt["cursor"]:attempt["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
+                page_targets = sorted({key for group in page if isinstance(group, dict)
+                                       for key in group.get("candidate_keys", [])})
+                if receipt is None or receipt.get("fingerprint") != current_fp or \
+                        attempt.get("target_keys") != page_targets or \
+                        not set(page_targets).issubset(receipt.get("candidate_keys", [])):
+                    return "Stage 2 repair attempt and idempotent receipt do not match"
+                covered.update(range(attempt["cursor"], min(len(groups), attempt["cursor"] + len(page))))
+            if covered != set(range(len(groups))) or attempt_log[-1].get("status") != "applied":
+                return "Stage 2 repair groups are not fully covered by applied receipts"
+
+            run_start_raw = self.store.get(stage2.repair_run_start_key(b["id"]))
+            run_start = json.loads(run_start_raw or "")
+            last_attempt = attempt_log[-1]
+            if not isinstance(run_start, dict) or run_start.get("branch") != b["branch"] or \
+                    run_start.get("worktree") != str(wt) or run_start.get("remote_head") != identity.get("remote_head") or \
+                    not re.fullmatch(r"[a-f0-9]{64}", run_start.get("checkpoint_sha256", "")) or \
+                    run_start.get("fingerprint") != current_fp or run_start.get("cursor") != last_attempt.get("cursor") or \
+                    run_start.get("page_keys") != last_attempt.get("target_keys"):
+                return "Stage 2 repair run boundary does not match its completed receipt; preserving state"
+            round_base = last_history.get("base_head") or run_start.get("head")
+            if not re.fullmatch(r"[a-f0-9]{40}", round_base or "") or run_start.get("head") != round_base:
+                return "Stage 2 repair round does not retain its original owner HEAD baseline"
+
+            rebindings = state.get("rebindings", [])
+            if not isinstance(rebindings, list):
+                return "Stage 2 repair rebind history is malformed; preserving state"
+            if rebindings:
+                chain_start = rebindings[0].get("from_head") if isinstance(rebindings[0], dict) else None
+                chain_head = chain_start
+                checkpoints = {chain_start}
+                for entry in rebindings:
+                    if not isinstance(entry, dict) or entry.get("from_head") != chain_head or \
+                            not re.fullmatch(r"[a-f0-9]{40}", entry.get("to_head", "")) or \
+                            entry.get("to_head") == chain_head or entry.get("branch") != b["branch"] or \
+                            entry.get("worktree") != str(wt) or entry.get("base_branch") != self.cfg["base_branch"] or \
+                            entry.get("remote_head") != identity.get("remote_head") or \
+                            not re.fullmatch(r"[a-f0-9]{64}", entry.get("preflight_fingerprint", "")):
+                        return "Stage 2 repair rebind history is not a continuous owner-bound chain"
+                    chain_head = entry["to_head"]
+                    checkpoints.add(chain_head)
+                if chain_head != old_head or round_base not in checkpoints:
+                    return "Stage 2 repair rebind history does not reach its current identity"
+                if re.fullmatch(r"[a-f0-9]{40}", histories[0].get("base_head", "")) and \
+                        histories[0]["base_head"] != chain_start:
+                    return "Stage 2 repair rebind history differs from its first repair round"
+            else:
+                chain_start = round_base
+                if old_head != round_base:
+                    return "Stage 2 repair identity changed without a recorded rebind"
+
+            if not self.git.verified_supervisor_integration(wt, b["branch"], self.cfg["base_branch"],
+                                                           chain_start, head):
+                return "Stage 2 repair rebind lacks a verified Supervisor master-integration chain"
+
+            updated = json.loads(json.dumps(state))
+            updated.setdefault("rebindings", []).append({
+                "from_head": old_head, "to_head": head, "branch": b["branch"], "worktree": str(wt),
+                "base_branch": self.cfg["base_branch"], "remote_head": remote,
+                "preflight_fingerprint": fingerprint,
+            })
+            updated["identity"]["base_head"] = head
+            updated["identity"]["remote_head"] = remote
+            self._save_stage2_repair_state(b, updated)
+            state.clear()
+            state.update(updated)
+            return None
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            return f"Stage 2 repair rebind evidence check failed: {error}; preserving prior decisions and receipts"
+
     def _launch_stage2_repair_page(self, b) -> None:
         try:
             state = self._stage2_repair_state(b, required=True)
@@ -3002,32 +3185,48 @@ class Supervisor:
         except Exception as error:
             self._fail(b, "ERROR", f"Stage 2 read-only preflight failed: {error}. Worktree is preserved.")
             return True
+        bb, pp = stage2.split_key(b["batch"])
+        if not isinstance(report, dict) or (report.get("shard"), report.get("batch"), report.get("part")) != \
+                (b["shard"], bb, pp):
+            self._fail(b, "ERROR", "Stage 2 preflight returned a different Part identity; preserving repair history")
+            return True
+        fingerprint = report.get("fingerprint")
+        if not isinstance(fingerprint, str) or not re.fullmatch(r"[a-f0-9]{64}", fingerprint):
+            self._fail(b, "ERROR", "Stage 2 preflight returned an invalid conflict fingerprint")
+            return True
         state = self._stage2_repair_state(b)
         if report.get("ok") is True:
             if state:
+                identity = state.get("identity", {})
+                if identity.get("base_head") != self.git.head(Path(b["worktree"])) or \
+                        identity.get("remote_head") != self.git.remote_head(b["branch"]):
+                    problem = self._stage2_repair_rebind_problem(b, state, checkpoint, fingerprint)
+                    if problem:
+                        self._fail(b, "ERROR", f"Stage 2 repair identity rebind failed: {problem}")
+                        return True
                 state["status"] = "complete"
-                state["last_success_fingerprint"] = report.get("fingerprint")
+                state["last_success_fingerprint"] = fingerprint
                 if state.get("history"):
                     state["history"][-1]["resolved"] = True
-                    state["history"][-1]["residual_fingerprint"] = report.get("fingerprint")
+                    state["history"][-1]["residual_fingerprint"] = fingerprint
                 self._save_stage2_repair_state(b, state)
             return False
         if report.get("repairable") is not True or not report.get("problems"):
             summary = "; ".join(report.get("unclassified", [])[:3]) or "no bounded repairable cases were returned"
             self._fail(b, "ERROR", f"Stage 2 preflight found a non-local or incomplete failure; automatic semantic repair is blocked: {summary}")
             return True
-        fingerprint = report.get("fingerprint")
-        if not isinstance(fingerprint, str) or not re.fullmatch(r"[a-f0-9]{64}", fingerprint):
-            self._fail(b, "ERROR", "Stage 2 preflight returned an invalid conflict fingerprint")
-            return True
         if state is None:
             state = {"version": 1, "identity": {"branch": b["branch"], "worktree": str(b["worktree"]),
                       "base_head": self.git.head(Path(b["worktree"])), "remote_head": self.git.remote_head(b["branch"])},
-                     "rounds_used": 0, "history": [], "status": "active", "current": None}
-        if state.get("identity", {}).get("base_head") != self.git.head(Path(b["worktree"])) \
-                or state.get("identity", {}).get("remote_head") != self.git.remote_head(b["branch"]):
-            self._fail(b, "ERROR", "Stage 2 repair owner HEAD/remote identity changed; preserving prior decisions and receipts")
-            return True
+                     "rounds_used": 0, "history": [], "rebindings": [], "status": "active", "current": None}
+        else:
+            identity = state.get("identity", {})
+            if identity.get("base_head") != self.git.head(Path(b["worktree"])) or \
+                    identity.get("remote_head") != self.git.remote_head(b["branch"]):
+                problem = self._stage2_repair_rebind_problem(b, state, checkpoint, fingerprint)
+                if problem:
+                    self._fail(b, "ERROR", f"Stage 2 repair identity rebind failed: {problem}")
+                    return True
         seen = {entry.get("fingerprint") for entry in state["history"] if isinstance(entry, dict)}
         if fingerprint in seen:
             self._fail(b, "ERROR", f"Stage 2 repair made no preflight progress (repeated fingerprint {fingerprint[:12]}); evidence is preserved")
@@ -3050,7 +3249,8 @@ class Supervisor:
                              "target_keys": target_keys, "pending_answer": None, "applied_candidate_keys": [],
                              "attempt_log": [], "type_tier_policy": report.get("type_tier_policy", "legacy-independent")}
         state["history"].append({"round": state["rounds_used"], "fingerprint": fingerprint,
-                                 "target_keys": target_keys, "applied_candidate_keys": [], "resolved": False})
+                                 "target_keys": target_keys, "applied_candidate_keys": [], "resolved": False,
+                                 "base_head": self.git.head(Path(b["worktree"]))})
         state["status"] = "active"
         self._save_stage2_repair_state(b, state)
         self.store.log(b["id"], f"Stage 2 preflight detected {len(groups)} conflict groups / {len(target_keys)} candidates; starting fresh bounded repair round {state['rounds_used']}/{stage2.MAX_REPAIR_ROUNDS}", "warn")
@@ -3261,12 +3461,35 @@ class Supervisor:
                 try:
                     repair_state = self._stage2_repair_state(b)
                     current_repair = repair_state.get("current") if repair_state else None
+                    if repair_state:
+                        identity = repair_state.get("identity", {})
+                        remote = self.git.remote_head(b["branch"])
+                        if identity.get("remote_head") != remote:
+                            return self._fail(b, "ERROR", "Stage 2 repair owner remote branch changed; preserving prior decisions and receipts")
+                        current_head = self.git.head(wt)
+                        if identity.get("base_head") != current_head:
+                            saved_base = self.store.get(f"s2_finalize_base_{b['id']}")
+                            if saved_base != current_head or self.git.dirty(wt).strip() or \
+                                    not self.git.verified_supervisor_integration(
+                                        wt, b["branch"], self.cfg["base_branch"], identity.get("base_head"), current_head):
+                                return self._fail(b, "ERROR", "Stage 2 repair owner HEAD changed without a verified prior Supervisor integration; preserving prior decisions and receipts")
                     if isinstance(current_repair, dict):
+                        groups = current_repair.get("groups")
+                        cursor = current_repair.get("cursor")
+                        unfinished = current_repair.get("pending_answer") is not None or \
+                            current_repair.get("apply_intent") is not None or not isinstance(groups, list) or \
+                            type(cursor) is not int or cursor < len(groups)
+                        if unfinished:
+                            if identity.get("base_head") != current_head:
+                                return self._fail(b, "ERROR", "Stage 2 repair page is unfinished after an owner HEAD/remote change; preserving its answer and apply boundary")
                         if current_repair.get("pending_answer") is not None:
                             return self._apply_stage2_repair_answer(b, repair_state)
-                        cursor, groups = current_repair.get("cursor"), current_repair.get("groups")
+                        if current_repair.get("apply_intent") is not None:
+                            return self._fail(b, "ERROR", "Stage 2 repair has an apply intent without its persisted answer; preserving state")
                         if type(cursor) is int and isinstance(groups, list) and cursor < len(groups):
                             return self._launch_stage2_repair_page(b)
+                        if not isinstance(groups, list) or type(cursor) is not int or cursor != len(groups):
+                            return self._fail(b, "ERROR", "Stage 2 repair cursor is invalid; preserving state")
                     premerge = checkpoint.get("premerge")
                     integrated = False
                     target = self.cfg["base_branch"]

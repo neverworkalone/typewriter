@@ -114,6 +114,7 @@ class FakeGit:
         self.reg: dict[str, str] = {}
         self.remote: dict[str, str | Exception | None] = {}   # branch -> origin SHA, None (absent) or an error to raise
         self.integrated: list[tuple[str, str]] = []           # (worktree, sha) of every shared fix merged in
+        self.integration_proof_calls: list[tuple[str, str, str, str, str]] = []
         self.maintainer_sync_calls: list[tuple] = []
         self.maintainer_pushes: list[tuple[str, str, str]] = []
         self.maintainer_sync_error: Exception | None = None
@@ -569,11 +570,18 @@ class FakeGit:
     def integrate(self, path, branch, base, sha):
         if self.integrate_error:
             raise self.integrate_error
+        before = self.local_head
         if (str(path), sha) not in self.integrated:
             self.integrated.append((str(path), sha))
         if self.integrate_updates_head:
             self.local_head = sha
+            self.ancestor_pairs.add((before, sha))
         return self.local_head
+
+    def verified_supervisor_integration(self, path, branch, base, old_head, new_head):
+        self.integration_proof_calls.append((str(path), branch, base, old_head, new_head))
+        return self.registered(path) == branch and self.head(path) == new_head and self.base_sha == new_head \
+            and (str(path), new_head) in self.integrated and (old_head, new_head) in self.ancestor_pairs
 
     def contains(self, path, sha):
         return (str(path), sha) in self.integrated
