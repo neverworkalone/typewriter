@@ -47,11 +47,13 @@ only* do not apply to the new scope.
   non-empty plain text with no ID: no click action, no reverse relation, no
   invented record. Reject a fabricated ID or a wrong-meaning link used to
   avoid text.
-- **Bidirectional:** authored ID↔ID links remain searchable both ways. Newly prepared Stage 2 Parts judge Type/Tier once from the source and the CLI mirrors the values; equality is expected and is not a blocker. Marker-free checkpoints retain independent reverse scoring, and historical/STDICT relations remain unchanged.
+- **Bidirectional:** authored ID↔ID links remain searchable both ways. Under #2446, all persisted ID relations use one source `tp`/`rv` judgment in both directions, including previously approved rows; equality is required and is not a blocker. Do not independently re-score reverse links. Preserve historical review evidence and STDICT relations; legacy-checkpoint recovery follows `relation-factory.md`.
 - **Implementation status:** Text-only targets, the Typewriter-authored
-  relation source and bidirectional ID derivation are implemented. Newly
-  prepared Stage 2 checkpoints mirror Type/Tier from the source; marker-free
-  checkpoints and historical rows may retain independent reverse values.
+  relation source and bidirectional ID derivation are implemented. Current
+  persisted ID rows use the source Type/Tier in both directions. A legacy
+  checkpoint may retain old judgments for recovery, but a Part with differing
+  reverse values must not merge; preserve its evidence and follow the documented
+  Part-boundary transition rules.
 - **Headword candidates** (`data/headword-candidates/pr-<PR number>.jsonl`,
   Schema v1 in #838): check only syntax, required/extra fields, a real
   `source_record_id` matching `source_lemma`, same-PR duplicate
@@ -108,7 +110,7 @@ The root `REVIEW.md` **Stage 1 Candidate form gate** is the review authority for
   2 absent a real distinction. Equal values are fine. 4 vs 5 is ordinarily
   subjective, **not a blocker**. Relevance is ordinal display priority,
   **not** semantic distance or confidence.
-- Reverse links require valid source/target IDs and provenance. Never create them for text-only or STDICT types other than the existing `direct` projection. Older asymmetric scores and zero relations remain valid; no mechanical scoring validators.
+- Reverse links require valid source/target IDs and provenance. Never create them for text-only or STDICT types other than the existing `direct` projection. Zero relations remain valid. Authored ID rows follow #2446's single source Type/Tier contract; historical approval does not permit asymmetric persisted values. Do not add mechanical semantic-scoring validators.
 
 ## Systemic relation defects — technical Stage 1 and re-review
 
