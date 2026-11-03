@@ -51,7 +51,7 @@ class FakeLiteraryCli:
                                "entry_number": diagnostic["affected"]["entry_number"],
                                "chunk_no": int(self.opt(argv, "--chunk-no")),
                                "view_sha256": "d" * 64, "git_head": "a" * 40,
-                               "retry_attempts": int(self.opt(argv, "--retry-attempts")),
+                               "retry_attempts": 2,
                                "input_sha256": hashlib.sha256(input_path.read_bytes()).hexdigest(),
                                "source_procedure_sha256": "e" * 64,
                                "runtime_procedure_sha256": "f" * 64,

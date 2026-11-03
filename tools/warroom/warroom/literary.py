@@ -167,11 +167,18 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     owner = store.batch(b["id"])
     if (not owner or owner["method"] != "c" or owner["producer"] != b["producer"]
             or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
-            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b["session_id"]):
+            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b["session_id"]
+            or owner["state"] != "PRODUCING" or owner["pid"] is not None):
         raise LiteraryError("C technical skip requires the active War Room-owned batch")
     retry_attempts = int(store.get(resubmit_key(b["id"])) or 0)
     if retry_attempts != MAX_RESUBMITS:
         raise LiteraryError("C technical skip requires the exhausted Supervisor resubmit budget")
+    current_runs = store.runs(b["id"])
+    current_run = current_runs[0] if current_runs else None
+    if (not current_run or current_run["kind"] not in ("c_chunk_new", "c_chunk_resume")
+            or current_run["session_id"] != b["session_id"] or current_run["ended_at"] is None
+            or owner["run_kind"] != current_run["kind"]):
+        raise LiteraryError("C technical skip requires the finished current C chunk run")
     n = names(b)
     if rec.get("repair") is True:
         raise LiteraryError("C technical skip is not allowed during a Candidate repair chunk")
@@ -215,7 +222,9 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     result = runner.run(["node", str(supervisor_cli_path()), "--checkpoint", n.checkpoint,
                          "--input", input_path, "--diagnostic", str(diagnostic_path.relative_to(worktree)),
                          "--active", ACTIVE, "--view", VIEW, "--chunk-no", str(rec["chunk_no"]),
-                         "--retry-attempts", str(retry_attempts), "--expected-head", rec["git_head"]],
+                         "--supervisor-store", str(Path(store.path).resolve()), "--batch-id", str(b["id"]),
+                         "--branch", b["branch"], "--session-id", b["session_id"],
+                         "--run-id", str(current_run["id"]), "--expected-head", rec["git_head"]],
                         cwd=worktree, env=env, timeout=900)
     if not result.ok:
         try:

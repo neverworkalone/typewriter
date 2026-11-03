@@ -1227,18 +1227,28 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
   const fixture = await makeFixture({ supervisorWorktree: true, senseCount: 613, repeatFirstLemma: true });
   const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'typewriter-c-legacy-test-'));
   const legacyRoot = path.join(temporaryRoot, 'worktree');
+  const supervisorRoot = path.join(temporaryRoot, 'supervisor');
   const repoRoot = path.resolve('.');
   const checkpoint = '.warroom-scratch/044_01_c_codex.checkpoint.json';
   const input = '.warroom-scratch/c-chunk-014.submit.json';
   const diagnostic = `${input}.diag.json`;
-  const currentCli = path.resolve('scripts/relation/literary-context-cli.mjs');
-  const supervisorCli = path.resolve('scripts/relation/literary-context-supervisor-cli.mjs');
+  const currentCli = path.join(supervisorRoot, 'scripts/relation/literary-context-cli.mjs');
+  const supervisorCli = path.join(supervisorRoot, 'scripts/relation/literary-context-supervisor-cli.mjs');
+  const supervisorStorePath = path.join(supervisorRoot, 'tools/warroom/.local/warroom.db');
+  const supervisorBatchId = 1140;
+  const supervisorRunId = 1401;
+  const supervisorSessionId = 'fixture-session';
+  const supervisorBranch = 'codex/test-c-044-01';
+  let supervisorStore;
   let currentHead = '';
-  const supervisorSkip = (head = null) => runScriptAt(legacyRoot, supervisorCli, [
-    '--checkpoint', checkpoint, '--input', input, '--diagnostic', diagnostic,
-    '--active', '.warroom-scratch/c-active-chunk.json', '--view', '.warroom-scratch/c-active-chunk.txt',
-    '--chunk-no', '14', '--retry-attempts', '2', '--expected-head', head ?? currentHead,
-  ]);
+  const supervisorSkip = (head = null, storePath = supervisorStorePath, extraArgs = []) => runScriptAt(legacyRoot,
+    supervisorCli, [
+      '--checkpoint', checkpoint, '--input', input, '--diagnostic', diagnostic,
+      '--active', '.warroom-scratch/c-active-chunk.json', '--view', '.warroom-scratch/c-active-chunk.txt',
+      '--chunk-no', '14', '--supervisor-store', storePath, '--batch-id', String(supervisorBatchId),
+      '--branch', supervisorBranch, '--session-id', supervisorSessionId, '--run-id', String(supervisorRunId),
+      '--expected-head', head ?? currentHead, ...extraArgs,
+    ]);
   try {
     const legacyFiles = [
       'scripts/relation/candidate-contract.mjs',
@@ -1248,6 +1258,35 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
       'docs/relation-factory.md',
       'tools/warroom/prompts/c.md',
     ];
+    await mkdir(supervisorRoot, { recursive: true });
+    for (const file of legacyFiles) {
+      const target = path.join(supervisorRoot, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(path.join(repoRoot, file), target);
+    }
+    await mkdir(path.dirname(supervisorStorePath), { recursive: true });
+    supervisorStore = new DatabaseSync(supervisorStorePath);
+    supervisorStore.exec(`
+      CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE batches (
+        id INTEGER PRIMARY KEY, method TEXT, producer TEXT, shard TEXT, batch TEXT, branch TEXT, worktree TEXT,
+        state TEXT, session_id TEXT, pid INTEGER, run_kind TEXT
+      );
+      CREATE TABLE runs (id INTEGER PRIMARY KEY, batch_id INTEGER, kind TEXT, session_id TEXT, ended_at REAL);
+    `);
+    supervisorStore.prepare('INSERT INTO kv(key, value) VALUES(?, ?)').run(`c_resubmit_${supervisorBatchId}`, '2');
+    supervisorStore.prepare(`INSERT INTO batches
+      (id, method, producer, shard, batch, branch, worktree, state, session_id, pid, run_kind)
+      VALUES(?, 'c', 'codex', '044', '01', ?, ?, 'PRODUCING', ?, NULL, 'c_chunk_new')`)
+      .run(supervisorBatchId, supervisorBranch, legacyRoot, supervisorSessionId);
+    supervisorStore.prepare(`INSERT INTO runs(id, batch_id, kind, session_id, ended_at)
+      VALUES(?, ?, 'c_chunk_new', ?, 1)`)
+      .run(supervisorRunId, supervisorBatchId, supervisorSessionId);
+    const setSupervisorState = ({ retryAttempts = '2', pid = null, endedAt = 1 } = {}) => {
+      supervisorStore.prepare('UPDATE kv SET value=? WHERE key=?').run(retryAttempts, `c_resubmit_${supervisorBatchId}`);
+      supervisorStore.prepare('UPDATE batches SET pid=? WHERE id=?').run(pid, supervisorBatchId);
+      supervisorStore.prepare('UPDATE runs SET ended_at=? WHERE id=?').run(endedAt, supervisorRunId);
+    };
     const archived = spawnSync('git', ['archive', '--format=tar', PRE_2889_C_HEAD, ...legacyFiles], {
       cwd: repoRoot, encoding: null, maxBuffer: 16 * 1024 * 1024,
     });
@@ -1359,8 +1398,9 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
 
     const validDiagnostic = await readFile(path.join(legacyRoot, diagnostic));
     const validCheckpoint = await readFile(path.join(legacyRoot, checkpoint));
-    const expectBlockedWithoutMutation = async (result, reason) => {
+    const expectBlockedWithoutMutation = async (invoke, reason) => {
       const checkpointBefore = await readFile(path.join(legacyRoot, checkpoint));
+      const result = invoke();
       assert.notEqual(result.status, 0);
       assert.equal(JSON.parse(result.stdout).reason_code, reason);
       assert.deepEqual(await readFile(path.join(legacyRoot, checkpoint)), checkpointBefore);
@@ -1368,27 +1408,39 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
     const multipleIssueDiagnostic = JSON.parse(validDiagnostic.toString('utf8'));
     multipleIssueDiagnostic.issues.push({ ...multipleIssueDiagnostic.issues[0] });
     await writeFile(path.join(legacyRoot, diagnostic), JSON.stringify(multipleIssueDiagnostic));
-    await expectBlockedWithoutMutation(supervisorSkip(), 'diagnostic_not_single_sense');
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'diagnostic_not_single_sense');
     await writeFile(path.join(legacyRoot, diagnostic), validDiagnostic);
 
     const wrongAffectedDiagnostic = JSON.parse(validDiagnostic.toString('utf8'));
     wrongAffectedDiagnostic.affected.sense_id = activeIds[0];
     await writeFile(path.join(legacyRoot, diagnostic), JSON.stringify(wrongAffectedDiagnostic));
-    await expectBlockedWithoutMutation(supervisorSkip(), 'diagnostic_not_single_sense');
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'diagnostic_not_single_sense');
     await writeFile(path.join(legacyRoot, diagnostic), validDiagnostic);
 
-    await expectBlockedWithoutMutation(supervisorSkip('b'.repeat(40)), 'worktree_identity_mismatch');
+    await expectBlockedWithoutMutation(() => supervisorSkip('b'.repeat(40)), 'worktree_identity_mismatch');
+
+    await expectBlockedWithoutMutation(() => supervisorSkip(null, path.join(temporaryRoot, 'fake-warroom.db')),
+      'supervisor_store_identity_mismatch');
+    setSupervisorState({ retryAttempts: '1' });
+    await expectBlockedWithoutMutation(() => supervisorSkip(null, supervisorStorePath, ['--retry-attempts', '2']),
+      'supervisor_skip_operation_failed');
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'resubmit_budget_not_exhausted');
+    setSupervisorState({ pid: 21644 });
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'supervisor_batch_not_idle');
+    setSupervisorState({ endedAt: null });
+    await expectBlockedWithoutMutation(() => supervisorSkip(), 'supervisor_run_not_finished');
+    setSupervisorState();
 
     let invalidCheckpoint = JSON.parse(validCheckpoint.toString('utf8'));
     invalidCheckpoint.batch.git_head = 'b'.repeat(40);
     await writeFile(path.join(legacyRoot, checkpoint), JSON.stringify(invalidCheckpoint));
-    await expectBlockedWithoutMutation(supervisorSkip(head), 'checkpoint_or_active_binding_mismatch');
+    await expectBlockedWithoutMutation(() => supervisorSkip(head), 'checkpoint_or_active_binding_mismatch');
     await writeFile(path.join(legacyRoot, checkpoint), validCheckpoint);
 
     invalidCheckpoint = JSON.parse(validCheckpoint.toString('utf8'));
     invalidCheckpoint.batch.procedure_sha256 = 'b'.repeat(64);
     await writeFile(path.join(legacyRoot, checkpoint), JSON.stringify(invalidCheckpoint));
-    await expectBlockedWithoutMutation(supervisorSkip(head), 'source_procedure_digest_mismatch');
+    await expectBlockedWithoutMutation(() => supervisorSkip(head), 'source_procedure_digest_mismatch');
     await writeFile(path.join(legacyRoot, checkpoint), validCheckpoint);
 
     const indexFailure = runScriptAt(legacyRoot, currentCli, [
@@ -1397,7 +1449,7 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
     assert.notEqual(indexFailure.status, 0);
     assert.equal(await stat(path.join(legacyRoot, diagnostic)).then(() => true, () => false), false,
       'an approved index failure clears the previous retry diagnostic');
-    await expectBlockedWithoutMutation(supervisorSkip(head), 'current_evidence_unavailable');
+    await expectBlockedWithoutMutation(() => supervisorSkip(head), 'current_evidence_unavailable');
     await writeFile(path.join(legacyRoot, diagnostic), validDiagnostic);
 
     const unaffected = entries.filter((_, index) => index !== 7);
@@ -1474,6 +1526,7 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
     assert.equal(finalReport.output.validation_status, 'VALID');
     assert.equal((await readFile(path.join(legacyRoot, output), 'utf8')).trim().split('\n').length, 500);
   } finally {
+    supervisorStore?.close();
     await rm(temporaryRoot, { recursive: true, force: true });
     await cleanup(fixture);
   }

@@ -6,7 +6,8 @@ import { readFile } from 'node:fs/promises';
 import { applySupervisorTechnicalSkip } from './literary-context.mjs';
 
 const OPTIONS = new Set([
-  '--checkpoint', '--input', '--diagnostic', '--active', '--view', '--chunk-no', '--retry-attempts', '--expected-head',
+  '--checkpoint', '--input', '--diagnostic', '--active', '--view', '--chunk-no', '--supervisor-store',
+  '--batch-id', '--branch', '--session-id', '--run-id', '--expected-head',
 ]);
 
 function parseArguments(args) {
@@ -28,8 +29,11 @@ function emit(value) {
 try {
   const options = parseArguments(process.argv.slice(2));
   const chunkNo = Number(options['--chunk-no']);
-  const retryAttempts = Number(options['--retry-attempts']);
-  if (!Number.isSafeInteger(chunkNo) || !Number.isSafeInteger(retryAttempts)) throw new Error('invalid arguments');
+  const batchId = Number(options['--batch-id']);
+  const runId = Number(options['--run-id']);
+  if (!Number.isSafeInteger(chunkNo) || !Number.isSafeInteger(batchId) || !Number.isSafeInteger(runId)) {
+    throw new Error('invalid arguments');
+  }
   const result = await applySupervisorTechnicalSkip({
     checkpointPath: options['--checkpoint'],
     inputPath: options['--input'],
@@ -37,7 +41,11 @@ try {
     activePath: options['--active'],
     viewPath: options['--view'],
     chunkNo,
-    retryAttempts,
+    supervisorStorePath: options['--supervisor-store'],
+    batchId,
+    branch: options['--branch'],
+    sessionId: options['--session-id'],
+    runId,
     expectedHead: options['--expected-head'],
     supervisorCliSha256: createHash('sha256').update(await readFile(fileURLToPath(import.meta.url))).digest('hex'),
   });

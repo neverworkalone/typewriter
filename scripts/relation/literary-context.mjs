@@ -980,6 +980,49 @@ function technicalSkipBlocked(reasonCode) {
   throw error;
 }
 
+function assertSupervisorSkipAuthority({ supervisorStorePath, batchId, branch, sessionId, runId,
+  checkpointBatch, worktreeDirectory }) {
+  const expectedStorePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..',
+    'tools/warroom/.local/warroom.db');
+  if (!Number.isSafeInteger(batchId) || batchId < 1 || !Number.isSafeInteger(runId) || runId < 1
+      || typeof sessionId !== 'string' || sessionId === '' || typeof branch !== 'string' || branch === ''
+      || path.resolve(supervisorStorePath ?? '') !== expectedStorePath) {
+    technicalSkipBlocked('supervisor_store_identity_mismatch');
+  }
+
+  let database;
+  let batch;
+  let retryAttempts;
+  let latestRun;
+  try {
+    database = new DatabaseSync(expectedStorePath, { readOnly: true });
+    database.exec('PRAGMA query_only = ON');
+    batch = database.prepare(`SELECT id, method, producer, shard, batch, branch, worktree, state,
+      session_id, pid, run_kind FROM batches WHERE id = ?`).get(batchId);
+    retryAttempts = database.prepare('SELECT value FROM kv WHERE key = ?').get(`c_resubmit_${batchId}`)?.value;
+    latestRun = database.prepare(`SELECT id, batch_id, kind, session_id, ended_at
+      FROM runs WHERE batch_id = ? ORDER BY id DESC LIMIT 1`).get(batchId);
+  } catch {
+    technicalSkipBlocked('supervisor_store_unavailable');
+  } finally {
+    database?.close();
+  }
+
+  if (retryAttempts !== '2') technicalSkipBlocked('resubmit_budget_not_exhausted');
+  if (!batch || batch.method !== 'c' || batch.producer !== checkpointBatch.model
+      || batch.shard !== checkpointBatch.shard || batch.batch !== checkpointBatch.batch
+      || batch.branch !== branch || path.resolve(batch.worktree ?? '') !== path.resolve(worktreeDirectory)) {
+    technicalSkipBlocked('supervisor_batch_binding_mismatch');
+  }
+  if (batch.state !== 'PRODUCING' || batch.pid !== null) technicalSkipBlocked('supervisor_batch_not_idle');
+  if (batch.session_id !== sessionId) technicalSkipBlocked('supervisor_session_mismatch');
+  if (!['c_chunk_new', 'c_chunk_resume'].includes(batch.run_kind)
+      || !latestRun || latestRun.id !== runId || latestRun.batch_id !== batchId
+      || latestRun.kind !== batch.run_kind || latestRun.session_id !== sessionId || latestRun.ended_at === null) {
+    technicalSkipBlocked('supervisor_run_not_finished');
+  }
+}
+
 function isWithin(root, target) {
   const relative = path.relative(root, target);
   return Boolean(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
@@ -1020,14 +1063,17 @@ export async function applySupervisorTechnicalSkip({
   activePath,
   viewPath,
   chunkNo,
-  retryAttempts,
+  supervisorStorePath,
+  batchId,
+  branch,
+  sessionId,
+  runId,
   expectedHead,
   supervisorCliSha256,
   worktreeDirectory = process.cwd(),
   scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY),
 }) {
   if (!Number.isSafeInteger(chunkNo) || chunkNo < 1) technicalSkipBlocked('active_chunk_invalid');
-  if (retryAttempts !== 2) technicalSkipBlocked('resubmit_budget_not_exhausted');
   if (!/^[a-f0-9]{40}$/u.test(expectedHead ?? '')) technicalSkipBlocked('head_binding_invalid');
   if (!/^[a-f0-9]{64}$/u.test(supervisorCliSha256 ?? '')) technicalSkipBlocked('supervisor_cli_identity_invalid');
 
@@ -1072,6 +1118,8 @@ export async function applySupervisorTechnicalSkip({
   }
 
   const batch = checkpoint.batch;
+  assertSupervisorSkipAuthority({ supervisorStorePath, batchId, branch, sessionId, runId,
+    checkpointBatch: batch, worktreeDirectory });
   if (checkpoint.contract !== CHECKPOINT_CONTRACT || batch?.procedure_contract !== 'issue-1155-c-literary-v2'
       || batch?.git_head !== expectedHead || batch?.canonical_revision !== expectedHead || active?.git_head !== expectedHead
       || !Number.isSafeInteger(active?.chunk_no) || active.chunk_no !== chunkNo
@@ -1152,7 +1200,7 @@ export async function applySupervisorTechnicalSkip({
     chunk_no: chunkNo,
     view_sha256: active.view_sha256,
     git_head: expectedHead,
-    retry_attempts: retryAttempts,
+    retry_attempts: 2,
     input_sha256: diagnostic.input_sha256,
     source_procedure_sha256: sourceProcedureSha256,
     runtime_procedure_sha256: runtimeProcedureSha256,
@@ -1164,7 +1212,7 @@ export async function applySupervisorTechnicalSkip({
   await saveCheckpoint(resolvedCheckpoint, checkpoint);
   return { status: 'TECHNICAL_SKIPPED', record_id: targetRecord.record_id, sense_id: targetId,
     diagnostic: diagnostic.diagnostic, reason: diagnostic.reason, field: affected.field,
-    retry_attempts: retryAttempts, pending_senses: 0 };
+    retry_attempts: 2, pending_senses: 0 };
 }
 
 /** Add a source-bound additional inflection before the sense has been read and submitted. */

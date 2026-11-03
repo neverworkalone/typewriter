@@ -233,9 +233,13 @@ class SerialChunks(unittest.TestCase):
                         "the final full submit is revalidated by the ordinary CLI before a technical skip")
         self.assertTrue(all(Path(call[1]).is_absolute() for call in w.runner.literary.calls),
                         "legacy worktrees use the current Supervisor checkout's CLI")
-        self.assertTrue(any(Path(call[1]).name == "literary-context-supervisor-cli.mjs"
-                            for call in w.runner.literary.calls),
-                        "the checkpoint transition is written by the internal official CLI")
+        supervisor_call = next(call for call in w.runner.literary.calls
+                               if Path(call[1]).name == "literary-context-supervisor-cli.mjs")
+        self.assertIn("--supervisor-store", supervisor_call)
+        self.assertEqual(supervisor_call[supervisor_call.index("--supervisor-store") + 1], str(w.store.path.resolve()))
+        self.assertIn("--run-id", supervisor_call)
+        self.assertNotIn("--retry-attempts", supervisor_call,
+                         "the internal CLI reads the exhausted budget from Supervisor-owned state")
         self.assertIn(str(literary.cli_path()), w.adapter.launches[-1]["prompt"],
                       "the next producer session keeps using the current official CLI")
         self.assertTrue(any("record=record-s0003" in event["msg"] for event in w.store.recent_events()

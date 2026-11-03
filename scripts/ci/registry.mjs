@@ -242,6 +242,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ...affectedTestCheck('scripts/relation/literary-context.test.mjs', 'Test C literary search, evidence checkpoints and local Candidate repair', [
           'scripts/relation/literary-context.mjs',
           'scripts/relation/literary-context-cli.mjs',
+          'scripts/relation/literary-context-supervisor-cli.mjs',
           'scripts/relation/candidate-contract.mjs',
         ]),
       },
