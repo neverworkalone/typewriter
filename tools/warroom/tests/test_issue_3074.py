@@ -194,3 +194,63 @@ class ParallelDCorrections(ParallelDHelpers, unittest.TestCase):
         self.assertEqual((b["state"], self.tasks(w)["001"]["state"]), ("PAUSED", "SAVED"))   # SEARCH_FAILED pauses
         self.assertIn("SEARCH_FAILED", b["error"])
         self.assertEqual(len(w.adapter.launches), 1)
+
+
+class ParallelDRecovery(ParallelDHelpers, unittest.TestCase):
+    def test_chunk_saved_before_stop_is_accepted_on_retry_not_run_again(self):
+        w = self.world(records=100)
+        self.plan_all(w, range(1, 8))
+        w.start("single", "deepseek", "d")
+        w.tick()
+        w.runner.dchunk.save(w.wt(), 1)                      # saved, then the operator stops the still-running worker
+        control.stop_line(w.store, "deepseek", "d")
+        w.tick(2)
+        self.assertEqual(w.row_()["state"], "PAUSED")
+        before = len(w.adapter.launches)
+        self.assertTrue(control.retry(w.store, "deepseek", "d"))
+        w.tick(2)
+        self.assertEqual(self.tasks(w)["001"]["state"], "SAVED")
+        self.assertEqual(len(w.adapter.launches), before + 3)    # only chunks 2-4 are run again
+
+    def test_failed_task_waiting_for_a_running_one_is_reentered_by_one_retry_after_stop(self):
+        w = self.world(records=100)
+        w.runner.dchunk.failed = {2}
+        self.plan_all(w, range(1, 8))
+        w.start("single", "deepseek", "d")
+        w.tick()
+        self.assertEqual(self.tasks(w)["002"]["state"], "FAILED")
+        self.assertEqual([r["task"] for r in self.open_runs(w)], ["001"])
+        control.stop_line(w.store, "deepseek", "d")
+        w.tick(2)
+        self.assertEqual(w.row_()["state"], "PAUSED")
+        w.runner.dchunk.failed = set()                        # the operator fixed the index
+        self.assertTrue(control.retry(w.store, "deepseek", "d"))
+        w.tick(2)
+        self.assertNotEqual(self.tasks(w)["002"]["state"], "FAILED")
+        self.assertIn("002", {r["task"] for r in self.open_runs(w)})
+
+    def test_twin_report_archive_resumes_after_a_partial_failure(self):
+        from unittest import mock
+        from warroom import defects, dparallel
+        w = self.world(records=100)
+        self.plan_all(w, range(1, 5))
+        w.start("single", "deepseek", "d")
+        w.tick()
+        b = w.row_()
+        raw = '{"defect_class": "x"}'
+        paths = [w.wt() / dparallel.defect_path(b, t) for t in ("001", "002")]
+        for p in paths:
+            p.write_text(raw)
+        w.store.set(f"s2_defect_path_{b['id']}", dparallel.defect_path(b, "001"))
+        d = {"id": 1, "event_key": defects.report_event_key(b["id"], raw)}
+        real, state = Path.replace, {"fail": True}
+
+        def flaky(self_, target):
+            if self_.name == "shared-defect-002.json" and state["fail"]:
+                state["fail"] = False
+                raise OSError("disk")
+            return real(self_, target)
+        with mock.patch.object(Path, "replace", flaky):
+            self.assertFalse(w.sup.maint._archive_report(d, b))
+            self.assertTrue(w.sup.maint._archive_report(d, b))
+        self.assertFalse(paths[0].exists() or paths[1].exists())

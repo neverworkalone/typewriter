@@ -629,6 +629,12 @@ class Maintenance:
         try:
             raw = f.read_text("utf-8", errors="replace")
         except FileNotFoundError:
+            # The primary file may already be set aside by an interrupted earlier attempt: still finish its twins.
+            try:
+                self._archive_twins(d, b, f, d["event_key"].split(":after:")[0])
+            except OSError as e:
+                self.store.log(b["id"], f"해결된 공통 결함의 동일 보고서 보관 실패로 재개를 미룹니다(재시도 예정): {e}", "warn")
+                return False
             return True
         except OSError as e:
             self.store.log(b["id"], f"해결된 공통 결함 보고서를 읽지 못해 재개를 미룹니다(재시도 예정): {e}", "warn")
@@ -640,20 +646,23 @@ class Maintenance:
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
             f.replace(dest)
-            # Another task of the same parallel batch may have written the identical report: it is the same resolved
-            # event and must not come back as a recurrence after the fix, so it is set aside with its twin.
-            for other in self.sup._task_report_files(b):
-                twin = Path(b["worktree"]) / other
-                if twin != f and twin.is_file() and defects.report_event_key(
-                        b["id"], twin.read_text("utf-8", errors="replace")) == base:
-                    (twin.parent / "resolved-defects").mkdir(parents=True, exist_ok=True)
-                    twin.replace(twin.parent / "resolved-defects" / f"defect-{d['id']}-{twin.stem}.json")
+            self._archive_twins(d, b, f, base)
         except OSError as e:
             self.store.log(b["id"], f"해결된 공통 결함 보고서 보관 실패로 재개를 미룹니다(재시도 예정): {e}", "warn")
             return False
         self.store.log(b["id"], f"해결된 공통 결함 #{d['id']} 보고서를 {dest.relative_to(b['worktree'])}로 보관")
         self.store.delete(f"s2_defect_path_{b['id']}")
         return True
+
+    def _archive_twins(self, d, b, f: Path, base: str) -> None:
+        """Another task of the same parallel batch may have written the identical report: it is the same resolved event
+        and must not come back as a recurrence after the fix, so it is set aside with its twin (idempotent, OSError retries)."""
+        for other in self.sup._task_report_files(b):
+            twin = Path(b["worktree"]) / other
+            if twin != f and twin.is_file() and defects.report_event_key(
+                    b["id"], twin.read_text("utf-8", errors="replace")) == base:
+                (twin.parent / "resolved-defects").mkdir(parents=True, exist_ok=True)
+                twin.replace(twin.parent / "resolved-defects" / f"defect-{d['id']}-{twin.stem}.json")
 
     def resolved_note(self, b, short: bool = False) -> str:
         """Evidence-backed context: defects of this batch whose merged fix was applied and verified (RELEASED)."""
