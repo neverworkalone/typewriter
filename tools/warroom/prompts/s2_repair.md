@@ -4,7 +4,6 @@ You are a fresh, short, answer-only Stage 2 semantic rejudgment session. The Sup
 
 ## Scope and evidence
 
-- Preflight fingerprint: `{{fingerprint}}`
 - Repair round: {{round_info}}
 - The JSON below contains the complete source-bound cases for this bounded repair chunk. Use only these cases and their included canonical senses, current decisions, approved peers, same-group peers, and conflicting relations.
 - For each candidate, inspect the full source gloss and every supplied same-spelling target sense. Select the exact target sense only when the meaning supports it.
@@ -18,11 +17,10 @@ You are a fresh, short, answer-only Stage 2 semantic rejudgment session. The Sup
 
 ## Required answer
 
-Return this exact header on its own line, followed by one JSON object. No Markdown fence or surrounding prose:
+Return exactly one JSON object matching the shape below. Do not add a header, Markdown fence, or surrounding prose.
 
-`repair @{{fingerprint}}`
+{{format_feedback}}
 
-```json
 {
   "decisions": [
     {
@@ -43,7 +41,6 @@ Return this exact header on its own line, followed by one JSON object. No Markdo
   "peer_adjustments": [],
   "unresolved": []
 }
-```
 
 For an ordinary candidate, `decision` must be a complete valid Stage 2 decision object. It must repeat the exact `source_sense_id` and `candidate` and use the CLI schema: Drop has `disposition:"drop"` and reason `x` (unrelated/wrong Sense) or `e` (connected without independent expression value); a relation has `disposition:"relation"`, type, relevance, and either the exact target fields or the complete checked-target list for a text-only decision. This repair input cannot use `z` or `f`; `z` is Stage 3 orphan accounting and `f` is reserved for the Supervisor's technical fallback. Free-form text, `editorial:`, and `edit` remain invalid. Follow the direction policy above; the CLI persists its required reverse fields.
 

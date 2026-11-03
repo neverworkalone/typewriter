@@ -85,7 +85,8 @@ class Stage2PreflightRepair(unittest.TestCase):
         self.assertEqual(repair["stage2_chunk_git"], "1")
         self.assertEqual(repair["stage2_repair"], "1")
         self.assertEqual(repair["answer_only"], "1")
-        self.assertIn(f"repair @{fingerprint}", repair["prompt"])
+        self.assertNotIn("repair @", repair["prompt"])
+        self.assertNotIn(fingerprint, repair["prompt"])
         self.assertEqual(w.gh.created_prs, [])
         self.assertEqual(getattr(w.git, "commits", []), [])
 
@@ -118,7 +119,8 @@ class Stage2PreflightRepair(unittest.TestCase):
         run2 = w.adapter.launches[-1]
         self.assertNotEqual(run1["pid"], run2["pid"])
         self.assertEqual(run2["kind"], "start")
-        self.assertIn(f"repair @{second}", run2["prompt"])
+        self.assertNotIn("repair @", run2["prompt"])
+        self.assertNotIn(second, run2["prompt"])
         self.assertEqual(w.gh.created_prs, [])
         w.adapter.running[run2["pid"]]["text"] = repair_answer(second, ["candidate-1"])
         w.adapter.finish(run2["pid"])
