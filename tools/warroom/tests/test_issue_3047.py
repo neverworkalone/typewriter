@@ -26,7 +26,7 @@ def drop_rows(task, count, *, bad=()):
     return "\n".join(lines)
 
 
-class ParallelStage2(unittest.TestCase):
+class Helpers:
     def world(self, layout, *, cap=16, target=250):
         w = s2_world(self)
         w.parallel_s2 = True
@@ -54,6 +54,8 @@ class ParallelStage2(unittest.TestCase):
         for _ in range(n):
             w.adapter.plan.append({"code": 0, "session": f"ses_{len(w.adapter.plan)}"})
 
+
+class ParallelStage2(Helpers, unittest.TestCase):
     def test_five_tasks_start_together_and_save_in_completion_order(self):
         w = self.world([(f"sense-{i}", 240) for i in range(5)])
         self.launch(w, 5)
@@ -240,7 +242,7 @@ class ParallelStage2(unittest.TestCase):
         self.assertNotIn("checkpoint 0/", prompt)   # Part-wide progress is left out of the shared prefix
 
 
-class ParallelStage2Recovery(ParallelStage2):
+class ParallelStage2Recovery(Helpers, unittest.TestCase):
     def finish_code(self, w, task, code, text):
         b = w.store.active_batch("claude", S2)
         run = w.store.run(w.store.task_row(b["id"], task)["run_id"])
@@ -288,21 +290,28 @@ class ParallelStage2Recovery(ParallelStage2):
         w.tick()
         self.respond(w, task, f"chunk {task}\nc2 D BAD")
         real = w.store.update_task
-        def lose_saved(batch_id, t, **fields):   # the CLI saved, then the Supervisor died before recording SAVED
+        def lose_saved(batch_id, t, **fields):   # the CLI saved, then the process died before recording SAVED
             if fields.get("state") == "SAVED":
                 raise RuntimeError("crash")
             return real(batch_id, t, **fields)
         w.store.update_task = lose_saved
+        b = w.store.active_batch("claude", S2)
         with self.assertRaises(RuntimeError):
-            w.sup.s2p.poll(w.store.active_batch("claude", S2))
+            w.sup.s2p.poll(b)
         w.store.update_task = real
+        # A killed process never runs the restore in `finally`: the decision file keeps the failing row removed.
+        rel = stage2.task_path(task, "decisions.txt")
+        stage2.write_decisions(b["worktree"], task, [r for r in stage2.read_rows(b["worktree"], rel) if not r.startswith("c2 ")], rel)
         self.assertEqual(self.tasks(w)[task]["state"], "RESPONDED")
+        calls = len(w.git.task_save_calls)
         w.sup = w.make_sup()
         w.sup.parallel_new_parts = True
         w.tick()
         self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
+        self.assertEqual(len(w.git.task_save_calls), calls + 1)   # one re-save, no fallback-less attempt in between
+        self.assertEqual([c["alias"] for c in w.git.technical_fallback_calls], ["c2", "c2"])   # persisted proof re-presented
         b = w.store.active_batch("claude", S2) or w.store.latest_batch("claude", S2)
-        self.assertEqual(stage2.checkpoint(b["worktree"], "001", "01-01")["next_chunk_number"], 2)
+        self.assertEqual(stage2.checkpoint(b["worktree"], "001", "01-01")["next_chunk_number"], 2)   # cursor not advanced twice
 
 
 class ConfigAndMigration(unittest.TestCase):
