@@ -859,6 +859,50 @@ class VerifiedPrefix(unittest.TestCase):
                 with self.assertRaises(dchunk.DChunkError):
                     dchunk.verified_prefix(self.wt, self.b)
 
+    def test_verified_chunks_allows_gaps_and_waits_only_for_owned_tmp(self):
+        self.assertEqual(dchunk.verified_chunks(self.wt, self.b), (set(), 3))
+        self.cli.save(self.wt, 3)
+        self.cli.save(self.wt, 1)
+        self.assertEqual(dchunk.verified_chunks(self.wt, self.b), ({1, 3}, 3))      # 002 missing: a gap, not an error
+        with self.assertRaises(dchunk.DChunkError):
+            dchunk.verified_prefix(self.wt, self.b)                                 # the serial contract is unchanged
+        (self.folder / "chunk-002.jsonl.tmp").write_text("")
+        self.assertEqual(dchunk.verified_chunks(self.wt, self.b, running=[2]), ({1, 3}, 3))   # owned save in flight
+        for running in ([], [1, 3]):
+            with self.assertRaises(dchunk.DChunkError):                              # no owner: preserved as an error
+                dchunk.verified_chunks(self.wt, self.b, running=running)
+        (self.folder / "chunk-002.jsonl.tmp").unlink()
+        (self.folder / "chunk-004.jsonl").write_text("{}\n")
+        with self.assertRaises(dchunk.DChunkError):
+            dchunk.verified_chunks(self.wt, self.b)
+        (self.folder / "chunk-004.jsonl").unlink()
+        self.chunk(3).write_text("not json\n")
+        with self.assertRaises(dchunk.DChunkError):
+            dchunk.verified_chunks(self.wt, self.b)
+
+    def test_explicit_active_chunks_coexist_and_publish_tmp_is_not_damage(self):
+        def active(n):
+            rec = {"shard": "001", "batch": "01", "model": "deepseek", "chunk_no": n, "view_sha256": "a" * 64,
+                   "git_head": "b" * 40, "senses": [{"sense_id": "w0001-s1"}]}
+            (self.folder / f"active-{n:03d}.json").write_text(json.dumps(rec))
+        self.folder.mkdir(parents=True, exist_ok=True)
+        active(1)
+        active(2)
+        (self.folder / "active-004.json.tmp").write_text("{")                       # another task is publishing
+        with self.assertRaises(dchunk.DChunkError):
+            dchunk.read_active(self.wt, self.b)                                      # no number: still ambiguous
+        self.assertEqual(dchunk.read_active(self.wt, self.b, 2)["chunk_no"], 2)
+        self.assertIsNone(dchunk.read_active(self.wt, self.b, 3))
+        self.assertEqual(sorted(dchunk.active_chunks(self.wt, self.b)), [1, 2])
+        (self.folder / "active-bogus.json").write_text("{}")
+        for call in (lambda: dchunk.read_active(self.wt, self.b, 2), lambda: dchunk.active_chunks(self.wt, self.b)):
+            with self.assertRaises(dchunk.DChunkError):
+                call()
+        (self.folder / "active-bogus.json").unlink()
+        (self.folder / "active-002.json.tmp").write_text("{")                       # this chunk's own unpublished file
+        with self.assertRaises(dchunk.DChunkError):
+            dchunk.read_active(self.wt, self.b, 2)
+
     def test_assemble_is_byte_exact_idempotent_and_never_overwrites(self):
         for n in (1, 2, 3):
             self.cli.save(self.wt, n)
@@ -1035,7 +1079,7 @@ class Prompts(unittest.TestCase):
             prompts.d_chunk(b, 1, view="v\n", pages=["p"])
         card = prompts.d_chunk(b, 3, view="VIEW\n")
         self.assertIn('TYPEWRITER_D_SCRATCH/d-001_01/decision-003.txt', card)
-        self.assertIn('node "$TYPEWRITER_D_CHUNK_CLI" save --in', card)
+        self.assertIn('node "$TYPEWRITER_D_CHUNK_CLI" save --chunk 003 --in', card)
         self.assertIn('--dir "$TYPEWRITER_D_SCRATCH" --canonical-root "$TYPEWRITER_D_CANONICAL_ROOT"', card)
         self.assertNotIn("{{", card)
 

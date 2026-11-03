@@ -523,9 +523,8 @@ export async function prepareChunk({ canonicalPath, shard, batch, chunkNumber, d
   if (files.some((name) => legacyFiles.has(name) || name.startsWith('active-chunk.') || name.startsWith('searches.jsonl.')))
     fail('legacy D scratch files are present; preserving them without automatic migration or deletion');
   const activeArtifacts = files.filter((name) => name.startsWith('active-'));
-  if (activeArtifacts.some((name) => !/^active-\d{3}\.json$/u.test(name))) fail('active D metadata filename is invalid; preserving scratch files');
-  const activeFiles = activeArtifacts;
-  if (activeFiles.length > 0) fail('an active D chunk already exists; it must be resumed or safely finalized first');
+  // Another chunk's active (or its normal in-flight .tmp publish) is not this chunk's concern; this chunk's own files are checked below.
+  if (activeArtifacts.some((name) => !/^active-\d{3}\.json(?:\.tmp)?$/u.test(name))) fail('active D metadata filename is invalid; preserving scratch files');
   const filesForChunk = chunkPaths(directory, chunkNumber);
   if (existsSync(path.join(directory, chunkFile(chunkNumber)))) fail(`${chunkFile(chunkNumber)} is already saved; it is never overwritten`);
   const temporary = [filesForChunk.active, filesForChunk.view, filesForChunk.searches, filesForChunk.decisions,
@@ -557,7 +556,14 @@ export async function prepareChunk({ canonicalPath, shard, batch, chunkNumber, d
 }
 
 // ---- active chunk (AI-side commands) -----------------------------------------------------------------------------
-async function findActive(root = '.warroom-scratch') {
+/**
+ * The active chunk's metadata, view and scratch paths. Without `chunkNumber` this is the single-active contract (several
+ * actives fail). With one, exactly that `active-NNN.json` is selected: other chunks' actives and their normal in-flight
+ * `.tmp` publishes are not this command's input, while legacy files and this chunk's own unpublished `.tmp` still fail.
+ */
+async function findActive(root = '.warroom-scratch', chunkNumber = undefined) {
+  const wanted = chunkNumber === undefined ? undefined : String(chunkNumber).padStart(3, '0');
+  if (wanted !== undefined && (!Number.isInteger(chunkNumber) || chunkNumber < 1)) fail('--chunk must be a positive integer');
   const directories = (await readdir(root).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error)))
     .filter((name) => /^d-\d{3}_0[12]$/u.test(name));
   const found = [];
@@ -566,10 +572,13 @@ async function findActive(root = '.warroom-scratch') {
   for (const name of directories) {
     const directory = path.join(root, name);
     const files = await readdir(directory).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
-    const activeFiles = files.filter((file) => /^active-\d{3}\.json$/u.test(file));
+    const publishedActive = files.filter((file) => /^active-\d{3}\.json$/u.test(file));
+    const activeFiles = wanted === undefined ? publishedActive : publishedActive.filter((file) => file === `active-${wanted}.json`);
     const legacyActive = files.includes('active-chunk.json');
+    const isOtherChunkPublish = (file) => wanted !== undefined && /^active-\d{3}\.json(?:\.tmp)?$/u.test(file)
+      && !file.startsWith(`active-${wanted}.json`);
     const invalidActiveFiles = files.filter((file) => file.startsWith('active-')
-      && !/^active-\d{3}\.json$/u.test(file) && !file.startsWith('active-chunk.'));
+      && !/^active-\d{3}\.json$/u.test(file) && !file.startsWith('active-chunk.') && !isOtherChunkPublish(file));
     const activeMarkers = activeFiles.length + Number(legacyActive);
     const hasLegacy = files.some((file) => legacyFiles.has(file) || file.startsWith('active-chunk.') || file.startsWith('searches.jsonl.'));
     if (activeMarkers > 0) found.push({ directory, file: activeFiles[0], folder: name, activeFiles, legacyActive, invalidActiveFiles, files });
@@ -579,11 +588,11 @@ async function findActive(root = '.warroom-scratch') {
     }
   }
   const activeCount = found.reduce((count, item) => count + item.activeFiles.length + Number(item.legacyActive), 0);
-  if (activeCount > 1) fail('more than one active D chunk');
+  if (activeCount > 1) fail(wanted === undefined ? 'more than one active D chunk' : `active D chunk ${wanted} is ambiguous across batches`);
   if (found.length === 0) {
     if (inactiveLegacy.length > 0) fail('legacy D scratch files are present; preserving them without automatic migration or deletion');
     if (inactiveInvalidActive.length > 0) fail('active D metadata filename is invalid; preserving scratch files');
-    fail('no active D chunk');
+    fail(wanted === undefined ? 'no active D chunk' : `no active D chunk ${wanted}`);
   }
   const { directory, file, folder, activeFiles, legacyActive, invalidActiveFiles, files: activeDirectoryFiles } = found[0];
   if (invalidActiveFiles.length > 0) fail('active D metadata filename is invalid; preserving scratch files');
@@ -872,8 +881,8 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
   return { output, evidence };
 }
 
-export async function searchBatchActive({ requests, databasePath, root = '.warroom-scratch', maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
-  const { directory, meta } = await findActive(root);
+export async function searchBatchActive({ requests, databasePath, root = '.warroom-scratch', chunkNumber, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
+  const { directory, meta } = await findActive(root, chunkNumber);
   const rows = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
   const activeRecords = new Set(meta.records.map((record) => record.record_id));
   const records = rows.filter((record) => activeRecords.has(record.id));
@@ -893,8 +902,8 @@ export async function searchBatchActive({ requests, databasePath, root = '.warro
   return batch.output;
 }
 
-export async function searchActive({ ref, forms, boundary, cursor, contexts, reread = false, databasePath, root }) {
-  const { directory, meta, files } = await findActive(root);
+export async function searchActive({ ref, forms, boundary, cursor, contexts, reread = false, databasePath, root, chunkNumber }) {
+  const { directory, meta, files } = await findActive(root, chunkNumber);
   const sense = meta.senses.find((item) => item.ref === ref);
   if (!sense) fail(`${ref} is not a sense of the active chunk`);
   if (sense.auto) fail(`${ref} is an automatic ZERO_HITS sense of this chunk; it is not searched`);
@@ -1069,16 +1078,13 @@ function failedRecordsForErrors(allErrors, meta, records) {
     failed_sense_ids: [...item.failed_sense_ids], errors: item.errors }));
 }
 
-async function saveActiveInternal({ inputPath, root, canonicalRoot, readOnly = false,
+async function saveActiveInternal({ inputPath, root, canonicalRoot, chunkNumber, readOnly = false,
   requireCanonicalLemmaBinding = false }) {
-  const { directory, meta, files } = await findActive(root);
+  const { directory, meta, files } = await findActive(root, chunkNumber);
   if (path.resolve(inputPath) !== path.resolve(files.decisions))
     fail(`save input must be the decision file for active chunk ${String(meta.chunk_no).padStart(3, '0')}; no other chunk file is read`);
   const target = path.join(directory, chunkFile(meta.chunk_no));
   if (existsSync(target)) fail(`${chunkFile(meta.chunk_no)} is already saved; it is never overwritten`);
-  for (let number = 1; number < meta.chunk_no; number += 1) {
-    if (!existsSync(path.join(directory, chunkFile(number)))) fail(`${chunkFile(number)} is missing; chunks are saved in order`);
-  }
   const canonicalPath = canonicalRoot === undefined
     ? path.resolve(meta.canonical) : resolveInsideRoot(canonicalRoot, meta.canonical, 'active Canonical path');
   const all = await loadBatchRecords(canonicalPath, meta.shard, meta.batch);
@@ -1128,21 +1134,21 @@ async function saveActiveInternal({ inputPath, root, canonicalRoot, readOnly = f
     removed_candidates: removedCandidates };
 }
 
-export async function saveActive({ inputPath, root, canonicalRoot }) {
-  return saveActiveInternal({ inputPath, root, canonicalRoot, requireCanonicalLemmaBinding: true });
+export async function saveActive({ inputPath, root, canonicalRoot, chunkNumber }) {
+  return saveActiveInternal({ inputPath, root, canonicalRoot, chunkNumber, requireCanonicalLemmaBinding: true });
 }
 
 /** Read-only validation for the War Room Supervisor's own fallback writer. This API cannot save a chunk or a skip. */
-export async function inspectActiveForSupervisor({ inputPath, root, canonicalRoot }) {
-  return saveActiveInternal({ inputPath, root, canonicalRoot, readOnly: true, requireCanonicalLemmaBinding: true });
+export async function inspectActiveForSupervisor({ inputPath, root, canonicalRoot, chunkNumber }) {
+  return saveActiveInternal({ inputPath, root, canonicalRoot, chunkNumber, readOnly: true, requireCanonicalLemmaBinding: true });
 }
 
 /**
  * A compact, read-only save inspection for the Supervisor. It binds the current active chunk and Canonical lemmas but
  * returns only hashes and IDs, never candidate text, corpus contexts, or raw validation messages.
  */
-export async function inspectRejectionForSupervisor({ inputPath, root, canonicalRoot }) {
-  const result = await saveActiveInternal({ inputPath, root, canonicalRoot, readOnly: true,
+export async function inspectRejectionForSupervisor({ inputPath, root, canonicalRoot, chunkNumber }) {
+  const result = await saveActiveInternal({ inputPath, root, canonicalRoot, chunkNumber, readOnly: true,
     requireCanonicalLemmaBinding: true });
   if (result.status !== 'REJECTED') {
     return { status: result.status, ...(result.chunk_no === undefined ? {} : { chunk_no: result.chunk_no }) };
@@ -1206,6 +1212,8 @@ function only(options, ...allowed) {
 }
 
 const need = (options, name) => options[name] ?? fail(`--${name} is required`);
+const optionalChunk = (options) => options.chunk === undefined ? undefined
+  : (/^\d{1,3}$/u.test(options.chunk) ? Number(options.chunk) : fail('--chunk must be a positive integer'));
 
 async function main(argv) {
   const [command, ...rest] = argv;
@@ -1224,19 +1232,19 @@ async function main(argv) {
     return out.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'search') {
-    only(options, 'forms', 'boundary', 'cursor', 'contexts', 'reread', 'dir');
-    if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16] [--reread]');
+    only(options, 'forms', 'boundary', 'cursor', 'contexts', 'reread', 'dir', 'chunk');
+    if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--chunk NNN] [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16] [--reread]');
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
     const { result, text } = await searchActive({
       ref: positional[0], forms: options.forms?.split(',').map((item) => item.trim()).filter(Boolean), boundary: options.boundary,
       cursor: options.cursor, contexts: options.contexts === undefined ? undefined : Number(options.contexts), reread: options.reread === true,
-      databasePath, root: options.dir,
+      databasePath, root: options.dir, chunkNumber: optionalChunk(options),
     });
     console.log(text);
     return result.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'search-batch') {
-    only(options, 'dir');
+    only(options, 'dir', 'chunk');
     if (positional.length) fail('search-batch reads one JSON request from stdin and takes no positional arguments');
     const chunks = [];
     let bytes = 0;
@@ -1255,21 +1263,21 @@ async function main(argv) {
     const unexpected = Object.keys(input).filter((key) => key !== 'requests');
     if (unexpected.length > 0) fail(`search-batch input has unsupported field(s): ${unexpected.join(', ')}`);
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
-    const output = await searchBatchActive({ requests: input.requests, databasePath, root: options.dir });
+    const output = await searchBatchActive({ requests: input.requests, databasePath, root: options.dir, chunkNumber: optionalChunk(options) });
     console.log(JSON.stringify(output));
     return output.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'save') {
-    only(options, 'in', 'dir', 'canonical-root');
+    only(options, 'in', 'dir', 'canonical-root', 'chunk');
     if (positional.length) fail('save takes options only');
-    console.log(JSON.stringify(await saveActive({ inputPath: need(options, 'in'), root: options.dir,
+    console.log(JSON.stringify(await saveActive({ inputPath: need(options, 'in'), root: options.dir, chunkNumber: optionalChunk(options),
       canonicalRoot: options['canonical-root'] === undefined ? undefined : path.resolve(options['canonical-root']) })));
     return 0;
   }
   if (command === 'inspect') {
-    only(options, 'in', 'dir', 'canonical-root');
+    only(options, 'in', 'dir', 'canonical-root', 'chunk');
     if (positional.length) fail('inspect takes options only');
-    const result = await inspectRejectionForSupervisor({ inputPath: need(options, 'in'), root: options.dir,
+    const result = await inspectRejectionForSupervisor({ inputPath: need(options, 'in'), root: options.dir, chunkNumber: optionalChunk(options),
       canonicalRoot: options['canonical-root'] === undefined ? process.cwd() : path.resolve(options['canonical-root']) });
     console.log(JSON.stringify(result));
     return 0;
