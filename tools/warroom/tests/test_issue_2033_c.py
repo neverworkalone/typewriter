@@ -414,7 +414,7 @@ class SerialChunks(unittest.TestCase):
         w = self.w
         w.start("single", "deepseek", "c")
         w.ai(mark=5)
-        w.ai(mark=5)
+        w.adapter.plan.append({"code": 0, "session": "ses_c"})  # automatic resume that makes no progress
         w.tick()
         active_before = w.active()
         ids = list(active_before["sense_ids"])
