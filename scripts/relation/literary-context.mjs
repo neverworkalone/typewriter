@@ -1110,7 +1110,7 @@ function technicalSkipBlocked(reasonCode) {
 }
 
 function assertSupervisorSkipAuthority({ supervisorStorePath, batchId, branch, sessionId, runId,
-  checkpointBatch, worktreeDirectory }) {
+  checkpointBatch, worktreeDirectory, taskNo }) {
   const expectedStorePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..',
     'tools/warroom/.local/warroom.db');
   if (path.resolve(supervisorStorePath ?? '') !== expectedStorePath) {
@@ -1125,18 +1125,65 @@ function assertSupervisorSkipAuthority({ supervisorStorePath, batchId, branch, s
   let batch;
   let retryAttempts;
   let latestRun;
+  let taskRow;
+  let taskRuns;
   try {
     database = new DatabaseSync(expectedStorePath, { readOnly: true });
     database.exec('PRAGMA query_only = ON');
     batch = database.prepare(`SELECT id, method, producer, shard, batch, branch, worktree, state,
       session_id, pid, run_kind FROM batches WHERE id = ?`).get(batchId);
-    retryAttempts = database.prepare('SELECT value FROM kv WHERE key = ?').get(`c_resubmit_${batchId}`)?.value;
-    latestRun = database.prepare(`SELECT id, batch_id, kind, session_id, ended_at
-      FROM runs WHERE batch_id = ? ORDER BY id DESC LIMIT 1`).get(batchId);
+    if (taskNo === undefined) {
+      retryAttempts = database.prepare('SELECT value FROM kv WHERE key = ?').get(`c_resubmit_${batchId}`)?.value;
+      latestRun = database.prepare(`SELECT id, batch_id, kind, session_id, ended_at
+        FROM runs WHERE batch_id = ? ORDER BY id DESC LIMIT 1`).get(batchId);
+    } else {
+      // A parallel task: the task's own runs, never the batch's latest run or the serial counters.
+      taskRow = database.prepare('SELECT state, session_id, data FROM s2_tasks WHERE batch_id = ? AND task = ?').get(batchId, taskNo);
+      taskRuns = database.prepare(`SELECT id, batch_id, kind, session_id, ended_at, exit_status, task
+        FROM runs WHERE batch_id = ? AND task = ? ORDER BY id`).all(batchId, taskNo);
+    }
   } catch {
     technicalSkipBlocked('supervisor_store_unavailable');
   } finally {
     database?.close();
+  }
+
+  if (taskNo !== undefined) {
+    if (!/^\d{3,}$/u.test(taskNo)) technicalSkipBlocked('supervisor_call_binding_invalid');
+    if (!batch || batch.method !== 'c' || batch.producer !== checkpointBatch.model
+        || batch.shard !== checkpointBatch.shard || batch.batch !== checkpointBatch.batch
+        || batch.branch !== branch || path.resolve(batch.worktree ?? '') !== path.resolve(worktreeDirectory)) {
+      technicalSkipBlocked('supervisor_batch_binding_mismatch');
+    }
+    if (batch.state !== 'PRODUCING' || batch.pid !== null || batch.run_kind !== 'c_parallel') {
+      technicalSkipBlocked('supervisor_batch_not_idle');
+    }
+    let data;
+    try {
+      data = JSON.parse(taskRow?.data ?? 'null');
+    } catch {
+      data = null;
+    }
+    if (!taskRow || !isPlainObject(data) || taskRow.session_id !== sessionId) technicalSkipBlocked('supervisor_session_mismatch');
+    const latest = taskRuns.at(-1);
+    if (!latest || latest.id !== runId || latest.ended_at === null || latest.session_id !== sessionId
+        || !['c_chunk_new', 'c_chunk_fix', 'c_chunk_recovery'].includes(latest.kind)) {
+      technicalSkipBlocked('supervisor_run_not_finished');
+    }
+    const autoRuns = data.auto_fix_runs;
+    const completedRuns = data.completed_fix_runs;
+    if (!Array.isArray(autoRuns) || autoRuns.length < 2 || !Array.isArray(completedRuns)
+        || !completedRuns.includes(runId) || latest.kind !== 'c_chunk_fix') {
+      technicalSkipBlocked('resubmit_budget_not_exhausted');
+    }
+    for (const id of autoRuns) {
+      const run = taskRuns.find((item) => item.id === id);
+      if (!run || run.kind !== 'c_chunk_fix' || run.ended_at === null || run.exit_status !== '0'
+          || !completedRuns.includes(id)) {
+        technicalSkipBlocked('resubmit_budget_not_exhausted');
+      }
+    }
+    return { autoFixRuns: autoRuns.slice(0, 2) };
   }
 
   if (retryAttempts !== '2') technicalSkipBlocked('resubmit_budget_not_exhausted');
@@ -1211,6 +1258,7 @@ async function applySupervisorTechnicalSkipLocked({
   sessionId,
   runId,
   expectedHead,
+  taskNo,
   supervisorCliSha256,
   worktreeDirectory = process.cwd(),
   scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY),
@@ -1260,10 +1308,17 @@ async function applySupervisorTechnicalSkipLocked({
   }
 
   const batch = checkpoint.batch;
-  assertSupervisorSkipAuthority({ supervisorStorePath, batchId, branch, sessionId, runId,
-    checkpointBatch: batch, worktreeDirectory });
+  const authority = assertSupervisorSkipAuthority({ supervisorStorePath, batchId, branch, sessionId, runId,
+    checkpointBatch: batch, worktreeDirectory, taskNo });
+  // Serial: the checkpoint's original identity is the run HEAD. Parallel: the original identity stays immutable
+  // (git_head == canonical_revision) while the active view and the current HEAD follow the one approved runtime
+  // baseline, which `expectedHead` is (an approved Maintainer integration only moves it forward).
+  const identityOk = taskNo === undefined
+    ? batch?.git_head === expectedHead && batch?.canonical_revision === expectedHead && active?.git_head === expectedHead
+    : batch?.git_head === batch?.canonical_revision && /^[a-f0-9]{40}$/u.test(batch?.git_head ?? '')
+      && active?.git_head === expectedHead;
   if (checkpoint.contract !== CHECKPOINT_CONTRACT || batch?.procedure_contract !== 'issue-1155-c-literary-v2'
-      || batch?.git_head !== expectedHead || batch?.canonical_revision !== expectedHead || active?.git_head !== expectedHead
+      || !identityOk
       || !Number.isSafeInteger(active?.chunk_no) || active.chunk_no !== chunkNo
       || active?.shard !== batch.shard || active?.batch !== batch.batch || active?.model !== batch.model
       || active?.chunk_id !== `${batch.shard}-${batch.batch}-${String(chunkNo).padStart(3, '0')}`
@@ -1343,6 +1398,7 @@ async function applySupervisorTechnicalSkipLocked({
     view_sha256: active.view_sha256,
     git_head: expectedHead,
     retry_attempts: 2,
+    ...(authority ? { auto_fix_run_ids: authority.autoFixRuns } : {}),
     input_sha256: diagnostic.input_sha256,
     source_procedure_sha256: sourceProcedureSha256,
     runtime_procedure_sha256: runtimeProcedureSha256,

@@ -9,16 +9,17 @@ const OPTIONS = new Set([
   '--checkpoint', '--input', '--diagnostic', '--active', '--view', '--chunk-no', '--supervisor-store',
   '--batch-id', '--branch', '--session-id', '--run-id', '--expected-head',
 ]);
+const OPTIONAL_OPTIONS = new Set(['--task']);   // a parallel task number (War Room C 4-way chunks)
 
 function parseArguments(args) {
   const options = {};
   if (args.length % 2 !== 0) throw new Error('invalid arguments');
   for (let index = 0; index < args.length; index += 2) {
     const key = args[index];
-    if (!OPTIONS.has(key) || key in options || !args[index + 1]) throw new Error('invalid arguments');
+    if (!(OPTIONS.has(key) || OPTIONAL_OPTIONS.has(key)) || key in options || !args[index + 1]) throw new Error('invalid arguments');
     options[key] = args[index + 1];
   }
-  if (Object.keys(options).length !== OPTIONS.size) throw new Error('invalid arguments');
+  if ([...OPTIONS].some((key) => !(key in options))) throw new Error('invalid arguments');
   return options;
 }
 
@@ -47,6 +48,7 @@ try {
     sessionId: options['--session-id'],
     runId,
     expectedHead: options['--expected-head'],
+    taskNo: options['--task'],
     supervisorCliSha256: createHash('sha256').update(await readFile(fileURLToPath(import.meta.url))).digest('hex'),
   });
   emit(result);

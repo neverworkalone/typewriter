@@ -1464,6 +1464,39 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
     assert.equal(skipped.status, 0, skipped.stderr);
     assert.equal(JSON.parse(skipped.stdout).status, 'TECHNICAL_SKIPPED');
 
+    // Parallel (`--task`) authority: the task's OWN completed automatic corrections and finished run decide, never the
+    // serial counters. The target is already skipped here, so a passing authority ends at `source_sense_already_saved`.
+    supervisorStore.exec(`CREATE TABLE s2_tasks (batch_id INTEGER, task TEXT, state TEXT, session_id TEXT, data TEXT);
+      ALTER TABLE runs ADD COLUMN exit_status TEXT; ALTER TABLE runs ADD COLUMN task TEXT;`);
+    supervisorStore.prepare("UPDATE batches SET run_kind='c_parallel' WHERE id=?").run(supervisorBatchId);
+    const addTaskRun = (id, kind) => supervisorStore.prepare(`INSERT INTO runs(id, batch_id, kind, session_id, ended_at, exit_status, task)
+      VALUES(?, ?, ?, ?, 1, '0', '014')`).run(id, supervisorBatchId, kind, supervisorSessionId);
+    const setTask = (data) => {
+      supervisorStore.prepare('DELETE FROM s2_tasks WHERE batch_id=?').run(supervisorBatchId);
+      supervisorStore.prepare("INSERT INTO s2_tasks(batch_id, task, state, session_id, data) VALUES(?, '014', 'PENDING', ?, ?)")
+        .run(supervisorBatchId, supervisorSessionId, JSON.stringify(data));
+    };
+    const taskSkip = (runId) => runScriptAt(legacyRoot, supervisorCli, [
+      '--checkpoint', checkpoint, '--input', input, '--diagnostic', diagnostic,
+      '--active', '.warroom-scratch/c-active-chunk.json', '--view', '.warroom-scratch/c-active-chunk.txt',
+      '--chunk-no', '14', '--supervisor-store', supervisorStorePath, '--batch-id', String(supervisorBatchId),
+      '--branch', supervisorBranch, '--session-id', supervisorSessionId, '--run-id', String(runId),
+      '--expected-head', head, '--task', '014']);
+    const reasonOf = (result) => JSON.parse(result.stdout).reason_code;
+    addTaskRun(2001, 'c_chunk_fix');
+    assert.equal(reasonOf(taskSkip(2001)), 'supervisor_session_mismatch', 'no task row');
+    setTask({ auto_fix_runs: [2001], completed_fix_runs: [2001] });
+    assert.equal(reasonOf(taskSkip(2001)), 'resubmit_budget_not_exhausted', 'one automatic correction is not enough');
+    addTaskRun(2002, 'c_chunk_fix');
+    addTaskRun(2003, 'c_chunk_new');
+    setTask({ auto_fix_runs: [2001, 2002], completed_fix_runs: [2001, 2002, 2003] });
+    assert.equal(reasonOf(taskSkip(2003)), 'resubmit_budget_not_exhausted', 'the current failure must bind to a correction');
+    setTask({ auto_fix_runs: [2001, 2002], completed_fix_runs: [2001, 2002] });
+    assert.equal(reasonOf(taskSkip(2002)), 'supervisor_run_not_finished', 'only the task\'s latest run is current');
+    supervisorStore.prepare('DELETE FROM runs WHERE id=2003').run();
+    assert.equal(reasonOf(taskSkip(2002)), 'source_sense_already_saved', 'two completed automatic corrections pass the authority');
+    supervisorStore.prepare('DELETE FROM s2_tasks WHERE batch_id=?').run(supervisorBatchId);
+
     cp = JSON.parse(await readFile(path.join(legacyRoot, checkpoint), 'utf8'));
     const savedSenses = new Map(cp.records.flatMap((record) => record.senses.map((sense) => [sense.sense_id, sense])));
     assert.deepEqual(cp.records.flatMap((record) => record.senses).slice(0, 435).map((sense) => sense.submission), priorBefore,

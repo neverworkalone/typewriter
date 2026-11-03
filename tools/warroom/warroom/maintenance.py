@@ -18,7 +18,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from . import auth, dchunk, defects, stage2, stage3
+from . import auth, dchunk, defects, literary, stage2, stage3
 from .config import maintainer_id, maintainer_problem
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
@@ -491,7 +491,8 @@ class Maintenance:
                 run_start = self._retargeted_run_start(b, head)
             if run_start is None and ((b["method"] == STAGE3_METHOD
                     and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] == "s3_finalize"))
-                    or (b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel")):
+                    or (b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel")
+                    or (b["method"] == literary.METHOD and b["run_kind"] == "c_parallel")):
                 self._hold(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
                                   "checkpoint/view/commit과 소유 worktree를 보존하고 자동 재개하지 않습니다.")
                 continue
@@ -541,6 +542,8 @@ class Maintenance:
             key = stage2.run_start_key(b["id"])
         elif b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":
             key = dchunk.run_start_key(b["id"])
+        elif b["method"] == literary.METHOD and b["run_kind"] == "c_parallel":
+            key = literary.run_start_key(b["id"])   # the one approved runtime baseline of a parallel C batch
         else:
             return None
         raw = self.store.get(key)
@@ -557,6 +560,15 @@ class Maintenance:
             if self.sup.git.head(wt) != new_head or not self.sup.git.contains(wt, base["head"]) \
                     or self.sup.git.remote_head(b["branch"]) != base["remote_head"]:
                 return None
+            if b["method"] == literary.METHOD:
+                # The baseline only moves forward when the integration kept every input the batch is bound to: the
+                # Canonical shard, the checkpoint's original identity and the exact view of each active chunk.
+                canonical = hashlib.sha256((wt / literary.names(b).canonical).read_bytes()).hexdigest()
+                if not isinstance(base.get("canonical_sha256"), str) or base["canonical_sha256"] != canonical:
+                    return None
+                literary.checkpoint_head(wt, b)
+                for number, rec in literary.active_chunks(wt, b).items():
+                    literary.read_view(wt, rec, number)
             if b["method"] == STAGE3_METHOD:
                 checkpoint = base.get("checkpoint")
                 chunk = base.get("chunk")
@@ -582,9 +594,19 @@ class Maintenance:
             raise
         except Exception:
             return None
+        if b["method"] == literary.METHOD:   # each preserved active chunk follows the one approved runtime baseline
+            try:
+                for number, rec in literary.active_chunks(wt, b).items():
+                    if rec["git_head"] != new_head:
+                        path = wt / literary._active_paths(number)[0]
+                        tmp = path.with_name(path.name + ".tmp")
+                        tmp.write_text(json.dumps({**rec, "git_head": new_head}, sort_keys=True), "utf-8")
+                        tmp.replace(path)
+            except Exception:
+                return None
         if base["head"] != new_head:
             base["head"] = new_head
-            stage = {STAGE2_METHOD: "Stage 2", dchunk.METHOD: "D"}.get(b["method"], "Stage 3")
+            stage = {STAGE2_METHOD: "Stage 2", dchunk.METHOD: "D", literary.METHOD: "C"}.get(b["method"], "Stage 3")
             self.store.log(b["id"], f"승인된 Maintainer 통합으로 {stage} 실행 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
         return key, json.dumps(base, sort_keys=True)
 
@@ -599,6 +621,8 @@ class Maintenance:
             key = f"s3_finalize_released_head_{b['id']}"
         elif b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":
             key = dchunk.run_start_key(b["id"])
+        elif b["method"] == literary.METHOD and b["run_kind"] == "c_parallel":
+            key = literary.run_start_key(b["id"])
         else:
             return
         try:

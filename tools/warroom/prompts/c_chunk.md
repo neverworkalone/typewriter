@@ -49,15 +49,15 @@
   node {{cli_path}} chunk \
     --db "$TYPEWRITER_APPROVED_LITERARY_DB" \
     --checkpoint {{checkpoint}} \
-    --sense-ids <id,id,...> --skip {{chunk_contexts}} --contexts 16 --format text
+    --sense-ids <id,id,...> --skip {{chunk_contexts}} --contexts 16 --format text{{chunk_flag}}
   ```
-- UNSEARCHABLE 활용형을 검토한 뒤에는 해당 Sense에 `add-form --checkpoint {{checkpoint}} --sense-id <id> --form <활용형> --basis '<근거>'`를 사용하고, 그 Sense의 문맥을 다시 읽는다.
+- UNSEARCHABLE 활용형을 검토한 뒤에는 해당 Sense에 `add-form --checkpoint {{checkpoint}} --sense-id <id> --form <활용형> --basis '<근거>'{{chunk_flag}}`를 사용하고, 그 Sense의 문맥을 다시 읽는다.
 - 활성 청크 제출은 다음 한 번의 셸 호출로 한다:
   ```sh
   cat > .warroom-scratch/c-chunk-{{chunk_no}}.submit.json <<'JSON' || { echo WRITE_FAILED >&2; exit 90; }
   {"senses":[{"sense_id":"<Sense ID>","verified":["<VERIFIED 문맥 키>"],"candidates":["<후보>"]}]}
   JSON
-  node {{cli_path}} submit --db "$TYPEWRITER_APPROVED_LITERARY_DB" --checkpoint {{checkpoint}} --input .warroom-scratch/c-chunk-{{chunk_no}}.submit.json || { c=$?; echo "SUBMIT_FAILED exit=$c" >&2; exit "$c"; }
+  node {{cli_path}} submit --db "$TYPEWRITER_APPROVED_LITERARY_DB" --checkpoint {{checkpoint}} --input .warroom-scratch/c-chunk-{{chunk_no}}.submit.json{{chunk_flag}} || { c=$?; echo "SUBMIT_FAILED exit=$c" >&2; exit "$c"; }
   ```
 
 {{chunk_input}}

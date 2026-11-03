@@ -11,7 +11,7 @@ from datetime import datetime, time as wall_time, timedelta
 from pathlib import Path
 
 from .adapters import final_answer
-from . import literary, stage2
+from . import cparallel, literary, stage2
 from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
                      stage2_problem, stage3_models, stage3_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
@@ -163,6 +163,8 @@ def retry(store: Store, model: str, method: str) -> bool:
 
 
 def _c_retry_block_reason(store: Store, b) -> str | None:
+    if cparallel.is_parallel(store, b) and b["run_kind"] == cparallel.RUN_KIND:   # per-task guards, no whole-checkpoint stat
+        return cparallel.retry_block_reason(store, b)
     raw = store.get(literary.retry_guard_key(b["id"]))
     if not raw:
         return None
@@ -320,7 +322,7 @@ def line_status(store: Store, model: str, method: str) -> dict:
                 count = lambda *states: sum(1 for t in tasks if t["state"] in states)
                 out["stage2"]["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING", "FIXQ", "RESPONDED"),
                                           "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
-        if method == "d":   # parallel D chunks: the same running / queued / saved task counts
+        if method in ("c", "d"):   # parallel C/D chunks: the same running / queued / saved task counts
             tasks = store.task_rows(b["id"])
             if tasks:
                 count = lambda *states: sum(1 for t in tasks if t["state"] in states)

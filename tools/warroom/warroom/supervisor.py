@@ -21,7 +21,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import (auth, batches, control, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, stage1ab,
+from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, stage1ab,
                stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        final_answer, opencode_free_quota)
@@ -108,6 +108,8 @@ class Supervisor:
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
         self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
         self.dp = dparallel.ParallelD(self)   # parallel D chunk tasks inside a new batch (#3074)
+        self.cp = cparallel.ParallelC(self)   # parallel C chunk tasks inside a new batch (#3076)
+        self.parallel_new_c = True   # False only lets a fixture exercise the serial path an already running batch keeps
         self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
 
     def _adapter(self, producer: str):
@@ -197,6 +199,8 @@ class Supervisor:
             return self.s2p.continue_after_close(b)
         if dparallel.is_parallel(self.store, b) and b["run_kind"] == dparallel.RUN_KIND:
             return self.dp.poll(b)
+        if cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:
+            return self.cp.poll(b)   # run_kind decides: c_finalize and the singleton Candidate repair keep the serial path
         return self._poll_run(b)
 
     def _fail(self, b, state: str, msg: str) -> None:
@@ -528,6 +532,8 @@ class Supervisor:
             return False   # parallel Stage 2: every task process must be confirmed gone
         if dparallel.is_parallel(self.store, b) and not self.dp.stop_workers(b):
             return False   # parallel D: the same for every chunk task process
+        if cparallel.is_parallel(self.store, b) and not self.cp.stop_workers(b):
+            return False   # parallel C: the same for every chunk task process
         if b["pid"] is None:
             return True
         if self._adapter(b["producer"]).alive(b["pid"]):
@@ -568,6 +574,8 @@ class Supervisor:
             if current["state"] != b["state"] or current["error"] != previous_error:
                 return
         if ln["retry_batch"] == b["id"]:
+            if b["state"] == "ERROR" and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:
+                self.cp.operator_retry(b)   # exactly one epoch per consumed operator Retry (Stop/auto release grant nothing)
             target = self._chunk_retry_target(b)
             c_evidence_changed = False
             if b["method"] == literary.METHOD and b["state"] == "ERROR" and target is not None:
@@ -895,6 +903,8 @@ class Supervisor:
             self.s2p.stop_workers(b)   # every task process; exits are confirmed by _reap_stopped
         if dparallel.is_parallel(self.store, b):
             self.dp.stop_workers(b, acknowledge=True)   # the operator's Stop
+        if cparallel.is_parallel(self.store, b):
+            self.cp.stop_workers(b, acknowledge=True)   # the operator's Stop
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
         self.store.set_line(b["producer"], b["method"], run=0, retry_batch=None)  # Stop wins over Retry
@@ -924,6 +934,8 @@ class Supervisor:
             return self.store.log(b["id"], "Clear: 병렬 Stage 2 task AI 프로세스 종료 요청, 종료 확인 대기")
         if dparallel.is_parallel(self.store, b) and not self.dp.stop_workers(b):
             return self.store.log(b["id"], "Clear: 병렬 D task AI 프로세스 종료 요청, 종료 확인 대기")
+        if cparallel.is_parallel(self.store, b) and not self.cp.stop_workers(b):
+            return self.store.log(b["id"], "Clear: 병렬 C task AI 프로세스 종료 요청, 종료 확인 대기")
         if b["pid"] is not None:
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
@@ -2589,6 +2601,8 @@ class Supervisor:
         """Worktree-relative shared-defect report path of every task of a parallel batch (Stage 2 Part or D)."""
         if b["method"] == dchunk.METHOD:
             return [dparallel.defect_path(b, row["task"]) for row in self.store.task_rows(b["id"])]
+        if b["method"] == literary.METHOD:
+            return [cparallel.defect_path(b, row["task"]) for row in self.store.task_rows(b["id"])]
         return [stage2.task_path(row["task"], "shared-defect.json") for row in self.store.task_rows(b["id"])]
 
     def _scan_task_reports(self, b, s2p) -> bool:
@@ -5664,6 +5678,9 @@ class Supervisor:
         try:
             created = literary.checkpoint_head(wt, b)
             head = self.git.head(wt)
+            if cparallel.is_parallel(self.store, b):   # the checkpoint keeps its original identity; the run follows ONE baseline
+                base = cparallel.baseline(self.store, b)
+                created = base["head"] if base else created
         except TRANSIENT:
             raise
         except Exception as e:
@@ -5684,6 +5701,8 @@ class Supervisor:
     def _launch_c_next_do(self, b) -> None:
         """Advance Method C: init once, then the active chunk (resume or render a new one), or finalize when all done."""
         wt = Path(b["worktree"])
+        if self.parallel_new_c and self.cp.needs_begin(b):
+            return self.cp.begin(b)   # a new batch runs its chunks as bounded parallel tasks (#3076)
         try:
             if not literary.checkpoint_exists(wt, b):
                 literary.init_checkpoint(self.runner, self._c_env(b), wt, b, self._c_db())
@@ -6214,7 +6233,8 @@ class Supervisor:
                 return self._fail(b, "ERROR", self._c_incomplete_error(b, rec, pending,
                                                                         report_valid=report_valid,
                                                                         producer_outcome=producer_outcome))
-        self.store.delete(literary.run_start_key(b["id"]))
+        if not cparallel.is_parallel(self.store, b):   # a parallel batch keeps its one runtime baseline
+            self.store.delete(literary.run_start_key(b["id"]))
         self.store.delete(literary.resubmit_key(b["id"]))
         if rec is not None:
             self.store.delete(literary.retry_guard_key(b["id"]))
@@ -6300,7 +6320,8 @@ class Supervisor:
             if rec is not None:
                 self.store.delete(literary.retry_guard_key(b["id"]))
                 self.store.delete(self._auto_retry_key(b, f"c:{rec['chunk_no']}"))
-            self.store.delete(literary.run_start_key(b["id"]))
+            if not cparallel.is_parallel(self.store, b):
+                self.store.delete(literary.run_start_key(b["id"]))
             self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
             literary.clear_active(Path(b["worktree"]))
         return self._launch_c_next(self.store.batch(b["id"]))
