@@ -114,6 +114,18 @@ CREATE TABLE IF NOT EXISTS drain_schedules (
 );
 CREATE INDEX IF NOT EXISTS drain_schedules_due ON drain_schedules(due_at);
 """
+# Additive migration (user_version 14, Issue #3047): parallel Stage 2 primary tasks. `s2_tasks` is the Supervisor's
+# execution state of one fixed plan task (the plan itself lives in the Part's worktree); `runs.task` ties a run to it.
+SCHEMA_V14 = """
+CREATE TABLE IF NOT EXISTS s2_tasks (
+  batch_id INTEGER NOT NULL, task TEXT NOT NULL, chunk_id TEXT NOT NULL,
+  state TEXT NOT NULL DEFAULT 'PENDING',   -- PENDING | RUNNING | RESPONDED | FIXING | SAVED
+  run_id INTEGER, session_id TEXT, view_sha256 TEXT,
+  attempts INTEGER NOT NULL DEFAULT 0, data TEXT NOT NULL DEFAULT '{}',
+  updated_at REAL NOT NULL,
+  PRIMARY KEY (batch_id, task)
+);
+"""
 # Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
 # Additive migration (user_version 8, Issue #1809): the observed unit of intermediate progress (chunks/senses).
 # Additive migration (user_version 9, Issue #2033): per-run token / tool-call usage read from the run's own log when
@@ -121,7 +133,7 @@ CREATE INDEX IF NOT EXISTS drain_schedules_due ON drain_schedules(due_at);
 RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
                         "reasoning_output_tokens", "tool_calls", "submit_failures")
 # Additive migration (user_version 12, Issue #2361): best-effort/incomplete OpenCode usage quality for honest totals.
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -140,6 +152,7 @@ BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge
                      "s3_run_start_", "s3_wait_", "s3_apply_ready_", "s3_apply_result_", "s3_commit_head_",
                      "s3_merge_wait_",
                      "c_retry_guard_",
+                     "s2_mode_", "s2_plan_", "s2_defect_path_",
                      "pending_", "pr_create_")
 
 
@@ -234,6 +247,9 @@ class Store:
             c.execute("ALTER TABLE runs ADD COLUMN usage_quality TEXT")
         c.executescript(SCHEMA_V10)
         c.executescript(SCHEMA_V13)
+        c.executescript(SCHEMA_V14)
+        if "task" not in {r["name"] for r in c.execute("PRAGMA table_info(runs)")}:
+            c.execute("ALTER TABLE runs ADD COLUMN task TEXT")
         handled_columns = {r["name"] for r in c.execute("PRAGMA table_info(handled_events)")}
         for column in ("status TEXT NOT NULL DEFAULT 'LEGACY'", "run_id INTEGER", "reply_id INTEGER",
                        "completed_at REAL"):
@@ -798,7 +814,7 @@ class Store:
         bid, now = b["id"], time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
-            for table in ("runs", "handled_events", "events", "clear_requests"):
+            for table in ("runs", "handled_events", "events", "clear_requests", "s2_tasks"):
                 c.execute(f"DELETE FROM {table} WHERE batch_id=?", (bid,))
             for prefix in BATCH_KV_PREFIXES:
                 c.execute("DELETE FROM kv WHERE key=?", (f"{prefix}{bid}",))
@@ -822,13 +838,74 @@ class Store:
     # --- run history ---
     def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file,
                 model: str | None = None, effort: str | None = None,
-                permission_profile: str | None = None) -> int:
+                permission_profile: str | None = None, task: str | None = None) -> int:
         """Record a launch with the model ID and effort it was pinned to (what the CLI was asked for)."""
         with self._conn() as c:
             return c.execute("INSERT INTO runs(batch_id,kind,session_id,pid,log_file,exit_file,started_at,model,effort,"
-                             "permission_profile) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                             "permission_profile,task) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                              (batch_id, kind, session_id, pid, str(log_file), str(exit_file), time.time(),
-                              model, effort, permission_profile)).lastrowid
+                              model, effort, permission_profile, task)).lastrowid
+
+    def set_run_session_by_id(self, run_id: int, session_id: str) -> None:
+        with self._conn() as c:
+            c.execute("UPDATE runs SET session_id=? WHERE id=?", (session_id, run_id))
+
+    def run(self, run_id: int):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM runs WHERE id=?", (run_id,)).fetchone()
+
+    def finish_run(self, run_id: int, status) -> None:
+        """Close exactly one run (the parallel Stage 2 counterpart of `finish_runs`) and record its own usage."""
+        with self._conn() as c:
+            row = c.execute("SELECT log_file FROM runs WHERE id=? AND ended_at IS NULL", (run_id,)).fetchone()
+        if row is None:
+            return
+        try:
+            u = parse_usage(row["log_file"]) if row["log_file"] else None
+        except Exception:   # noqa: BLE001 - a measurement failure must not block closing the run
+            u = None
+        u = u or {}
+        with self._conn() as c:
+            sets = ", ".join(f"{k}=?" for k in (*RUN_USAGE_COLUMNS_V9, "usage_quality"))
+            c.execute(f"UPDATE runs SET {sets} WHERE id=? AND ended_at IS NULL",
+                      (*[u.get(k) for k in (*RUN_USAGE_COLUMNS_V9, "usage_quality")], run_id))
+            c.execute("UPDATE runs SET ended_at=?, exit_status=? WHERE id=? AND ended_at IS NULL",
+                      (time.time(), "unknown" if status is None else str(status), run_id))
+
+    # --- parallel Stage 2 primary tasks (#3047) ---
+    def task_rows(self, batch_id: int):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM s2_tasks WHERE batch_id=? ORDER BY task", (batch_id,)).fetchall()
+
+    def task_row(self, batch_id: int, task: str):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM s2_tasks WHERE batch_id=? AND task=?", (batch_id, task)).fetchone()
+
+    def add_tasks(self, batch_id: int, tasks: list[tuple[str, str]]) -> None:
+        """Register plan tasks as (task id, chunk id); an already registered task keeps its state (idempotent)."""
+        with self._conn() as c:
+            for task, chunk_id in tasks:
+                c.execute("INSERT OR IGNORE INTO s2_tasks(batch_id,task,chunk_id,updated_at) VALUES(?,?,?,?)",
+                          (batch_id, task, chunk_id, time.time()))
+
+    _TASK_FIELDS = ("state", "run_id", "session_id", "view_sha256", "attempts", "data")
+
+    def update_task(self, batch_id: int, task: str, **fields) -> None:
+        bad = set(fields) - set(self._TASK_FIELDS)
+        if bad:
+            raise ValueError(f"알 수 없는 task 필드: {sorted(bad)}")
+        if not fields:
+            return
+        sets = ", ".join(f"{k}=?" for k in fields)
+        with self._conn() as c:
+            c.execute(f"UPDATE s2_tasks SET {sets}, updated_at=? WHERE batch_id=? AND task=?",
+                      (*fields.values(), time.time(), batch_id, task))
+
+    def open_task_runs(self, batch_id: int):
+        """Runs of the batch's tasks that have no recorded end (their PIDs must be confirmed gone before teardown)."""
+        with self._conn() as c:
+            return c.execute("SELECT * FROM runs WHERE batch_id=? AND task IS NOT NULL AND ended_at IS NULL "
+                             "ORDER BY id", (batch_id,)).fetchall()
 
     def set_run_session(self, batch_id: int, session_id: str) -> None:
         with self._conn() as c:
@@ -856,10 +933,14 @@ class Store:
             c.execute("UPDATE runs SET ended_at=?, exit_status=? WHERE batch_id=? AND ended_at IS NULL",
                       (time.time(), "unknown" if status is None else str(status), batch_id))
 
-    def add_submit_failure(self, batch_id: int) -> None:
-        """One rejected `save-chunk` of the batch's latest AI run's own answer (the run already closed, so its CLI log
-        cannot show it)."""
+    def add_submit_failure(self, batch_id: int, run_id: int | None = None) -> None:
+        """One rejected `save-chunk` of the AI run's own answer (the run already closed, so its CLI log cannot show it).
+        Parallel Stage 2 passes the run_id; without it the batch's latest run is meant."""
         with self._conn() as c:
+            if run_id is not None:
+                c.execute("UPDATE runs SET submit_failures=COALESCE(submit_failures,0)+1 WHERE id=? AND batch_id=?",
+                          (run_id, batch_id))
+                return
             c.execute("UPDATE runs SET submit_failures=COALESCE(submit_failures,0)+1 "
                       "WHERE id=(SELECT MAX(id) FROM runs WHERE batch_id=?)", (batch_id,))
 

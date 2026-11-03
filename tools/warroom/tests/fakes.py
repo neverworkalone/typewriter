@@ -138,6 +138,10 @@ class FakeGit:
         self.base_sha = "m" * 40                              # origin/<base> as fetch_base reports it
         self.outcomes: dict[tuple, list] = {}                 # (kind, shard, batch) -> queued VerifyOutcome (last one repeats)
         self.on_base = True                                   # is a merge commit already on origin/<base>
+        self.plan_calls: list[tuple] = []
+        self.task_view_calls: list[str] = []
+        self.task_save_calls: list[str] = []
+        self.close_plan_calls: list[tuple] = []
         self.chunk_views: list[tuple] = []                    # (worktree, shard, batch, part, prepare) pre-chunk renders
         self.chunk_view_error: Exception | None = None
         self.chunk_view_total = 1                             # candidates a fake `prepare` writes
@@ -355,6 +359,146 @@ class FakeGit:
         data["next_chunk_number"] += 1
         path.write_text(json.dumps(data), "utf-8")
         return True, f"Saved {count} decisions"
+
+    # ---- parallel primary tasks (#3047): a small model of the Admission task API (plan/read/save/close) ----
+    task_layout = None   # [(sense_id, candidate count)] a fake `stage2_prepare` writes; None -> one sense of chunk_view_total
+
+    def _task_checkpoint_path(self, worktree, shard, batch, part):
+        return Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+
+    def stage2_prepare(self, worktree, shard, batch, part, timeout=900):
+        layout = self.task_layout or [(self.chunk_view_sense_id, self.chunk_view_total)]
+        path = self._task_checkpoint_path(worktree, shard, batch, part)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({
+            "version": 1, "shard": shard, "batch": batch, "part": part, "complete": True, "stats": {},
+            "next_chunk_number": 1, "pending_chunk": None, "merged": False,
+            "items": [{"record_id": f"rec-{sense}", "sense_id": sense,
+                       "candidates": [{"text": f"{sense}-cand-{i}", "decision": None} for i in range(n)]}
+                      for sense, n in layout]}), "utf-8")
+
+    def stage2_plan_chunks(self, worktree, shard, batch, part, target, plan, timeout=900):
+        self.plan_calls.append((shard, batch, part, target))
+        plan_path = Path(worktree) / plan
+        if plan_path.exists():
+            body = json.loads(plan_path.read_text("utf-8"))
+            return {"ok": True, "plan": plan, "reused": True, "target": body["target"], "tasks": len(body["tasks"]),
+                    "candidates": sum(t["candidate_count"] for t in body["tasks"])}
+        data = json.loads(self._task_checkpoint_path(worktree, shard, batch, part).read_text("utf-8"))
+        units = [(order, item["sense_id"], len(item["candidates"])) for order, item in enumerate(data["items"])]
+        drafts, small = [], []
+        for order, sense, count in units:
+            if count <= target:
+                small.append((order, sense, count))
+                continue
+            pieces, start = -(-count // target), 0
+            for piece in range(pieces):
+                size = count // pieces + (1 if piece < count % pieces else 0)
+                drafts.append((order, piece, sense, [{"sense_id": sense, "start": start, "end": start + size}]))
+                start += size
+        bins = [[0, []] for _ in range(-(-sum(c for _, _, c in small) // target))]
+        for unit in sorted(small, key=lambda u: (-u[2], u[0])):
+            least = min(bins, key=lambda e: e[0])
+            least[0] += unit[2]
+            least[1].append(unit)
+        for _load, members in bins:
+            members.sort()
+            drafts.append((members[0][0], 0, None, [{"sense_id": m[1], "start": 0, "end": m[2]} for m in members]))
+        drafts.sort(key=lambda d: (d[0], d[1]))
+        prefix = f"{shard}-{batch}-{part}"
+        tid = lambda i: f"{prefix}-t{i + 1:02d}"
+        tasks = [{"id": tid(i), "chunk_id": tid(i), "slices": d[3],
+                  "candidate_count": sum(x["end"] - x["start"] for x in d[3]),
+                  "depends_on": [tid(i - 1)] if d[2] is not None and d[1] > 0 else []} for i, d in enumerate(drafts)]
+        body = {"version": 1, "shard": shard, "batch": batch, "part": part, "target": target, "tasks": tasks,
+                "plan_digest": "d" * 64}
+        plan_path.parent.mkdir(parents=True, exist_ok=True)
+        plan_path.write_text(json.dumps(body), "utf-8")
+        return {"ok": True, "plan": plan, "reused": False, "target": target, "tasks": len(tasks),
+                "candidates": sum(t["candidate_count"] for t in tasks)}
+
+    def _task_view(self, data, task):
+        rows = [f"# Stage 2 chunk {task['chunk_id']} · task view fixture"]
+        n = 0
+        for sl in task["slices"]:
+            item = next(i for i in data["items"] if i["sense_id"] == sl["sense_id"])
+            rows.append(f"S\t{item['sense_id']}\t{item['record_id']}\tnoun\tgloss\tcandidates {sl['start'] + 1}-{sl['end']}")
+            for c in item["candidates"][:sl["start"]]:   # the earlier decisions of this Sense (Q rows) shape the view
+                rows.append(f"Q\t{c['text']}\t{json.dumps(c['decision'], sort_keys=True)}")
+            for c in item["candidates"][sl["start"]:sl["end"]]:
+                n += 1
+                rows.append(f"c{n}\t{c['text']}\tfixture\t-")
+        return "\n".join(rows) + "\n"
+
+    def _task_of(self, worktree, plan, task_id):
+        body = json.loads((Path(worktree) / plan).read_text("utf-8"))
+        return next(t for t in body["tasks"] if t["id"] == task_id)
+
+    def stage2_task_view(self, worktree, shard, batch, part, plan, task, out, timeout=900):
+        import hashlib
+        self.task_view_calls.append(task)
+        data = json.loads(self._task_checkpoint_path(worktree, shard, batch, part).read_text("utf-8"))
+        planned = self._task_of(worktree, plan, task)
+        text = self._task_view(data, planned)
+        Path(worktree, out).parent.mkdir(parents=True, exist_ok=True)
+        Path(worktree, out).write_text(text, "utf-8")
+        return {"task": task, "chunk_id": planned["chunk_id"], "candidate_count": planned["candidate_count"],
+                "view_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()}
+
+    def stage2_save_task(self, worktree, shard, batch, part, plan, task, decisions, view_sha256, timeout=900,
+                         supervisor_fallback=None, supervisor_state_dir=None):
+        import hashlib
+        path = self._task_checkpoint_path(worktree, shard, batch, part)
+        data = json.loads(path.read_text("utf-8"))
+        planned = self._task_of(worktree, plan, task)
+        slices = planned["slices"]
+        cands = [c for sl in slices for c in next(i for i in data["items"] if i["sense_id"] == sl["sense_id"])["candidates"][sl["start"]:sl["end"]]]
+        saved = all(c["decision"] is not None for c in cands)
+        text = self._task_view(data, planned)   # a task's own decisions never appear in its view
+        if hashlib.sha256(text.encode("utf-8")).hexdigest() != view_sha256:
+            return False, f"task {task} view changed since it was launched; not saved"
+        body = (Path(worktree) / decisions).read_text("utf-8")
+        self.save_calls.append(body)
+        self.task_save_calls.append(task)
+        rows = {}
+        for line in body.split("\n")[1:]:
+            if line.strip():
+                rows.setdefault(line.split()[0], []).append(line.strip())
+        count = len(cands)
+        if supervisor_fallback is not None:
+            self.technical_fallback_calls.append(dict(supervisor_fallback))
+            alias = supervisor_fallback["alias"]
+            if alias in rows:
+                return False, "Supervisor fallback candidate must be omitted from model decisions"
+            rows[alias] = [f"{alias} D f"]
+        problems = []
+        for alias, found in rows.items():
+            n = int(alias[1:]) if alias[1:].isdigit() else 0
+            if not 1 <= n <= count:
+                problems.append(f"{alias}: names no candidate")
+            elif len(found) > 1:
+                problems.append(f"{alias} {cands[n - 1]['text']}: repeated decision row")
+            elif " BAD" in found[0]:
+                problems.append(f"{alias} {cands[n - 1]['text']}: relation field is malformed")
+        problems += [f"c{n} {cands[n - 1]['text']}: chunk has missing decisions" for n in range(1, count + 1) if f"c{n}" not in rows]
+        problems.sort(key=lambda p: int(p.split()[0][1:]) if p.split()[0][1:].isdigit() else 0)
+        if problems:
+            return False, f"chunk {task} not saved, checkpoint unchanged: {len(problems)} problem(s)\n" + "\n".join(problems)
+        if saved:
+            return True, "already_saved"
+        for k, c in enumerate(cands):
+            alias = f"c{k + 1}"
+            c["decision"] = {"disposition": "drop", "reason": "f" if supervisor_fallback and supervisor_fallback["alias"] == alias else "x",
+                             "row": rows[alias][0]}
+        data["next_chunk_number"] += 1
+        path.write_text(json.dumps(data), "utf-8")
+        return True, f"Saved {count} decisions"
+
+    def stage2_close_plan(self, worktree, shard, batch, part, plan, timeout=900):
+        self.close_plan_calls.append((shard, batch, part))
+        data = json.loads(self._task_checkpoint_path(worktree, shard, batch, part).read_text("utf-8"))
+        if any(c["decision"] is None for i in data["items"] for c in i["candidates"]):
+            raise GitError("admission-cli close-plan 실패: unsaved task(s)")
 
     def stage2_optional_view(self, worktree, shard, batch, part, timeout=900):
         if self.optional_view_text is not None:
@@ -837,9 +981,13 @@ class World:
         self.sup = self.make_sup()
         self.sup_runner_ok()
 
+    parallel_s2 = False   # the serial Stage 2 path stays covered; test_issue_3047 turns the parallel path on
+
     def make_sup(self):
-        return Supervisor(self.paths, self.cfg, self.store, self.runner_obj(), self.adapter,
-                          self.gh, self.git, {"GH_CONFIG_DIR": "x"}, clock=lambda: self.now)
+        sup = Supervisor(self.paths, self.cfg, self.store, self.runner_obj(), self.adapter,
+                         self.gh, self.git, {"GH_CONFIG_DIR": "x"}, clock=lambda: self.now)
+        sup.parallel_new_parts = self.parallel_s2
+        return sup
 
     def runner_obj(self):
         from tests.fake_runner import ScriptedRunner

@@ -455,6 +455,10 @@ class Maintenance:
                            f"(merge commit {sha[:10]}) → 종속 배치에 수정 반영")
 
     # ---- 4. apply the merged fix to each paused batch, verify, retry once ------------------------------------------
+    def _workers_running(self, b) -> bool:
+        """The batch's AI process, or (parallel Stage 2) ANY task run, is not confirmed gone."""
+        return b["pid"] is not None or bool(self.store.open_task_runs(b["id"]))
+
     def _release(self) -> None:
         for d in self.store.defects(("FIX_MERGED",)):
             if d["source"] == "verify":   # no production batch: the scope's exact verify on master releases it (stage2.choose)
@@ -467,7 +471,7 @@ class Maintenance:
                 # the operator already resumed (Stop + Retry) or the batch moved on: this fix is no longer ours to apply
                 self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="운영자가 배치를 직접 재개함")
                 continue
-            if self.store.get(f"defect_hold_{b['id']}") or b["pid"] is not None:
+            if self.store.get(f"defect_hold_{b['id']}") or self._workers_running(b):
                 continue   # operator Stop is pending/active, or the stopped AI is not confirmed gone yet
             if not self._due(f"defect_release_try_{d['id']}"):
                 continue
@@ -615,7 +619,8 @@ class Maintenance:
         Only the exact file of this defect event moves (to `.warroom-scratch/resolved-defects/`); a report whose content
         changed since is new evidence and stays. False: the move failed (retried on the next tick, batch stays PAUSED).
         """
-        f = Path(b["worktree"]) / defects.REPORT_FILE
+        # A parallel Stage 2 task writes its own report file; that exact file is the one set aside.
+        f = Path(b["worktree"]) / (self.store.get(f"s2_defect_path_{b['id']}") or defects.REPORT_FILE)
         try:
             raw = f.read_text("utf-8", errors="replace")
         except FileNotFoundError:
@@ -634,6 +639,7 @@ class Maintenance:
             self.store.log(b["id"], f"해결된 공통 결함 보고서 보관 실패로 재개를 미룹니다(재시도 예정): {e}", "warn")
             return False
         self.store.log(b["id"], f"해결된 공통 결함 #{d['id']} 보고서를 {dest.relative_to(b['worktree'])}로 보관")
+        self.store.delete(f"s2_defect_path_{b['id']}")
         return True
 
     def resolved_note(self, b, short: bool = False) -> str:
@@ -704,7 +710,7 @@ class Maintenance:
             current_batch = self.store.batch(b["id"])
             if (current_batch is None or current_batch["state"] != "PAUSED"
                     or current_batch["pause_reason"] != "shared_defect"
-                    or current_batch["defect_id"] != d["id"] or current_batch["pid"] is not None
+                    or current_batch["defect_id"] != d["id"] or self._workers_running(current_batch)
                     or current_batch["pr_number"] != number or current_batch["branch"] != branch
                     or Path(current_batch["worktree"]) != wt or current_batch["head_sha"] != batch_head):
                 raise IntegrationBlocked("동기화 직전 batch/AI/PR 소유 상태가 바뀌었습니다")
