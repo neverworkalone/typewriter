@@ -24,13 +24,14 @@ from pathlib import Path
 from . import (auth, batches, control, dchunk, defects, literary, prbody, progress, prompts, reviews, s2parallel, stage1ab,
                stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
-                       opencode_free_quota)
+                       final_answer, opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, LineBusy, LineNotRunnable
+from .usage import submit_attempts
 
 
 # A failed *query* asking again can fix. It is never a verdict: callers re-raise it past every broad `except`.
@@ -571,17 +572,43 @@ class Supervisor:
                         guard = json.loads(raw_guard)
                     except ValueError:
                         guard = None
-                    if not isinstance(guard, dict) or self._c_retry_guard_unchanged(b, guard):
+                    if not isinstance(guard, dict):
                         self.store.set_line(b["producer"], b["method"], retry_batch=None)
-                        codes = guard.get("reason_codes", []) if isinstance(guard, dict) else []
-                        code_text = ",".join(str(code) for code in codes) or "checkpoint_or_chunk_mismatch"
-                        self.store.set(literary.retry_guard_key(b["id"]), json.dumps(guard, sort_keys=True))
+                        code_text = "checkpoint_or_chunk_mismatch"
                         self.store.log(b["id"], f"C 운영자 Retry 차단 [same_failure; {code_text}]: "
                                        "active chunk의 Sense·제출·진단 상태가 바뀌지 않아 재실행하지 않았습니다.", "warn")
                         return
-                    c_evidence_changed = True
-                    self.store.delete(literary.retry_guard_key(b["id"]))
-                    self.store.log(b["id"], "C 운영자 Retry: 현재 active chunk의 체크포인트·제출·진단 evidence 변경을 확인했습니다.", "warn")
+                    if self._c_retry_guard_unchanged(b, guard):
+                        try:
+                            rec = literary.read_active(Path(b["worktree"]), b)
+                        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+                            rec = None
+                        recovery_key = (literary.no_submission_recovery_key(b["id"], rec["chunk_id"])
+                                        if rec is not None else None)
+                        raw_recovery = self.store.get(recovery_key) if recovery_key else None
+                        try:
+                            recovery = json.loads(raw_recovery or "null")
+                        except ValueError:
+                            recovery = None
+                        owner_recovery = (self._c_legacy_recovery_evidence(b, recovery)
+                                          if isinstance(recovery, dict) else False)
+                        if not owner_recovery and recovery is None:
+                            owner_recovery = self._c_claim_legacy_no_submission_retry(b, guard)
+                        if not owner_recovery:
+                            self.store.set_line(b["producer"], b["method"], retry_batch=None)
+                            codes = guard.get("reason_codes", [])
+                            code_text = ",".join(str(code) for code in codes) if isinstance(codes, list) else ""
+                            code_text = code_text or "checkpoint_or_chunk_mismatch"
+                            self.store.set(literary.retry_guard_key(b["id"]), json.dumps(guard, sort_keys=True))
+                            self.store.log(b["id"], f"C 운영자 Retry 차단 [same_failure; {code_text}]: "
+                                           "active chunk의 Sense·제출·진단 상태가 바뀌지 않아 재실행하지 않았습니다.", "warn")
+                            return
+                        self.store.log(b["id"], "기존 C 무제출 guard에 대한 오너 요청 1회를 새 세션 복구로 전환합니다. "
+                                       "기존 1/1 자동 retry 예산과 checkpoint는 그대로 둡니다.", "warn")
+                    else:
+                        c_evidence_changed = True
+                        self.store.delete(literary.retry_guard_key(b["id"]))
+                        self.store.log(b["id"], "C 운영자 Retry: 현재 active chunk의 체크포인트·제출·진단 evidence 변경을 확인했습니다.", "warn")
             if target is not None and (b["method"] != literary.METHOD or b["state"] != "ERROR" or c_evidence_changed):
                 # For C errors, an unchanged failure keeps its one persisted budget. Only new evidence grants a new cycle.
                 self.store.delete(self._auto_retry_key(b, target))   # only an explicit operator Retry grants one new chance
@@ -1809,6 +1836,7 @@ class Supervisor:
             return self._fail(b, "ERROR", f"AI 실행 환경 설정 실패: {e}")
         fix_context_digests = {}
         extra = {}
+        c_recovery_marker_key = None
         if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
             try:
                 extra["git_dir"] = self.git.worktree_gitdir(Path(wt))
@@ -1980,13 +2008,17 @@ class Supervisor:
                                  f"Stage 2 {stage2.label(b['shard'], b['batch'])} local repair", log, ex, **extra)
                 else:
                     raise prompts.PromptError("Stage 2 finalization은 Supervisor의 deterministic 단계입니다")
-            elif b["method"] == literary.METHOD and kind in ("c_chunk_new", "c_chunk_resume"):
+            elif b["method"] == literary.METHOD and kind in ("c_chunk_new", "c_chunk_resume", "c_chunk_recovery"):
                 prompt, baseline = self._c_chunk_prompt(b, kind, remote)
                 self.store.set(literary.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                if kind == "c_chunk_recovery":
+                    c_recovery_marker_key = literary.no_submission_recovery_key(b["id"], baseline["chunk_id"])
                 title = f"C {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
                 if kind == "c_chunk_resume":
                     h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
+                    if kind == "c_chunk_recovery":
+                        self._c_begin_recovery_launch(b, c_recovery_marker_key, log)
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif b["method"] == dchunk.METHOD and kind == "d_chunk_fix":
                 # Correction of the unsaved active chunk: same session, same run-start baseline (not rewritten), the CLI's
@@ -2065,12 +2097,14 @@ class Supervisor:
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
         fields = dict(state=state, pid=h.pid, exit_file=str(ex), log_file=str(log),
                       run_kind=kind, retry_after=None, error=None)
-        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_links_new", "s2_repair_new", "s2_finalize_new", "s3_chunk_new", "c_chunk_new",
+        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_links_new", "s2_repair_new", "s2_finalize_new", "s3_chunk_new", "c_chunk_new", "c_chunk_recovery",
                                          "d_chunk_new", "ab_chunk_new"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
         run_id = self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
                                     model=run.model, effort=run.effort, permission_profile=run.permission_profile)
+        if c_recovery_marker_key is not None:
+            self._c_record_recovery_launch(c_recovery_marker_key, log, run_id)
         if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
             repair_state = self._stage2_repair_state(b, required=True)
             current = repair_state.get("current")
@@ -5585,6 +5619,7 @@ class Supervisor:
             raise prompts.PromptError("활성 청크 기록이 없습니다")
         view = literary.read_view(wt, rec)
         checkpoint = literary.names(b).checkpoint
+        note = rec.get("note", "")
         if kind == "c_chunk_resume":
             if rec.get("repair"):   # these senses are already stored: all of them are re-judged
                 remaining = list(rec["sense_ids"])
@@ -5594,9 +5629,38 @@ class Supervisor:
             if not remaining:
                 raise prompts.PromptError("이어갈 미완료 sense가 없습니다")
             prompt = prompts.c_chunk_resume(rec["chunk_no"], checkpoint, remaining, note=rec.get("note", ""))
+        elif kind == "c_chunk_recovery":
+            if rec.get("repair"):
+                raise prompts.PromptError("무제출 복구는 Candidate v1 repair 청크에 사용할 수 없습니다")
+            raw_recovery = self.store.get(literary.no_submission_recovery_key(b["id"], rec["chunk_id"]))
+            try:
+                recovery = json.loads(raw_recovery or "null")
+            except ValueError:
+                recovery = None
+            if (not isinstance(recovery, dict)
+                    or recovery.get("policy_version") != literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION
+                    or recovery.get("status") != "used"
+                    or recovery.get("chunk_id") != rec["chunk_id"]):
+                raise prompts.PromptError("새 세션 무제출 복구에 현재 청크의 1회 정책 증거가 없습니다")
+            state = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
+            remaining = [sense["sense_id"] for sense in state["senses"] if not sense["done"]]
+            if not remaining:
+                raise prompts.PromptError("새 세션 무제출 복구에 미완료 Sense가 없습니다")
+            view = literary.view_for_senses(view, remaining)
+            note += ("무제출 복구 정책 v1: 직전 정상 종료 실행은 공식 submit 호출 0회였고 submit/diag 파일도 없었다. "
+                     "새 self-contained 세션에서 기존 active view의 아래 미완료 Sense만 처리한다. 이미 checkpoint에 "
+                     "저장된 Sense는 다시 판독하거나 제출하지 않는다. 제공된 같은 view 증거를 우선 재사용하고, "
+                     "기존 view로 판독할 수 없을 때에만 카드에 정한 공식 추가 조회를 수행한다. 아래 Sense의 source-sense "
+                     "판독과 C의 발굴·형태 검사는 정해진 전체 계약대로 수행하고, "
+                     "완료 Sense를 모두 포함한 단일 제출을 실행한다. 필수 검색·출처 근거가 불충분하거나 정당한 stop 사유가 "
+                     "있으면 추측·technical skip 없이 그 사유를 보고한다: " + ", ".join(remaining) + "\n")
+            card_bytes = len(prompts.c_chunk(b, rec["chunk_no"], checkpoint, view="", note=note).encode("utf-8"))
+            if literary.delivery(card_bytes, view) == "inline":
+                prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, view=view, note=note)
+            else:
+                prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, pages=literary.write_pages(wt, view), note=note)
         else:
             remaining = list(rec["sense_ids"])
-            note = rec.get("note", "")
             missing_session_resume = self.store.get(literary.run_start_key(b["id"])) is not None
             if missing_session_resume and not rec.get("repair"):
                 state = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
@@ -5618,9 +5682,12 @@ class Supervisor:
                                          note=note)
         baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
                     "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote,
-                    "chunk_no": rec["chunk_no"],
+                    "chunk_id": rec["chunk_id"], "chunk_no": rec["chunk_no"],
                     "retry_state": literary.retry_state(wt, b, rec, remaining,
                                                          session_available=bool(b["session_id"]))}
+        if kind == "c_chunk_recovery":
+            baseline["recovery_policy_version"] = literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION
+            baseline["recovery_source_run_id"] = recovery.get("source_run_id")
         return prompt, baseline
 
     def _c_chunk_saved(self, b) -> bool:
@@ -5644,7 +5711,136 @@ class Supervisor:
         pending = [sense["sense_id"] for sense in report["senses"] if not sense["done"]]
         return rec, pending, not pending
 
-    def _c_incomplete_reason_codes(self, b, rec, *, report_valid: bool) -> list[str]:
+    def _c_no_submission_outcome(self, b, rec, pending):
+        """Classify the latest successful C run from its exact start baseline and adapter evidence."""
+        if rec is None:
+            return {"status": "checkpoint_or_chunk_mismatch"}
+        runs = self.store.runs(b["id"])
+        run = dict(runs[0]) if runs else None
+        try:
+            run_start = json.loads(self.store.get(literary.run_start_key(b["id"])) or "null")
+        except ValueError:
+            run_start = None
+        log_file = run.get("log_file") if isinstance(run, dict) else None
+        return literary.no_submission_result(
+            Path(b["worktree"]), b, rec, run, run_start, pending,
+            final_answer=final_answer(Path(log_file)) if log_file else None,
+            submit_call_count=submit_attempts(Path(log_file)) if log_file else None,
+        )
+
+    def _c_recovery_launch_registered(self, b, marker) -> bool:
+        """Whether a recovery launch intent has a durable run or batch record."""
+        launch_log = marker.get("launch_log_file") if isinstance(marker, dict) else None
+        launch_run_id = marker.get("launch_run_id") if isinstance(marker, dict) else None
+        source_run_id = marker.get("source_run_id") if isinstance(marker, dict) else None
+        for run in self.store.runs(b["id"]):
+            if run["kind"] != "c_chunk_recovery":
+                continue
+            if launch_run_id is not None and run["id"] == launch_run_id:
+                return True
+            if launch_log and run["log_file"] == launch_log:
+                return True
+            # Old markers have no launch identity. A later recovery run is still durable evidence that it started.
+            if not launch_log and type(source_run_id) is int and run["id"] > source_run_id:
+                return True
+        current = self.store.batch(b["id"])
+        return bool(current and current["run_kind"] == "c_chunk_recovery" and current["pid"] is not None
+                    and (not launch_log or current["log_file"] == launch_log))
+
+    def _c_begin_recovery_launch(self, b, marker_key: str, log: Path) -> None:
+        """Persist a unique launch intent before spawning; unresolved intents must never spawn twice."""
+        try:
+            marker = json.loads(self.store.get(marker_key) or "null")
+        except ValueError:
+            marker = None
+        if (not isinstance(marker, dict) or marker.get("status") != "used"
+                or marker.get("launch_state") != "not_started"
+                or self._c_recovery_launch_registered(b, marker)):
+            raise prompts.PromptError("C 무제출 복구의 시작 상태가 불명확해 두 번째 프로세스를 시작하지 않습니다")
+        marker["launch_state"] = "starting"
+        marker["launch_log_file"] = str(log)
+        self.store.set(marker_key, json.dumps(marker, sort_keys=True))
+
+    def _c_record_recovery_launch(self, marker_key: str, log: Path, run_id: int) -> None:
+        """Link the pre-spawn intent to the run row after both durable launch records exist."""
+        try:
+            marker = json.loads(self.store.get(marker_key) or "null")
+        except ValueError:
+            marker = None
+        if (isinstance(marker, dict) and marker.get("launch_state") == "starting"
+                and marker.get("launch_log_file") == str(log)):
+            marker["launch_state"] = "registered"
+            marker["launch_run_id"] = run_id
+            self.store.set(marker_key, json.dumps(marker, sort_keys=True))
+
+    def _c_legacy_recovery_evidence(self, b, marker):
+        """Revalidate the one owner-claimed bridge from a pre-policy no-submit guard."""
+        if (not isinstance(marker, dict)
+                or marker.get("policy_version") != literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION
+                or marker.get("status") != "claimed"):
+            return False
+        try:
+            rec, pending, _done = self._c_chunk_progress(b)
+            if (rec is None or rec.get("repair") is True or rec.get("chunk_id") != marker.get("chunk_id")
+                    or rec.get("view_sha256") != marker.get("view_sha256")
+                    or pending != marker.get("pending_sense_ids")):
+                return False
+            outcome = self._c_no_submission_outcome(b, rec, pending)
+            latest = self._last_run(b)
+            return (outcome.get("status") == "no_submission" and latest is not None
+                    and latest["id"] == marker.get("source_run_id")
+                    and outcome.get("source_run_id") == latest["id"])
+        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+            return False
+
+    def _c_claim_legacy_no_submission_retry(self, b, guard):
+        """Atomically consume the legacy owner's one deliberate retry without resetting its auto budget."""
+        try:
+            rec, pending, _done = self._c_chunk_progress(b)
+            if rec is None or rec.get("repair") is True:
+                return False
+            key = literary.no_submission_recovery_key(b["id"], rec["chunk_id"])
+            if self.store.get(key) is not None:
+                return False
+            if not control._legacy_c_no_submission_retry_available(self.store, b, guard):
+                return False
+            outcome = self._c_no_submission_outcome(b, rec, pending)
+            latest = self._last_run(b)
+            if (outcome.get("status") != "no_submission" or latest is None
+                    or outcome.get("source_run_id") != latest["id"]):
+                return False
+            marker = {"policy_version": literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION,
+                      "status": "claimed", "source_run_id": latest["id"],
+                      "chunk_id": rec["chunk_id"], "chunk_no": rec["chunk_no"],
+                      "view_sha256": rec["view_sha256"], "pending_sense_ids": list(pending)}
+            self.store.set(key, json.dumps(marker, sort_keys=True))
+            return True
+        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+            return False
+
+    def _c_start_no_submission_recovery(self, b, rec, pending, outcome) -> bool:
+        """Persist the one bounded fresh-session recovery before launching it."""
+        if not isinstance(outcome, dict) or outcome.get("status") != "no_submission" or rec is None:
+            return False
+        key = literary.no_submission_recovery_key(b["id"], rec["chunk_id"])
+        if self.store.get(key) is not None:
+            return False
+        latest = self._last_run(b)
+        if latest is None or latest["id"] != outcome.get("source_run_id"):
+            return False
+        marker = {"policy_version": literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION, "status": "used",
+                  "launch_state": "not_started",
+                  "source_run_id": latest["id"], "chunk_id": rec["chunk_id"],
+                  "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"],
+                  "pending_sense_ids": list(pending)}
+        self.store.set(key, json.dumps(marker, sort_keys=True))
+        self.store.update(b["id"], retries=0, retry_after=None, error=None)
+        self.store.log(b["id"], f"C chunk {rec['chunk_no']:03d}: 정상 종료·submit 호출 없음으로 확인했습니다. "
+                       "기존 view와 checkpoint를 보존하고 미완료 Sense만 새 세션에서 한 번 재개합니다.", "warn")
+        self._launch(self.store.batch(b["id"]), "c_chunk_recovery")
+        return True
+
+    def _c_incomplete_reason_codes(self, b, rec, *, report_valid: bool, producer_outcome=None) -> list[str]:
         """Classify only the observed C recovery blockers; never expose submission contents."""
         codes = []
         if not report_valid or rec is None:
@@ -5665,17 +5861,51 @@ class Supervisor:
         submit = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json"
         diagnostic = submit.with_name(submit.name + ".diag.json")
         parsed = None
-        if not submit.is_file() or not diagnostic.is_file():
-            codes.append("diagnostic_unavailable_or_invalid")
+        status = producer_outcome.get("status") if isinstance(producer_outcome, dict) else None
+        if not submit.is_file():
+            codes.append({"no_submission": "no_submission", "submission_status_unknown": "submission_status_unknown",
+                          "submit_attempt_without_artifacts": "submit_attempt_without_artifacts",
+                          "search_failed": "search_failed", "unsearchable": "unsearchable",
+                          "producer_reported_stop": "producer_reported_stop",
+                          "producer_output_missing": "producer_output_missing",
+                          "checkpoint_progress": "checkpoint_progress",
+                          "checkpoint_changed_without_pending_progress": "checkpoint_changed_without_pending_progress",
+                          "checkpoint_or_chunk_mismatch": "checkpoint_or_chunk_mismatch",
+                          "session_mismatch": "session_or_run_mismatch",
+                          "run_not_successful": "run_not_successful",
+                          "submission_artifact_unavailable": "submission_artifact_unavailable",
+                          "not_applicable": "not_applicable"}
+                         .get(status, "submission_status_unknown"))
+        elif not diagnostic.is_file():
+            submit_calls = (producer_outcome.get("submit_calls")
+                            if isinstance(producer_outcome, dict) else None)
+            if submit_calls is None:
+                runs = self.store.runs(b["id"])
+                log_file = runs[0]["log_file"] if runs else None
+                submit_calls = submit_attempts(Path(log_file)) if log_file else None
+            if submit_calls == 0:
+                codes.append("submission_prepared_not_submitted")
+            elif submit_calls is None:
+                codes.append("submission_status_unknown")
+            else:
+                codes.append("diagnostic_missing_after_submit")
         else:
             try:
                 parsed = json.loads(diagnostic.read_text("utf-8"))
             except (OSError, ValueError):
                 pass
             if not isinstance(parsed, dict) or parsed.get("status") != "FAILED":
-                codes.append("diagnostic_unavailable_or_invalid")
+                codes.append("invalid_diagnostic")
             elif not literary.submit_retryable(Path(b["worktree"]), b, rec["chunk_no"]):
                 codes.append("submit_validation_blocked")
+
+        recovery_raw = self.store.get(literary.no_submission_recovery_key(b["id"], rec["chunk_id"]))
+        try:
+            recovery = json.loads(recovery_raw or "null")
+        except ValueError:
+            recovery = None
+        if isinstance(recovery, dict) and recovery.get("status") == "used":
+            codes.append("no_submission_recovery_exhausted")
 
         try:
             resubmits = int(self.store.get(literary.resubmit_key(b["id"])) or 0)
@@ -5687,8 +5917,9 @@ class Supervisor:
                 codes.append(f"technical_skip_ineligible:{skip_reason}")
         return list(dict.fromkeys(codes))
 
-    def _c_incomplete_error(self, b, rec, pending, *, report_valid: bool) -> str:
-        codes = self._c_incomplete_reason_codes(b, rec, report_valid=report_valid)
+    def _c_incomplete_error(self, b, rec, pending, *, report_valid: bool, producer_outcome=None) -> str:
+        codes = self._c_incomplete_reason_codes(b, rec, report_valid=report_valid,
+                                                producer_outcome=producer_outcome)
         raw = self.store.get(literary.run_start_key(b["id"]))
         try:
             run_start = json.loads(raw or "null")
@@ -5714,8 +5945,20 @@ class Supervisor:
                     codes.append("checkpoint_or_chunk_mismatch")
             if isinstance(baseline, dict):
                 baseline["report_valid"] = bool(report_valid)
+                baseline["session_available"] = bool(b["session_id"])
+                safe_outcome = ({"status": producer_outcome.get("status"),
+                                 "source_run_id": producer_outcome.get("source_run_id"),
+                                 "submit_calls": producer_outcome.get("submit_calls")}
+                                if isinstance(producer_outcome, dict) else None)
+                recovery_policy_version = (literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION
+                                          if (self.store.get(literary.no_submission_recovery_key(
+                                              b["id"], rec["chunk_id"])) is not None
+                                              or (isinstance(producer_outcome, dict)
+                                                  and producer_outcome.get("status") == "no_submission"))
+                                          else None)
                 self.store.set(literary.retry_guard_key(b["id"]), json.dumps(
-                    {"baseline": baseline, "reason_codes": codes}, sort_keys=True))
+                    {"baseline": baseline, "reason_codes": codes, "producer_outcome": safe_outcome,
+                     "recovery_policy_version": recovery_policy_version}, sort_keys=True))
         code_text = ",".join(codes) if codes else "checkpoint_or_chunk_mismatch"
         total = len(rec["sense_ids"]) if rec else "?"
         pending_count = len(pending) if report_valid else "?"
@@ -5835,16 +6078,33 @@ class Supervisor:
                         return self._fail(b, "ERROR", "C technical skip 이후에도 활성 청크 전체 완료를 확인하지 못했습니다 "
                                           "[checkpoint_or_chunk_mismatch]. 보존합니다.")
             if skip_result is None and not revalidated_saved:
-                if rec is not None and diag is not None and not diag.exists() and b["run_kind"] != "c_chunk_fix" \
-                        and self._retry_unsaved_chunk(b, "checkpoint 미완료"):
+                producer_outcome = self._c_no_submission_outcome(b, rec, pending)
+                if producer_outcome.get("status") == "no_submission" \
+                        and self._c_start_no_submission_recovery(b, rec, pending, producer_outcome):
+                    return
+                has_saved_submit_file = (producer_outcome.get("status") == "submission_artifact_present"
+                                         or (producer_outcome.get("status") == "checkpoint_changed_without_pending_progress"
+                                             and rec is not None and (Path(b["worktree"]) /
+                                             f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json").is_file())
+                                         or (producer_outcome.get("status") == "not_applicable"
+                                             and rec is not None and rec.get("repair") is True
+                                             and (Path(b["worktree"]) /
+                                             f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json").is_file()))
+                if (rec is not None and diag is not None and not diag.exists()
+                        and (producer_outcome.get("status") == "checkpoint_progress" or has_saved_submit_file)
+                        and b["run_kind"] != "c_chunk_fix"
+                        and self._retry_unsaved_chunk(
+                            b, "기존 제출 파일 또는 checkpoint 부분 진행 확인")):
                     return
                 return self._fail(b, "ERROR", self._c_incomplete_error(b, rec, pending,
-                                                                        report_valid=report_valid))
+                                                                        report_valid=report_valid,
+                                                                        producer_outcome=producer_outcome))
         self.store.delete(literary.run_start_key(b["id"]))
         self.store.delete(literary.resubmit_key(b["id"]))
         if rec is not None:
             self.store.delete(literary.retry_guard_key(b["id"]))
             self.store.delete(self._auto_retry_key(b, f"c:{rec['chunk_no']}"))
+            self.store.delete(literary.no_submission_recovery_key(b["id"], rec["chunk_id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
         self.store.log(b["id"], "C 청크의 모든 sense 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         try:
@@ -5882,6 +6142,41 @@ class Supervisor:
             raise
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
+        try:
+            rec = literary.read_active(Path(b["worktree"]), b)
+        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+            rec = None
+        if rec is not None:
+            key = literary.no_submission_recovery_key(b["id"], rec["chunk_id"])
+            try:
+                recovery = json.loads(self.store.get(key) or "null")
+            except ValueError:
+                recovery = None
+            if isinstance(recovery, dict) and recovery.get("status") in ("claimed", "used"):
+                launch_recorded = self._c_recovery_launch_registered(b, recovery)
+                if recovery.get("status") == "claimed" and launch_recorded:
+                    return self._fail(b, "ERROR", "C 무제출 복구의 미사용 표식과 실행 기록이 충돌합니다. "
+                                      "중복 실행을 차단하고 worktree/checkpoint를 보존합니다.")
+                if recovery.get("status") == "used" and launch_recorded:
+                    if not self._c_chunk_saved(b):
+                        return self._fail(b, "ERROR", "C 무제출 복구 프로세스는 이미 시작됐지만 청크 완료가 확인되지 않았습니다. "
+                                          "두 번째 복구는 시작하지 않고 worktree/checkpoint를 보존합니다.")
+                    recovery = None
+                elif (recovery.get("status") == "used"
+                      and recovery.get("launch_state") != "not_started"):
+                    return self._fail(b, "ERROR", "C 무제출 복구의 프로세스 시작 여부를 확인할 수 없어 중복 실행을 차단합니다. "
+                                      "실행 기록과 worktree/checkpoint를 보존합니다.")
+                elif not self._c_legacy_recovery_evidence(b, {**recovery, "status": "claimed"}):
+                    return self._fail(b, "ERROR", "기존 C 무제출 재개 증거가 바뀌어 1회 복구를 시작하지 않습니다. "
+                                      "기존 worktree/checkpoint를 보존합니다.")
+                else:
+                    if recovery.get("status") == "claimed":
+                        recovery["status"] = "used"
+                        self.store.log(b["id"], "기존 C 무제출 guard의 오너 요청 1회를 새 self-contained 세션으로 실행합니다.", "warn")
+                    recovery["launch_state"] = "not_started"
+                    self.store.set(key, json.dumps(recovery, sort_keys=True))
+                    self.store.update(b["id"], retries=0, retry_after=None, error=None)
+                    return self._launch(self.store.batch(b["id"]), "c_chunk_recovery")
         if self._c_chunk_saved(b):
             try:
                 rec = literary.read_active(Path(b["worktree"]), b)

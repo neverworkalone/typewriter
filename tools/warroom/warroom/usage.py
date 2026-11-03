@@ -15,10 +15,74 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 FIELDS = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
           "reasoning_output_tokens", "tool_calls", "submit_failures")
 _SUBMIT = re.compile(r"(?:literary-context-cli\.mjs\s+submit|d-chunk-cli\.mjs\s+save)\b")
+_C_SUBMIT = re.compile(r"literary-context-cli\.mjs\s+submit\b")
+
+
+def submit_attempts(log_file) -> int | None:
+    """Count official C submit invocations in one completed adapter log; unknown log formats stay unknown."""
+    try:
+        text = Path(log_file).read_text("utf-8", errors="replace")
+    except OSError:
+        return None
+
+    recognized = False
+    attempts: set[str] = set()
+    for line_no, line in enumerate(text.splitlines()):
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        if kind in ("thread.started", "turn.started", "turn.completed", "turn.failed"):
+            recognized = True
+        elif kind == "result" and isinstance(event.get("session_id"), str):
+            recognized = True
+        elif kind in ("assistant", "user", "system") and isinstance(event.get("message"), dict):
+            recognized = True
+            blocks = event["message"].get("content")
+            for block in blocks if isinstance(blocks, list) else []:
+                if not isinstance(block, dict) or block.get("type") != "tool_use" or block.get("name") != "Bash":
+                    continue
+                command = block.get("input", {}).get("command") if isinstance(block.get("input"), dict) else None
+                identity = block.get("id")
+                if isinstance(command, str) and _C_SUBMIT.search(command):
+                    attempts.add(identity if isinstance(identity, str) and identity else f"claude:{line_no}")
+        elif kind in ("item.started", "item.completed") and isinstance(event.get("item"), dict):
+            recognized = True
+            item = event["item"]
+            if item.get("type") != "command_execution":
+                continue
+            command, identity = item.get("command"), item.get("id")
+            if isinstance(command, str) and _C_SUBMIT.search(command):
+                attempts.add(identity if isinstance(identity, str) and identity else f"codex:{line_no}")
+        elif kind == "tool_use":
+            recognized = True
+            part = event.get("part") if isinstance(event.get("part"), dict) else {}
+            state = part.get("state") if isinstance(part.get("state"), dict) else {}
+            command = (state.get("input", {}).get("command")
+                       if isinstance(state.get("input"), dict) else None)
+            identity = part.get("callID") or part.get("id")
+            if isinstance(command, str) and _C_SUBMIT.search(command):
+                attempts.add(identity if isinstance(identity, str) and identity else f"opencode:{line_no}")
+        elif kind == "step_start" or kind in ("text", "reasoning", "error"):
+            recognized = True
+        elif kind == "step_finish":
+            part = event.get("part") if isinstance(event.get("part"), dict) else {}
+            if (not recognized and not isinstance(part.get("tokens"), dict)
+                    and not isinstance(part.get("id"), str)
+                    and not (isinstance(event.get("sessionID"), str)
+                             and isinstance(part.get("messageID"), str))):
+                continue
+            recognized = True
+
+    return len(attempts) if recognized else None
 
 
 def _count(v):

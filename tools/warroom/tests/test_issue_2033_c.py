@@ -8,7 +8,7 @@ from pathlib import Path
 from tests.fakes import HEAD1, HEAD2, World
 from warroom.github import GhError
 from warroom import control, literary, prompts, stage2
-from warroom.supervisor import RecoveryBlocked
+from warroom.supervisor import RecoveryBlocked, Supervisor
 
 CP_NAME = "001_01_c_deepseek.checkpoint.json"
 
@@ -37,6 +37,17 @@ class CWorld(World):
 
     def finish_last(self):
         self.adapter.finish(self.adapter.launches[-1]["pid"])
+
+    def write_codex_log(self, final="Work is complete, but I did not invoke submit.", commands=(), session="ses_c"):
+        events = [{"sessionID": session}, {"type": "thread.started", "thread_id": session}]
+        for i, command in enumerate(commands):
+            events.append({"type": "item.completed", "item": {"id": f"cmd-{i}",
+                           "type": "command_execution", "command": command, "exit_code": 0}})
+        events.extend([{"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
+                       "text": final}}, {"type": "turn.completed", "usage": {"input_tokens": 1,
+                       "cached_input_tokens": 0, "output_tokens": 1, "reasoning_output_tokens": 0}}])
+        Path(self.row("deepseek", "c")["log_file"]).write_text(
+            "".join(json.dumps(event) + "\n" for event in events), encoding="utf-8")
 
     def kinds(self):
         return [r["kind"] for r in reversed(self.store.runs(self.row("deepseek", "c")["id"]))]
@@ -299,38 +310,180 @@ class SerialChunks(unittest.TestCase):
         self.assertFalse(diagnostic.exists())
         self.assertFalse(any(call[2] == "submit" for call in w.runner.literary.calls))
 
-    def test_unsubmitted_chunk_reports_the_real_stop_reason_and_blocks_unchanged_retry(self):
+    def test_normal_no_submission_gets_one_fresh_session_and_then_fails_closed(self):
         w = self.w
         w.start("single", "deepseek", "c")
-        w.adapter.plan.extend([{"code": 0, "session": "ses_c"}, {"code": 0, "session": "ses_c"}])
+        w.adapter.plan.extend([{"code": 0, "session": "ses_c"}, {"code": 0, "session": "ses_fresh"}])
         w.tick()
-        chunk_no = w.active()["chunk_no"]
+        active_before = w.active()
+        view_before = literary.read_view(w.wt(), active_before)
+        initial_chunks = sum(1 for call in w.runner.literary.calls if call[2] == "chunk")
         w.finish_last()
+        w.write_codex_log(commands=("node scripts/relation/literary-context-cli.mjs chunk --sense-ids s0000",))
         w.tick()
         self.assertEqual((w.row("deepseek", "c")["state"], len(w.adapter.launches)), ("PRODUCING", 2))
-        w.finish_last()
-        w.tick()
+        recovery = w.adapter.launches[-1]
+        self.assertEqual((recovery["kind"], recovery["model"]),
+                         ("start", w.store.runs(w.row("deepseek", "c")["id"])[1]["model"]))
+        self.assertEqual(w.active()["chunk_no"], active_before["chunk_no"])
+        self.assertEqual(w.active()["view_sha256"], active_before["view_sha256"])
+        for sense_id in active_before["sense_ids"]:
+            self.assertIn(sense_id, recovery["prompt"])
+        self.assertIn("기존 active view", recovery["prompt"])
+        self.assertIn("공식 추가 조회", recovery["prompt"])
+        self.assertEqual(sum(1 for call in w.runner.literary.calls if call[2] == "chunk"), initial_chunks)
+        self.assertEqual(literary.read_view(w.wt(), active_before), view_before)
+        recovery_key = literary.no_submission_recovery_key(w.row("deepseek", "c")["id"], active_before["chunk_id"])
+        marker = json.loads(w.store.get(recovery_key))
+        self.assertEqual((marker["status"], marker["pending_sense_ids"]), ("used", active_before["sense_ids"]))
 
+        w.finish_last()
+        w.write_codex_log(session="ses_fresh")
+        w.tick()
         b = w.row("deepseek", "c")
         self.assertEqual(b["state"], "ERROR")
-        self.assertIn("[retry_budget_exhausted,diagnostic_unavailable_or_invalid]", b["error"])
+        self.assertIn("no_submission", b["error"])
+        self.assertIn("no_submission_recovery_exhausted", b["error"])
         self.assertIn("pending=12/12", b["error"])
-        self.assertEqual(w.store.get(w.sup._auto_retry_key(b, f"c:{chunk_no}")), "1")
         self.assertIsNone(w.store.get(literary.resubmit_key(b["id"])))
-        self.assertFalse(any(call[2] == "submit" for call in w.runner.literary.calls))
-        self.assertEqual(literary.technical_skip_reason_code(w.wt(), b, chunk_no), "current_evidence_unavailable")
-        self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
-
-        # The persisted guard and one-shot budget survive a Supervisor restart.
-        w.sup = w.make_sup()
-        status = control.line_status(w.store, "deepseek", "c")
-        self.assertFalse(status["can_retry"])
-        self.assertIn("same_failure", status["retry_blocked_reason"])
-        self.assertFalse(control.retry(w.store, "deepseek", "c"))
         self.assertEqual(len(w.adapter.launches), 2)
-        self.assertEqual(w.store.get(w.sup._auto_retry_key(b, f"c:{chunk_no}")), "1")
-        self.assertTrue(any("same_failure" in event["msg"] for event in w.store.recent_events(20)
-                            if event["batch_id"] == b["id"]))
+        self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
+        w.sup = w.make_sup()
+        self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
+        self.assertFalse(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), 2)
+
+    def test_recovery_launch_intent_blocks_duplicate_after_crash_before_run_registration(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.adapter.plan.append({"code": 0, "session": "ses_c"})
+        w.tick()
+        active = w.active()
+        w.finish_last()
+        w.write_codex_log()
+        batch_id = w.row("deepseek", "c")["id"]
+        recovery_key = literary.no_submission_recovery_key(batch_id, active["chunk_id"])
+
+        original_update = w.store.update
+
+        class SimulatedSupervisorCrash(BaseException):
+            pass
+
+        def crash_after_process_start(bid, **fields):
+            if bid == batch_id and fields.get("run_kind") == "c_chunk_recovery" and fields.get("pid") is not None:
+                raise SimulatedSupervisorCrash()
+            return original_update(bid, **fields)
+
+        w.store.update = crash_after_process_start
+        with self.assertRaises(SimulatedSupervisorCrash):
+            w.tick()
+        w.store.update = original_update
+
+        self.assertEqual(len(w.adapter.launches), 2)
+        marker = json.loads(w.store.get(recovery_key))
+        recovery_launch = w.adapter.launches[-1]
+        self.assertEqual(marker["launch_state"], "starting")
+        self.assertNotEqual(marker["launch_log_file"], str(w.store.runs(batch_id)[0]["log_file"]))
+        self.assertEqual(len(w.store.runs(batch_id)), 1)   # only the source run was durably registered
+        self.assertTrue(w.adapter.alive(recovery_launch["pid"]))   # detached recovery process survived the crash
+
+        # A restarted Supervisor sees the stale source-run row, then must fail closed on owner retry.
+        w.sup = Supervisor(w.paths, w.cfg, w.store, w.runner, w.adapter, w.gh, w.git,
+                           {"GH_CONFIG_DIR": "x"}, clock=lambda: w.now)
+        w.tick()
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(w.row("deepseek", "c")["state"], "ERROR")
+        w.sup._relaunch_c(w.store.batch(batch_id))
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertIn("시작 여부를 확인할 수 없어 중복 실행을 차단", w.row("deepseek", "c")["error"])
+
+    def test_fresh_no_submission_recovery_completes_active_chunk_without_repeating_view_query(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.adapter.plan.append({"code": 0, "session": "ses_c"})
+        w.ai(session="ses_fresh")
+        w.tick()
+        active = w.active()
+        chunks_before = sum(1 for call in w.runner.literary.calls if call[2] == "chunk")
+        w.finish_last()
+        w.write_codex_log()
+        w.tick()
+        self.assertEqual(w.adapter.launches[-1]["kind"], "start")
+        self.assertEqual(w.active()["chunk_no"], active["chunk_no"])
+        self.assertEqual(sum(1 for call in w.runner.literary.calls if call[2] == "chunk"), chunks_before)
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.adapter.launches[-1]["kind"], "start")
+        self.assertEqual(w.active()["chunk_no"], active["chunk_no"] + 1)
+        self.assertIsNone(w.store.get(literary.no_submission_recovery_key(
+            w.row("deepseek", "c")["id"], active["chunk_id"])))
+
+    def test_stop_report_and_unknown_submit_evidence_fail_closed_with_distinct_reasons(self):
+        cases = [
+            ("reported stop", {"final": "SEARCH_FAILED: source search could not complete."}, "producer_reported_stop", None),
+            ("unknown log", None, "submission_status_unknown", None),
+            ("submit called without artifacts", {"commands": (
+                "node scripts/relation/literary-context-cli.mjs submit --file x.json",)},
+             "submit_attempt_without_artifacts", None),
+            ("unsearchable view", {"final": "The existing view is UNSEARCHABLE; stopping and reporting."},
+             "unsearchable", "UNSEARCHABLE"),
+        ]
+        for label, log, expected, view_status in cases:
+            with self.subTest(label=label):
+                w = CWorld()
+                self.addCleanup(w.tmp.cleanup)
+                self.w = w
+                if view_status:
+                    w.runner.literary.chunk_status["s0000"] = view_status
+                w.start("single", "deepseek", "c")
+                w.adapter.plan.append({"code": 0, "session": "ses_c"})
+                w.tick()
+                w.finish_last()
+                if log is not None:
+                    w.write_codex_log(**log)
+                w.tick()
+                b = w.row("deepseek", "c")
+                self.assertEqual(b["state"], "ERROR")
+                self.assertIn(expected, b["error"])
+                self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_legacy_no_submission_guard_allows_one_owner_retry_without_resetting_budget(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.adapter.plan.extend([{"code": 0, "session": "ses_c"}, {"code": 0, "session": "ses_fresh"}])
+        w.tick()
+        active = w.active()
+        w.finish_last()
+        w.write_codex_log()
+        recovery_key = literary.no_submission_recovery_key(w.row("deepseek", "c")["id"], active["chunk_id"])
+        w.store.set(recovery_key, json.dumps({"status": "used"}))  # emulate the pre-policy exhausted error path
+        w.tick()
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")
+
+        # Reconstruct the pre-policy guard and its already-spent 1/1 budget, keeping the original run log intact.
+        w.store.delete(recovery_key)
+        guard = json.loads(w.store.get(literary.retry_guard_key(b["id"])))
+        guard.pop("recovery_policy_version", None)
+        guard["reason_codes"] = ["retry_budget_exhausted", "diagnostic_unavailable_or_invalid"]
+        w.store.set(literary.retry_guard_key(b["id"]), json.dumps(guard, sort_keys=True))
+        retry_key = w.sup._auto_retry_key(b, f"c:{active['chunk_no']}")
+        w.store.set(retry_key, "1")
+        status = control.line_status(w.store, "deepseek", "c")
+        self.assertTrue(status["can_retry"], status.get("retry_blocked_reason"))
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+
+        recovery = w.adapter.launches[-1]
+        self.assertEqual(recovery["kind"], "start")
+        self.assertEqual(w.active()["chunk_no"], active["chunk_no"])
+        self.assertEqual(w.store.get(retry_key), "1")
+        marker = json.loads(w.store.get(literary.no_submission_recovery_key(b["id"], active["chunk_id"])))
+        self.assertEqual(marker["status"], "used")
+        self.assertEqual(marker["source_run_id"], w.store.runs(b["id"])[1]["id"])
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), 2)
 
     def test_changed_checkpoint_progress_unlocks_retry_and_keeps_completed_senses_out_of_resume(self):
         w = self.w

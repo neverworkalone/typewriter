@@ -10,10 +10,12 @@ import time
 from datetime import datetime, time as wall_time, timedelta
 from pathlib import Path
 
+from .adapters import final_answer
 from . import literary, stage2
 from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
                      stage2_problem, stage3_models, stage3_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
+from .usage import submit_attempts
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
                "COMPLETE", "PAUSED", "ERROR", "CLEARING")
@@ -171,13 +173,61 @@ def _c_retry_block_reason(store: Store, b) -> str | None:
         guard = None
     if not isinstance(guard, dict):
         return "[same_failure; checkpoint_or_chunk_mismatch] evidence를 확인할 수 없습니다. 보존했습니다."
-    if not literary.retry_guard_unchanged_fast(Path(b["worktree"]), b, guard,
-                                                session_available=bool(b["session_id"])):
+    unchanged = literary.retry_guard_unchanged_fast(Path(b["worktree"]), b, guard,
+                                                     session_available=bool(b["session_id"]))
+    if not unchanged:
+        return None
+    if _legacy_c_no_submission_retry_available(store, b, guard):
         return None
     codes = guard.get("reason_codes")
     code_text = ",".join(str(code) for code in codes) if isinstance(codes, list) and codes else "unknown_recovery_block"
     return (f"[same_failure; {code_text}] 체크포인트·제출·진단 evidence가 그대로여서 Retry를 막았습니다. "
             "증거가 바뀐 뒤 재시도하세요.")
+
+
+def _legacy_c_no_submission_retry_available(store: Store, b, guard: dict) -> bool:
+    """One-time bridge for a pre-policy guard, backed by the exact successful no-submit run."""
+    if not isinstance(b, dict):
+        b = dict(b)
+    if guard.get("recovery_policy_version") is not None:
+        return False
+    codes = guard.get("reason_codes")
+    if not isinstance(codes, list) or not any(code in codes for code in
+                                               ("diagnostic_unavailable_or_invalid", "no_submission")):
+        return False
+    baseline = guard.get("baseline")
+    if (not isinstance(baseline, dict) or baseline.get("report_valid") is not True
+            or baseline.get("repair") is not False
+            or not isinstance(baseline.get("pending_sense_ids"), list)
+            or not baseline["pending_sense_ids"]):
+        return False
+    try:
+        rec = literary.read_active(Path(b["worktree"]), b)
+        if (rec is None or rec.get("chunk_id") != baseline.get("chunk_id")
+                or rec.get("chunk_no") != baseline.get("chunk_no")
+                or rec.get("view_sha256") != baseline.get("view_sha256")):
+            return False
+        if store.get(literary.no_submission_recovery_key(b["id"], rec["chunk_id"])) is not None:
+            return False
+        runs = store.runs(b["id"])
+        run = dict(runs[0]) if runs else None
+        if not run \
+                or run.get("kind") not in ("c_chunk_new", "c_chunk_resume") \
+                or run.get("exit_status") != "0" or run.get("session_id") != b.get("session_id"):
+            return False
+        run_start = json.loads(store.get(literary.run_start_key(b["id"])) or "null")
+        if (not isinstance(run_start, dict) or run_start.get("chunk_no") != rec["chunk_no"]
+                or run_start.get("retry_state", {}).get("pending_sense_ids") != baseline["pending_sense_ids"]):
+            return False
+        log_file = run.get("log_file")
+        outcome = literary.no_submission_result(
+            Path(b["worktree"]), b, rec, run, run_start, baseline["pending_sense_ids"],
+            final_answer=final_answer(Path(log_file)) if log_file else None,
+            submit_call_count=submit_attempts(Path(log_file)) if log_file else None,
+        )
+        return outcome.get("status") == "no_submission"
+    except (OSError, ValueError, KeyError, TypeError, literary.LiteraryError):
+        return False
 
 
 def retry_maintainer(store: Store, issue_number: int | None = None, batch_id: int | None = None) -> bool:
