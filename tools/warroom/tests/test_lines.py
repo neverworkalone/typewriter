@@ -3,16 +3,19 @@ import sqlite3
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from tests.fake_runner import ScriptedRunner
 from tests.fakes import HEAD1, HEAD2, World
 from tests.test_supervisor import review
-from warroom import batches, control
+from warroom import batches, control, views
 from warroom.config import DEFAULTS, registry, registry_problems
 from warroom.logtail import INITIAL_BYTES, LogTail, redact
 from warroom.store import SCHEMA_VERSION, DuplicateBatch, LineBusy, Store
 from warroom.supervisor import DuplicateClaim
+from warroom.timing import elapsed_seconds
+from warroom.web import api
 
 PRODUCERS = {
     "deepseek": {"adapter": "opencode", "models": {"free": "p/free-x-free", "go": "p/go"}},
@@ -758,6 +761,77 @@ class TailTests(unittest.TestCase):
                     'Authorization: Bearer ' + "d" * 30, '"apiKey": "' + "e" * 20 + '"']:
             self.assertNotIn(raw.split()[-1].strip('"'), redact(f"x {raw} y"))
         self.assertEqual(redact("plain text"), "plain text")
+
+
+class ElapsedDisplay(unittest.TestCase):
+    NOW = 700.0
+    INTERVALS = [(100.0, 300.0), (200.0, 400.0), (350.0, 500.0), (450.0, None)]
+
+    def test_union_cases(self):
+        def runs(intervals):
+            return [{"started_at": start, "ended_at": end} for start, end in intervals]
+
+        cases = [
+            ("four fully overlapping runs", [(0, 300)] * 4, 300),
+            ("partially overlapping runs", [(0, 240), (120, 360), (300, 420)], 420),
+            ("sequential runs omit the pause", [(0, 100), (500, 600)], 200),
+            ("completed and active runs", [(100, 200), (150, None)], 150),
+            ("empty and reversed intervals", [], 0),
+            ("reversed interval contributes zero", [(100, 50), (0, 10)], 10),
+        ]
+        for name, intervals, want in cases:
+            with self.subTest(name=name):
+                self.assertEqual(elapsed_seconds(runs(intervals), now=self.NOW), want)
+
+    def _set_intervals(self, store, batch_id, intervals):
+        for index, (started_at, ended_at) in enumerate(intervals):
+            run_id = store.add_run(batch_id, "primary", f"s{index}", None,
+                                   f"run-{batch_id}-{index}.log", f"run-{batch_id}-{index}.exit")
+            with store._conn() as c:
+                c.execute("UPDATE runs SET started_at=?, ended_at=? WHERE id=?",
+                          (started_at, ended_at, run_id))
+
+    def test_board_web_and_detail_share_batch_elapsed(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.cfg["producers"] = {
+            "claude": {"adapter": "claude", "model": "claude-test", "effort": "high"},
+            "codex": {"adapter": "codex", "model": "codex-test", "effort": "high"},
+        }
+        batch_id = w.store.create_batch(method="s2", producer="claude", shard="001", batch="01-01",
+                                        branch="s2-claude-001-01-01", worktree=str(w.paths.worktrees / "s2"))
+        w.store.update(batch_id, state="PRODUCING")
+        self._set_intervals(w.store, batch_id, self.INTERVALS)
+
+        with mock.patch("warroom.control.time.time", return_value=self.NOW):
+            status = control.line_status(w.store, "claude", "s2")
+            board_card = next(line for line in api.board(w.store, w.cfg)["lines"]
+                              if line["model"] == "claude" and line["method"] == "s2")
+            web_detail = api.line_detail(w.store, w.cfg, w.paths, "claude", "s2")["line"]
+            detail_usage = views.usage_text(w.store.runs(batch_id), now=self.NOW)
+
+        expected_text = views.fmt_elapsed(600)
+        self.assertEqual(status["elapsed"], 600)
+        self.assertIn(f"경과 {expected_text}", views.card_text(status))
+        self.assertEqual(board_card["elapsed_text"], expected_text)
+        self.assertEqual(web_detail["elapsed_text"], expected_text)
+        self.assertIn(f"경과 {expected_text}", detail_usage)
+        self.assertEqual(board_card["batch_id"], batch_id)
+        self.assertEqual(web_detail["batch_id"], batch_id)
+
+    def test_maintainer_card_uses_the_same_elapsed_union(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.store.ensure_maintenance(101)
+        batch_id = w.store.claim_maintenance(101, "deepseek", "maint-101", str(w.paths.worktrees / "maint"))
+        self.assertIsNotNone(batch_id)
+        w.store.update(batch_id, state="PRODUCING")
+        self._set_intervals(w.store, batch_id, self.INTERVALS)
+
+        with mock.patch("warroom.control.time.time", return_value=self.NOW):
+            card = control.maintainer_card(w.store, w.cfg)
+
+        self.assertEqual(card["elapsed"], 600)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ from . import literary, stage2
 from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
                      stage2_problem, stage3_models, stage3_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
+from .timing import elapsed_seconds
 from .usage import submit_attempts
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
@@ -324,9 +325,9 @@ def line_status(store: Store, model: str, method: str) -> dict:
         elif b["records_done"] is not None and b["records_total"]:
             out["progress"] = f"{b['records_done']}/{b['records_total']}"  # recorded only
         runs = store.runs(b["id"])
-        if runs:   # real execution time: the sum of recorded runs, an unfinished one counted up to now
+        if runs:   # actual batch elapsed time: the union of recorded run intervals
             now = time.time()
-            out["elapsed"] = sum(max(0.0, (r["ended_at"] or now) - r["started_at"]) for r in runs)
+            out["elapsed"] = elapsed_seconds(runs, now=now)
         ev = store.last_event(b["id"])
         if ev:
             out["activity"] = (ev["ts"], ev["msg"])
@@ -493,10 +494,10 @@ def maintainer_card(store: Store, cfg: dict) -> dict:
     out["issue"] = head + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
     rows = [m for m in store.maintenance_rows() if f"urgent issue #{m['issue_number']} · " in items[0][0]]
     b = store.batch(rows[0]["batch_id"]) if rows and rows[0]["batch_id"] else None
-    if b is not None:   # the same real execution time as every other card: recorded runs, an unfinished one up to now
+    if b is not None:   # the same actual elapsed time as every other card
         runs, now = store.runs(b["id"]), time.time()
         if runs:
-            out["elapsed"] = sum(max(0.0, (r["ended_at"] or now) - r["started_at"]) for r in runs)
+            out["elapsed"] = elapsed_seconds(runs, now=now)
     if out["state"] == "ERROR" or not sep:
         out["detail"] = rest
     elif b is not None and b["pr_number"] and b["state"] in ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING"):
