@@ -8,6 +8,7 @@ import unicodedata
 from . import control, stage2
 from .config import TIERED_ADAPTERS, adapter_label, ordered_models, registry, stage2_models, stage3_models
 from .store import STAGE2_METHOD, STAGE3_METHOD
+from .timing import elapsed_seconds
 
 
 def _hhmm(ts) -> str:
@@ -365,15 +366,17 @@ def _tok(n) -> str:
 
 
 def usage_text(runs, pricing: dict | None = None, now: float | None = None) -> str:
-    """Cumulative usage of ONE batch's runs (resumes included). Unmeasured data is shown as unknown / incomplete,
-    never as 0; the cost needs the model's configured `pricing` and is otherwise unknown."""
+    """Cumulative usage of ONE batch's runs (resumes included); elapsed is their interval union.
+
+    Unmeasured usage is shown as unknown / incomplete, never as 0; the cost needs configured `pricing`.
+    """
     import time as _t
     from .usage import estimate_cost, sum_usage
     if not runs:
         return ""
     now = _t.time() if now is None else now
     total = sum_usage(runs)
-    wall = sum(max(0.0, (r["ended_at"] if r["ended_at"] is not None else now) - r["started_at"]) for r in runs)
+    wall = elapsed_seconds(runs, now=now)
     cost = estimate_cost(total, pricing)
     lines = [f"사용량(배치 누적, run {total['runs']}개): 경과 {fmt_elapsed(wall)}   "
              f"input {_tok(total['input_tokens'])} (cached {_tok(total['cached_input_tokens'])}, "
