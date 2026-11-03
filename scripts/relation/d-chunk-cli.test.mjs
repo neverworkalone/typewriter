@@ -1476,3 +1476,57 @@ withWorld('legacy D scratch layout blocks prepare and stays byte-for-byte untouc
   for (const [name, file] of Object.entries(legacy)) assert.equal(await readFile(file, 'utf8'), `legacy ${name}\n`);
   await assert.rejects(searchActive({ ref: 's1', databasePath: world.options.databasePath, root: world.root }), /legacy D scratch files are present/u);
 });
+
+// Two actives in one batch: parallel D tasks address their chunk explicitly (#3074); no chunk keeps the single-active contract.
+async function prepareTwoActives(world) {
+  const canonical = canonicalRows();
+  canonical[25].senses[0].pos = 'verb'; // keep one chunk-2 sense visible to the AI instead of AUTO_COMPLETE
+  await writeFile(world.options.canonicalPath, `${canonical.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  assert.equal((await prepareChunk({ ...world.options, chunkNumber: 1 })).status, 'READY');
+  assert.equal((await prepareChunk({ ...world.options, chunkNumber: 2 })).status, 'READY');
+}
+
+withWorld('explicit --chunk searches and saves one of several actives, in any order', async (world) => {
+  await prepareTwoActives(world);
+  const second = await meta(world, 2);
+  const sense = second.senses.find((item) => !item.auto);
+  const common = { databasePath: world.options.databasePath, root: world.root };
+  await assert.rejects(searchActive({ ref: 's1', ...common }), /more than one active D chunk/u, 'no chunk number is still ambiguous');
+  await assert.rejects(searchBatchActive({ requests: [{ sense: sense.ref }], ...common }), /more than one active D chunk/u);
+  await assert.rejects(searchActive({ ref: sense.ref, chunkNumber: 3, ...common }), /no active D chunk 003/u);
+
+  await searchActive({ ref: sense.ref, forms: [canonicalRows()[25].lemma], chunkNumber: 2, ...common });
+  const searches = (await readFile(chunkPath(world, 'searches', 2), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.ok(searches.every((entry) => entry.chunk_no === 2 && entry.view_sha256 === second.view_sha256));
+
+  await writeFile(chunkPath(world, 'decisions', 2), `${sense.ref} Z\n`);
+  await assert.rejects(saveActive({ inputPath: chunkPath(world, 'decisions', 2), chunkNumber: 1, root: world.root }),
+    /decision file for active chunk 001/u);
+  const saved = await saveActive({ inputPath: chunkPath(world, 'decisions', 2), chunkNumber: 2, root: world.root });
+  assert.equal(saved.chunk_no, 2, 'chunk 002 is saved before chunk 001 exists');
+  assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
+  assert.equal(existsSync(chunkPath(world, 'active', 1)), true, 'chunk 001 stays active and untouched');
+});
+
+withWorld('explicit --chunk ignores other chunks\' normal .tmp files but not its own, a legacy layout, or a damaged name', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const common = { ref: 's1', chunkNumber: 1, databasePath: world.options.databasePath, root: world.root };
+  const other = [`${chunkPath(world, 'active', 2)}.tmp`, `${chunkPath(world, 'view', 2)}.tmp`];
+  for (const file of other) await writeFile(file, 'another task is publishing\n');
+  assert.notEqual((await searchActive(common)).result.status, undefined, 'another chunk\'s in-flight publish does not fail this command');
+
+  await writeFile(`${chunkPath(world, 'active', 1)}.tmp`, 'unpublished own file\n');
+  await assert.rejects(searchActive(common), /active D metadata filename is invalid/u);
+  await rm(`${chunkPath(world, 'active', 1)}.tmp`);
+  await writeFile(path.join(world.directory, 'active-extra.json'), '{}\n');
+  await assert.rejects(searchActive(common), /active D metadata filename is invalid/u);
+  await rm(path.join(world.directory, 'active-extra.json'));
+  await writeFile(path.join(world.directory, 'decisions.txt'), 'legacy\n');
+  await assert.rejects(searchActive(common), /legacy D scratch files are present/u);
+});
+
+withWorld('prepare of another chunk no longer fails because a different chunk is active, yet never overwrites its own files', async (world) => {
+  await prepareTwoActives(world);
+  await assert.rejects(prepareChunk({ ...world.options, chunkNumber: 2 }), /temporary files for chunk 002 already exist/u);
+  assert.equal((await prepareChunk({ ...world.options, chunkNumber: 3 })).status, 'AUTO_COMPLETE');
+});

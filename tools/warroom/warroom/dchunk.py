@@ -187,6 +187,41 @@ def verified_prefix(worktree, b) -> tuple[int, int]:
     return done, total
 
 
+def verified_chunks(worktree, b, running=()) -> tuple[set[int], int]:
+    """(verified chunk numbers, total chunks): every present chunk-NNN.jsonl matches its Canonical records and senses
+    exactly. Unlike `verified_prefix`, gaps are allowed (chunks may be saved in any order). The `.tmp` of a chunk in
+    `running` is an owned in-flight save: it is not counted and is waited for. Any other `.tmp`, a stray or out-of-range
+    number, or an unreadable/mismatching file is an error and is preserved for the operator."""
+    n = names(b)
+    records = canonical_batch(worktree, b)
+    total = total_chunks(records)
+    folder = Path(worktree) / n.directory
+    owned = {int(k) for k in running}
+    numbers = []
+    try:
+        entries = sorted(p.name for p in folder.iterdir()) if folder.is_dir() else []
+    except OSError as e:
+        raise DChunkError(f"scratch 폴더를 읽을 수 없습니다: {e}") from e
+    for name in entries:
+        if not name.startswith("chunk-"):
+            continue
+        m = _CHUNK.fullmatch(name)
+        if name.endswith(".tmp"):
+            t = re.fullmatch(r"chunk-(\d{3})\.jsonl\.tmp", name)
+            if t and int(t.group(1)) in owned and 1 <= int(t.group(1)) <= total:
+                continue
+            raise DChunkError(f"완성되지 않은 임시 청크 파일이 남아 있습니다: {name}")
+        if not m or not 1 <= int(m.group(1)) <= total:
+            raise DChunkError(f"알 수 없거나 범위 밖의 청크 파일입니다: {name}")
+        numbers.append(int(m.group(1)))
+    for k in numbers:
+        expected = records[(k - 1) * D_CHUNK_RECORDS:k * D_CHUNK_RECORDS]
+        chunk_path = folder / f"chunk-{k:03d}.jsonl"
+        _check_chunk(chunk_path, expected)
+        _validate_technical_skip_file(folder / f"technical-skip-{k:03d}.json", chunk_path, expected, b, k)
+    return set(numbers), total
+
+
 def chunk_sha(worktree, b, number: int) -> str:
     try:
         return sha256_bytes((Path(worktree) / names(b).directory / f"chunk-{number:03d}.jsonl").read_bytes())
@@ -289,30 +324,27 @@ def prepare(runner, env, worktree, b, chunk_no: int, db_path: str, head: str) ->
     return data
 
 
-def read_active(worktree, b) -> dict | None:
-    """Read the sole exact active-NNN record; legacy or ambiguous layouts fail closed and remain untouched."""
+_LEGACY_ACTIVE = {"active-chunk.json", "active-chunk.txt", "searches.jsonl", "decisions.txt", "save-rejected.json"}
+
+
+def _active_entries(worktree, b) -> tuple[Path, list[str]]:
+    """The active-* names in the scratch folder, after the legacy-layout check."""
     folder = Path(worktree) / names(b).directory
     try:
         entries = {p.name for p in folder.iterdir()} if folder.is_dir() else set()
     except OSError as e:
         raise DChunkError(f"D scratch 폴더를 읽을 수 없습니다: {e}") from e
-    legacy = {"active-chunk.json", "active-chunk.txt", "searches.jsonl", "decisions.txt", "save-rejected.json"}
-    if entries & legacy or any(re.fullmatch(r"active-chunk\.p\d+of\d+\.txt", name) for name in entries):
+    if entries & _LEGACY_ACTIVE or any(re.fullmatch(r"active-chunk\.p\d+of\d+\.txt", name) for name in entries):
         raise DChunkError("기존 D 임시 파일 형식이 남아 있습니다. 자동 이전·삭제 없이 보존하고 수동 확인이 필요합니다.")
-    active_files = sorted(name for name in entries if name.startswith("active-"))
-    if any(not re.fullmatch(r"active-\d{3}\.json", name) for name in active_files):
-        raise DChunkError("D 활성 청크 파일명이 잘못되었습니다. 임시 파일을 보존합니다.")
-    if len(active_files) > 1:
-        raise DChunkError("D 배치에 활성 청크 메타가 둘 이상 있습니다. 임시 파일을 보존합니다.")
-    if not active_files:
-        return None
-    active_name = active_files[0]
-    active_no = int(active_name[7:10])
+    return folder, sorted(name for name in entries if name.startswith("active-"))
+
+
+def _load_active(folder: Path, name: str, b) -> dict:
+    active_no = int(name[7:10])
     if active_no < 1:
         raise DChunkError("활성 D 청크 번호가 범위를 벗어났습니다. 임시 파일을 보존합니다.")
-    path = folder / active_name
     try:
-        rec = json.loads(path.read_text("utf-8"))
+        rec = json.loads((folder / name).read_text("utf-8"))
         ok = (isinstance(rec, dict) and (rec.get("shard"), rec.get("batch"), rec.get("model")) ==
               (b["shard"], b["batch"], b["producer"]) and isinstance(rec.get("chunk_no"), int)
               and rec.get("chunk_no") == active_no
@@ -325,6 +357,39 @@ def read_active(worktree, b) -> dict | None:
     if not ok:
         raise DChunkError("활성 청크 기록이 손상되었거나 다른 배치/모델의 것입니다")
     return rec
+
+
+def read_active(worktree, b, chunk_no: int | None = None) -> dict | None:
+    """Read the active-NNN record; legacy or ambiguous layouts fail closed and remain untouched.
+
+    Without `chunk_no` it is the sole active record (several fail). With one it is exactly that chunk's record, or None;
+    other chunks' actives and their normal in-flight `.tmp` publishes are not read and do not make this one ambiguous."""
+    folder, active_files = _active_entries(worktree, b)
+    if chunk_no is not None:
+        wanted = f"active-{chunk_no:03d}.json"
+        active_files = [name for name in active_files if name == wanted or name == wanted + ".tmp"
+                        or not re.fullmatch(r"active-\d{3}\.json(?:\.tmp)?", name)]
+    if any(not re.fullmatch(r"active-\d{3}\.json", name) for name in active_files):
+        raise DChunkError("D 활성 청크 파일명이 잘못되었습니다. 임시 파일을 보존합니다.")
+    if len(active_files) > 1:
+        raise DChunkError("D 배치에 활성 청크 메타가 둘 이상 있습니다. 임시 파일을 보존합니다.")
+    if not active_files:
+        return None
+    return _load_active(folder, active_files[0], b)
+
+
+def active_chunks(worktree, b) -> dict[int, dict]:
+    """Every published active-NNN record by chunk number. A normal in-flight `active-NNN.json.tmp` is not a damaged
+    active; any other malformed name or record fails closed."""
+    folder, active_files = _active_entries(worktree, b)
+    found = {}
+    for name in active_files:
+        if re.fullmatch(r"active-\d{3}\.json\.tmp", name):
+            continue
+        if not re.fullmatch(r"active-\d{3}\.json", name):
+            raise DChunkError("D 활성 청크 파일명이 잘못되었습니다. 임시 파일을 보존합니다.")
+        found[int(name[7:10])] = _load_active(folder, name, b)
+    return found
 
 
 def read_view(worktree, b, rec: dict) -> str:
@@ -344,11 +409,10 @@ def clear_active(worktree, b, chunk_no: int) -> None:
     The active metadata is removed first. If cleanup is interrupted after that, the run baseline and verified output
     identify the saved chunk so the Supervisor can retry the remaining chunk-local cleanup before starting a new session.
     """
-    rec = read_active(worktree, b)
-    active_matches = rec is not None and rec["chunk_no"] == chunk_no
+    rec = read_active(worktree, b, chunk_no)
+    active_matches = rec is not None
     if not active_matches:
-        done, _total = verified_prefix(worktree, b)
-        if done < chunk_no:
+        if chunk_no not in verified_chunks(worktree, b)[0]:
             raise DChunkError(f"저장 검증이 끝나지 않은 D 청크 {chunk_no:03d}는 정리할 수 없습니다.")
     n = chunk_names(b, chunk_no)
     folder = Path(worktree) / n.directory
@@ -400,7 +464,7 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
                     and all(isinstance(error, str) and error for error in item["errors"]) for item in diag["failed_records"])
             and isinstance(diag.get("errors"), list) and diag["errors"] and all(isinstance(e, str) for e in diag["errors"])):
         return None
-    if has_search_failure(worktree, b):
+    if has_search_failure(worktree, b, rec["chunk_no"]):
         return None
     return diag
 
@@ -555,11 +619,11 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     n = chunk_names(b, rec["chunk_no"])
     payload = {"inputPath": str((Path(worktree) / n.decisions).resolve()),
                "root": str((Path(worktree) / SCRATCH).resolve()),
-               "canonicalRoot": str(Path(worktree).resolve())}
+               "canonicalRoot": str(Path(worktree).resolve()), "chunkNumber": rec["chunk_no"]}
     script = ("import { inspectActiveForSupervisor } from './scripts/relation/d-chunk-cli.mjs';\n"
               "let input = ''; for await (const part of process.stdin) input += part;\n"
               "const payload = JSON.parse(input);\n"
-              "const result = await inspectActiveForSupervisor({ inputPath: payload.inputPath, root: payload.root, canonicalRoot: payload.canonicalRoot });\n"
+              "const result = await inspectActiveForSupervisor({ inputPath: payload.inputPath, root: payload.root, canonicalRoot: payload.canonicalRoot, chunkNumber: payload.chunkNumber });\n"
               "process.stdout.write(JSON.stringify(result) + '\\n');")
     supervisor_root = Path(__file__).resolve().parents[3]
     result = runner.run(["node", "--input-type=module", "-e", script], cwd=supervisor_root, env=env,
@@ -573,8 +637,8 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
             or inspection.get("error_count") != diag.get("error_count")
             or failed != diag["failed_records"] or not isinstance(inspection.get("rows"), list)):
         raise DChunkError("D read-only inspection differs from the current retryable rejection")
-    active = read_active(worktree, b)
-    if active is None or active.get("chunk_no") != rec["chunk_no"]:
+    active = read_active(worktree, b, rec["chunk_no"])
+    if active is None:
         raise DChunkError("D active chunk changed during technical fallback")
     rows = inspection["rows"]
     rows_by_id = {row.get("record_id"): row for row in rows if isinstance(row, dict)}
@@ -623,8 +687,7 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     temporary_output.write_text("".join(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n"
                                     for row in output_rows), "utf-8")
     os.replace(temporary_output, output)
-    prefix, _ = verified_prefix(worktree, b)
-    if prefix < rec["chunk_no"]:
+    if rec["chunk_no"] not in verified_chunks(worktree, b)[0]:
         raise DChunkError("D technical fallback output did not validate as the next Candidate chunk")
     return {"status": "SAVED_WITH_TECHNICAL_SKIPS", "chunk_no": rec["chunk_no"], "records": len(rows),
             "technical_skipped_records": len(skips),
@@ -633,9 +696,9 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
                                  for item in skips]}
 
 
-def has_search_failure(worktree, b) -> bool:
+def has_search_failure(worktree, b, chunk_no: int | None = None) -> bool:
     """Fail closed when the active D chunk's accumulated search evidence contains SEARCH_FAILED or is unreadable."""
-    rec = read_active(worktree, b)
+    rec = read_active(worktree, b, chunk_no)
     if rec is None:
         return True
     n = chunk_names(b, rec["chunk_no"])
@@ -667,12 +730,12 @@ def delivery(card_bytes: int, view: str) -> str:
     return "inline" if card_bytes + len(view.encode("utf-8")) <= INLINE_MAX_PROMPT_BYTES else "pages"
 
 
-def write_pages(worktree, b, view: str) -> list[str]:
+def write_pages(worktree, b, view: str, chunk_no: int | None = None) -> list[str]:
     """Fallback pages (Stage 2's 36,000 byte / 28,000 char pages); joining them equals the view exactly."""
     pages = stage2.chunk_pages(view)
     if "".join(pages) != view:
         raise DChunkError("page 분할 결과가 원본 view와 일치하지 않습니다")
-    rec = read_active(worktree, b)
+    rec = read_active(worktree, b, chunk_no)
     if rec is None:
         raise DChunkError("페이지 분할 전에 활성 D 청크를 확인할 수 없습니다")
     return stage2.write_pages(worktree, chunk_names(b, rec["chunk_no"]).view, pages)
