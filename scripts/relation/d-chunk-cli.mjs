@@ -55,6 +55,16 @@ function fail(message) {
   throw new Error(message);
 }
 
+function resolveInsideRoot(root, value, what) {
+  const absoluteRoot = path.resolve(root);
+  const resolved = path.resolve(absoluteRoot, value);
+  const relative = path.relative(absoluteRoot, resolved);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    fail(`${what} must be inside its explicit data root`);
+  }
+  return resolved;
+}
+
 const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 const chunkFile = (number) => `chunk-${String(number).padStart(3, '0')}.jsonl`;
 
@@ -1059,7 +1069,8 @@ function failedRecordsForErrors(allErrors, meta, records) {
     failed_sense_ids: [...item.failed_sense_ids], errors: item.errors }));
 }
 
-async function saveActiveInternal({ inputPath, root, readOnly = false }) {
+async function saveActiveInternal({ inputPath, root, canonicalRoot, readOnly = false,
+  requireCanonicalLemmaBinding = false }) {
   const { directory, meta, files } = await findActive(root);
   if (path.resolve(inputPath) !== path.resolve(files.decisions))
     fail(`save input must be the decision file for active chunk ${String(meta.chunk_no).padStart(3, '0')}; no other chunk file is read`);
@@ -1068,14 +1079,19 @@ async function saveActiveInternal({ inputPath, root, readOnly = false }) {
   for (let number = 1; number < meta.chunk_no; number += 1) {
     if (!existsSync(path.join(directory, chunkFile(number)))) fail(`${chunkFile(number)} is missing; chunks are saved in order`);
   }
-  const all = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
+  const canonicalPath = canonicalRoot === undefined
+    ? path.resolve(meta.canonical) : resolveInsideRoot(canonicalRoot, meta.canonical, 'active Canonical path');
+  const all = await loadBatchRecords(canonicalPath, meta.shard, meta.batch);
   const records = chunkRecords(all, meta.chunk_no);
   if (JSON.stringify(records.map((record) => [record.id, record.senses.map((sense) => sense.id)]))
     !== JSON.stringify(meta.records.map((record) => [record.record_id, record.sense_ids]))) {
     fail('the Canonical records of this chunk changed since prepare');
   }
+  if (requireCanonicalLemmaBinding && records.some((record, index) => record.lemma !== meta.records[index]?.lemma)) {
+    fail('the Canonical lemmas of this chunk changed since prepare');
+  }
   const { decisions, errors: parseErrors } = parseDecisions(await readFile(inputPath, 'utf8'));
-  const lemmaForms = await loadCanonicalLemmaForms();
+  const lemmaForms = await loadCanonicalLemmaForms(canonicalRoot);
   const entries = await readEntries(directory, meta);
   const { errors, rows, hitBearingZ, removedCandidates, failedEvidence } = checkDecisions({ meta, records, entries, decisions, lemmaForms });
   const all_errors = [...parseErrors, ...errors];
@@ -1098,7 +1114,7 @@ async function saveActiveInternal({ inputPath, root, readOnly = false }) {
     };
     if (readOnly) return { status: 'REJECTED', repair_scope: repairScope, rows, failed_records: failedRecords,
       hit_bearing_z: hitBearingZ, search_failed: searchFailed, decisions_sha256: rejection.decisions_sha256,
-      searches_sha256: rejection.searches_sha256, error_count: rejection.error_count };
+      searches_sha256: rejection.searches_sha256, error_count: rejection.error_count, rejection };
     // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
     // rejection reasons, never the view or search contexts. Decisions over intact evidence are locally repairable.
     await writeAtomic(files.rejected, JSON.stringify(rejection));
@@ -1112,13 +1128,50 @@ async function saveActiveInternal({ inputPath, root, readOnly = false }) {
     removed_candidates: removedCandidates };
 }
 
-export async function saveActive({ inputPath, root }) {
-  return saveActiveInternal({ inputPath, root });
+export async function saveActive({ inputPath, root, canonicalRoot }) {
+  return saveActiveInternal({ inputPath, root, canonicalRoot, requireCanonicalLemmaBinding: true });
 }
 
 /** Read-only validation for the War Room Supervisor's own fallback writer. This API cannot save a chunk or a skip. */
-export async function inspectActiveForSupervisor({ inputPath, root }) {
-  return saveActiveInternal({ inputPath, root, readOnly: true });
+export async function inspectActiveForSupervisor({ inputPath, root, canonicalRoot }) {
+  return saveActiveInternal({ inputPath, root, canonicalRoot, readOnly: true, requireCanonicalLemmaBinding: true });
+}
+
+/**
+ * A compact, read-only save inspection for the Supervisor. It binds the current active chunk and Canonical lemmas but
+ * returns only hashes and IDs, never candidate text, corpus contexts, or raw validation messages.
+ */
+export async function inspectRejectionForSupervisor({ inputPath, root, canonicalRoot }) {
+  const result = await saveActiveInternal({ inputPath, root, canonicalRoot, readOnly: true,
+    requireCanonicalLemmaBinding: true });
+  if (result.status !== 'REJECTED') {
+    return { status: result.status, ...(result.chunk_no === undefined ? {} : { chunk_no: result.chunk_no }) };
+  }
+  const rejection = result.rejection;
+  const errors = rejection.errors;
+  const failedRecords = rejection.failed_records;
+  return {
+    status: 'REJECTED',
+    diagnostic: rejection.diagnostic,
+    repair_scope: rejection.repair_scope,
+    chunk_no: rejection.chunk_no,
+    view_sha256: rejection.view_sha256,
+    git_head: rejection.git_head,
+    senses: rejection.senses,
+    decisions_sha256: rejection.decisions_sha256,
+    searches_sha256: rejection.searches_sha256,
+    errors_sha256: sha256(JSON.stringify(errors)),
+    failed_records_sha256: sha256(JSON.stringify(failedRecords)),
+    search_failed: result.search_failed,
+    errors_complete: Array.isArray(errors) && errors.length === rejection.error_count
+      && errors.every((error) => typeof error === 'string' && error.length < MAX_REJECTED_ERROR_CHARS)
+      && Array.isArray(failedRecords) && failedRecords.length > 0 && failedRecords.every((item) =>
+        typeof item.record_id === 'string' && Array.isArray(item.failed_sense_ids) && item.failed_sense_ids.length > 0
+        && item.failed_sense_ids.every((senseId) => typeof senseId === 'string')
+        && Array.isArray(item.errors) && item.errors.length > 0
+        && item.errors.every((error) => typeof error === 'string' && error.length < MAX_REJECTED_ERROR_CHARS)),
+    error_count: rejection.error_count,
+  };
 }
 
 // ---- command line -----------------------------------------------------------------------------------------------------
@@ -1158,10 +1211,12 @@ async function main(argv) {
   const [command, ...rest] = argv;
   const { options, positional } = parseArguments(rest);
   if (command === 'prepare') {
-    only(options, 'canonical', 'shard', 'batch', 'chunk', 'db', 'model', 'head', 'dir', 'hada-prefetch');
+    only(options, 'canonical', 'canonical-root', 'shard', 'batch', 'chunk', 'db', 'model', 'head', 'dir', 'hada-prefetch');
     if (positional.length) fail('prepare takes options only');
+    const canonicalRoot = path.resolve(options['canonical-root'] ?? process.cwd());
     const out = await prepareChunk({
-      canonicalPath: need(options, 'canonical'), shard: need(options, 'shard'), batch: need(options, 'batch'),
+      canonicalPath: resolveInsideRoot(canonicalRoot, need(options, 'canonical'), 'prepare Canonical path'),
+      shard: need(options, 'shard'), batch: need(options, 'batch'),
       chunkNumber: Number(need(options, 'chunk')), databasePath: need(options, 'db'), model: need(options, 'model'),
       head: need(options, 'head'), directory: options.dir, hadaPrefetch: options['hada-prefetch'] === true,
     });
@@ -1169,12 +1224,13 @@ async function main(argv) {
     return out.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'search') {
-    only(options, 'forms', 'boundary', 'cursor', 'contexts', 'reread');
+    only(options, 'forms', 'boundary', 'cursor', 'contexts', 'reread', 'dir');
     if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16] [--reread]');
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
     const { result, text } = await searchActive({
       ref: positional[0], forms: options.forms?.split(',').map((item) => item.trim()).filter(Boolean), boundary: options.boundary,
-      cursor: options.cursor, contexts: options.contexts === undefined ? undefined : Number(options.contexts), reread: options.reread === true, databasePath,
+      cursor: options.cursor, contexts: options.contexts === undefined ? undefined : Number(options.contexts), reread: options.reread === true,
+      databasePath, root: options.dir,
     });
     console.log(text);
     return result.status === 'SEARCH_FAILED' ? 3 : 0;
@@ -1204,12 +1260,21 @@ async function main(argv) {
     return output.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'save') {
-    only(options, 'in');
+    only(options, 'in', 'dir', 'canonical-root');
     if (positional.length) fail('save takes options only');
-    console.log(JSON.stringify(await saveActive({ inputPath: need(options, 'in') })));
+    console.log(JSON.stringify(await saveActive({ inputPath: need(options, 'in'), root: options.dir,
+      canonicalRoot: options['canonical-root'] === undefined ? undefined : path.resolve(options['canonical-root']) })));
     return 0;
   }
-  return fail('usage: d-chunk-cli.mjs prepare|search|search-batch|save');
+  if (command === 'inspect') {
+    only(options, 'in', 'dir', 'canonical-root');
+    if (positional.length) fail('inspect takes options only');
+    const result = await inspectRejectionForSupervisor({ inputPath: need(options, 'in'), root: options.dir,
+      canonicalRoot: options['canonical-root'] === undefined ? process.cwd() : path.resolve(options['canonical-root']) });
+    console.log(JSON.stringify(result));
+    return 0;
+  }
+  return fail('usage: d-chunk-cli.mjs prepare|search|search-batch|save|inspect');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {

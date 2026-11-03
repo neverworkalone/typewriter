@@ -51,7 +51,7 @@ class ScriptedRunner(Runner):
             return self.literary.run(argv, cwd, env, input)
         if argv[:2] == WORKBENCH_CLI:
             return self.workbench.run(argv, cwd)
-        if argv[:2] in (["node", "scripts/relation/d-chunk-cli.mjs"], ["node", "scripts/relation/candidate-contract.mjs"]):
+        if len(argv) > 1 and Path(argv[1]).name in ("d-chunk-cli.mjs", "candidate-contract.mjs"):
             return self.dchunk.run(argv, cwd, env, input)
         if argv[:3] == ["gh", "api", "user"]:
             return Result(0, self.account + "\n") if self.api_ok else Result(1, "", "not logged in")

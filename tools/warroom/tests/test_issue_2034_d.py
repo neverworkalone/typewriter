@@ -70,6 +70,20 @@ class DWorld(World):
                 "error_count": 1}))
         self.adapter.plan.append({"code": code, "session": session, "effect": effect})
 
+    def inspect_rejection(self, rejection, *, repair_scope="decisions", search_failed=False, **changes):
+        digest = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False,
+                                                          separators=(",", ":")).encode("utf-8")).hexdigest()
+        summary = {
+            "status": "REJECTED", "diagnostic": rejection["diagnostic"], "repair_scope": repair_scope,
+            "chunk_no": rejection["chunk_no"], "view_sha256": rejection["view_sha256"],
+            "git_head": rejection["git_head"], "senses": rejection["senses"],
+            "decisions_sha256": rejection["decisions_sha256"], "searches_sha256": rejection["searches_sha256"],
+            "errors_sha256": digest(rejection["errors"]),
+            "failed_records_sha256": digest(rejection["failed_records"]),
+            "errors_complete": True, "search_failed": search_failed, "error_count": rejection["error_count"],
+        }
+        self.runner.dchunk.inspection = summary | changes
+
     def finish_last(self):
         self.adapter.finish(self.adapter.launches[-1]["pid"])
 
@@ -101,6 +115,9 @@ class SerialChunks(unittest.TestCase):
         self.assertTrue(first["git_sandbox_paths"])
         self.assertTrue(first["approved_corpus_db"])
         self.assertIsNone(first["approved_literary_db"])
+        self.assertEqual(first["d_chunk_cli"], str(dchunk.cli_path()))
+        self.assertEqual(first["d_canonical_root"], str(w.wt().resolve()))
+        self.assertEqual(first["d_scratch"], str((w.wt() / dchunk.SCRATCH).resolve()))
         self.assertIn(prompts.VIEW_BEGIN, first["prompt"])
         self.assertIn("## w0001", first["prompt"])
         self.assertNotIn("cat .warroom-scratch", first["prompt"])        # inline-first: zero reads
@@ -925,6 +942,143 @@ class VerifiedPrefix(unittest.TestCase):
         self.assertEqual((folder / "decisions.txt").read_text(), "legacy decisions\n")
 
 
+class LegacyRejectionRepair(unittest.TestCase):
+    def test_old_stop_diagnostic_is_reissued_only_after_current_cli_proves_identical_local_errors(self):
+        w = DWorld(records=200)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        for chunk_no in range(1, 7):
+            w.ai(session=f"ses_{chunk_no}")
+        w.ai_rejected(session="ses_7", scope="stop_and_report")
+        for _ in range(6):
+            w.tick()
+            w.finish_last()
+            w.tick()
+        self.assertEqual(w.active()["chunk_no"], 7)
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "ERROR")
+
+        b = w.row_()
+        names = dchunk.chunk_names(b, 7)
+        folder = w.wt() / names.directory
+        rejected_path = w.wt() / names.rejected
+        legacy = json.loads(rejected_path.read_text("utf-8"))
+        legacy.pop("hit_bearing_z", None)  # the pre-#2981 persisted schema contains no summary-only field
+        rejected_path.write_text(json.dumps(legacy, ensure_ascii=False, separators=(",", ":")), "utf-8")
+        w.inspect_rejection(legacy)
+        prefix = {number: dchunk.chunk_sha(w.wt(), b, number) for number in range(1, 7)}
+        active_before = (w.wt() / names.active).read_bytes()
+        decisions_before = (w.wt() / names.decisions).read_bytes()
+        searches_before = (w.wt() / names.searches).read_bytes()
+        view_before = (w.wt() / names.view).read_bytes()
+
+        w.ai(session="ses_7")
+        self.assertTrue(control.retry(w.store, "deepseek", "d"))
+        w.tick(2)
+
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
+        reissued = json.loads(rejected_path.read_text("utf-8"))
+        self.assertEqual(reissued["repair_scope"], "decisions")
+        self.assertEqual({key: value for key, value in reissued.items() if key != "repair_scope"},
+                         {key: value for key, value in legacy.items() if key != "repair_scope"})
+        self.assertEqual((w.wt() / names.active).read_bytes(), active_before)
+        self.assertEqual((w.wt() / names.decisions).read_bytes(), decisions_before)
+        self.assertEqual((w.wt() / names.searches).read_bytes(), searches_before)
+        self.assertEqual((w.wt() / names.view).read_bytes(), view_before)
+        self.assertTrue(any(call[0] == "node" and Path(call[1]) == dchunk.cli_path() and call[2] == "inspect"
+                            and call[call.index("--canonical-root") + 1] == str(w.wt().resolve())
+                            for call in w.runner.dchunk.calls))
+        for number, digest in prefix.items():
+            self.assertEqual(dchunk.chunk_sha(w.wt(), b, number), digest)
+
+        w.finish_last()
+        w.tick()
+        self.assertTrue((folder / "chunk-007.jsonl").is_file())
+        self.assertEqual(w.active()["chunk_no"], 8)
+        saved = [json.loads(line) for line in (folder / "chunk-007.jsonl").read_text("utf-8").splitlines()]
+        self.assertEqual(len(saved), 25)
+        self.assertTrue(all(sense["candidates"] == ["후보"] for row in saved for sense in row["senses"]))
+        for number, digest in prefix.items():
+            self.assertEqual(dchunk.chunk_sha(w.wt(), b, number), digest)
+
+    def test_search_failure_evidence_mismatch_and_head_drift_block_reissue_without_launch(self):
+        cases = (
+            ("search failure", {"repair_scope": "stop_and_report", "search_failed": True}, None,
+             "legacy_rejection_reissue_blocked[search_failure]"),
+            ("diagnostic mismatch", {"repair_scope": "decisions"}, {"decisions_sha256": "0" * 64},
+             "legacy_rejection_reissue_blocked[diagnostic_evidence_mismatch]"),
+            ("head drift", {"repair_scope": "decisions"}, {"head": HEAD2},
+             "legacy_rejection_reissue_blocked[head_mismatch]"),
+        )
+        for label, inspection_options, mutation, expected in cases:
+            with self.subTest(label=label):
+                w = DWorld(records=50)
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", "d")
+                w.ai_rejected(scope="stop_and_report")
+                w.tick()
+                w.finish_last()
+                w.tick()
+                b = w.row_()
+                names = dchunk.chunk_names(b, 1)
+                rejected_path = w.wt() / names.rejected
+                legacy = json.loads(rejected_path.read_text("utf-8"))
+                legacy.pop("hit_bearing_z", None)
+                rejected_path.write_text(json.dumps(legacy, ensure_ascii=False, separators=(",", ":")), "utf-8")
+                options = dict(inspection_options)
+                changes = mutation if mutation and "decisions_sha256" in mutation else {}
+                if mutation and "head" in mutation:
+                    w.git.local_head = mutation["head"]
+                w.inspect_rejection(legacy, **options, **changes)
+                prior_bytes = rejected_path.read_bytes()
+                launches = len(w.adapter.launches)
+
+                self.assertTrue(control.retry(w.store, "deepseek", "d"))
+                w.tick(2)
+
+                self.assertEqual(w.row_()["state"], "ERROR")
+                self.assertIn(expected, w.row_()["error"])
+                self.assertEqual(len(w.adapter.launches), launches)
+                self.assertEqual(rejected_path.read_bytes(), prior_bytes)
+                self.assertTrue((w.wt() / names.active).is_file())
+
+    def test_malformed_or_unsupported_rejection_files_block_retry_without_rewrite_or_launch(self):
+        cases = (
+            ("JSON scalar", '"not an object"\n', "diagnostic_shape_mismatch"),
+            ("unknown repair scope", None, "unsupported_repair_scope"),
+        )
+        for label, replacement, reason in cases:
+            with self.subTest(label=label):
+                w = DWorld(records=50)
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", "d")
+                w.ai_rejected(scope="stop_and_report")
+                w.tick()
+                w.finish_last()
+                w.tick()
+
+                b = w.row_()
+                names = dchunk.chunk_names(b, 1)
+                rejected_path = w.wt() / names.rejected
+                if replacement is None:
+                    diagnostic = json.loads(rejected_path.read_text("utf-8"))
+                    diagnostic["repair_scope"] = "unsupported_future_scope"
+                    replacement = json.dumps(diagnostic, ensure_ascii=False, separators=(",", ":")) + "\n"
+                rejected_path.write_text(replacement, encoding="utf-8")
+                prior_bytes = rejected_path.read_bytes()
+                launches = len(w.adapter.launches)
+
+                self.assertTrue(control.retry(w.store, "deepseek", "d"))
+                w.tick(2)
+
+                self.assertEqual(w.row_()["state"], "ERROR")
+                self.assertIn(f"legacy_rejection_reissue_blocked[{reason}]", w.row_()["error"])
+                self.assertEqual(len(w.adapter.launches), launches)
+                self.assertEqual(rejected_path.read_bytes(), prior_bytes)
+                self.assertTrue((w.wt() / names.active).is_file())
+
+
 class Prompts(unittest.TestCase):
     def test_d_production_pr_reports_exact_technical_skip_count_only_when_present(self):
         batch = {"shard": "001", "batch": "01"}
@@ -940,8 +1094,9 @@ class Prompts(unittest.TestCase):
         with self.assertRaises(prompts.PromptError):
             prompts.d_chunk(b, 1, view="v\n", pages=["p"])
         card = prompts.d_chunk(b, 3, view="VIEW\n")
-        self.assertIn(".warroom-scratch/d-001_01/decision-003.txt", card)
-        self.assertIn("d-chunk-cli.mjs save --in", card)
+        self.assertIn('TYPEWRITER_D_SCRATCH/d-001_01/decision-003.txt', card)
+        self.assertIn('node "$TYPEWRITER_D_CHUNK_CLI" save --in', card)
+        self.assertIn('--dir "$TYPEWRITER_D_SCRATCH" --canonical-root "$TYPEWRITER_D_CANONICAL_ROOT"', card)
         self.assertNotIn("{{", card)
 
 

@@ -1198,6 +1198,10 @@ class Supervisor:
             env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
         if b["method"] == "d" and isinstance(kind, str) and kind.startswith(("d_chunk_", "d_cli")):
             env["TYPEWRITER_APPROVED_CORPUS_DB"] = str(Path(self.cfg["corpus_index_path"].strip()).expanduser())
+        if b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_"):
+            env["TYPEWRITER_D_CHUNK_CLI"] = str(dchunk.cli_path())
+            env["TYPEWRITER_D_SCRATCH"] = str((Path(b["worktree"]).resolve() / dchunk.SCRATCH).resolve())
+            env["TYPEWRITER_D_CANONICAL_ROOT"] = str(Path(b["worktree"]).resolve())
         env.pop("WARROOM_STAGE2_CHUNK", None)
         env.pop("WARROOM_STAGE2_REPAIR", None)
         env.pop("WARROOM_GIT_EXECUTABLES", None)
@@ -5051,10 +5055,6 @@ class Supervisor:
         if legacy_handoff:
             if problem := self._d_legacy_handoff_problem(b):
                 return self._fail(b, "ERROR", f"D 청크 재시작 복구를 안전하게 확인하지 못했습니다: {problem}. worktree와 브랜치를 보존합니다.")
-        else:
-            problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
-            if problem:
-                return self._fail(b, "ERROR", problem)
         try:
             if self._find_recovery_pr(b) is not None:
                 return self._fail(b, "ERROR", "청크 실행 브랜치에 이미 PR이 있어 자동 재개를 중단합니다. 보존합니다.")
@@ -5062,6 +5062,19 @@ class Supervisor:
             raise
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
+        if not legacy_handoff:
+            try:
+                active = dchunk.read_active(Path(b["worktree"]), b)
+                rejection_exists = (active is not None and
+                                    (Path(b["worktree"]) / dchunk.chunk_names(b, active["chunk_no"]).rejected).is_file())
+                if rejection_exists and dchunk.reissue_legacy_rejection(
+                        self.store, self.runner, self._d_env(b), self.git, Path(b["worktree"]), b, active):
+                    self.store.log(b["id"], f"D 청크 {active['chunk_no']:03d}의 구형 거부 진단을 최신 CLI로 read-only 재검증하고 판정 오류 범위만 재발급했습니다.", "warn")
+            except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError) as e:
+                return self._fail(b, "ERROR", f"D 구형 거부 진단 재검증 차단 [{e}]. worktree와 증거를 보존합니다.")
+            problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
+            if problem:
+                return self._fail(b, "ERROR", problem)
         if legacy_handoff:
             self._d_prepare_handoff(b)
             self.store.log(b["id"], "D 청크의 완료 기록과 저장 prefix를 확인했습니다. 새 실행 전에 PREPARE로 복구합니다.", "warn")
