@@ -55,7 +55,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare-merge --checkpoint <file.json> [--diff-from <sha> --diff-to <sha>] --json
   node scripts/relation/admission-cli.mjs amend --checkpoint <file.json> --in <decisions>
   node scripts/relation/admission-cli.mjs preflight --checkpoint <file.json> --json [--limit <n>] [--offset <n>]
-  node scripts/relation/admission-cli.mjs repair --checkpoint <file.json> --in <repair.json> --json
+  node scripts/relation/admission-cli.mjs repair --checkpoint <file.json> --in <repair.json> --json [--check]
   node scripts/relation/admission-cli.mjs reconcile --shard 001 [--batch 01 [--part 01]] --diff-from <sha> --diff-to <sha> [--dry-run] --json
   node scripts/relation/admission-cli.mjs affected-shards --from <sha> --to <sha> --json
   node scripts/relation/admission-cli.mjs affected-shards-batch --from-sha <sha>... --to <sha> --json
@@ -74,12 +74,23 @@ const keysOf = (value) => Object.keys(value).sort().join(',');
 const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
 const usesSourceMirrorTypeTier = (checkpoint) => checkpoint.type_tier_policy === SOURCE_MIRROR_TYPE_TIER_POLICY;
 
-function normalizeInputDecision(checkpoint, decision) {
-  if (!usesSourceMirrorTypeTier(checkpoint) || decision?.disposition !== 'relation' || decision.target_resolution !== 'exact') return decision;
-  if (Object.hasOwn(decision, 'reverse_type') || Object.hasOwn(decision, 'reverse_relevance')) {
+/** Deterministic completion of an input decision; `notes` collects `{field, rule}` for every value the CLI supplied. */
+function normalizeInputDecision(checkpoint, decision, candidate = null, notes = null) {
+  let current = decision;
+  if (candidate !== null && isPlainObject(decision) && decision.disposition === 'relation'
+      && !Object.hasOwn(decision, 'target_resolution') && !Object.hasOwn(decision, 'checked_target_sense_ids')
+      && typeof decision.target_record_id === 'string' && typeof decision.target_sense_id === 'string'
+      && (candidate.same_spelling_targets ?? []).some((target) => target.record_id === decision.target_record_id
+        && target.senses.some((sense) => sense.sense_id === decision.target_sense_id))) {
+    current = { ...decision, target_resolution: 'exact' };
+    notes?.push({ field: 'target_resolution', rule: 'exact_target_resolution_completed' });
+  }
+  if (!usesSourceMirrorTypeTier(checkpoint) || current?.disposition !== 'relation' || current.target_resolution !== 'exact') return current;
+  if (Object.hasOwn(current, 'reverse_type') || Object.hasOwn(current, 'reverse_relevance')) {
     throw new Error('new-policy exact ID decisions must omit reverse_type and reverse_relevance; the CLI derives both from type/relevance');
   }
-  return { ...decision, reverse_type: decision.type, reverse_relevance: decision.relevance };
+  notes?.push({ field: 'reverse_type', rule: 'source_mirror_reverse_derived' });
+  return { ...current, reverse_type: current.type, reverse_relevance: current.relevance };
 }
 
 function presentedDecision(checkpoint, decision) {
@@ -135,39 +146,66 @@ async function writeFileStateAtomically(file, state) {
   await writeTextAtomically(file, state.bytes);
 }
 
-function validateDecision(item, candidate, decision, allowSupervisorFailureDrop = false) {
-  if (!isPlainObject(decision)) throw new Error(`${item.sense_id}/${candidate.text}: decision must be an object`);
-  if (decision.source_sense_id !== item.sense_id || decision.candidate !== candidate.text) {
-    throw new Error(`${item.sense_id}/${candidate.text}: decision must retain the exact source sense and candidate`);
-  }
-  if (candidate.already_accounted === true
-      && (decision.disposition !== 'relation' || decision.target_resolution !== 'exact')) {
-    throw new Error(`${item.sense_id}/${candidate.text}: an optional additional link must target an unlinked same-spelling sense`);
+/**
+ * Structured decision validation. Every independent check runs; checks that depend on an undecidable branch
+ * (for example the exact/no_exact_match target checks when `target_resolution` itself is wrong) are `unevaluated`.
+ */
+function decisionProblems(item, candidate, decision, { allowSupervisorFailureDrop = false, pathPrefix = 'decision' } = {}) {
+  const problems = [];
+  const unevaluated = [];
+  const label = `${item.sense_id}/${candidate.text}`;
+  const pathOf = (field) => (field ? `${pathPrefix}.${field}` : pathPrefix);
+  const add = (field, condition, text) => problems.push({ field_path: pathOf(field), condition, message: `${label}: ${text}` });
+  const skip = (field, condition) => unevaluated.push({ field_path: pathOf(field), condition });
+  const keyCheck = (expectedKeys, text) => {
+    const expected = expectedKeys.split(',');
+    const actual = Object.keys(decision);
+    for (const key of expected) if (!actual.includes(key)) add(key, 'required', text);
+    for (const key of actual) if (!expected.includes(key)) add(key, 'forbidden', text);
+  };
+  const result = () => ({ problems, unevaluated });
+  if (!isPlainObject(decision)) { add('', 'shape', 'decision must be an object'); return result(); }
+  if (decision.source_sense_id !== item.sense_id) add('source_sense_id', 'enum', 'decision must retain the exact source sense and candidate');
+  if (decision.candidate !== candidate.text) add('candidate', 'enum', 'decision must retain the exact source sense and candidate');
+  if (candidate.already_accounted === true && decision.disposition !== 'relation') {
+    add('disposition', 'enum', 'an optional additional link must target an unlinked same-spelling sense');
+  } else if (candidate.already_accounted === true && decision.target_resolution !== 'exact') {
+    add('target_resolution', Object.hasOwn(decision, 'target_resolution') ? 'enum' : 'required',
+      'an optional additional link must target an unlinked same-spelling sense');
   }
   if (decision.disposition === 'drop') {
-    if (keysOf(decision) !== 'candidate,disposition,reason,source_sense_id') throw new Error(`${item.sense_id}/${candidate.text}: Drop decision has unexpected or missing fields`);
-    if (typeof decision.reason !== 'string' || !decision.reason.trim()) throw new Error(`${item.sense_id}/${candidate.text}: Drop needs a reason`);
-    const reason = decision.reason.trim();
-    if (reason === 'z') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "z" is reserved for deterministic orphan reconciliation`);
-    if (reason !== 'x' && reason !== 'e' && !(allowSupervisorFailureDrop && reason === 'f')) {
-      throw new Error(`${item.sense_id}/${candidate.text}: new Stage 2 Drop reason must be "x" or "e"`);
+    keyCheck('candidate,disposition,reason,source_sense_id', 'Drop decision has unexpected or missing fields');
+    if (typeof decision.reason !== 'string' || !decision.reason.trim()) add('reason', 'required', 'Drop needs a reason');
+    else {
+      const reason = decision.reason.trim();
+      if (reason === 'z') add('reason', 'reserved_reason', 'Drop reason "z" is reserved for deterministic orphan reconciliation');
+      else if (reason !== 'x' && reason !== 'e' && !(allowSupervisorFailureDrop && reason === 'f')) {
+        add('reason', 'enum', 'new Stage 2 Drop reason must be "x" or "e"');
+      }
     }
-    return;
+    return result();
   }
-  if (decision.disposition !== 'relation') throw new Error(`${item.sense_id}/${candidate.text}: disposition must be relation or drop`);
-  if (!ADMISSION_TYPES.includes(decision.type)) throw new Error(`${item.sense_id}/${candidate.text}: type must be one of ${ADMISSION_TYPES.join('/')}`);
-  if (!isTier(decision.relevance)) throw new Error(`${item.sense_id}/${candidate.text}: relevance must be an integer 1..9`);
+  if (decision.disposition !== 'relation') {
+    add('disposition', 'enum', 'disposition must be relation or drop');
+    skip('', 'branch');
+    return result();
+  }
+  if (!ADMISSION_TYPES.includes(decision.type)) {
+    add('type', Object.hasOwn(decision, 'type') ? 'enum' : 'required', `type must be one of ${ADMISSION_TYPES.join('/')}`);
+  }
+  if (!isTier(decision.relevance)) {
+    add('relevance', Object.hasOwn(decision, 'relevance') ? 'range' : 'required', 'relevance must be an integer 1..9');
+  }
   const availableTargetSenseIds = candidate.same_spelling_targets.flatMap((target) => target.senses.map((sense) => sense.sense_id)).sort();
 
   if (decision.target_resolution === 'exact') {
-    if (keysOf(decision) !== 'candidate,disposition,relevance,reverse_relevance,reverse_type,source_sense_id,target_record_id,target_resolution,target_sense_id,type') {
-      throw new Error(`${item.sense_id}/${candidate.text}: exact ID decision has unexpected or missing fields`);
-    }
+    keyCheck('candidate,disposition,relevance,reverse_relevance,reverse_type,source_sense_id,target_record_id,target_resolution,target_sense_id,type',
+      'exact ID decision has unexpected or missing fields');
     const target = candidate.same_spelling_targets.find((record) => record.record_id === decision.target_record_id);
     if (!target || !target.senses.some((sense) => sense.sense_id === decision.target_sense_id)) {
-      throw new Error(`${item.sense_id}/${candidate.text}: exact target must be one of the supplied same-spelling senses`);
+      add('target_sense_id', 'not_supplied_target', 'exact target must be one of the supplied same-spelling senses');
     }
-    if (decision.target_record_id === item.record_id) throw new Error(`${item.sense_id}/${candidate.text}: an ID relation cannot target its own record`);
+    if (decision.target_record_id === item.record_id) add('target_record_id', 'forbidden', 'an ID relation cannot target its own record');
     if (candidate.already_accounted === true) {
       const usedTargetSenseIds = new Set([
         ...candidate.existing_target_sense_ids,
@@ -175,32 +213,47 @@ function validateDecision(item, candidate, decision, allowSupervisorFailureDrop 
       ]);
       if (!candidate.unlinked_target_sense_ids.includes(decision.target_sense_id)
           || usedTargetSenseIds.has(decision.target_sense_id)) {
-        throw new Error(`${item.sense_id}/${candidate.text}: optional link must choose a not-yet-linked target sense`);
+        add('target_sense_id', 'not_supplied_target', 'optional link must choose a not-yet-linked target sense');
       }
     }
-    if (!ADMISSION_TYPES.includes(decision.reverse_type)) throw new Error(`${item.sense_id}/${candidate.text}: reverse_type must be one of ${ADMISSION_TYPES.join('/')}`);
-    if (!isTier(decision.reverse_relevance)) throw new Error(`${item.sense_id}/${candidate.text}: reverse_relevance must be an integer 1..9`);
-    return;
+    if (!ADMISSION_TYPES.includes(decision.reverse_type)) {
+      add('reverse_type', Object.hasOwn(decision, 'reverse_type') ? 'enum' : 'required', `reverse_type must be one of ${ADMISSION_TYPES.join('/')}`);
+    }
+    if (!isTier(decision.reverse_relevance)) {
+      add('reverse_relevance', Object.hasOwn(decision, 'reverse_relevance') ? 'range' : 'required', 'reverse_relevance must be an integer 1..9');
+    }
+    return result();
   }
 
   if (availableTargetSenseIds.length === 0) {
-    if (keysOf(decision) !== 'candidate,disposition,relevance,source_sense_id,type') {
-      throw new Error(`${item.sense_id}/${candidate.text}: omit target-resolution fields when no same-spelling target exists`);
-    }
-    return;
+    keyCheck('candidate,disposition,relevance,source_sense_id,type', 'omit target-resolution fields when no same-spelling target exists');
+    return result();
   }
-  if (decision.target_resolution !== 'no_exact_match') throw new Error(`${item.sense_id}/${candidate.text}: target_resolution must be exact or no_exact_match`);
+  if (decision.target_resolution !== 'no_exact_match') {
+    add('target_resolution', Object.hasOwn(decision, 'target_resolution') ? 'enum' : 'required', 'target_resolution must be exact or no_exact_match');
+    skip('target_sense_id', 'exact_branch');
+    skip('checked_target_sense_ids', 'no_exact_match_branch');
+    return result();
+  }
   if (!Array.isArray(decision.checked_target_sense_ids) || decision.checked_target_sense_ids.some((id) => typeof id !== 'string')) {
-    throw new Error(`${item.sense_id}/${candidate.text}: text-only with same-spelling targets needs checked_target_sense_ids`);
+    add('checked_target_sense_ids', Object.hasOwn(decision, 'checked_target_sense_ids') ? 'shape' : 'required',
+      'text-only with same-spelling targets needs checked_target_sense_ids');
+    skip('checked_target_sense_ids', 'checked_set_mismatch');
+  } else {
+    const checkedTargetSenseIds = [...decision.checked_target_sense_ids].sort();
+    if (new Set(checkedTargetSenseIds).size !== checkedTargetSenseIds.length
+        || JSON.stringify(checkedTargetSenseIds) !== JSON.stringify(availableTargetSenseIds)) {
+      add('checked_target_sense_ids', 'checked_set_mismatch', 'check every same-spelling target sense exactly once');
+    }
   }
-  const checkedTargetSenseIds = [...decision.checked_target_sense_ids].sort();
-  if (new Set(checkedTargetSenseIds).size !== checkedTargetSenseIds.length
-      || JSON.stringify(checkedTargetSenseIds) !== JSON.stringify(availableTargetSenseIds)) {
-    throw new Error(`${item.sense_id}/${candidate.text}: check every same-spelling target sense exactly once`);
-  }
-  if (keysOf(decision) !== 'candidate,checked_target_sense_ids,disposition,relevance,source_sense_id,target_resolution,type') {
-    throw new Error(`${item.sense_id}/${candidate.text}: text-only decision must explicitly omit target IDs and reverse fields`);
-  }
+  keyCheck('candidate,checked_target_sense_ids,disposition,relevance,source_sense_id,target_resolution,type',
+    'text-only decision must explicitly omit target IDs and reverse fields');
+  return result();
+}
+
+function validateDecision(item, candidate, decision, allowSupervisorFailureDrop = false) {
+  const { problems } = decisionProblems(item, candidate, decision, { allowSupervisorFailureDrop });
+  if (problems.length) throw new Error(problems[0].message);
 }
 
 function validateCheckpoint(checkpoint, identity = {}) {
@@ -819,7 +872,7 @@ function parseArgs(argv) {
   const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, supervisorFallback: null,
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, relationsOnly: false, sourceSenseId: null, candidateText: null,
     selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0,
-    diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, from: null, fromShas: [], to: null,
+    diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, check: false, from: null, fromShas: [], to: null,
     taskPlan: null, planFile: null, taskId: null, target: DEFAULT_CHUNK_CANDIDATES, expectViewSha256: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
@@ -848,6 +901,7 @@ function parseArgs(argv) {
     else if (flag === '--diff-to') options.diffTo = rest[++index];
     else if (flag === '--refresh') options.refreshPremerge = true;
     else if (flag === '--dry-run') options.dryRun = true;
+    else if (flag === '--check') options.check = true;
     else if (flag === '--task') { options.taskPlan = rest[++index]; options.taskId = rest[++index]; }
     else if (flag === '--plan') options.planFile = rest[++index];
     else if (flag === '--target') options.target = Number(rest[++index]);
@@ -919,6 +973,7 @@ function parseArgs(argv) {
   if (options.relationsOnly && (command !== 'verify' || !options.json || options.allowPartial)) {
     throw new Error('--relations-only requires verify --json and cannot be combined with --allow-partial');
   }
+  if (options.check && command !== 'repair') throw new Error(`--check is only valid for repair\n${USAGE}`);
   if (options.dryRun && command !== 'reconcile') throw new Error(`--dry-run is only valid for reconcile\n${USAGE}`);
   if (options.json && !['verify', 'prepare-merge', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch'].includes(command)) throw new Error(`--json is only valid for verify/prepare-merge/preflight/repair/reconcile/affected-shards\n${USAGE}`);
   if (['prepare-merge', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch'].includes(command) && !options.json) throw new Error(`${command} requires --json\n${USAGE}`);
@@ -997,8 +1052,8 @@ export async function run(argv, { root } = {}) {
     return payload;
   }
   if (options.command === 'repair') {
-    const result = await applyRepair(await readCheckpoint(checkpointPath), checkpointPath, options.input, repositoryRoot);
-    const payload = { version: 1, ok: true, ...result };
+    const result = await applyRepair(await readCheckpoint(checkpointPath), checkpointPath, options.input, repositoryRoot, { check: options.check });
+    const payload = { version: 1, ...result };
     console.log(JSON.stringify(payload));
     return payload;
   }
@@ -2230,7 +2285,7 @@ async function evaluateChunkDecisions(checkpoint, pending, inputPath, root, form
     const source = expected.get(key);
     if (!source) { problems.push({ alias: null, message: `decision ${decision.source_sense_id}/${decision.candidate} is outside the active chunk` }); continue; }
     try {
-      const normalizedDecision = normalizeInputDecision(checkpoint, decision);
+      const normalizedDecision = normalizeInputDecision(checkpoint, decision, source.candidate);
       validateDecision(source.item, source.candidate, normalizedDecision, key === fallbackKey);
       received.set(key, normalizedDecision);
     } catch (error) { problem(key, error.message); }
@@ -2940,72 +2995,126 @@ function sameJson(left, right) {
   return isDeepStrictEqual(left, right);
 }
 
-async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
-  assertPrimaryComplete(checkpoint);
-  assertOptionalComplete(checkpoint);
-  validateCheckpointDecisions(checkpoint);
-  if (checkpoint.merged) throw new Error('repair cannot change a merged checkpoint');
-  if (!checkpoint.premerge || checkpoint.premerge.status !== 'ready') throw new Error('repair requires the trusted premerge snapshot');
-  const [raw, baseline] = await Promise.all([
-    readFile(resolveRootPath(root, inputPath), 'utf8'),
-    readReadyPremerge(checkpoint, checkpointPath),
-  ]);
-  let input;
-  try { input = JSON.parse(raw); } catch (error) { throw new Error(`cannot parse repair input: ${error.message}`); }
-  if (!isPlainObject(input) || keysOf(input) !== 'decisions,fingerprint,supervisor_nonce,version' || input.version !== 1
-      || !/^[a-f0-9]{64}$/u.test(input.fingerprint ?? '') || !/^[a-f0-9]{64}$/u.test(input.supervisor_nonce ?? '')
+const REPAIR_FALLBACK_DROP = (row) => ({ source_sense_id: row.source_sense_id, candidate: row.candidate, disposition: 'drop', reason: 'f' });
+const repairKey = (row) => `${row.source_sense_id}\u0000${row.candidate}`;
+const isProblemId = (problem) => isPlainObject(problem) && keysOf(problem) === 'condition,field_path'
+  && typeof problem.field_path === 'string' && typeof problem.condition === 'string';
+
+/** Normalize one input decision and report structured problems; a refused normalization is a problem, not a throw. */
+function checkOneDecision(checkpoint, item, candidate, decision, pathPrefix, normalizedLog, options = {}) {
+  const notes = [];
+  let normalizedDecision = decision;
+  const refused = [];
+  try { normalizedDecision = normalizeInputDecision(checkpoint, decision, candidate, notes); }
+  catch (error) {
+    refused.push({ field_path: `${pathPrefix}.reverse_type`, condition: 'forbidden', message: `${item.sense_id}/${candidate.text}: ${error.message}` });
+  }
+  const { problems, unevaluated } = decisionProblems(item, options.validationCandidate ?? candidate, normalizedDecision,
+    { allowSupervisorFailureDrop: options.allowSupervisorFailureDrop === true, pathPrefix });
+  for (const note of notes) {
+    normalizedLog.push({ candidate_key: `${item.sense_id}\u0000${candidate.text}`, field_path: `${pathPrefix}.${note.field}`, rule: note.rule });
+  }
+  return { decision: normalizedDecision, problems: [...refused, ...problems], unevaluated };
+}
+
+/**
+ * The single, pure Stage 2 repair check: input shape → existing receipt → premerge baseline → per-row
+ * normalization and structured validation. Local (per-candidate) problems are returned; global problems throw.
+ */
+function checkRepair(checkpoint, input, baseline, { requireNonce = true } = {}) {
+  const allowed = ['decisions', 'fingerprint', 'supervisor_fallback', 'supervisor_nonce', 'version'];
+  if (!isPlainObject(input) || Object.keys(input).some((key) => !allowed.includes(key))
+      || input.version !== 1 || !/^[a-f0-9]{64}$/u.test(input.fingerprint ?? '')
+      || (input.supervisor_nonce === undefined ? requireNonce : !/^[a-f0-9]{64}$/u.test(input.supervisor_nonce))
       || !Array.isArray(input.decisions) || input.decisions.length === 0) {
     throw new Error('repair input must contain version 1, a fingerprint, a Supervisor nonce and non-empty decisions');
-  }
-  const relationFile = shardRelationPath(checkpoint.shard, root);
-  const dropFile = shardDropPath(checkpoint.shard, root);
-  const [actualRelations, actualDrops] = await Promise.all([readFileState(relationFile), readFileState(dropFile)]);
-  if (!sameFileState(actualRelations, baseline.relations) || !sameFileState(actualDrops, baseline.drops)) {
-    throw new Error('Relation/Drop outputs differ from the trusted premerge snapshot; refusing repair');
   }
   if (input.decisions.some((row) => !isPlainObject(row) || typeof row.source_sense_id !== 'string' || typeof row.candidate !== 'string')) {
     throw new Error('repair decisions need unique exact candidate keys and current/new decision fields');
   }
-  const normalized = [...input.decisions].sort((left, right) =>
-    `${left.source_sense_id}\u0000${left.candidate}`.localeCompare(`${right.source_sense_id}\u0000${right.candidate}`));
-  if (normalized.some((row, index) => !isPlainObject(row) || keysOf(row) !== 'additional_relations,candidate,decision,expected_additional_relations,expected_decision,source_sense_id'
-      || typeof row.source_sense_id !== 'string' || typeof row.candidate !== 'string'
-      || (index > 0 && normalized[index - 1].source_sense_id === row.source_sense_id && normalized[index - 1].candidate === row.candidate))) {
+  const rows = [...input.decisions].sort((left, right) => repairKey(left).localeCompare(repairKey(right)));
+  if (rows.some((row, index) => keysOf(row) !== 'additional_relations,candidate,decision,expected_additional_relations,expected_decision,source_sense_id'
+      || (index > 0 && repairKey(rows[index - 1]) === repairKey(row)))) {
     throw new Error('repair decisions need unique exact candidate keys and current/new decision fields');
   }
-  const requestId = stableDigest({ fingerprint: input.fingerprint, decisions: normalized });
+  const requestId = stableDigest({ fingerprint: input.fingerprint, decisions: rows });
   const receipts = checkpoint.repair_receipts ?? [];
   const prior = receipts.find((receipt) => receipt.request_id === requestId);
-  if (prior && prior.supervisor_nonce !== input.supervisor_nonce) {
+  if (prior && input.supervisor_nonce !== undefined && prior.supervisor_nonce !== input.supervisor_nonce) {
     throw new Error('repair receipt is bound to another Supervisor apply intent; refusing replay');
   }
-  const selected = normalized.map((row) => {
+  const selected = rows.map((row) => {
     const item = checkpoint.items.find((entry) => entry.sense_id === row.source_sense_id);
     const candidate = item?.candidates.find((entry) => entry.text === row.candidate);
     if (!item || !candidate) throw new Error(`repair target is outside this Part: ${row.source_sense_id}/${row.candidate}`);
     return { row, item, candidate };
   });
+  const fallbackRows = input.supervisor_fallback ?? [];
+  if (!Array.isArray(fallbackRows)) throw new Error('supervisor_fallback must be an array');
+  const fallbackKeys = new Set();
+  for (const entry of fallbackRows) {
+    const selectedRow = isPlainObject(entry) ? selected.find(({ row }) => repairKey(row) === repairKey(entry)) : null;
+    if (!isPlainObject(entry) || keysOf(entry) !== 'candidate,evidence,source_sense_id' || !selectedRow
+        || fallbackKeys.has(repairKey(entry))) {
+      throw new Error('supervisor_fallback needs one exact repair row per candidate with its evidence');
+    }
+    fallbackKeys.add(repairKey(entry));
+    const { row, item, candidate } = selectedRow;
+    if (candidate.already_accounted === true) throw new Error(`${row.source_sense_id}/${row.candidate}: technical fallback applies only to ordinary candidates`);
+    if (!sameJson(row.decision, REPAIR_FALLBACK_DROP(row)) || row.additional_relations !== null) {
+      throw new Error(`${row.source_sense_id}/${row.candidate}: a fallback row must carry exactly the technical Drop f decision`);
+    }
+    const evidence = entry.evidence;
+    const prior_request = evidence?.prior_request;
+    if (!isPlainObject(evidence) || keysOf(evidence) !== 'current_row,prior_request' || !isPlainObject(prior_request)
+        || keysOf(prior_request) !== 'attempt,problem,response_sha256,run_id' || !isProblemId(prior_request.problem)
+        || !Number.isInteger(prior_request.attempt) || !Number.isInteger(prior_request.run_id)
+        || !/^[a-f0-9]{64}$/u.test(prior_request.response_sha256)) {
+      throw new Error(`${row.source_sense_id}/${row.candidate}: fallback evidence is malformed`);
+    }
+    if (evidence.current_row === null) {
+      if (prior_request.problem.field_path !== 'row' || prior_request.problem.condition !== 'required') {
+        throw new Error(`${row.source_sense_id}/${row.candidate}: an omitted row is a recurrence only of a requested row-required problem`);
+      }
+    } else {
+      const current = evidence.current_row;
+      if (!isPlainObject(current) || current.source_sense_id !== row.source_sense_id || current.candidate !== row.candidate
+          || !isPlainObject(current.decision)) {
+        throw new Error(`${row.source_sense_id}/${row.candidate}: fallback current_row does not bind to this candidate`);
+      }
+      const { problems } = checkOneDecision(checkpoint, item, candidate, current.decision, 'decision', []);
+      if (!problems.some((problem) => problem.field_path === prior_request.problem.field_path
+          && problem.condition === prior_request.problem.condition)) {
+        throw new Error(`${row.source_sense_id}/${row.candidate}: the requested problem ${prior_request.problem.field_path} [${prior_request.problem.condition}] does not currently exist`);
+      }
+    }
+  }
   if (prior) {
-    const expectedKeys = selected.map(({ row }) => `${row.source_sense_id}\u0000${row.candidate}`).sort();
+    const expectedKeys = selected.map(({ row }) => repairKey(row)).sort();
     if (!sameJson(prior.candidate_keys, expectedKeys)) {
       throw new Error('repair receipt exists but its candidate set does not match; refusing replay');
     }
     for (const { row, candidate } of selected) {
       const expectedNewDecision = candidate.already_accounted === true ? candidate.decision
-        : normalizeInputDecision(checkpoint, row.decision);
+        : fallbackKeys.has(repairKey(row)) ? row.decision : normalizeInputDecision(checkpoint, row.decision, candidate);
       const expectedNewRelations = candidate.already_accounted === true
-        ? row.additional_relations.map((relation) => normalizeInputDecision(checkpoint, relation)) : null;
+        ? row.additional_relations.map((relation) => normalizeInputDecision(checkpoint, relation, candidate)) : null;
       if (!sameJson(candidate.decision, expectedNewDecision)
           || !sameJson(candidate.additional_relations ?? null, expectedNewRelations)) {
         throw new Error('repair receipt exists but its candidate state no longer matches; refusing replay');
       }
     }
-    return { repaired: 0, already_applied: true, request_id: requestId, supervisor_nonce: input.supervisor_nonce,
-      candidate_keys: prior.candidate_keys };
+    return { ok: true, already_applied: true, repaired: 0, request_id: requestId, supervisor_nonce: prior.supervisor_nonce,
+      candidate_keys: prior.candidate_keys, normalized: [], invalid_candidates: [] };
+  }
+  if (!sameFileState(baseline.actualRelations, baseline.relations) || !sameFileState(baseline.actualDrops, baseline.drops)) {
+    throw new Error('Relation/Drop outputs differ from the trusted premerge snapshot; refusing repair');
   }
   const next = JSON.parse(JSON.stringify(checkpoint));
   const nextByKey = new Map(next.items.flatMap((item) => item.candidates.map((candidate) =>
     [`${item.sense_id}\u0000${candidate.text}`, { item, candidate }])));
+  const normalizedLog = [];
+  const invalid = [];
   for (const { row, item, candidate } of selected) {
     const expectedOptional = candidate.already_accounted === true
       ? (candidate.additional_relations ?? []).map((relation) => presentedDecision(checkpoint, relation)) : null;
@@ -3014,39 +3123,75 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
       throw new Error(`stale repair target: ${row.source_sense_id}/${row.candidate}`);
     }
     const current = nextByKey.get(`${item.sense_id}\u0000${candidate.text}`).candidate;
+    const problems = [];
+    const unevaluated = [];
     if (candidate.already_accounted === true) {
       if (row.decision !== null || !Array.isArray(row.additional_relations)) {
         throw new Error(`${row.source_sense_id}/${row.candidate}: existing coverage may only replace optional links`);
       }
-      const checked = [];
-      for (const relation of row.additional_relations) {
-        const normalizedRelation = normalizeInputDecision(checkpoint, relation);
-        validateDecision(item, { ...candidate, additional_relations: checked }, normalizedRelation);
-        if (checked.some((saved) => saved.target_sense_id === normalizedRelation.target_sense_id)) {
-          throw new Error(`${row.source_sense_id}/${row.candidate}: repeated optional target ${normalizedRelation.target_sense_id}`);
-        }
-        checked.push(normalizedRelation);
+      if (row.additional_relations.length > candidate.unlinked_target_sense_ids.length) {
+        throw new Error(`${row.source_sense_id}/${row.candidate}: optional links exceed the supplied not-yet-linked target senses`);
       }
+      const checked = [];
+      row.additional_relations.forEach((relation, index) => {
+        const result = checkOneDecision(checkpoint, item, candidate, relation, `additional_relations[${index}]`, normalizedLog,
+          { validationCandidate: { ...candidate, additional_relations: checked } });
+        problems.push(...result.problems);
+        unevaluated.push(...result.unevaluated);
+        if (checked.some((saved) => saved.target_sense_id === result.decision?.target_sense_id)) {
+          problems.push({ field_path: `additional_relations[${index}].target_sense_id`, condition: 'duplicate',
+            message: `${row.source_sense_id}/${row.candidate}: repeated optional target ${result.decision.target_sense_id}` });
+        }
+        checked.push(result.decision);
+      });
       current.additional_relations = checked;
     } else {
       if (row.additional_relations !== null) throw new Error(`${row.source_sense_id}/${row.candidate}: regular candidate cannot contain optional links`);
-      const normalizedDecision = normalizeInputDecision(checkpoint, row.decision);
-      validateDecision(item, candidate, normalizedDecision);
-      current.decision = normalizedDecision;
+      const result = checkOneDecision(checkpoint, item, candidate, row.decision, 'decision', normalizedLog,
+        { allowSupervisorFailureDrop: fallbackKeys.has(repairKey(row)) });
+      problems.push(...result.problems);
+      unevaluated.push(...result.unevaluated);
+      current.decision = result.decision;
     }
+    if (problems.length) invalid.push({ candidate_key: repairKey(row), problems, unevaluated });
   }
+  const candidateKeys = selected.map(({ row }) => repairKey(row)).sort();
+  const base = { already_applied: false, request_id: requestId, supervisor_nonce: input.supervisor_nonce ?? null,
+    candidate_keys: candidateKeys, normalized: normalizedLog, invalid_candidates: invalid };
+  if (invalid.length) return { ok: false, repaired: 0, ...base };
   next.repair_receipts = [...receipts, {
     request_id: requestId,
     fingerprint: input.fingerprint,
-    supervisor_nonce: input.supervisor_nonce,
-    candidate_keys: selected.map(({ row }) => `${row.source_sense_id}\u0000${row.candidate}`).sort(),
+    supervisor_nonce: input.supervisor_nonce ?? '0'.repeat(64),
+    candidate_keys: candidateKeys,
   }];
   if (next.optional_review_complete === true) next.optional_review_state_sha256 = stableDigest(optionalReviewState(next));
   validateCheckpoint(next);
   validateCheckpointDecisions(next);
+  return { ok: true, repaired: selected.length, ...base, next };
+}
+
+async function applyRepair(checkpoint, checkpointPath, inputPath, root, { check = false } = {}) {
+  assertPrimaryComplete(checkpoint);
+  assertOptionalComplete(checkpoint);
+  validateCheckpointDecisions(checkpoint);
+  if (checkpoint.merged) throw new Error('repair cannot change a merged checkpoint');
+  if (!checkpoint.premerge || checkpoint.premerge.status !== 'ready') throw new Error('repair requires the trusted premerge snapshot');
+  const [raw, ready] = await Promise.all([
+    readFile(resolveRootPath(root, inputPath), 'utf8'),
+    readReadyPremerge(checkpoint, checkpointPath),
+  ]);
+  let input;
+  try { input = JSON.parse(raw); } catch (error) { throw new Error(`cannot parse repair input: ${error.message}`); }
+  const [actualRelations, actualDrops] = await Promise.all([
+    readFileState(shardRelationPath(checkpoint.shard, root)), readFileState(shardDropPath(checkpoint.shard, root))]);
+  if (Array.isArray(input?.supervisor_fallback) && input.supervisor_fallback.length) {
+    await assertSupervisorFallbackProcess(await supervisorStateDirectory(root));
+  }
+  const { next, ...result } = checkRepair(checkpoint, input, { ...ready, actualRelations, actualDrops }, { requireNonce: !check });
+  if (!result.ok || check || result.already_applied) return result;
   await writeJsonAtomically(checkpointPath, next);
-  return { repaired: selected.length, already_applied: false, request_id: requestId, supervisor_nonce: input.supervisor_nonce,
-    candidate_keys: next.repair_receipts.at(-1).candidate_keys };
+  return result;
 }
 
 function assertOldOrNew(actual, oldState, newState, family) {
@@ -3401,6 +3546,7 @@ if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === imp
   const argv = process.argv.slice(2);
   run(argv).then((result) => {
     if (argv[0] === 'preflight' && result?.ok !== true) process.exitCode = result?.repairable ? 2 : 1;
+    if (argv[0] === 'repair' && result?.ok !== true) process.exitCode = 2;
   }).catch((error) => {
     // `verify --json`: only a deterministic rows/accounting failure is machine-classifiable (exit 2, one JSON line).
     if (argv[0] === 'verify' && argv.includes('--json') && error instanceof AdmissionVerifyError) {

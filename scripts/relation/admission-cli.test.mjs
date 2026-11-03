@@ -1946,6 +1946,113 @@ test('preflight repair accepts Supervisor sorted-state round-trip and remains st
   assert.deepEqual(clear.unclassified, []);
 });
 
+test('repair --check normalizes a deterministic omission and reports every local problem without writing', async (t) => {
+  const { root } = await sixCandidateRepository(t);
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonical = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  canonical[0].senses[0].gloss = '버릴말.';
+  canonical[1].search_forms = ['유일', '유일하다'];
+  await writeFile(canonicalPath, jsonl(canonical));
+  const candidatesPath = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const candidateRows = (await readFile(candidatesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  candidateRows[0].senses[0].candidates = ['유일', '유일하다', '버릴말'];
+  await writeFile(candidatesPath, jsonl(candidateRows));
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const exact = { source_sense_id: 'w1-s1', candidate: '유일', disposition: 'relation', type: 'near', relevance: 3,
+    target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1' };
+  await writeFile(path.join(root, '.warroom-scratch/d.json'), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: [
+    exact, { ...exact, candidate: '유일하다', type: 'mood', relevance: 4 },
+    { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: 'x' }] }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', '.warroom-scratch/d.json'], { root }));
+  await completeOptionalForTest(root, checkpoint);
+  await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
+  const report = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  const presented = new Map(report.problems.flatMap((problem) => problem.candidates).map((candidate) => [candidate.candidate, candidate]));
+  const checkpointPath = path.join(root, checkpoint);
+  const before = await fileState(checkpointPath);
+  const mirror = JSON.parse(await readFile(checkpointPath, 'utf8')).type_tier_policy === 'source-mirror-v1';
+  const withoutResolution = ({ target_resolution, ...rest }) => rest;
+  const exactWithReverse = (decision) => (mirror ? decision : { ...decision, reverse_type: decision.type, reverse_relevance: decision.relevance });
+  const repairFile = '.warroom-scratch/check-repair.json';
+  const request = async (name, decision, flags = ['--check']) => {
+    const current = presented.get(name);
+    await writeFile(path.join(root, repairFile), JSON.stringify({ version: 1, fingerprint: report.fingerprint,
+      ...(flags.includes('--check') ? {} : { supervisor_nonce: 'c'.repeat(64) }), decisions: [{
+      source_sense_id: 'w1-s1', candidate: name, expected_decision: current.decision, expected_additional_relations: null,
+      decision, additional_relations: null }] }));
+    return quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairFile, '--json', ...flags], { root }));
+  };
+  const pathsOf = (result) => result.invalid_candidates.flatMap((entry) => entry.problems.map((problem) => `${problem.field_path}:${problem.condition}`));
+  const unevaluatedOf = (result) => result.invalid_candidates.flatMap((entry) => entry.unevaluated.map((item) => item.field_path));
+
+  const omitted = await request('유일', exactWithReverse(withoutResolution(exact)));
+  assert.equal(omitted.ok, true, 'the exact target_resolution is completed for a supplied same-spelling target');
+  assert.ok(omitted.normalized.some((note) => note.field_path === 'decision.target_resolution'
+    && note.rule === 'exact_target_resolution_completed'));
+
+  const wrongPair = await request('유일', withoutResolution({ ...exact, target_sense_id: 'w2-s9' }));
+  assert.deepEqual(pathsOf(wrongPair), ['decision.target_resolution:required'], 'an unsupplied pair is never completed');
+  assert.deepEqual(unevaluatedOf(wrongPair).sort(), ['decision.checked_target_sense_ids', 'decision.target_sense_id']);
+  const contradictory = await request('유일', withoutResolution({ ...exact, checked_target_sense_ids: ['w2-s1'] }));
+  assert.ok(pathsOf(contradictory).includes('decision.target_resolution:required'), 'contradictory fields are not normalized');
+  const explicit = await request('유일', { ...exact, target_resolution: 'bogus' });
+  assert.ok(pathsOf(explicit).includes('decision.target_resolution:enum'), 'an explicit wrong value is never overwritten');
+
+  const independent = await request('유일', exactWithReverse({ ...exact, type: 'nope', relevance: 12 }));
+  assert.ok(pathsOf(independent).includes('decision.type:enum') && pathsOf(independent).includes('decision.relevance:range'),
+    'type and relevance errors are both reported');
+  const checkedMismatch = await request('유일', { ...withoutResolution(exact), target_resolution: 'no_exact_match',
+    target_record_id: undefined, target_sense_id: undefined, checked_target_sense_ids: ['w2-s9'] });
+  assert.ok(pathsOf(checkedMismatch).includes('decision.checked_target_sense_ids:checked_set_mismatch'));
+  const reserved = await request('버릴말', { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: 'z' });
+  assert.deepEqual(pathsOf(reserved), ['decision.reason:reserved_reason']);
+  const technicalDrop = await request('버릴말', { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: 'f' });
+  assert.deepEqual(pathsOf(technicalDrop), ['decision.reason:enum'], 'a model Drop f is rejected');
+  assert.deepEqual(await fileState(checkpointPath), before, '--check never writes');
+
+  // The prompt's decision examples must satisfy the same official check once their placeholders are filled in.
+  const promptText = await readFile(new URL('../../tools/warroom/prompts/s2_repair.md', import.meta.url), 'utf8');
+  const exampleBlock = promptText.split('<!-- decision-examples-begin -->')[1].split('<!-- decision-examples-end -->')[0];
+  const examples = JSON.parse(exampleBlock.replace(/```json|```/gu, ''));
+  assert.equal(examples.length, 5);
+  const supplied = chunk.items[0].candidates.find((candidate) => candidate.text === '유일')
+    .same_spelling_targets.flatMap((record) => record.senses.map((sense) => sense.sense_id));
+  for (const example of examples) {
+    const targeted = example.target_resolution !== undefined;
+    const name = targeted ? '유일' : '버릴말';
+    const filled = JSON.parse(JSON.stringify(example)
+      .replace(/<source_sense_id>/gu, 'w1-s1').replace(/<candidate>/gu, name)
+      .replace(/<target_record_id>/gu, 'w2').replace(/<target_sense_id>/gu, 'w2-s1')
+      .replace('"<every supplied target sense id, once each>"', supplied.map((id) => JSON.stringify(id)).join(',')));
+    const result = await request(name, filled.target_resolution === 'exact' ? exactWithReverse(filled) : filled);
+    assert.deepEqual(result.invalid_candidates, [], `prompt example ${JSON.stringify(example)} passes the official check`);
+  }
+
+  const refused = await request('유일', exactWithReverse({ ...exact, type: 'nope' }), []);
+  assert.equal(refused.ok, false);
+  assert.deepEqual(await fileState(checkpointPath), before, 'an invalid apply writes nothing');
+  const fallbackInput = JSON.parse(await readFile(path.join(root, repairFile), 'utf8'));
+  fallbackInput.decisions[0].decision = { source_sense_id: 'w1-s1', candidate: '유일', disposition: 'drop', reason: 'f' };
+  fallbackInput.supervisor_fallback = [{ source_sense_id: 'w1-s1', candidate: '유일', evidence: { current_row: null,
+    prior_request: { attempt: 2, run_id: 1, response_sha256: 'a'.repeat(64), problem: { field_path: 'row', condition: 'required' } } } }];
+  await writeFile(path.join(root, repairFile), JSON.stringify(fallbackInput));
+  await assert.rejects(() => quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairFile, '--json'], { root })),
+    /Supervisor/u, 'technical fallback requires the Supervisor lock');
+
+  const applied = await request('유일', exactWithReverse(withoutResolution(exact)), []);
+  assert.equal(applied.ok, true);
+  assert.equal(applied.repaired, 1);
+  const receipts = JSON.parse(await readFile(checkpointPath, 'utf8')).repair_receipts;
+  assert.deepEqual(Object.keys(receipts.at(-1)).sort(), ['candidate_keys', 'fingerprint', 'request_id', 'supervisor_nonce'],
+    'the legacy four-field receipt format is unchanged');
+  const replay = await request('유일', exactWithReverse(withoutResolution(exact)), []);
+  assert.equal(replay.already_applied, true);
+  const checkReplay = await request('유일', exactWithReverse(withoutResolution(exact)));
+  assert.equal(checkReplay.already_applied, true, 'check recognizes an existing successful receipt first');
+});
+
 test('preflight classifies a newly integrated cross-shard optional pair for local repair without changing primary decisions', async (t) => {
   const { root } = await crossShardRepository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

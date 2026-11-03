@@ -14,7 +14,7 @@ You are a fresh, short, answer-only Stage 2 semantic rejudgment session. The Sup
 - If a case cannot be judged from the supplied evidence, put its exact source sense and candidate in `unresolved` with a short reason and do not guess.
 - Do not use tools, edit files, call the admission CLI, or modify the checkpoint. Return only the answer below.
 - Each candidate in `repair_input` declares its exact `required_output_fields` and `forbidden_output_fields`. Follow those fields for that candidate; a page may contain both output shapes.
-- If `repair_input` contains `repair_correction`, return rows only for its listed candidate keys. The correction may request a missing candidate, a row with an invalid field shape, or both. Correct only the listed cases. Do not repeat other candidates or add peer adjustments or unresolved rows; the Supervisor retains the already-valid rows from the earlier response.
+- If `repair_input` contains `repair_correction`, return rows only for its listed candidate keys. The correction may request a missing candidate, a row with an invalid field shape, or a field that the official check rejected; each `diagnostics` entry names its `field_path`, `condition` and `message`. Fix exactly those fields. Correct only the listed cases. If it lists `peer_keys`, return `decisions: []` and one corrected `peer_adjustments` row per listed peer (their current rows are in `peers`, related accepted rows in `accepted_decisions`). Otherwise do not repeat other candidates or add peer adjustments or unresolved rows; the Supervisor retains the already-valid rows from the earlier response.
 
 ## Required answer
 
@@ -26,12 +26,17 @@ Return this exact header on its own line, followed by one JSON object. No Markdo
 {
   "decisions": [
     {
-      "source_sense_id": "...",
-      "candidate": "...",
+      "source_sense_id": "<source_sense_id>",
+      "candidate": "<candidate>",
       "decision": {
+        "source_sense_id": "<source_sense_id>",
+        "candidate": "<candidate>",
         "disposition": "relation",
         "type": "scene",
-        "relevance": 4
+        "relevance": 4,
+        "target_resolution": "exact",
+        "target_record_id": "<target_record_id>",
+        "target_sense_id": "<target_sense_id>"
       }
     }
   ],
@@ -40,7 +45,25 @@ Return this exact header on its own line, followed by one JSON object. No Markdo
 }
 ```
 
-For an ordinary candidate, `decision` must be a complete valid Stage 2 decision object. It must repeat the exact `source_sense_id` and `candidate` and use the CLI schema: Drop has `disposition:"drop"` and reason `x` (unrelated/wrong Sense) or `e` (connected without independent expression value); a relation has `disposition:"relation"`, type, relevance, and either the exact target fields or the complete checked-target list for a text-only decision. This repair input cannot use `z` or `f`; `z` is Stage 3 orphan accounting and `f` is reserved for the Supervisor's #2874 fallback path. Free-form text, `editorial:`, and `edit` remain invalid. Follow the direction policy above; the CLI persists its required reverse fields.
+For an ordinary candidate, `decision` must be a complete valid Stage 2 decision object. It must repeat the exact `source_sense_id` and `candidate` and use the CLI schema: Drop has `disposition:"drop"` and reason `x` (unrelated/wrong Sense) or `e` (connected without independent expression value); a relation has `disposition:"relation"`, type, relevance, and either the exact target fields or the complete checked-target list for a text-only decision. This repair input cannot use `z` or `f`; `z` is Stage 3 orphan accounting and `f` is reserved for the Supervisor's technical fallback. Free-form text, `editorial:`, and `edit` remain invalid. Follow the direction policy above; the CLI persists its required reverse fields.
+
+Every `decision` object repeats `source_sense_id` and `candidate` and takes exactly one of these shapes (replace each `<...>` with the supplied value; reverse fields follow the direction policy above):
+
+<!-- decision-examples-begin -->
+```json
+[
+  {"source_sense_id": "<source_sense_id>", "candidate": "<candidate>", "disposition": "relation", "type": "scene", "relevance": 4,
+   "target_resolution": "exact", "target_record_id": "<target_record_id>", "target_sense_id": "<target_sense_id>"},
+  {"source_sense_id": "<source_sense_id>", "candidate": "<candidate>", "disposition": "relation", "type": "mood", "relevance": 3,
+   "target_resolution": "no_exact_match", "checked_target_sense_ids": ["<every supplied target sense id, once each>"]},
+  {"source_sense_id": "<source_sense_id>", "candidate": "<candidate>", "disposition": "relation", "type": "association", "relevance": 2},
+  {"source_sense_id": "<source_sense_id>", "candidate": "<candidate>", "disposition": "drop", "reason": "x"},
+  {"source_sense_id": "<source_sense_id>", "candidate": "<candidate>", "disposition": "drop", "reason": "e"}
+]
+```
+<!-- decision-examples-end -->
+
+The first shape needs a supplied same-spelling target sense that truly fits; the second lists every supplied target sense when none fits; the third omits all target fields when the candidate has no same-spelling target.
 
 For `already_accounted:true`, the row must contain exactly `source_sense_id`, `candidate`, and `additional_relations`. Preserve the primary existing decision and return `additional_relations` as the complete reviewed optional-link list (an empty array means no optional links). Each added relation must choose an exact supplied target sense and follow the direction policy above. Do not include `decision` in this row.
 
