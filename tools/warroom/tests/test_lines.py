@@ -157,7 +157,7 @@ class LineIsolation(unittest.TestCase):
         self.assertEqual({r["state"] for r in rows}, {"PRODUCING"})
         self.assertEqual(len({r["worktree"] for r in rows}), 4)
         self.assertEqual(len({r["branch"] for r in rows}), 4)
-        self.assertEqual(len({l["pid"] for l in w.adapter.launches}), 4)
+        self.assertEqual(len({l["cwd"] for l in w.adapter.launches}), 4)   # D runs its chunks as several tasks (#3074)
         # each run used its own model's endpoint
         models = {l["cwd"].split("/")[-1]: l["model"] for l in w.adapter.launches}
         self.assertEqual(models["a-sonnet-001_01"], "p/sonnet-free")

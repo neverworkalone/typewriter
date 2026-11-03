@@ -21,7 +21,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import (auth, batches, control, dchunk, defects, literary, prbody, progress, prompts, reviews, s2parallel, stage1ab,
+from . import (auth, batches, control, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, stage1ab,
                stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        final_answer, opencode_free_quota)
@@ -107,6 +107,7 @@ class Supervisor:
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
         self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
+        self.dp = dparallel.ParallelD(self)   # parallel D chunk tasks inside a new batch (#3074)
         self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
 
     def _adapter(self, producer: str):
@@ -194,6 +195,8 @@ class Supervisor:
             return self.s2p.poll(b)
         if plan == "closed" and b["run_kind"] == s2parallel.RUN_KIND and b["pid"] is None:
             return self.s2p.continue_after_close(b)
+        if dparallel.is_parallel(self.store, b) and b["run_kind"] == dparallel.RUN_KIND:
+            return self.dp.poll(b)
         return self._poll_run(b)
 
     def _fail(self, b, state: str, msg: str) -> None:
@@ -523,6 +526,8 @@ class Supervisor:
         """Clear the PID of a stop-requested run only once the process is really gone."""
         if s2parallel.is_parallel(self.store, b) and not self.s2p.stop_workers(b):
             return False   # parallel Stage 2: every task process must be confirmed gone
+        if dparallel.is_parallel(self.store, b) and not self.dp.stop_workers(b):
+            return False   # parallel D: the same for every chunk task process
         if b["pid"] is None:
             return True
         if self._adapter(b["producer"]).alive(b["pid"]):
@@ -888,6 +893,8 @@ class Supervisor:
         ad = self._adapter(b["producer"])
         if s2parallel.is_parallel(self.store, b):
             self.s2p.stop_workers(b)   # every task process; exits are confirmed by _reap_stopped
+        if dparallel.is_parallel(self.store, b):
+            self.dp.stop_workers(b)
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
         self.store.set_line(b["producer"], b["method"], run=0, retry_batch=None)  # Stop wins over Retry
@@ -915,6 +922,8 @@ class Supervisor:
         ad = self._adapter(b["producer"])
         if s2parallel.is_parallel(self.store, b) and not self.s2p.stop_workers(b):
             return self.store.log(b["id"], "Clear: 병렬 Stage 2 task AI 프로세스 종료 요청, 종료 확인 대기")
+        if dparallel.is_parallel(self.store, b) and not self.dp.stop_workers(b):
+            return self.store.log(b["id"], "Clear: 병렬 D task AI 프로세스 종료 요청, 종료 확인 대기")
         if b["pid"] is not None:
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
@@ -2566,12 +2575,17 @@ class Supervisor:
         self.maint.report(b, "report", key, raw)
         return True
 
+    def _task_report_files(self, b) -> list[str]:
+        """Worktree-relative shared-defect report path of every task of a parallel batch (Stage 2 Part or D)."""
+        if b["method"] == dchunk.METHOD:
+            return [dparallel.defect_path(b, row["task"]) for row in self.store.task_rows(b["id"])]
+        return [stage2.task_path(row["task"], "shared-defect.json") for row in self.store.task_rows(b["id"])]
+
     def _scan_task_reports(self, b, s2p) -> bool:
-        """Shared-defect reports of parallel Stage 2 tasks (`s2-tasks/<id>/shared-defect.json`): same stability and
-        once-per-content rules as `_scan_report`, but ALL task workers are stopped and the defect remembers the exact
-        report file (the Maintainer archives that file, not a Part-wide one)."""
-        for row in self.store.task_rows(b["id"]):
-            rel = stage2.task_path(row["task"], "shared-defect.json")
+        """Shared-defect reports of parallel tasks (Stage 2 `s2-tasks/<id>/shared-defect.json`, D
+        `shared-defect-NNN.json`): same stability and once-per-content rules as `_scan_report`, but ALL task workers are
+        stopped and the defect remembers the exact report file (the Maintainer archives that file, not a batch-wide one)."""
+        for rel in self._task_report_files(b):
             f = Path(b["worktree"]) / rel
             try:
                 st = f.stat()
@@ -2588,7 +2602,7 @@ class Supervisor:
             if prior is not None:
                 continue
             live = s2p.workers_alive(b)
-            sig, sig_key = f"{st.st_mtime_ns}:{st.st_size}", f"defect_file_{b['id']}_{row['task']}"
+            sig, sig_key = f"{st.st_mtime_ns}:{st.st_size}", f"defect_file_{b['id']}_{rel}"
             if live and self.store.get(sig_key) != sig:
                 self.store.set(sig_key, sig)
                 continue
@@ -6346,11 +6360,12 @@ class Supervisor:
             return f"HEAD 결속을 확인하지 못했습니다: {e}"
         return f"worktree HEAD {head[:10]}가 배치 기준 HEAD {base[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
 
-    def _d_chunks_problem(self, b, done: int) -> str | None:
-        """Every chunk accepted earlier must still be byte-identical (an AI session never edits a saved chunk)."""
+    def _d_chunks_problem(self, b, done) -> str | None:
+        """Every chunk accepted earlier must still be byte-identical (an AI session never edits a saved chunk).
+        `done` is the serial prefix length or, for a parallel batch, the exact accepted chunk numbers."""
         wt = Path(b["worktree"])
         try:
-            for k in range(1, done + 1):
+            for k in (range(1, done + 1) if isinstance(done, int) else done):
                 known = self.store.get(f"d_chunk_sha_{b['id']}_{k}")
                 if known is not None and known != dchunk.chunk_sha(wt, b, k):
                     return f"이미 저장된 청크 {k:03d}이 수정되었습니다. 덮어쓰지 않고 보존합니다."
@@ -6385,6 +6400,8 @@ class Supervisor:
         try:
             if problem := self._d_head_problem(b, wt):
                 return self._fail(b, "ERROR", problem + " worktree를 보존합니다.")
+            if dparallel.is_parallel(self.store, b) or self.dp.starts_fresh(b):
+                return self.dp.begin(b)   # a new batch runs its chunks as bounded parallel tasks (#3074)
             done, total = dchunk.verified_prefix(wt, b)
             if problem := self._d_chunks_problem(b, done):
                 return self._fail(b, "ERROR", problem)
@@ -6449,17 +6466,23 @@ class Supervisor:
         resume = bool(b["session_id"]) and self.store.get(dchunk.run_start_key(b["id"])) is not None
         return self._launch(b, "d_chunk_resume" if resume else "d_chunk_new")
 
-    def _d_chunk_prompt(self, b, kind: str, remote="?") -> tuple[str, dict]:
-        """(prompt, run-start baseline) for the active chunk. A resume sends only a short continue instruction."""
+    def _d_chunk_prompt(self, b, kind: str, remote="?", rec: dict | None = None, continued: bool | None = None,
+                        extra_note: str = "") -> tuple[str, dict]:
+        """(prompt, run-start baseline) for the active chunk. A resume sends only a short continue instruction.
+
+        A parallel task passes its own `rec`, whether it `continued` an earlier session's files, and its report note."""
         wt = Path(b["worktree"])
-        rec = dchunk.read_active(wt, b)
+        if rec is None:
+            rec = dchunk.read_active(wt, b)
         if rec is None:
             raise prompts.PromptError("활성 청크 기록이 없습니다")
         view = dchunk.read_view(wt, b, rec)
         chunk_files = dchunk.chunk_names(b, rec["chunk_no"])
-        note = ""
-        if kind == "d_chunk_new" and self.store.get(dchunk.run_start_key(b["id"])):
-            note = ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. "
+        note = extra_note
+        if continued is None:
+            continued = bool(kind == "d_chunk_new" and self.store.get(dchunk.run_start_key(b["id"])))
+        if kind == "d_chunk_new" and continued:
+            note = extra_note + ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. "
                     f"{chunk_files.decisions}와 {chunk_files.searches}의 기존 판정·검색 증거를 읽고 보존한다. "
                     "이미 완성된 판정을 다시 만들거나 검색 기록을 삭제하지 말고, 미완료 Sense만 이어서 처리한다.\n")
         if kind == "d_chunk_resume":
@@ -6470,7 +6493,7 @@ class Supervisor:
             if dchunk.delivery(card_bytes, view) == "inline":
                 prompt = prompts.d_chunk(b, rec["chunk_no"], view=view, note=note)
             else:   # only this chunk falls back to pages; a failure here starts no AI
-                prompt = prompts.d_chunk(b, rec["chunk_no"], pages=dchunk.write_pages(wt, b, view), note=note)
+                prompt = prompts.d_chunk(b, rec["chunk_no"], pages=dchunk.write_pages(wt, b, view, rec["chunk_no"]), note=note)
         baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
                     "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote,
                     "chunk_no": rec["chunk_no"]}
@@ -6609,10 +6632,10 @@ class Supervisor:
         result["failure_records"] = diag["failed_records"]
         return result
 
-    def _d_rejection_note(self, b) -> str:
+    def _d_rejection_note(self, b, chunk_no: int | None = None) -> str:
         """The recorded `save` rejection of the active chunk (reasons only), shown with the ERROR so the operator sees why."""
         try:
-            rec = dchunk.read_active(Path(b["worktree"]), b)
+            rec = dchunk.read_active(Path(b["worktree"]), b, chunk_no)
             if rec is None:
                 return ""
             diag = json.loads((Path(b["worktree"]) / dchunk.chunk_names(b, rec["chunk_no"]).rejected).read_text("utf-8"))
@@ -6771,7 +6794,8 @@ class Supervisor:
                 return self._fail(b, "ERROR", f"원격 브랜치 {b['branch']}가 로컬 HEAD와 다릅니다 ({remote} / {head}). force push 없이 보존합니다.")
             if rival := self._shared_occupied(b):
                 return self._fail(b, "ERROR", f"같은 D 배치가 이미 점유됐습니다 ({rival}). 다른 배치로 바꾸지 않고 보존합니다.")
-            return self._create_pr_once(b, title, dchunk.pr_body(label, b, coverage), [dchunk.PR_LABEL])
+            return self._create_pr_once(b, title, dchunk.pr_body(label, b, coverage, parallel=dparallel.is_parallel(self.store, b)),
+                                        [dchunk.PR_LABEL])
         except TRANSIENT:
             raise
         except (dchunk.DChunkError, GitError, RecoveryBlocked, DuplicateClaim, OSError, ValueError) as e:

@@ -320,6 +320,12 @@ def line_status(store: Store, model: str, method: str) -> dict:
                 count = lambda *states: sum(1 for t in tasks if t["state"] in states)
                 out["stage2"]["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING", "FIXQ", "RESPONDED"),
                                           "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
+        if method == "d":   # parallel D chunks: the same running / queued / saved task counts
+            tasks = store.task_rows(b["id"])
+            if tasks:
+                count = lambda *states: sum(1 for t in tasks if t["state"] in states)
+                out["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING", "FIXQ"),
+                                "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
         if b["progress_kind"] and b["progress_done"] is not None and b["progress_total"]:
             out["progress"] = f"{b['progress_done']}/{b['progress_total']} {b['progress_kind']}"
         elif b["records_done"] is not None and b["records_total"]:
