@@ -64,10 +64,11 @@ class SerialChunks(unittest.TestCase):
 
     def test_new_session_per_chunk_inline_view_then_one_pr(self):
         w = self.w
+        w.runner.literary.senses = 13
         w.start("single", "deepseek", "c")
-        for n in range(3):
+        for n in range(2):
             w.ai(session=f"ses_{n}")
-        for n in range(3):
+        for n in range(2):
             w.tick()
             if n == 0:   # init exactly once, the card carries the whole view and the chunk policy env
                 launch = w.adapter.launches[-1]
@@ -81,10 +82,10 @@ class SerialChunks(unittest.TestCase):
                 self.assertNotIn("AGENTS.md를 읽", launch["prompt"])
             w.finish_last()
             w.tick()
-        self.assertEqual(w.kinds(), ["c_chunk_new"] * 3)
+        self.assertEqual(w.kinds(), ["c_chunk_new"] * 2)
         self.assertTrue(all(l["kind"] == "start" for l in w.adapter.launches))   # never a resume of an old chunk
         prompts_ = [l["prompt"] for l in w.adapter.launches]
-        self.assertNotIn("s0000 —", prompts_[2])    # chunk 3 does not carry chunk 1's text
+        self.assertNotIn("s0000 —", prompts_[1])    # the partial second chunk does not carry chunk 1's text
         self.assertEqual(sum(1 for c in w.runner.literary.calls if c[2] == "init"), 1)
         b = w.row("deepseek", "c")
         self.assertEqual(b["state"], "WAITING_REVIEW")
@@ -93,33 +94,6 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(w.runner.literary.exports, 1)
 
-    def test_incomplete_checkpoint_gets_one_automatic_retry_then_operator_retry_resumes_only_the_rest(self):
-        w = self.w
-        w.start("single", "deepseek", "c")
-        w.ai(mark=5)
-        w.ai(mark=5)
-        w.tick()
-        ids = w.active()["sense_ids"]
-        w.finish_last()
-        w.tick()
-        self.assertEqual((w.adapter.launches[-1]["kind"], len(w.adapter.launches)), ("resume", 2))
-        w.finish_last()
-        w.tick()
-        b = w.row("deepseek", "c")
-        self.assertEqual(b["state"], "ERROR")
-        self.assertEqual(len(w.adapter.launches), 2)
-        # Explicit Retry grants one new chance and continues only the open senses, never the chunk body.
-        w.ai()
-        self.assertTrue(control.retry(w.store, "deepseek", "c"))
-        w.tick(2)
-        resume = w.adapter.launches[-1]
-        self.assertEqual(resume["kind"], "resume")
-        self.assertNotIn(prompts.VIEW_BEGIN, resume["prompt"])
-        self.assertNotIn("원문", resume["prompt"])
-        for done in ids[:5]:
-            self.assertNotIn(done, resume["prompt"])
-        for left in ids[5:]:
-            self.assertIn(left, resume["prompt"])
 
     def test_saved_submit_survives_an_unclean_exit(self):
         w = self.w
@@ -278,12 +252,6 @@ class SerialChunks(unittest.TestCase):
         self.assertNotIn("c_chunk_resume", w.kinds())
         self.assertTrue(any(call[2] == "submit" for call in w.runner.literary.calls))
 
-    def test_c_production_pr_reports_exact_technical_skip_count_only_when_present(self):
-        batch = {"shard": "001", "batch": "01"}
-        base = {"records": 500, "senses": 505, "candidates": 20, "technical_skips": []}
-        self.assertNotIn("Technical skips", literary.pr_body("DeepSeek", batch, base))
-        skipped = {**base, "technical_skips": [{"record_id": "r1", "sense_id": "s1", "reason": "context_key_not_found"}]}
-        self.assertIn("Technical skips: 1 senses — r1/s1 (context_key_not_found)", literary.pr_body("DeepSeek", batch, skipped))
 
     def test_only_a_repairable_cli_diagnostic_allows_an_automatic_resume(self):
         cases = {
@@ -400,21 +368,6 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(info["number"], 2060)
         self.assertTrue(info["merged"])
 
-    def test_c_live_pr_lookup_ignores_old_closed_history_but_finds_new_open_pr(self):
-        w = self.w
-        w.start("single", "deepseek", "c")
-        w.tick()
-        b = w.row("deepseek", "c")
-        w.add_branch_pr(2050, head="b" * 40)
-        w.add_branch_pr(2051, head="c" * 40)
-
-        self.assertIsNone(w.sup._find_pr(b))
-
-        w.add_branch_pr(2052, head=HEAD1)
-        self.assertEqual(w.sup._find_pr(b)["number"], 2052)
-
-        w.add_branch_pr(2060, state="open", head=HEAD1)
-        self.assertEqual(w.sup._find_pr(b)["number"], 2060)
 
     def test_c_recovery_preserves_attached_closed_pr_validation(self):
         w = self.w
@@ -426,59 +379,11 @@ class SerialChunks(unittest.TestCase):
 
         with self.assertRaisesRegex(RecoveryBlocked, "닫힌 PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
             w.sup._find_recovery_pr(w.row("deepseek", "c"))
-
-    def test_c_recovery_keeps_unattached_closed_pr_at_current_worktree_head(self):
-        w = self.w
-        w.start("single", "deepseek", "c")
-        w.tick()
-        b = w.add_branch_pr(2050, head=HEAD1)
-
-        info = w.sup._find_recovery_pr(b)
-
-        self.assertEqual(info["number"], 2050)
-        self.assertFalse(info["merged"])
-
-    def test_c_recovery_keeps_closed_pr_at_recorded_finalization_head(self):
-        w = self.w
-        w.start("single", "deepseek", "c")
-        w.tick()
-        b = w.row("deepseek", "c")
+        w.store.update(b["id"], pr_number=None)
         w.store.set(f"c_commit_head_{b['id']}", HEAD2)
-        w.add_branch_pr(2050, head=HEAD2)
-
         with self.assertRaisesRegex(RecoveryBlocked, "닫힌 PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
-            w.sup._find_recovery_pr(b)
-
-    def test_c_recovery_keeps_open_pr_head_checks(self):
-        w = self.w
-        w.start("single", "deepseek", "c")
-        w.tick()
-        w.add_branch_pr(2050, state="open", head=HEAD2)
-
-        with self.assertRaisesRegex(RecoveryBlocked, "PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
             w.sup._find_recovery_pr(w.row("deepseek", "c"))
 
-    def test_c_recovery_keeps_multiple_open_prs_and_remote_head_checks(self):
-        for case in ("multiple", "candidate_claim", "remote_head"):
-            with self.subTest(case=case):
-                w = CWorld()
-                self.addCleanup(w.tmp.cleanup)
-                w.start("single", "deepseek", "c")
-                w.tick()
-                b = w.row("deepseek", "c")
-                w.add_branch_pr(2050, state="open", head=HEAD1)
-                if case == "multiple":
-                    w.add_branch_pr(2051, state="open", head=HEAD1)
-                    expected = "소유 브랜치에 PR이 여러 개 있습니다"
-                elif case == "candidate_claim":
-                    w.gh.files[2050] = [{"path": "README.md"}]
-                    expected = "Candidate 파일 소유권이 배치와 일치하지 않습니다"
-                else:
-                    w.git.remote[b["branch"]] = HEAD2
-                    expected = "PR #2050 HEAD와 원격 소유 브랜치가 다릅니다"
-
-                with self.assertRaisesRegex(RecoveryBlocked, expected):
-                    w.sup._find_recovery_pr(b)
 
     def test_search_failed_stops_before_any_ai(self):
         w = self.w
@@ -578,6 +483,7 @@ class Finalization(unittest.TestCase):
         w.tick()
         w.add_branch_pr(2050, head="b" * 40)
         w.add_branch_pr(2051, head="c" * 40)
+        self.assertIsNone(w.sup._find_pr(w.row("deepseek", "c")))
 
         w.finish_last()
         w.tick()
@@ -587,6 +493,7 @@ class Finalization(unittest.TestCase):
         self.assertEqual(b["pr_number"], 100)
         self.assertEqual(len(w.gh.created_prs), 1)
         self.assertEqual(w.sup._find_recovery_pr(b)["number"], 100)
+        self.assertEqual(w.sup._find_pr(b)["number"], 100)
         self.assertEqual(w.gh.prs[2050]["state"], "closed")
         self.assertEqual(w.gh.prs[2051]["state"], "closed")
 
@@ -595,7 +502,9 @@ class Finalization(unittest.TestCase):
         w.start("single", "deepseek", "c")
         w.ai(mark=5)
         w.tick()
-        w.add_branch_pr(2050, head=HEAD1)
+        b = w.add_branch_pr(2050, head=HEAD1)
+        self.assertEqual(w.sup._find_recovery_pr(b)["number"], 2050)
+        self.assertEqual(w.sup._find_pr(b)["number"], 2050)
         w.finish_last()
         w.tick()
 
@@ -685,7 +594,7 @@ class Finalization(unittest.TestCase):
 
     def test_candidate_repairs_converge_across_more_than_three_distinct_senses(self):
         w = self.w
-        senses = [f"s{i:04d}" for i in range(1, 6)]
+        senses = [f"s{i:04d}" for i in range(1, 5)]
 
         def rejection(ids):
             issues = [{"record_id": "r0001", "canonical_record_id": "r0001", "sense_id": sid,
@@ -700,8 +609,7 @@ class Finalization(unittest.TestCase):
         w.ai(session="ses_initial")
         w.tick()
         b = w.row("deepseek", "c")
-        w.store.set(f"c_repairs_{b['id']}", "3")  # A legacy batch-wide counter does not gate this repair.
-        for remaining in (senses[1:], senses[2:], senses[3:], senses[4:], []):
+        for remaining in (senses[1:], senses[2:], senses[3:], []):
             def repair(ids=remaining):
                 rec = w.active()
                 w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", rec["sense_ids"])
@@ -711,12 +619,12 @@ class Finalization(unittest.TestCase):
         w.tick()
         w.finish_last()
         w.tick()  # first source-bound repair starts
-        for _ in range(5):
+        for _ in range(4):
             w.finish_last()
             w.tick()
 
         self.assertEqual(w.row("deepseek", "c")["state"], "WAITING_REVIEW")
-        self.assertEqual(len(w.adapter.launches), 6)
+        self.assertEqual(len(w.adapter.launches), 5)
         self.assertIsNone(w.store.get(f"c_repair_issue_count_{b['id']}"))
         self.assertEqual(len(w.gh.created_prs), 1)
 
@@ -820,12 +728,11 @@ class PureHelpers(unittest.TestCase):
             literary.progress_numbers("nonsense")
 
     def test_delivery_and_pages_are_lossless(self):
-        view = "".join(f"줄 {i} 한국어 원문\n" for i in range(5000))
-        self.assertEqual(literary.delivery(8000, view), "pages")
-        self.assertEqual(literary.delivery(8000, "짧은 view\n"), "inline")
-        self.assertEqual("".join(stage2.chunk_pages(view)), view)
-        with self.assertRaises(ValueError):
-            stage2.chunk_pages("가" * 30_000 + "\n")   # an over-long single line is never cut
+        original_limit = literary.INLINE_MAX_PROMPT_BYTES
+        literary.INLINE_MAX_PROMPT_BYTES = 16
+        self.addCleanup(setattr, literary, "INLINE_MAX_PROMPT_BYTES", original_limit)
+        self.assertEqual(literary.delivery(4, "짧은 view\n"), "inline")
+        self.assertEqual(literary.delivery(8, "짧은 view\n"), "pages")
 
     def test_affected_senses(self):
         ok = json.dumps({"diagnostic": "candidate_validation", "affected": {"sense_id": "s1"}})

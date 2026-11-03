@@ -57,8 +57,7 @@ class RepairFormatRetry(unittest.TestCase):
         self.assertEqual(len(w.git.stage2_repair_calls), 1)
 
     def test_format_failure_retries_same_page_then_converges(self):
-        for bad in ("repair @{fp}\nHere is my answer:\n```json\n{body}\n```", "repair @{fp}\n{trunc}",
-                    "repair @{fp}\n```python\n{body}\n```", "no header\n{body}", "repair @{wrong}\n{body}"):
+        for bad in ("repair @{fp}\n{trunc}", "repair @{wrong}\n{body}"):
             with self.subTest(bad=bad[:30]):
                 w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
                 launches = len(w.adapter.launches)

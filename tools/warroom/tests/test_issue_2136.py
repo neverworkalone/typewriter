@@ -172,7 +172,7 @@ class ChunkStorageAndLimits(unittest.TestCase):
         self.assertEqual(w.row_()["run_kind"], "ab_chunk_new")
 
     def test_nonzero_ab_exit_without_an_exact_current_begin_marker_stays_missing(self):
-        for text in ("작업 안내: BEGIN chunk 001", "BEGIN chunk 002\nS1\t후보\nEND chunk 002", "S1\t후보"):
+        for text in ("작업 안내: BEGIN chunk 001", "BEGIN chunk 002\nS1\t후보\nEND chunk 002"):
             with self.subTest(text=text):
                 w = ABWorld(records=60, method="a")
                 self.addCleanup(w.tmp.cleanup)

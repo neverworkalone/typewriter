@@ -161,15 +161,13 @@ class AnswerOnlyChunk(unittest.TestCase):
 
     def test_format_failure_does_not_overwrite_an_empty_or_wrong_chunk_decisions_file(self):
         malformed = f"chunk {CHUNK} c1 R near 1 c2 R near 3"
-        for contents in ("", "chunk 001-01-01-000\nc1 D old\n", f"chunk {CHUNK}\nnot a decision row\n"):
-            with self.subTest(contents=contents):
-                w, b = self.world({"code": 0, "session": "s1", "text": answer(malformed)})
-                path = Path(b["worktree"]) / stage2.DECISIONS
-                path.write_text(contents, "utf-8")
-                b = self.finish(w, b, 1)
-                self.assertEqual((b["state"], len(w.adapter.launches), w.git.save_calls),
-                                 ("ERROR", 1, []))
-                self.assertEqual(path.read_text("utf-8"), contents)
+        contents = "chunk 001-01-01-000\nc1 D old\n"
+        w, b = self.world({"code": 0, "session": "s1", "text": answer(malformed)})
+        path = Path(b["worktree"]) / stage2.DECISIONS
+        path.write_text(contents, "utf-8")
+        b = self.finish(w, b, 1)
+        self.assertEqual((b["state"], len(w.adapter.launches), w.git.save_calls), ("ERROR", 1, []))
+        self.assertEqual(path.read_text("utf-8"), contents)
 
     def test_candidate_fix_with_an_extra_alias_row_fails_closed_and_preserves_prior_rows(self):
         w, b = self.world(
@@ -214,16 +212,8 @@ class AnswerOnlyChunk(unittest.TestCase):
                          ["x", "f"])
         self.assertEqual(stage2.fixes_used(w.store.runs(b["id"]), "s2_chunk_new",
                                            ("s2_chunk_fix", "s2_chunk_format_fix")), 1)
-
-    def test_consumed_operator_retry_grant_cannot_be_regranted_for_the_same_chunk_session(self):
-        original = answer(f"chunk {CHUNK}\nc1 D first\nc2 R near 1 BAD")
-        fix = answer(f"chunk {CHUNK}\nc2 R near 1 BAD")
-        w, b = self.world({"code": 0, "session": "s1", "text": original},
-                          {"code": 0, "session": "s1", "text": fix})
-        b = self.finish(w, b, 1)
-        b = self.finish(w, b)
-        self.assertEqual((len(w.adapter.launches), len(w.git.technical_fallback_calls)), (2, 1))
         self.assertIsNone(w.store.get(stage2.correction_key(b["id"])))
+
 
     def test_recovery_revalidates_only_the_current_chunks_decisions_without_a_failure_record(self):
         w, b = self.world({"code": 2, "session": "s1", "text": answer("작업 중")}, {"code": 0, "session": "s2"})

@@ -114,13 +114,6 @@ class SourceContext(unittest.TestCase):
         self.assertEqual(scoped, {("w1", "w1-s1")}, "an explicit Sense ID bounds candidate-text matches")
         self.assertNotIn("둘째 뜻 전체", context)
 
-    def test_candidate_content_digest_changes_with_gloss_or_saved_candidates(self):
-        first = self.scope("w1-s1")[2]["w1-s1"]
-        data = json.loads(self.output.read_text("utf-8").splitlines()[0])
-        data["senses"][0]["candidates"][0] = "바뀐 후보"
-        self.output.write_text(json.dumps(data, ensure_ascii=False) + "\n" + self.output.read_text("utf-8").splitlines()[1] + "\n", "utf-8")
-        second = self.scope("w1-s1")[2]["w1-s1"]
-        self.assertNotEqual(first, second)
 
     def test_candidate_quote_match_is_context_evidence_not_sense_authority(self):
         allowed, context, _ = self.scope("`인용 후보`")

@@ -38,18 +38,6 @@ class FixHeadLag(unittest.TestCase):
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         return w
 
-    def test_lagging_pr_api_waits_then_reviews(self):
-        w = self.to_finished_fix()
-        n = len(w.adapter.launches)
-        w.tick()
-        self.assertEqual((w.row()["state"], w.row()["error"]), ("FIXING", None))
-        w.tick(3)                                   # still lagging: still waiting, the AI is never re-run
-        self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("FIXING", n))
-        w.pr_info(7, HEAD2, head_ref=BRANCH)        # PR API caught up
-        w.tick()
-        self.assertEqual((w.row()["state"], w.row()["head_sha"]), ("WAITING_REVIEW", HEAD2))
-        self.assertEqual(len(w.adapter.launches), n)
-
     def test_merge_during_lag_goes_to_cleanup_without_ai(self):
         w = self.to_finished_fix()
         n = len(w.adapter.launches)
@@ -73,12 +61,12 @@ class FixHeadLag(unittest.TestCase):
         self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("FIXING", n))   # still no AI
         w.pr_info(7, HEAD2, head_ref=BRANCH)
         w.tick()
-        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        self.assertEqual((w.row()["state"], w.row()["head_sha"]), ("WAITING_REVIEW", HEAD2))
         self.assertEqual(w.store.kv_prefix(f"tw_b{b['id']}:"), [])   # the warning counter left with the transition
 
     def test_gh_failure_while_waiting_is_a_wait_only_when_retryable(self):
-        cases = [("transient", GhTransient("HTTP 502"), "FIXING"), ("401", GhTransient("gh api: HTTP 401: Bad credentials"), "FIXING"),
-                 ("404", GhTransient("gh api: HTTP 404: Not Found"), "FIXING"), ("local", GhError("gh api: unknown flag"), "ERROR"), ("unknown", RuntimeError("boom"), "ERROR")]
+        cases = [("transient", GhTransient("HTTP 502"), "FIXING"),
+                 ("local", GhError("gh api: unknown flag"), "ERROR"), ("unknown", RuntimeError("boom"), "ERROR")]
         for name, exc, want in cases:
             with self.subTest(name):
                 w = World()

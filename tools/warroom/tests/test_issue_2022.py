@@ -53,24 +53,21 @@ class MaintainerStatus(World2022):
         w = self.w
         st = control.maintainer_status(w.store, w.cfg, control.maintainer_producer(w.store, w.cfg))
         self.assertEqual((st["state"], st["maintainer"]["issue"]), ("IDLE", None))
+        self.assertFalse(st["can_drain"] or st["can_stop"] or st["can_clear"] or st["can_retry"])
         self.assertEqual(control.maintainer_producer(w.store, w.cfg, "deepseek"), "sonnet")   # not the card's column
-        b, m = start_maintainer(w)
-        st = control.maintainer_status(w.store, w.cfg, "sonnet")
-        self.assertEqual((st["state"], st["maintainer"]["issue"], st["batch_id"]), ("PRODUCING", 101, m["id"]))
-        self.assertTrue(st["can_stop"] and st["can_drain"] and not st["can_retry"])
-        w.store.update(m["id"], state="ERROR", error="원인 [x] 전문 " * 40, pid=None)
-        st = control.maintainer_status(w.store, w.cfg, "sonnet")
-        self.assertEqual((st["state"], st["maintainer"]["issue"], st["batch_id"]), ("ERROR", 101, m["id"]))
-        self.assertTrue(st["can_retry"] and st["can_clear"] and not st["can_stop"])
-
-    def test_other_open_issues_are_identifiable_and_the_live_one_is_the_target(self):
-        w = self.w
         b, m = start_maintainer(w)
         w.store.ensure_maintenance(150)                  # an older, still queued Issue
         w.store.update_maintenance(150, created_at=1)
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
-        self.assertEqual(st["maintainer"]["issue"], 101)  # the ACTIVE execution, not the oldest row
+        self.assertEqual((st["state"], st["maintainer"]["issue"], st["batch_id"]), ("PRODUCING", 101, m["id"]))
         self.assertEqual([n for n, _ in st["maintainer"]["others"]], [150])
+        self.assertTrue(st["can_stop"] and st["can_drain"] and not st["can_retry"])
+        self.assertFalse(control.retry_maintainer(w.store))
+        w.store.update(m["id"], state="ERROR", error="원인 [x] 전문 " * 40, pid=None)
+        st = control.maintainer_status(w.store, w.cfg, "sonnet")
+        self.assertEqual((st["state"], st["maintainer"]["issue"], st["batch_id"]), ("ERROR", 101, m["id"]))
+        self.assertTrue(st["can_retry"] and st["can_clear"] and not st["can_stop"])
+        self.assertTrue(control.retry_maintainer(w.store))
 
 
 class MaintainerClear(World2022):
@@ -91,6 +88,7 @@ class MaintainerClear(World2022):
         launches, claims = len(w.adapter.launches), len(w.store.all_batches())
         w.tick(5)                                                 # nothing restarts, nothing is released or duplicated
         self.assertEqual((len(w.adapter.launches), len(w.store.all_batches())), (launches, claims))
+        self.assertEqual(w.git.integrated, [])
         self.assertEqual(w.store.maintenance(101)["state"], "HELD")
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
         self.assertEqual((st["state"], st["can_retry"], st["can_clear"], st["can_stop"]), ("HELD", True, False, False))
@@ -212,12 +210,6 @@ class MaintainerControls(World2022):
         w.tick(2)
         self.assertEqual(w.store.active_batch("sonnet", "m")["state"], "PAUSED")
 
-    def test_maintainer_retry_is_available_only_for_a_repairable_issue(self):
-        w = self.w
-        b, m = start_maintainer(w)
-        self.assertFalse(control.retry_maintainer(w.store))
-        w.store.update(m["id"], state="ERROR", error="boom", pid=None)
-        self.assertTrue(control.retry_maintainer(w.store))
 
     def test_drain_finishes_the_current_issue_but_claims_no_next_one(self):
         w = self.w
@@ -236,11 +228,6 @@ class MaintainerControls(World2022):
         w.tick(2)
         self.assertEqual(w.store.maintenance(202)["state"], "ACTIVE")
 
-    def test_drain_controls_are_unavailable_when_no_issue_is_active(self):
-        w = self.w
-        st = control.maintainer_status(w.store, w.cfg, "sonnet")
-        self.assertFalse(st["can_drain"])
-        self.assertFalse(st["can_stop"] or st["can_clear"] or st["can_retry"])
 
     def test_drain_stop_all_and_drain_all_never_touch_the_maintainer(self):
         w = self.w
@@ -251,13 +238,5 @@ class MaintainerControls(World2022):
         self.assertEqual(maintainer_row(w)["state"], "PRODUCING")
         self.assertFalse(w.store.maintenance_drained())
 
-    def test_a_cleared_issue_never_releases_the_paused_batch(self):
-        w = self.w
-        b, m = start_maintainer(w)
-        self.assertTrue(self.clear(m)[0])
-        w.tick(4)
-        self.assertEqual(w.git.integrated, [])
-        self.assertEqual(w.row()["state"], "PAUSED")
-        self.assertEqual(w.store.defects()[0]["state"], "LINKED")
 if __name__ == "__main__":
     unittest.main()

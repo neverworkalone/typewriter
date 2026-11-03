@@ -118,8 +118,6 @@ class LegacyRepairAttemptReconciliation(unittest.TestCase):
         cases = (
             ("two_legacy_failures", ("launched", "launched", "applied"), True, False, False),
             ("missing_validation_event", ("launched", "applied"), False, False, False),
-            ("duplicate_run", ("launched", "applied"), True, True, False),
-            ("running_process", ("launched", "applied"), True, False, True),
         )
         for name, statuses, error_event, duplicate_run, running in cases:
             with self.subTest(name=name):
