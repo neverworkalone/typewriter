@@ -174,6 +174,21 @@ For War Room-assigned C batches the Supervisor, not a long AI session, drives th
    Candidate file, pushes without force, re-checks the common C claim, and opens the one `[C/<Model>] SSS_BB`
    PR, re-deriving each step from file, Git and GitHub facts so an interruption never repeats work.
 
+**Four parallel chunks (#3076).** A *new* War Room C batch (mode key `c_mode_<id>`, persisted before the checkpoint
+exists) runs its chunks as up to four concurrent tasks inside the one batch, as approved by the owner. The
+checkpoint format is unchanged and every change is applied to the latest checkpoint under its lock (see the CLI
+notes above). A task owns exactly the Senses of its `c-active-NNN.json`; each new chunk is rendered with
+`--exclude-sense-ids` for every Sense an active chunk already reserves, and an empty view whose header reports
+`excluded_pending > 0` is a normal wait, not an error. Workers pass `--chunk NNN` to `chunk --sense-ids`, `add-form`
+and `submit`, so a request outside the task's Senses is rejected. A slot is returned only after the run's process is
+confirmed gone; a stored Sense never frees it earlier. Each task has its own correction budget (two automatic
+same-session corrections, plus one chance per operator Retry), at most one fresh-session no-submission recovery, and
+its own technical-skip authority (two completed automatic corrections of that task, each with a recorded official
+submit). The batch keeps one approved runtime baseline (`c_run_start_<id>`); the checkpoint's original
+`git_head`/`canonical_revision` identity is never rewritten. A batch without the mode key that is already in progress
+finishes serially, and a Candidate v1 repair keeps the existing serial singleton path. Workers have no authority to
+start other AI, CLI or subagent runs.
+
 The manual path in this document remains valid for hand-run batches.
 
 ## What you still do for every sense with hits

@@ -20,7 +20,8 @@ _STAGE3 = {"shard", "branch", "chunk_id", "chunk_input", "session_note", "s3_pol
 _STAGE3_FIX = {"pr", "head", "branch", "shard", "review_events", "session_note", "relation_path",
                "drop_path", "verify_command"}
 _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contract"}
-_C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract", "cli_path"}
+_C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract", "cli_path",
+            "chunk_flag"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
            "fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context",
                    "s2_policy_card"},
@@ -41,7 +42,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "s2_links_fix": {"digest", "problem", "relation_direction_rule"},
            "s2_repair": _STAGE2 | {"repair_input", "round_info", "format_feedback"},
            "s3_policy_card": set(), "s3_chunk": _STAGE3,
-           "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note", "cli_path"},
+           "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note", "cli_path", "chunk_flag"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input", "method_contract"},
            "d_chunk_resume": {"chunk_no", "decisions", "searches"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
            "a_chunk": _AB_CHUNK, "b_chunk": _AB_CHUNK, "ab_chunk_retry": {"chunk_no", "requested", "problem", "chunk_input"}}
@@ -274,7 +275,7 @@ VIEW_BEGIN, VIEW_END = "<<<CHUNK_VIEW_BEGIN>>>", "<<<CHUNK_VIEW_END>>>"
 
 
 def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages: list[str] | None = None,
-            note: str = "", directory: Path | None = None) -> str:
+            note: str = "", scoped: bool = False, directory: Path | None = None) -> str:
     """The self-contained card of ONE new Method C chunk session: the whole view inline, or (only when it cannot be
     delivered that way) the page files to read once each. Exactly one of `view` / `pages`."""
     if (view is None) == (pages is None):
@@ -293,10 +294,11 @@ def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages
                               "chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
                               "cli_path": shlex.quote(str(literary.cli_path())),
                               "chunk_contexts": literary.CHUNK_CONTEXTS, "session_note": note,
+                              "chunk_flag": f" --chunk {chunk_no:03d}" if scoped else "",
                               "chunk_input": chunk_input, "method_contract": method_contract("c", directory)}, directory)
 
 
-def c_chunk_resume(chunk_no: int, checkpoint: str, remaining: list[str], *, note: str = "",
+def c_chunk_resume(chunk_no: int, checkpoint: str, remaining: list[str], *, note: str = "", scoped: bool = False,
                    directory: Path | None = None) -> str:
     """Resuming the same session: only the still-open sense ids, never the chunk body again."""
     from . import literary
@@ -304,6 +306,7 @@ def c_chunk_resume(chunk_no: int, checkpoint: str, remaining: list[str], *, note
     return render("c_chunk_resume", {"chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
                                      "remaining": "남은 Sense ID: " + ", ".join(remaining),
                                      "cli_path": shlex.quote(str(literary.cli_path())),
+                                     "chunk_flag": f" --chunk {chunk_no:03d}" if scoped else "",
                                      "session_note": note}, directory)
 
 

@@ -24,6 +24,7 @@ VIEW = f"{SCRATCH}/c-active-chunk.txt"
 CLI = "scripts/relation/literary-context-cli.mjs"
 SUPERVISOR_CLI = "scripts/relation/literary-context-supervisor-cli.mjs"
 CHUNK_LIMIT = 12
+MAX_PARALLEL = 4   # chunk sessions of one new batch that may run at the same time (#3076)
 CHUNK_CONTEXTS = 8
 # The whole initial prompt (card + chunk view) travels as ONE argv element. Linux caps a single argument at 128 KiB
 # (MAX_ARG_STRLEN) and macOS the whole command line at 1 MiB; stay clearly below the smaller one.
@@ -95,16 +96,53 @@ def _file_state(path: Path) -> dict | None:
     return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "inode": stat.st_ino}
 
 
-def retry_state(worktree, b, rec: dict, pending_sense_ids: list[str], *, session_available: bool) -> dict:
-    """Compact exact active-chunk recovery state; it avoids re-reading candidate content."""
+def own_state(worktree, b, sense_ids: list[str]) -> str:
+    """Digest of exactly these Senses' checkpoint state (forms, shown contexts, submission): what a task owns.
+    Another task's save changes the checkpoint file but never this digest."""
+    try:
+        data = json.loads((Path(worktree) / names(b).checkpoint).read_text("utf-8"))
+        wanted = set(sense_ids)
+        found = {sense["sense_id"]: sense for record in data["records"] for sense in record["senses"]
+                 if sense.get("sense_id") in wanted}
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise LiteraryError("task Sense 상태를 읽을 수 없습니다") from error
+    if set(found) != wanted:
+        raise LiteraryError("task Sense가 checkpoint에 없습니다")
+    return sha256_text(json.dumps([found[i] for i in sorted(found)], sort_keys=True, ensure_ascii=False))
+
+
+def retry_state(worktree, b, rec: dict, pending_sense_ids: list[str], *, session_available: bool,
+                task_state: bool = False) -> dict:
+    """Compact exact active-chunk recovery state; it avoids re-reading candidate content.
+    `task_state` (a parallel task) adds the digest of the task's own Senses, so recovery never depends on the
+    whole checkpoint file that other tasks also write."""
     n = names(b)
     submit = Path(worktree) / f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
     diagnostic = submit.with_name(submit.name + ".diag.json")
-    return {"chunk_id": rec.get("chunk_id"), "chunk_no": rec["chunk_no"],
-            "view_sha256": rec.get("view_sha256"), "repair": rec.get("repair") is True,
-            "pending_sense_ids": list(pending_sense_ids), "session_available": bool(session_available),
-            "checkpoint": _file_state(Path(worktree) / n.checkpoint),
-            "submit": _file_state(submit), "diagnostic": _file_state(diagnostic)}
+    state = {"chunk_id": rec.get("chunk_id"), "chunk_no": rec["chunk_no"],
+             "view_sha256": rec.get("view_sha256"), "repair": rec.get("repair") is True,
+             "pending_sense_ids": list(pending_sense_ids), "session_available": bool(session_available),
+             "checkpoint": _file_state(Path(worktree) / n.checkpoint),
+             "submit": _file_state(submit), "diagnostic": _file_state(diagnostic)}
+    if task_state:
+        state["own_state"] = own_state(worktree, b, rec["sense_ids"])
+    return state
+
+
+def task_retry_unchanged(worktree, b, chunk_no: int, baseline: dict, *, session_available: bool) -> bool:
+    """Cheap Retry gate of one failed parallel task: unchanged when its view, submit/diagnostic files and OWN Sense
+    state are as at the failure (the whole checkpoint file is never compared). Damaged evidence stays blocked."""
+    try:
+        rec = read_active(worktree, b, chunk_no)
+        if (rec is None or rec.get("chunk_id") != baseline.get("chunk_id")
+                or rec.get("view_sha256") != baseline.get("view_sha256")):
+            return True
+        current = retry_state(worktree, b, rec, baseline.get("pending_sense_ids", []),
+                              session_available=session_available, task_state=True)
+        keys = ("chunk_id", "chunk_no", "view_sha256", "repair", "session_available", "submit", "diagnostic", "own_state")
+        return all(current.get(key) == baseline.get(key) for key in keys)
+    except (LiteraryError, OSError, ValueError, KeyError, TypeError):
+        return True
 
 
 def retry_guard_unchanged_fast(worktree, b, guard: dict, *, session_available: bool) -> bool:
@@ -137,12 +175,18 @@ def retry_state_same(current: dict, baseline: dict) -> bool:
 
 def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_start: dict | None,
                          pending_sense_ids: list[str], *, final_answer: str | None,
-                         submit_call_count: int | None) -> dict:
+                         submit_call_count: int | None, task_session: str | None = None,
+                         own_state_now: str | None = None) -> dict:
     """Classify an ended C chunk without reading or storing candidate content.
 
     A recoverable no-submission result requires a successful, session-bound run; unchanged checkpoint and active
     view; no submit/diagnostic artifacts; and a recognized adapter log proving zero official submit calls.
+
+    A parallel task passes its own `task_session` and `own_state_now`: the run's session is compared with the task's,
+    and "unchanged" means the task's own Senses (forms/shown/submission), never the whole checkpoint file that other
+    tasks save concurrently.
     """
+    task_mode = own_state_now is not None
     if not isinstance(b, dict):
         b = dict(b)
     if rec is None or rec.get("repair") is True or not isinstance(run, dict):
@@ -151,14 +195,15 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
         return {"status": "not_applicable"}
     if str(run.get("exit_status")) != "0":
         return {"status": "run_not_successful"}
-    if run.get("session_id") != b.get("session_id") or not run.get("session_id"):
+    expected_session = task_session if task_mode else b.get("session_id")
+    if run.get("session_id") != expected_session or not run.get("session_id"):
         return {"status": "session_mismatch"}
 
     required = {"branch", "worktree", "head", "remote_head", "chunk_no", "retry_state"}
     baseline = run_start if isinstance(run_start, dict) else {}
     retry = baseline.get("retry_state") if isinstance(baseline.get("retry_state"), dict) else {}
     retry_required = {"chunk_id", "chunk_no", "view_sha256", "repair", "pending_sense_ids",
-                      "session_available", "checkpoint", "submit", "diagnostic"}
+                      "session_available", "checkpoint", "submit", "diagnostic"} | ({"own_state"} if task_mode else set())
     if (not required <= set(baseline) or not retry_required <= set(retry)
             or baseline.get("branch") != b.get("branch")
             or not isinstance(baseline.get("worktree"), str)
@@ -180,7 +225,7 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
         return {"status": "checkpoint_or_chunk_mismatch"}
 
     try:
-        ids, failed, unsearchable = view_ids(read_view(worktree, rec))
+        ids, failed, unsearchable = view_ids(read_view(worktree, rec, rec["chunk_no"] if task_mode else None))
     except (OSError, LiteraryError, ValueError, KeyError, TypeError):
         return {"status": "checkpoint_or_chunk_mismatch"}
     if ids != rec.get("sense_ids"):
@@ -196,13 +241,13 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
     if not isinstance(baseline_pending, list) or not all(isinstance(sense_id, str) for sense_id in baseline_pending):
         return {"status": "checkpoint_or_chunk_mismatch"}
     if pending_sense_ids != baseline_pending:
-        if (current_checkpoint != retry.get("checkpoint")
-                and set(pending_sense_ids) < set(baseline_pending)):
+        changed = (own_state_now != retry.get("own_state")) if task_mode else (current_checkpoint != retry.get("checkpoint"))
+        if changed and set(pending_sense_ids) < set(baseline_pending):
             return {"status": "checkpoint_progress", "pending_sense_ids": list(pending_sense_ids)}
         return {"status": "checkpoint_or_chunk_mismatch"}
     if retry.get("pending_sense_ids") != pending_sense_ids:
         return {"status": "checkpoint_or_chunk_mismatch"}
-    if retry.get("checkpoint") != current_checkpoint:
+    if (retry.get("own_state") != own_state_now) if task_mode else (retry.get("checkpoint") != current_checkpoint):
         return {"status": "checkpoint_changed_without_pending_progress"}
 
     submit = Path(worktree) / f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
@@ -319,24 +364,41 @@ def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
     return any(isinstance(key, str) and key != key.strip() and len(key.strip()) >= 12 for key in entry["verified"])
 
 
-def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
-    """Orchestrate C's source-Sense fallback through the pinned Supervisor-only CLI."""
+def supervisor_skip(store, runner, env, worktree, b, rec: dict, task: dict | None = None) -> dict:
+    """Orchestrate C's source-Sense fallback through the pinned Supervisor-only CLI.
+
+    `task` (a parallel batch) is {"session_id", "run_id", "expected_head", "auto_fix_runs"}: the authority is the task's
+    own finished run and its two completed automatic corrections, not the batch-wide serial counters."""
     owner = store.batch(b["id"])
     if (not owner or owner["method"] != "c" or owner["producer"] != b["producer"]
             or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
-            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b["session_id"]):
+            or Path(owner["worktree"]) != Path(worktree) or (task is None and owner["session_id"] != b["session_id"])):
         raise LiteraryError("C technical skip requires the active War Room-owned batch")
-    retry_attempts = int(store.get(resubmit_key(b["id"])) or 0)
-    if retry_attempts != MAX_RESUBMITS:
-        raise LiteraryError("C technical skip requires the exhausted Supervisor resubmit budget")
-    if owner["state"] != "PRODUCING" or owner["pid"] is not None:
-        raise LiteraryError("C technical skip requires an idle, Supervisor-owned batch")
-    current_runs = store.runs(b["id"])
-    current_run = current_runs[0] if current_runs else None
-    if (not current_run or current_run["kind"] not in ("c_chunk_new", "c_chunk_resume", "c_chunk_recovery")
-            or current_run["session_id"] != b["session_id"] or current_run["ended_at"] is None
-            or owner["run_kind"] != current_run["kind"]):
-        raise LiteraryError("C technical skip requires the finished current C chunk run")
+    if task is not None:
+        auto_runs = task.get("auto_fix_runs")
+        if not isinstance(auto_runs, list) or len(auto_runs) < MAX_RESUBMITS:
+            raise LiteraryError("C technical skip requires two completed automatic corrections of this task")
+        if owner["state"] != "PRODUCING" or owner["pid"] is not None or owner["run_kind"] != "c_parallel":
+            raise LiteraryError("C technical skip requires an idle, Supervisor-owned parallel batch")
+        retry_attempts, session_id, run_id, expected_head = MAX_RESUBMITS, task["session_id"], task["run_id"], task["expected_head"]
+        current_run = store.run(run_id)
+        if (not current_run or current_run["kind"] not in ("c_chunk_new", "c_chunk_fix", "c_chunk_recovery")
+                or current_run["task"] != f"{rec['chunk_no']:03d}" or current_run["ended_at"] is None
+                or current_run["session_id"] != session_id):
+            raise LiteraryError("C technical skip requires the finished current run of this task")
+    else:
+        retry_attempts = int(store.get(resubmit_key(b["id"])) or 0)
+        if retry_attempts != MAX_RESUBMITS:
+            raise LiteraryError("C technical skip requires the exhausted Supervisor resubmit budget")
+        if owner["state"] != "PRODUCING" or owner["pid"] is not None:
+            raise LiteraryError("C technical skip requires an idle, Supervisor-owned batch")
+        current_runs = store.runs(b["id"])
+        current_run = current_runs[0] if current_runs else None
+        if (not current_run or current_run["kind"] not in ("c_chunk_new", "c_chunk_resume", "c_chunk_recovery")
+                or current_run["session_id"] != b["session_id"] or current_run["ended_at"] is None
+                or owner["run_kind"] != current_run["kind"]):
+            raise LiteraryError("C technical skip requires the finished current C chunk run")
+        session_id, run_id, expected_head = b["session_id"], current_run["id"], rec["git_head"]
     n = names(b)
     if rec.get("repair") is True:
         raise LiteraryError("C technical skip is not allowed during a Candidate repair chunk")
@@ -362,6 +424,7 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
             or any(not isinstance(entry, dict) or set(entry) != {"sense_id", "verified", "candidates"}
                    or entry.get("sense_id") not in active_ids for entry in entries)):
         raise LiteraryError("C technical skip submission does not match the active chunk")
+    active_path, view_path = _active_paths(rec["chunk_no"] if task is not None else None)
     before = sense_report(runner, env, worktree, b, active_ids)
     done = {item["sense_id"] for item in before["senses"] if item["done"]}
     pending = [entry for entry in entries if entry["sense_id"] != target_id and entry["sense_id"] not in done]
@@ -371,7 +434,8 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
         temporary.write_text(json.dumps({"senses": pending}, ensure_ascii=False), "utf-8")
         try:
             result = cli(runner, env, worktree, "submit", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
-                         "--checkpoint", n.checkpoint, "--input", str(temporary.relative_to(worktree)))
+                         "--checkpoint", n.checkpoint, "--input", str(temporary.relative_to(worktree)),
+                         *(["--chunk", f"{rec['chunk_no']:03d}"] if task is not None else []))
             _json(result, "C unaffected Sense resubmission")
         finally:
             temporary.unlink(missing_ok=True)
@@ -379,10 +443,11 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
 
     result = runner.run(["node", str(supervisor_cli_path()), "--checkpoint", n.checkpoint,
                          "--input", input_path, "--diagnostic", str(diagnostic_path.relative_to(worktree)),
-                         "--active", ACTIVE, "--view", VIEW, "--chunk-no", str(rec["chunk_no"]),
+                         "--active", active_path, "--view", view_path, "--chunk-no", str(rec["chunk_no"]),
                          "--supervisor-store", str(Path(store.path).resolve()), "--batch-id", str(b["id"]),
-                         "--branch", b["branch"], "--session-id", b["session_id"],
-                         "--run-id", str(current_run["id"]), "--expected-head", rec["git_head"]],
+                         "--branch", b["branch"], "--session-id", session_id,
+                         "--run-id", str(run_id), "--expected-head", expected_head,
+                         *(["--task", f"{rec['chunk_no']:03d}"] if task is not None else [])],
                         cwd=worktree, env=env, timeout=900)
     if not result.ok:
         try:
