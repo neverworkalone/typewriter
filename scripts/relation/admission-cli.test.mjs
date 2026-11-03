@@ -1958,8 +1958,11 @@ test('preflight classifies a newly integrated cross-shard optional pair for loca
   assert.deepEqual(prepared.items[0].candidates[0].decision, { disposition: 'existing' });
 
   const view = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional'], { root }));
+  const compactView = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional', '--format', 'compact'], { root }));
+  const targetAlias = /^T(\d+)\tw3-s1\t/u.exec(compactView.text)?.[1];
+  assert.ok(targetAlias, 'the stale link target is presented as an unlinked compact target');
   const optionalInput = '.warroom-scratch/optional-decisions.txt';
-  await writeFile(path.join(root, optionalInput), `links @${view.digest}\nc1 R association 3 T1\n`);
+  await writeFile(path.join(root, optionalInput), `links @${view.digest}\nc1 R association 3 T${targetAlias}\n`);
   await quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', optionalInput], { root }));
   await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
   await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), relationJsonl([crossShardCounterpart()]));
