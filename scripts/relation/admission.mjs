@@ -364,12 +364,27 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
   const seenPairs = new Map();
   const pairKey = (sourceSense, targetRecord, targetSense) => `${sourceSense}\u0000${targetRecord}\u0000${targetSense}`;
   const textKey = (sourceSense, text) => `${sourceSense}\u0000${normalizeCandidate(text)}`;
+  const remember = (key, origin, row) => {
+    const matches = seenPairs.get(key) ?? [];
+    matches.push({ origin, row });
+    seenPairs.set(key, matches);
+  };
+  const describeMatches = (matches = []) => matches.map(({ origin, row }) => {
+    if (!row) return origin;
+    const direction = 'text' in row
+      ? `${row.source_record_id}/${row.source_sense_id} -> ${JSON.stringify(row.text)}`
+      : `${row.source_record_id}/${row.source_sense_id} -> ${row.target_record_id}/${row.target_sense_id}`;
+    const assignment = 'text' in row ? ''
+      : `; ver:${Object.hasOwn(row, 'candidate_assignment_version') ? row.candidate_assignment_version : 'legacy'}`
+        + `; fm:${JSON.stringify(row.candidate_forms ?? [])}; rfm:${JSON.stringify(row.reverse_candidate_forms ?? [])}`;
+    return `${origin} Relation ${direction} [${row.type}/${row.relevance}${assignment}]`;
+  }).join('; ');
 
   for (const row of otherRelationRows) {
-    if ('text' in row) seenPairs.set(textKey(row.source_sense_id, row.text), 'other shard');
+    if ('text' in row) remember(textKey(row.source_sense_id, row.text), 'other shard', row);
     else {
-      seenPairs.set(pairKey(row.source_sense_id, row.target_record_id, row.target_sense_id), 'other shard');
-      seenPairs.set(pairKey(row.target_sense_id, row.source_record_id, row.source_sense_id), 'other shard');
+      remember(pairKey(row.source_sense_id, row.target_record_id, row.target_sense_id), 'other shard', row);
+      remember(pairKey(row.target_sense_id, row.source_record_id, row.source_sense_id), 'other shard', row);
     }
   }
 
@@ -414,8 +429,8 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
       else {
         if (source && row.text === normalizeCandidate(source.record.lemma)) errors.push(`${at}: text repeats the source lemma`);
         const key = textKey(row.source_sense_id, row.text);
-        if (seenPairs.has(key)) errors.push(`${at}: duplicate text relation ${row.source_sense_id} -> ${row.text} (${seenPairs.get(key)})`);
-        seenPairs.set(key, 'this shard');
+        if (seenPairs.has(key)) errors.push(`${at}: duplicate text relation ${row.source_sense_id} -> ${row.text} (${describeMatches(seenPairs.get(key))})`);
+        remember(key, 'this shard', row);
       }
       return;
     }
@@ -433,9 +448,11 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     if (!target || target.record.id !== row.target_record_id) { errors.push(`${at}: target_sense_id ${row.target_sense_id} is not a sense of ${row.target_record_id}`); return; }
     if (row.target_record_id === row.source_record_id) errors.push(`${at}: relation targets its own record`);
     const forward = pairKey(row.source_sense_id, row.target_record_id, row.target_sense_id);
-    if (seenPairs.has(forward)) errors.push(`${at}: duplicate or reverse-duplicate ID relation ${row.source_sense_id} <-> ${row.target_sense_id} (${seenPairs.get(forward)})`);
-    seenPairs.set(forward, 'this shard');
-    seenPairs.set(pairKey(row.target_sense_id, row.source_record_id, row.source_sense_id), 'this shard');
+    if (seenPairs.has(forward)) {
+      errors.push(`${at}: duplicate or reverse-duplicate ID relation ${row.source_sense_id} <-> ${row.target_sense_id} (${describeMatches(seenPairs.get(forward))})`);
+    }
+    remember(forward, 'this shard', row);
+    remember(pairKey(row.target_sense_id, row.source_record_id, row.source_sense_id), 'this shard', row);
   });
 
   const dropSeen = new Set();

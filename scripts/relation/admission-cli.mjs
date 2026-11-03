@@ -55,7 +55,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs reconcile --shard 001 [--batch 01 [--part 01]] --diff-from <sha> --diff-to <sha> [--dry-run] --json
   node scripts/relation/admission-cli.mjs affected-shards --from <sha> --to <sha> --json
   node scripts/relation/admission-cli.mjs affected-shards-batch --from-sha <sha>... --to <sha> --json
-  node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial] [--json]`;
+  node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial] [--relations-only --json] [--json]`;
 
 const CHECKPOINT_VERSION = 1;
 const SOURCE_MIRROR_TYPE_TIER_POLICY = 'source-mirror-v1';
@@ -638,7 +638,8 @@ function coalesceIdenticalSensePairRelations(relations, relationCandidates) {
   return { relations: selectedRelations, relationCandidates: selectedCandidates };
 }
 
-function collectMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index) {
+function collectMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index,
+  otherRelationRows = []) {
   // The materializer must be safe to run repeatedly from a pre-merge snapshot. Do not let a reciprocal
   // relation update alias and mutate the input rows supplied by its caller.
   const baseRelations = existingRelations.map((row) => ({
@@ -650,6 +651,7 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
   const exactRelations = new Set(baseRelations.map(stableRow));
   const exactDrops = new Set(baseDrops.map(stableRow));
   const idPairs = new Map();
+  const otherIdPairs = new Map();
   const textPairs = new Set();
   const drops = new Set(baseDrops.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const sourceCandidatesForPair = new Map();
@@ -659,6 +661,16 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
     const candidates = sourceCandidatesForPair.get(pair) ?? new Set();
     candidates.add(candidateKey);
     sourceCandidatesForPair.set(pair, candidates);
+  };
+  const markExistingIdCandidates = (row) => {
+    for (const item of checkpoint.items) {
+      const forward = item.candidates.filter((candidate) => item.sense_id === row.source_sense_id
+        && candidate.same_spelling_targets.some((target) => target.record_id === row.target_record_id));
+      const reverse = item.candidates.filter((candidate) => item.sense_id === row.target_sense_id
+        && candidate.same_spelling_targets.some((target) => target.record_id === row.source_record_id));
+      for (const candidate of forward) existingIdCandidates.add(`${item.sense_id}\u0000${candidate.text}`);
+      for (const candidate of reverse) existingIdCandidates.add(`${item.sense_id}\u0000${candidate.text}`);
+    }
   };
   for (const item of checkpoint.items) for (const candidate of item.candidates) {
     const candidateKey = `${item.sense_id}\u0000${candidate.text}`;
@@ -672,15 +684,14 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
     else {
       idPairs.set(idPairKey(row.source_sense_id, row.target_sense_id), row);
       idPairs.set(idPairKey(row.target_sense_id, row.source_sense_id), row);
-      for (const item of checkpoint.items) {
-        const forward = item.candidates.filter((candidate) => item.sense_id === row.source_sense_id
-          && candidate.same_spelling_targets.some((target) => target.record_id === row.target_record_id));
-        const reverse = item.candidates.filter((candidate) => item.sense_id === row.target_sense_id
-          && candidate.same_spelling_targets.some((target) => target.record_id === row.source_record_id));
-        for (const candidate of forward) existingIdCandidates.add(`${item.sense_id}\u0000${candidate.text}`);
-        for (const candidate of reverse) existingIdCandidates.add(`${item.sense_id}\u0000${candidate.text}`);
-      }
+      markExistingIdCandidates(row);
     }
+  }
+  for (const row of otherRelationRows) {
+    if ('text' in row) continue;
+    otherIdPairs.set(idPairKey(row.source_sense_id, row.target_sense_id), row);
+    otherIdPairs.set(idPairKey(row.target_sense_id, row.source_sense_id), row);
+    markExistingIdCandidates(row);
   }
   const appendRelations = [];
   const conflicts = [];
@@ -705,6 +716,17 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
     } else {
       const key = idPairKey(row.source_sense_id, row.target_sense_id);
       const reverse = idPairKey(row.target_sense_id, row.source_sense_id);
+      const otherPair = otherIdPairs.get(key) ?? otherIdPairs.get(reverse);
+      if (otherPair) {
+        const relatedCandidates = new Set([
+          ...(sourceCandidatesForPair.get(key) ?? []),
+          ...(sourceCandidatesForPair.get(reverse) ?? []),
+        ]);
+        relatedCandidates.add(candidateKey);
+        addConflict('id-pair-conflict', [...relatedCandidates], [otherPair, row],
+          `cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}; the pair is already owned by another shard`);
+        continue;
+      }
       const existingPair = idPairs.get(key) ?? idPairs.get(reverse);
       if (existingPair) {
         const sameOrientation = existingPair.source_record_id === row.source_record_id
@@ -780,8 +802,10 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
   return { relations: [...baseRelations, ...appendRelations], drops: [...baseDrops, ...appendDrops], conflicts };
 }
 
-function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index) {
-  const result = collectMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index);
+function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index,
+  otherRelationRows = []) {
+  const result = collectMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops,
+    index, otherRelationRows);
   if (result.conflicts.length) throw new Error(result.conflicts[0].message);
   return { relations: result.relations, drops: result.drops };
 }
@@ -789,7 +813,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
 function parseArgs(argv) {
   const [command, ...rest] = argv;
   const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, supervisorFallback: null,
-    maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, sourceSenseId: null, candidateText: null,
+    maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, relationsOnly: false, sourceSenseId: null, candidateText: null,
     selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0,
     diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, from: null, fromShas: [], to: null };
   for (let index = 0; index < rest.length; index += 1) {
@@ -812,6 +836,7 @@ function parseArgs(argv) {
     else if (flag === '--limit') options.limit = Number(rest[++index]);
     else if (flag === '--offset') options.offset = Number(rest[++index]);
     else if (flag === '--allow-partial') options.allowPartial = true;
+    else if (flag === '--relations-only') options.relationsOnly = true;
     else if (flag === '--json') options.json = true;
     else if (flag === '--format') options.format = rest[++index];
     else if (flag === '--diff-from') options.diffFrom = rest[++index];
@@ -869,6 +894,9 @@ function parseArgs(argv) {
   }
   if (options.refreshPremerge && command !== 'prepare-merge') throw new Error(`--refresh is only valid for prepare-merge\n${USAGE}`);
   if (command === 'reconcile' && !hasDiff) throw new Error(`reconcile requires --diff-from and --diff-to\n${USAGE}`);
+  if (options.relationsOnly && (command !== 'verify' || !options.json || options.allowPartial)) {
+    throw new Error('--relations-only requires verify --json and cannot be combined with --allow-partial');
+  }
   if (options.dryRun && command !== 'reconcile') throw new Error(`--dry-run is only valid for reconcile\n${USAGE}`);
   if (options.json && !['verify', 'prepare-merge', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch'].includes(command)) throw new Error(`--json is only valid for verify/prepare-merge/preflight/repair/reconcile/affected-shards\n${USAGE}`);
   if (['prepare-merge', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch'].includes(command) && !options.json) throw new Error(`${command} requires --json\n${USAGE}`);
@@ -1018,6 +1046,19 @@ export async function run(argv, { root } = {}) {
 
   const loaded = await loadShard(options.shard, repositoryRoot, { batch: options.batch });
   const { canonicalRows, index } = loaded;
+  if (options.relationsOnly) {
+    const [relationRows, dropRows, otherRelationRows] = await Promise.all([
+      loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot)),
+      loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot)),
+      loadApprovedRelations(repositoryRoot, { exceptShard: options.shard }),
+    ]);
+    const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+    validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows });
+    const payload = { version: 1, ok: true, scope: 'relation-integrity', shard: options.shard,
+      counts: { relations: relationRows.length, drops: dropRows.length } };
+    console.log(JSON.stringify(payload));
+    return payload;
+  }
   // --batch selects and fully validates one 500-record Stage 1 input set; --part narrows only Stage 2 editing/accounting.
   const scoped = options.part
     ? partScope(canonicalRows, loaded.candidateFiles, options.batch, options.part)
@@ -2386,7 +2427,8 @@ async function materializePart(checkpoint, root, baseline) {
     if (source) relation.reverse_candidate_forms = reverseCandidates.available(source, relation.target_sense_id);
     reverseCandidates.addRelation(relation);
   }
-  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops, loaded.index);
+  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops,
+    loaded.index, others);
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
   const removedRelationRows = baseline.relation_diff
     ? deletedIdRelationRowsBetween(baseline.relation_diff.from, baseline.relation_diff.to, root) : [];
@@ -2483,8 +2525,12 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-  validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
-    shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+  try {
+    validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
+      shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+  } catch (error) {
+    throw new Error(`existing Relation/Drop baseline is invalid; no checkpoint repair is safe: ${error.message}`);
+  }
   const generated = decisionRows(checkpoint);
   const allDrops = await loadAllApprovedDrops(root, { exceptShard: checkpoint.shard });
   const reverseCandidates = createReverseCandidateFormLookup({
@@ -2499,7 +2545,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
     reverseCandidates.addRelation(relation);
   }
   const collected = collectMergeConflicts(checkpoint, existingRelations, existingDrops, generated.relations,
-    generated.relationCandidates, generated.drops, loaded.index);
+    generated.relationCandidates, generated.drops, loaded.index, others);
   const unclassified = [];
   const byKey = new Map(checkpoint.items.flatMap((item) => item.candidates.map((candidate) =>
     [`${item.sense_id}\u0000${candidate.text}`, { item, candidate }])));

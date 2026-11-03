@@ -2,6 +2,13 @@ name: CI
 
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
+    branches: [master]
+  push:
+    branches: [master]
+    paths:
+      - 'data/relations/relation-*.jsonl'
 
 permissions:
   contents: read
@@ -9,13 +16,16 @@ permissions:
 jobs:
   validate:
     name: Validate and test Typewriter
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
     runs-on: ubuntu-24.04
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      HEAD_SHA: ${{ github.sha }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -25,21 +35,18 @@ jobs:
           # Dependency cache is configured below, only when dependencies install.
           package-manager-cache: false
 
+      - name: Validate changed Relation shards on the integration candidate
+        run: node scripts/ci/relation-merge-check.mjs "$BASE_SHA" "$HEAD_SHA"
+
       - name: Classify exact SQL schema diff
         id: schema
         shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/ci/sqlite-schema-change.mjs "$BASE_SHA" "$HEAD_SHA"
 
       - name: Classify changed files
         id: changes
         continue-on-error: true
         shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           paths_file="$(mktemp)"
@@ -175,17 +182,11 @@ jobs:
       - name: Normal validation (fast checkpoint + continuation)
         id: normal
         if: ${{ steps.changes.outcome != 'success' || (steps.changes.outputs.run_level == 'normal' && steps.changes.outputs.deep_mode != 'selective') }}
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: pnpm run ci:normal
 
       - name: Selective Deep validation (Normal + affected current Deep)
         id: selective
         if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.deep_mode == 'selective' }}
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: pnpm run ci:pr -- --base "$BASE_SHA" --head "$HEAD_SHA"
 
       - name: SQL schema-only Full/Lite build and validation
@@ -269,3 +270,44 @@ jobs:
             echo "- Selective Deep gate outcome: ${SELECTIVE_OUTCOME:-skipped}"
             echo "- Final gate result: ${FINAL_GATE:-unknown}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  post-merge-relations:
+    name: Verify merged Relation integrity
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out pushed revision
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          package-manager-cache: false
+
+      - name: Verify latest master after merge
+        shell: bash
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin master
+          latest_master="$(git rev-parse origin/master)"
+          if ! git merge-base --is-ancestor "$EVENT_AFTER" "$latest_master"; then
+            echo "Pushed revision $EVENT_AFTER is not an ancestor of latest master $latest_master." >&2
+            exit 1
+          fi
+          git checkout --detach "$latest_master"
+          if [[ "$EVENT_BEFORE" =~ ^0{40}$ ]]; then
+            base_sha="$(git rev-parse "$latest_master^" 2>/dev/null || true)"
+          else
+            base_sha="$EVENT_BEFORE"
+          fi
+          if [[ ! "$base_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Cannot identify a valid pre-push base for relation integrity verification." >&2
+            exit 1
+          fi
+          node scripts/ci/relation-merge-check.mjs "$base_sha" "$latest_master"
