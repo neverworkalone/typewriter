@@ -602,6 +602,7 @@ class WarRoom(App):
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
     #card-stage2 { height: auto; min-height: 6; }
+    #card-stage3 { height: auto; min-height: 6; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     RichLog { border: round $primary; height: 1fr; }
     """

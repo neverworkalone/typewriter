@@ -228,7 +228,13 @@ def card_text(st: dict) -> str:
                      f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
     lines = [title, records, bar, ops]
     tasks = (s2.get("tasks") if s2 else None) or st.get("tasks")
-    if tasks:   # parallel Stage 2 primary: running / queued / saved task counts
+    if tasks and (is_stage2 or is_stage3):
+        queued = tasks["queued"] + (tasks.get("responded", 0) if is_stage3 else 0)
+        left = f"실행 {tasks['running']} · 대기 {queued}"
+        if tasks["failed"]:
+            left += f" · 실패 {tasks['failed']}"
+        lines.append(_two_sided(left, f"저장 {tasks['saved']}/{tasks['total']}"))
+    elif tasks:   # parallel C/D tasks retain their existing summary
         lines.append(_fit(f"task 실행 {tasks['running']} · 대기 {tasks['queued']}"
                           + (f" · 응답 {tasks['responded']}" if tasks.get("responded") else "")
                           + f" · 저장 {tasks['saved']}/{tasks['total']}"
