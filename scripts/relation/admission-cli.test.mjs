@@ -2195,7 +2195,7 @@ test('preflight and merge use explicit ver:1 forward and reverse candidate assig
       assert.ok(preflight.problems[0].conflicts.every((conflict) => conflict.code === 'candidate-already-decided'), scenario.name);
       assert.ok(preflight.problems[0].conflicts.some((conflict) => conflict.relations.some((row) =>
         row.source_sense_id === existing.source_sense_id && row.target_sense_id === existing.target_sense_id)), scenario.name);
-      await assert.rejects(() => mergeForTest(root, checkpoint), /cannot merge (?:a Drop already answered|duplicate or already-decided) candidate/u,
+      await assert.rejects(() => mergeForTest(root, checkpoint), /cannot merge (?:a Drop already answered by an approved ID relation|duplicate or already-decided candidate)/u,
         scenario.name);
     }
   }
