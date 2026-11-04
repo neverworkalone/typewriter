@@ -130,7 +130,8 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
         self.assertFalse(control.retry(w.store, "deepseek", "c"))
 
-    def _legacy_stop_task_status(self, *, official_diagnostic=None):
+    def _legacy_stop_task_status(self, *, official_diagnostic=None, command_chunk="001", command_ids="s9999",
+                                 command_checkpoint=None):
         w = self.world(senses=12)
         w.start("single", "deepseek", "c")
         w.tick(2)
@@ -138,11 +139,14 @@ class Issue3129(Helpers, unittest.TestCase):
         row = w.store.task_row(b["id"], "001")
         run = w.store.run(row["run_id"])
         events = [{"type": "thread.started", "thread_id": run["session_id"]}]
+        checkpoint = command_checkpoint or literary.names(b).checkpoint
         if official_diagnostic is not None:
-            events.append({"type": "item.completed", "item": {
-                "id": "chunk-1", "type": "command_execution",
-                "command": f"node {literary.cli_path()} chunk --chunk 001 --sense-ids s9999",
-                "exit_code": 1, "aggregated_output": json.dumps(official_diagnostic)}})
+            diagnostics = official_diagnostic if isinstance(official_diagnostic, list) else [official_diagnostic]
+            for index, diagnostic in enumerate(diagnostics):
+                events.append({"type": "item.completed", "item": {
+                    "id": f"chunk-{index + 1}", "type": "command_execution",
+                    "command": f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {command_chunk} --sense-ids {command_ids}",
+                    "exit_code": 1, "aggregated_output": json.dumps(diagnostic)}})
         events.extend([
             {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
              "text": "The stop_and_report marker is being discussed; I did not call submit."}},
@@ -161,7 +165,7 @@ class Issue3129(Helpers, unittest.TestCase):
         w.sup._fail(w.store.batch(b["id"]), "ERROR", "legacy producer_reported_stop fixture")
         return w, control.line_status(w.store, "deepseek", "c")
 
-    def test_legacy_text_stop_guard_unlocks_only_without_official_stop_evidence(self):
+    def test_legacy_text_stop_guard_unlocks_for_false_positive_or_proven_scope_rejection(self):
         w, status = self._legacy_stop_task_status()
         self.assertTrue(status["can_retry"], status.get("retry_blocked_reason"))
         self.assertIsNone(status.get("retry_blocked_reason"))
@@ -169,8 +173,143 @@ class Issue3129(Helpers, unittest.TestCase):
         diagnostic = {"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
                       "message": "The request is outside the active chunk.", "repair_scope": "stop_and_report"}
         w, status = self._legacy_stop_task_status(official_diagnostic=diagnostic)
+        self.assertTrue(status["can_retry"], status.get("retry_blocked_reason"))
+
+    def test_legacy_chunk_scope_retry_fails_closed_without_exact_single_task_query_evidence(self):
+        scope = {"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
+                 "repair_scope": "stop_and_report"}
+        bad_code = {key: value for key, value in scope.items() if key != "code"}
+        other_stop = {"status": "FAILED", "diagnostic": "index_search", "repair_scope": "stop_and_report"}
+        cases = [
+            ("missing CLI error code", {"official_diagnostic": bad_code}),
+            ("wrong active task chunk", {"official_diagnostic": scope, "command_chunk": "002"}),
+            ("request only contains active IDs", {"official_diagnostic": scope, "command_ids": "s0000"}),
+            ("different checkpoint", {"official_diagnostic": scope, "command_checkpoint": ".warroom-scratch/other.json"}),
+            ("repeated scope stop", {"official_diagnostic": [scope, scope]}),
+            ("another stop reason", {"official_diagnostic": [scope, other_stop]}),
+        ]
+        for label, kwargs in cases:
+            with self.subTest(label=label):
+                _, status = self._legacy_stop_task_status(**kwargs)
+                self.assertFalse(status["can_retry"])
+                self.assertIn("cli_chunk_scope", status["retry_blocked_reason"])
+
+    def _fail_legacy_chunk_scope_run(self, w, task="001", requested_ids=None, extra_cli_commands=None):
+        b = self.b(w)
+        row = w.store.task_row(b["id"], task)
+        rec = literary.read_active(w.wt(), b, int(task))
+        run = dict(w.store.run(row["run_id"]))
+        requested_ids = requested_ids or (list(rec["sense_ids"]) + ["s9998", "s9999"])
+        diagnostic = {"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
+                      "message": "The request is outside the active chunk.", "repair_scope": "stop_and_report"}
+        checkpoint = literary.names(b).checkpoint
+        events = [{"type": "thread.started", "thread_id": run["session_id"]}]
+        events.extend({"type": "item.completed", "item": {"id": f"extra-cli-{index + 1}",
+                       "type": "command_execution", "command": command, "exit_code": 0,
+                       "aggregated_output": "FORM_ADDED\n"}}
+                      for index, command in enumerate(extra_cli_commands or []))
+        events.extend([
+            {"type": "item.completed", "item": {"id": "chunk", "type": "command_execution",
+             "command": f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {task} --sense-ids {','.join(requested_ids)}",
+             "exit_code": 1, "aggregated_output": json.dumps(diagnostic)}},
+            {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
+             "text": "The official CLI returned LITERARY_CHUNK_SCOPE; I stop_and_report."}},
+            {"type": "turn.completed", "usage": {"input_tokens": 1, "cached_input_tokens": 0,
+                                                       "output_tokens": 1, "reasoning_output_tokens": 0}},
+        ])
+        w.adapter.running[run["pid"]]["text"] = "".join(json.dumps(event) + "\n" for event in events)
+        w.adapter.finish(run["pid"])
+        w.store.finish_run(run["id"], "0")
+        row = w.store.task_row(b["id"], task)
+        data = self.data(w, task)
+        w.sup.cp._incomplete_failed(b, row, data, rec, rec["sense_ids"], {"status": "producer_reported_stop"})
+        w.sup.cp._halt(b, [w.store.task_row(b["id"], task)])
+        return rec, run
+
+    def test_one_owner_retry_runs_one_scoped_recovery_and_preserves_sibling_saves(self):
+        w = self.world(senses=24)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        sibling_ids = self.sense_ids(w, "002")
+        self.finish(w, "002")
+        w.tick()
+        checkpoint_path = w.wt() / literary.names(b).checkpoint
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        saved_before = {sense["sense_id"]: sense["submission"] for record in checkpoint["records"]
+                        for sense in record["senses"] if sense["sense_id"] in sibling_ids}
+
+        active_ids = self.sense_ids(w, "001")
+        rec, source_run = self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:2])
+        status = control.line_status(w.store, "deepseek", "c")
+        self.assertTrue(status["can_retry"], status.get("retry_blocked_reason"))
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+
+        data = self.data(w, "001")
+        recovery = max((run for run in w.store.runs(b["id"]) if run["task"] == "001"), key=lambda run: run["id"])
+        self.assertEqual(recovery["kind"], "c_chunk_recovery")
+        self.assertEqual(data["recovery"]["source_run_id"], source_run["id"])
+        self.assertEqual(data["recovery"]["pending_sense_ids"], active_ids)
+        self.assertEqual(data["recovery"]["scope_retry"], "legacy_cli_chunk_scope")
+        self.assertEqual(data.get("operator_grants", 0), 0)
+        self.assertEqual(self.tasks(w)["002"]["state"], "SAVED")
+        prompt = w.adapter.launches[-1]["prompt"]
+        self.assertIn("--chunk 001", prompt)
+        self.assertIn("허용 ID: " + ", ".join(active_ids), prompt)
+        self.assertNotIn(sibling_ids[0], prompt)
+        embedded_view = prompt.partition(prompts.VIEW_BEGIN)[2].partition(prompts.VIEW_END)[0]
+        self.assertTrue(embedded_view)
+        self.assertEqual(literary.view_ids(embedded_view)[0], active_ids)
+
+        self.finish(w, "001")
+        w.tick(2)
+        checkpoint_after = json.loads(checkpoint_path.read_text("utf-8"))
+        submissions_after = {sense["sense_id"]: sense["submission"] for record in checkpoint_after["records"]
+                             for sense in record["senses"]}
+        self.assertEqual({sense_id: submissions_after[sense_id] for sense_id in sibling_ids}, saved_before)
+
+    def test_sibling_add_form_in_source_run_blocks_scope_retry(self):
+        for mode in ("direct path", "shell variable alias"):
+            with self.subTest(mode=mode):
+                w = self.world(senses=24)
+                w.start("single", "deepseek", "c")
+                w.tick()
+                b = self.b(w)
+                sibling_ids = self.sense_ids(w, "002")
+                self.finish(w, "002")
+                w.tick()
+                active_ids = self.sense_ids(w, "001")
+                checkpoint = literary.names(b).checkpoint
+                add_form_args = (f"add-form --checkpoint {checkpoint} --sense-id {sibling_ids[0]} "
+                                 "--form 추가형 --basis 근거")
+                if mode == "direct path":
+                    add_form = f"node {literary.cli_path()} {add_form_args} && true"
+                else:
+                    add_form = f"CLI={literary.cli_path()}; node \"$CLI\" {add_form_args} && true"
+                self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:2],
+                                                  extra_cli_commands=[add_form])
+
+                status = control.line_status(w.store, "deepseek", "c")
+                self.assertFalse(status["can_retry"])
+                self.assertIn("checkpoint_mutation_command_unparsed", status["retry_blocked_reason"])
+
+    def test_failed_scope_recovery_cannot_be_retried_again(self):
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick(2)
+        self._fail_legacy_chunk_scope_run(w)
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+        self.assertEqual(sum(run["kind"] == "c_chunk_recovery" for run in w.store.runs(self.b(w)["id"])), 1)
+
+        self.finish(w, "001", save=False)
+        w.tick(2)
+        status = control.line_status(w.store, "deepseek", "c")
+        self.assertEqual(self.tasks(w)["001"]["state"], "FAILED")
         self.assertFalse(status["can_retry"])
-        self.assertIn("cli_chunk_scope", status["retry_blocked_reason"])
+        self.assertIn("legacy_chunk_scope_recovery_used", status["retry_blocked_reason"])
+        self.assertFalse(control.retry(w.store, "deepseek", "c"))
 
     @staticmethod
     def _write_no_submit_log(w, run, *, query=True):

@@ -403,11 +403,17 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
         return {"status": "search_failed", "sense_count": len(failed)}
     if unsearchable:
         return {"status": "unsearchable", "sense_count": len(unsearchable)}
-    for diagnostic in official_c_stop_diagnostics(
-            run.get("log_file"), expected_cli_path=cli_path(), command_cwd=Path(worktree)):
+    checkpoint_commands = []
+    stop_diagnostics = official_c_stop_diagnostics(
+        run.get("log_file"), expected_cli_path=cli_path(), command_cwd=Path(worktree),
+        expected_checkpoint_path=Path(worktree) / n.checkpoint, command_facts=checkpoint_commands)
+    if any(command.get("operation") == "unparsed_checkpoint_mutation" for command in checkpoint_commands):
+        return {"status": "checkpoint_mutation_command_unparsed", "checkpoint_commands": checkpoint_commands}
+    for diagnostic in stop_diagnostics:
         status = (diagnostic["diagnostic"] if diagnostic["operation"] == "submit_write"
                   else f"cli_{diagnostic['diagnostic']}")
-        return {"status": status, "operation": diagnostic["operation"]}
+        return {"status": status, "operation": diagnostic["operation"],
+                "stop_diagnostics": stop_diagnostics, "checkpoint_commands": checkpoint_commands}
 
     baseline_pending = retry.get("pending_sense_ids")
     if not isinstance(baseline_pending, list) or not all(isinstance(sense_id, str) for sense_id in baseline_pending):
