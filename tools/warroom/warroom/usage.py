@@ -145,11 +145,10 @@ def _c_checkpoint_matches(raw_path: str | None, expected_path, command_cwd) -> b
 
 
 _CHECKPOINT_MUTATING_C_COMMANDS = {"init", "chunk", "submit", "add-form", "clear-candidates"}
-_READ_ONLY_C_COMMANDS = {"preflight", "report", "export", "validate"}
 
 
 def _c_unparsed_checkpoint_mutation(command: object, *, expected_cli_path, command_cwd) -> bool:
-    """Fail closed on shell-composed or unresolved invocations that could mutate the official CLI checkpoint."""
+    """Fail closed when a command containing the official CLI cannot be parsed exactly."""
     if not isinstance(command, str):
         return False
     try:
@@ -162,17 +161,13 @@ def _c_unparsed_checkpoint_mutation(command: object, *, expected_cli_path, comma
             and tokens[1] in ("-c", "-lc")):
         return _c_unparsed_checkpoint_mutation(tokens[2], expected_cli_path=expected_cli_path,
                                                command_cwd=command_cwd)
-    for index, token in enumerate(tokens[:-2]):
-        if Path(token).name != "node":
-            continue
-        script, operation = tokens[index + 1], tokens[index + 2]
-        if operation in _READ_ONLY_C_COMMANDS:
-            continue
-        if operation not in _CHECKPOINT_MUTATING_C_COMMANDS:
-            continue
-        if _c_script_matches(script, expected_cli_path=expected_cli_path, command_cwd=command_cwd):
+    expected_name = Path(expected_cli_path).name
+    for token in tokens:
+        candidate = token.strip(";&|()")
+        if _c_script_matches(candidate, expected_cli_path=expected_cli_path, command_cwd=command_cwd):
             return True
-        if "$" in script or "${" in script:
+        if (expected_name and Path(candidate).name == expected_name
+                and ("$" in candidate or not Path(candidate).is_absolute())):
             return True
     return False
 
