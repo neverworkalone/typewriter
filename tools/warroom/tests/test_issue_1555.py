@@ -1335,6 +1335,7 @@ class IncidentRecoveryProof(unittest.TestCase):
 
     def test_a_held_incident_is_reproved_after_the_code_checkout_changes(self):
         from unittest import mock
+        from pathlib import Path
         from warroom import dchunk
 
         w = self.w
@@ -1347,14 +1348,14 @@ class IncidentRecoveryProof(unittest.TestCase):
                             data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
         w.store.set(f"defect_reproof_head_{d['id']}", HEAD1)
         w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: d_parallel: 이전 코드에서 prompt 집합을 계산할 수 없음")
-        w.git.local_head = HEAD2
         w.git.ancestor_pairs.add((MERGE, HEAD2))
         w.store.set(f"defect_hold_{b['id']}", "1")
         self.assertFalse(w.store.rearm_held_defect(d["id"], b["id"], HEAD2))
         self.assertEqual(w.store.defect(d["id"])["state"], "HELD")
         w.store.delete(f"defect_hold_{b['id']}")
         active = {"chunk_no": 9, "view_sha256": "v" * 64, "git_head": HEAD1}
-        with mock.patch.object(dchunk, "read_active", return_value=active), \
+        with mock.patch.object(w.git, "head", side_effect=lambda path: HEAD2 if Path(path) == w.sup.code_root else HEAD1), \
+             mock.patch.object(dchunk, "read_active", return_value=active), \
              mock.patch.object(dchunk, "read_rejection", return_value=None):
             d = self.settle(d)
 
