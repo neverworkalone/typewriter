@@ -1,4 +1,6 @@
 """Issue #3378: prompts and the runtime root are bound to the verified operating checkout, never a temporary worktree."""
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -54,6 +56,30 @@ class OperatingRoot(unittest.TestCase):
             self.assertEqual(check_runtime_root(), REPO_ROOT)
         with mock.patch.dict("os.environ", {}, clear=True):
             self.assertEqual(operating_root(), REPO_ROOT)
+
+
+class LauncherRoot(unittest.TestCase):
+    """`./war` and `./dashboard` refuse a linked worktree (`.git` file) before starting any Python."""
+
+    def run_launcher(self, name: str, git_is_dir: bool) -> subprocess.CompletedProcess:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fake_root(tmp, "x")
+            shutil.copy(REPO_ROOT / name, root / name)
+            if git_is_dir:
+                (root / ".git").mkdir()
+            else:
+                (root / ".git").write_text("gitdir: /elsewhere\n", "utf-8")
+            # PATH has no tmux/python venv: a passing check can only fail later, never with the root message.
+            return subprocess.run(["/bin/sh", str(root / name)], capture_output=True, text=True,
+                                  env={"PATH": "/usr/bin:/bin", "TMUX": ""}, timeout=30)
+
+    def test_linked_worktree_is_refused_and_main_checkout_passes_the_check(self):
+        for name in ("war", "dashboard"):
+            bad = self.run_launcher(name, git_is_dir=False)
+            self.assertEqual(bad.returncode, 1)
+            self.assertIn("운영 메인 checkout이 아닙니다", bad.stderr)
+            good = self.run_launcher(name, git_is_dir=True)
+            self.assertNotIn("운영 메인 checkout이 아닙니다", good.stderr)
 
 
 if __name__ == "__main__":
