@@ -878,6 +878,57 @@ class AutonomousIncident(unittest.TestCase):
         w.tick(5)
         self.assertEqual(w.store.batch(row["id"])["state"], "PAUSED")   # never auto-resumed
 
+    def test_undetermined_diagnosis_has_an_explicit_retry_that_only_relinks_the_paused_incident(self):
+        w, first = self.diagnose(outcome="undetermined")
+        d, = incidents(w)
+        st = control.maintainer_status(w.store, w.cfg, "sonnet")
+        self.assertTrue(w.store.maintenance_retryable(102))
+        self.assertTrue(st["can_retry"])
+        self.assertTrue(control.retry_maintainer(w.store, 102))
+        self.assertFalse(control.retry_maintainer(w.store, 102))  # one explicit queue transition
+        self.assertEqual((w.store.maintenance(102)["state"], w.store.maintenance(102)["batch_id"]), ("QUEUED", None))
+        self.assertEqual((w.store.defect(d["id"])["state"], w.store.batch(d["batch_id"])["state"]),
+                         ("LINKED", "PAUSED"))
+
+        w.tick(4)
+        attempts = [b for b in w.store.all_batches() if b["method"] == "m"]
+        second = attempts[-1]
+        self.assertEqual(len(attempts), 2)
+        self.assertNotEqual(second["id"], first["id"])
+        self.assertEqual((second["shard"], second["batch"]), ("issue-2", "102"))
+        self.assertEqual(w.store.maintenance(102)["batch_id"], second["id"])
+        self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED")
+
+    def test_undetermined_retry_refuses_other_diagnoses_and_changed_incident_state(self):
+        w, _ = self.diagnose(outcome="external")
+        self.assertFalse(w.store.maintenance_retryable(102))
+        self.assertFalse(control.maintainer_status(w.store, w.cfg, "sonnet")["can_retry"])
+        self.assertFalse(control.retry_maintainer(w.store, 102))
+
+        self.tearDown()
+        self.setUp()
+        w, _ = self.diagnose(outcome="undetermined")
+        d, = incidents(w)
+        w.store.update(d["batch_id"], state="ERROR")
+        self.assertFalse(w.store.maintenance_retryable(102))
+        self.assertFalse(control.retry_maintainer(w.store, 102))
+        self.assertEqual(w.store.defect(d["id"])["state"], "HELD")
+
+    def test_retry_diagnosis_does_not_accept_a_previous_attempt_marker(self):
+        w, first = self.diagnose(outcome="undetermined")
+        self.assertTrue(control.retry_maintainer(w.store, 102))
+        w.tick(4)
+        second = [b for b in w.store.all_batches() if b["method"] == "m"][-1]
+        self.assertEqual(second["shard"], "issue-2")
+        path = Path(second["worktree"]) / ".warroom-scratch/incident-diagnosis.json"
+        path.write_text(json.dumps({"version": 1, "issue": 102, "outcome": "undetermined"}))
+        # The only Issue marker is from the previous attempt; it cannot prove this result.
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick(3)
+        self.assertEqual(w.store.batch(second["id"])["state"], "ERROR")
+        self.assertIsNone(w.store.get(f"m_diag_{second['id']}"))
+        self.assertEqual(w.store.maintenance(102)["batch_id"], second["id"])
+
     def test_an_unverified_recurrence_diagnosis_is_held_like_an_undetermined_one(self):
         w, m = self.diagnose(outcome="recurrence", recurrence_of=999, evidence="same cause")
         self.assertEqual((m["state"], w.store.maintenance(102)["state"]), ("COMPLETE", "HELD"))
