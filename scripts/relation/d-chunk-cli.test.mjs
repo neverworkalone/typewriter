@@ -1036,7 +1036,7 @@ withWorld('search-batch reuses prepare completion for same-record senses without
   assert.equal(evidence[0].forms[0], '새벽안개');
 });
 
-withWorld('search-batch CLI corrects a stale active record id from the Canonical sense owner', async (world) => {
+withWorld('D searches, save diagnostics, and saved rows bind a stale active sense to its Canonical owner', async (world) => {
   await prepareChunk({ ...world.options, chunkNumber: 1 });
   const active = await meta(world);
   const target = active.senses.find((sense) => sense.ref === 's4');
@@ -1045,13 +1045,44 @@ withWorld('search-batch CLI corrects a stale active record id from the Canonical
   await writeFile(chunkPath(world, 'active'), JSON.stringify(active));
 
   const result = await runCli(['search-batch', '--dir', world.root], JSON.stringify({
-    requests: [{ sense: 's4', forms: ['달리다'], boundary: 'both', contexts: 4 }],
+    requests: [{ sense: 's4' }],
   }), { TYPEWRITER_APPROVED_CORPUS_DB: world.options.databasePath });
   assert.equal(result.code, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.requests[0].record_id, 'w003');
-  const evidence = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(output.results[0].shared_by[0].record_id, 'w003');
+
+  await searchActive({ ref: 's4', forms: ['달리다를'], databasePath: world.options.databasePath, root: world.root });
+  let evidence = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse);
   assert.equal(evidence.at(-1).record_id, 'w003');
+  assert.deepEqual(evidence.at(-1).forms, ['달리다를']);
+
+  // A rejected decision must still identify the source Sense's Canonical Record in its repair diagnostic.
+  await writeFile(chunkPath(world, 'decisions'), 's4 V\n');
+  await assert.rejects(saveActive({ inputPath: chunkPath(world, 'decisions'), root: world.root }),
+    (error) => error.exitCode === 2);
+  const rejected = JSON.parse(await readFile(chunkPath(world, 'rejected'), 'utf8'));
+  const failedOwner = rejected.failed_records.find((item) => item.record_id === 'w003');
+  assert.ok(failedOwner, 'the diagnostic groups s4 under its Canonical record');
+  assert.deepEqual(failedOwner.failed_sense_ids, ['w003-s1']);
+
+  // Add a context-bearing search so the same stale metadata can pass through the save path too.
+  await searchActive({ ref: 's4', forms: ['새벽안개'], databasePath: world.options.databasePath, root: world.root });
+  evidence = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const lines = active.senses.filter((sense) => !sense.auto).map((sense) => {
+    const recordId = sense.sense_id.slice(0, sense.sense_id.lastIndexOf('-s'));
+    const state = recordEvidence(evidence, recordId);
+    assert.ok(state.hits > 0 || state.allComplete, `${sense.ref} needs recorded contexts or a complete zero-hit search`);
+    return `${sense.ref} ${state.hits > 0 ? 'V' : 'Z'}`;
+  });
+  await writeFile(chunkPath(world, 'decisions'), `${lines.join('\n')}\n`);
+  const saved = await saveActive({ inputPath: chunkPath(world, 'decisions'), root: world.root });
+  assert.equal(saved.status, 'SAVED');
+  const rows = (await readFile(path.join(world.directory, 'chunk-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.deepEqual(rows.find((row) => row.record_id === 'w003').senses,
+    [{ sense_id: 'w003-s1', candidates: [] }]);
+  assert.deepEqual(rows.find((row) => row.record_id === 'w002').senses,
+    [{ sense_id: 'w002-s1', candidates: [] }]);
 });
 
 withWorld('single and batch reread return context without changing evidence or decision state', async (world) => {
