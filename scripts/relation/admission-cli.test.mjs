@@ -2167,7 +2167,7 @@ test('preflight and merge use explicit ver:1 forward and reverse candidate assig
 
     const preflight = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
     if (!scenario.conflict) {
-      assert.equal(preflight.ok, true, scenario.name);
+      assert.equal(preflight.ok, true, `${scenario.name}: ${JSON.stringify(preflight)}`);
       assert.equal(preflight.total, 0, scenario.name);
       const merged = await mergeForTest(root, checkpoint);
       assert.deepEqual([merged.relations_added, merged.drops_added], [0, 1], scenario.name);
