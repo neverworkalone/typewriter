@@ -855,3 +855,142 @@ test('read-chunk and refresh-pending expose prompt_view beside the unchanged JSO
   assert.equal(done.prompt_view, null);
   assert.equal(done.current_view, null);
 });
+
+// ---- explicit chunk API (#3149 PR 1) ----
+async function threeChunkRepository(t) {
+  const ids = ['w900001-s1', 'w900002-s1', 'w900003-s1'];
+  const rows = [];
+  ids.forEach((id, index) => {
+    for (let i = 0; i < 360; i += 1) {
+      rows.push({ source_record_id: id.replace(/-s\d+$/u, ''), source_sense_id: id, text: `미등록${index}x${i}`, type: 'scene', relevance: 4 });
+    }
+  });
+  // Competing ID pair across chunks 001 and 002.
+  rows.splice(0, 0, textRelation('w900001-s1', 'w900002-s1'));
+  rows.splice(361, 0, textRelation('w900002-s1', 'w900001-s1'));
+  return repositoryFromRows(t, { localSenseIds: ids, relations: rows });
+}
+
+function viewRow(view, text) {
+  for (const sense of view.senses) for (const relation of sense.relations) if (relation.text === text) return relation;
+  throw new Error(`no relation ${text}`);
+}
+
+async function saveExplicit(root, chunk, text, sha) {
+  const input = path.join(root, '.warroom-scratch', `decisions-${chunk}.txt`);
+  await mkdir(path.dirname(input), { recursive: true });
+  await writeFile(input, text, 'utf8');
+  return quiet(() => run(['save-chunk', '--shard', '001', '--chunk', chunk, '--in', input, '--expect-view-sha256', sha], { root }));
+}
+
+async function chunkDecisions(root) {
+  const views = {};
+  for (const chunk of ['001', '002', '003']) views[chunk] = await quiet(() => run(['read-chunk', '--shard', '001', '--chunk', chunk], { root }));
+  const texts = {
+    '001': `chunk 001\nD ${viewRow(views['001'], '미등록0x5').n}\nL ${viewRow(views['001'], '말900002').n} T1\n`,
+    '002': `chunk 002\nL ${viewRow(views['002'], '말900001').n} T1\nD ${viewRow(views['002'], '미등록1x7').n} ${viewRow(views['002'], '미등록1x3').n}\n`,
+    '003': 'chunk 003\nnone\n',
+  };
+  return { views, texts };
+}
+
+test('explicit chunk saves in any completion order give identical checkpoint and apply results', async (t) => {
+  const outcomes = [];
+  for (const order of [['001', '002', '003'], ['003', '001', '002'], 'serial']) {
+    const root = await threeChunkRepository(t);
+    assert.equal((await quiet(() => run(['prepare', '--shard', '001'], { root }))).chunk_count, 3);
+    const { views, texts } = await chunkDecisions(root);
+    assert.equal(views['001'].completed, false);
+    if (order === 'serial') {
+      for (const chunk of ['001', '002', '003']) await save(root, texts[chunk]);
+    } else {
+      for (const chunk of order) await saveExplicit(root, chunk, texts[chunk], views[chunk].view_sha256);
+    }
+    const checkpoint = JSON.parse(await readFile(path.join(root, '.warroom-scratch/relation-edit-001.json'), 'utf8'));
+    assert.deepEqual(checkpoint.completed_chunks, ['001', '002', '003']);
+    const result = await quiet(() => run(['apply', '--shard', '001'], { root }));
+    outcomes.push({
+      checkpoint: JSON.stringify(checkpoint),
+      result: JSON.stringify(result),
+      relations: await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'),
+      drops: await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'),
+    });
+  }
+  assert.deepEqual(outcomes[1], outcomes[0], 'completion order does not change checkpoint or apply bytes');
+  const { checkpoint: _serialCheckpoint, ...serialRest } = outcomes[2];
+  const { checkpoint: _explicitCheckpoint, ...explicitRest } = outcomes[0];
+  assert.deepEqual(serialRest, explicitRest, 'explicit saves apply identically to the serial path (whose append order is unchanged)');
+});
+
+test('explicit chunk save is idempotent and rejects different, stale, partial, and malformed input', async (t) => {
+  const root = await threeChunkRepository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const { views, texts } = await chunkDecisions(root);
+  const checkpointPath = path.join(root, '.warroom-scratch/relation-edit-001.json');
+  const sha = (chunk) => views[chunk].view_sha256;
+
+  await assert.rejects(saveExplicit(root, '001', texts['001'], 'f'.repeat(64)), /view changed since it was launched/u);
+  await assert.rejects(saveExplicit(root, '001', 'chunk 001\nL 1 T99\n', sha('001')), /not an exact Canonical target|unknown|text-only/u);
+  await assert.rejects(saveExplicit(root, '001', 'chunk 002\nnone\n', sha('001')), /must begin with "chunk 001"/u);
+  await assert.rejects(saveExplicit(root, '001', 'chunk 001\nD 1\nD 1\n', sha('001')), /unknown or repeated/u);
+  const empty = await readFile(checkpointPath, 'utf8');
+  assert.deepEqual(JSON.parse(empty).completed_chunks, []);
+
+  const first = await saveExplicit(root, '001', texts['001'], sha('001'));
+  assert.equal(first.already_saved, false);
+  await saveExplicit(root, '003', texts['003'], sha('003'));
+  const saved = await readFile(checkpointPath, 'utf8');
+
+  const again = await saveExplicit(root, '001', texts['001'], sha('001'));
+  assert.equal(again.already_saved, true);
+  const [header, ...lines] = texts['001'].trim().split('\n');
+  const reordered = await saveExplicit(root, '001', [header, ...lines.reverse()].join('\n'), sha('001'));
+  assert.equal(reordered.already_saved, true, 'row order alone is the same decision set');
+  assert.equal((await saveExplicit(root, '003', 'chunk 003\nnone\n', sha('003'))).already_saved, true);
+  assert.equal(await readFile(checkpointPath, 'utf8'), saved, 'idempotent re-save leaves the checkpoint untouched');
+
+  await assert.rejects(saveExplicit(root, '001', `chunk 001\nD ${viewRow(views['001'], '미등록0x5').n}\n`, sha('001')), /already saved with different decisions/u);
+  await assert.rejects(saveExplicit(root, '001', 'chunk 001\nnone\n', sha('001')), /already saved with different decisions/u);
+  await assert.rejects(saveExplicit(root, '003', `chunk 003\nD ${viewRow(views['003'], '미등록2x1').n}\n`, sha('003')), /already saved with different decisions/u);
+  assert.equal(await readFile(checkpointPath, 'utf8'), saved);
+
+  // Partial/corrupt: decisions exist for a chunk that is not completed.
+  const corrupt = JSON.parse(saved);
+  corrupt.decisions.push({ chunk: '002', row: corrupt.decisions[0].row, action: 'drop' });
+  await writeFile(checkpointPath, `${JSON.stringify(corrupt)}\n`);
+  await assert.rejects(saveExplicit(root, '002', texts['002'], sha('002')), /incomplete or unknown chunk/u);
+});
+
+test('explicit chunk options are validated and refresh-pending reports per-chunk digests', async (t) => {
+  const root = await threeChunkRepository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  await assert.rejects(quiet(() => run(['read-chunk', '--shard', '001', '--chunk', '001', '--batch', '01', '--part', '01'], { root })), /cannot be combined/u);
+  await assert.rejects(quiet(() => run(['read-chunk', '--shard', '001', '--chunk', '9'], { root })), /three-digit/u);
+  await assert.rejects(quiet(() => run(['read-chunk', '--shard', '001', '--chunk', '004'], { root })), /outside 001/u);
+  await assert.rejects(quiet(() => run(['save-chunk', '--shard', '001', '--chunk', '001', '--in', 'x'], { root })), /requires --expect-view-sha256/u);
+  const { views, texts } = await chunkDecisions(root);
+
+  const before = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.deepEqual(before.pending_view_sha256, { '001': views['001'].view_sha256, '002': views['002'].view_sha256, '003': views['003'].view_sha256 });
+
+  // Change only the source gloss of chunk 003's Sense.
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const rows = (await readFile(canonicalPath, 'utf8')).trimEnd().split('\n').map(JSON.parse);
+  rows.find((record) => record.id === 'w900003').senses[0].gloss = '바뀐 뜻.';
+  await writeFile(canonicalPath, jsonl(rows));
+  git(root, 'add', 'data/canonical/stdict-0001.jsonl');
+  git(root, 'commit', '-qm', 'Change chunk 003 gloss');
+  const after = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.equal(after.pending_view_sha256['001'], before.pending_view_sha256['001']);
+  assert.equal(after.pending_view_sha256['002'], before.pending_view_sha256['002']);
+  assert.notEqual(after.pending_view_sha256['003'], before.pending_view_sha256['003']);
+  await assert.rejects(saveExplicit(root, '003', texts['003'], views['003'].view_sha256), /view changed since it was launched/u);
+
+  // A completed chunk whose input changes is refused by refresh.
+  await saveExplicit(root, '001', texts['001'], views['001'].view_sha256);
+  rows.find((record) => record.id === 'w900001').senses[0].gloss = '또 바뀐 뜻.';
+  await writeFile(canonicalPath, jsonl(rows));
+  git(root, 'add', 'data/canonical/stdict-0001.jsonl');
+  git(root, 'commit', '-qm', 'Change completed chunk 001 gloss');
+  await assert.rejects(quiet(() => run(['refresh-pending', '--shard', '001'], { root })), /completed chunk 001 inputs changed/u);
+});
