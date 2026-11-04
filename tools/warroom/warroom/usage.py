@@ -166,6 +166,10 @@ def _c_unparsed_checkpoint_mutation(command: object, *, expected_cli_path, comma
         candidate = token.strip(";&|()")
         if _c_script_matches(candidate, expected_cli_path=expected_cli_path, command_cwd=command_cwd):
             return True
+        if "=" in candidate:
+            _, assigned_value = candidate.split("=", 1)
+            if _c_script_matches(assigned_value, expected_cli_path=expected_cli_path, command_cwd=command_cwd):
+                return True
         if expected_name and Path(candidate).name == expected_name and "$" in candidate:
             return True
     return False

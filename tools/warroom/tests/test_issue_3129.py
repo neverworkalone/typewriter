@@ -270,23 +270,29 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertEqual({sense_id: submissions_after[sense_id] for sense_id in sibling_ids}, saved_before)
 
     def test_sibling_add_form_in_source_run_blocks_scope_retry(self):
-        w = self.world(senses=24)
-        w.start("single", "deepseek", "c")
-        w.tick()
-        b = self.b(w)
-        sibling_ids = self.sense_ids(w, "002")
-        self.finish(w, "002")
-        w.tick()
-        active_ids = self.sense_ids(w, "001")
-        checkpoint = literary.names(b).checkpoint
-        add_form = (f"node {literary.cli_path()} add-form --checkpoint {checkpoint} "
-                    f"--sense-id {sibling_ids[0]} --form 추가형 --basis 근거 && true")
-        self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:2],
-                                          extra_cli_commands=[add_form])
+        for mode in ("direct path", "shell variable alias"):
+            with self.subTest(mode=mode):
+                w = self.world(senses=24)
+                w.start("single", "deepseek", "c")
+                w.tick()
+                b = self.b(w)
+                sibling_ids = self.sense_ids(w, "002")
+                self.finish(w, "002")
+                w.tick()
+                active_ids = self.sense_ids(w, "001")
+                checkpoint = literary.names(b).checkpoint
+                add_form_args = (f"add-form --checkpoint {checkpoint} --sense-id {sibling_ids[0]} "
+                                 "--form 추가형 --basis 근거")
+                if mode == "direct path":
+                    add_form = f"node {literary.cli_path()} {add_form_args} && true"
+                else:
+                    add_form = f"CLI={literary.cli_path()}; node \"$CLI\" {add_form_args} && true"
+                self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:2],
+                                                  extra_cli_commands=[add_form])
 
-        status = control.line_status(w.store, "deepseek", "c")
-        self.assertFalse(status["can_retry"])
-        self.assertIn("checkpoint_mutation_command_unparsed", status["retry_blocked_reason"])
+                status = control.line_status(w.store, "deepseek", "c")
+                self.assertFalse(status["can_retry"])
+                self.assertIn("checkpoint_mutation_command_unparsed", status["retry_blocked_reason"])
 
     def test_failed_scope_recovery_cannot_be_retried_again(self):
         w = self.world(senses=12)
