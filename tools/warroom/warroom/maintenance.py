@@ -498,7 +498,11 @@ class Maintenance:
                 or not d["merge_sha"]):
             return None
         code_head = self.sup.git.head(self.sup.code_root)
+        key = f"defect_reproof_head_{d['id']}"
         if not isinstance(code_head, str) or not re.fullmatch(r"[0-9a-f]{40}", code_head):
+            return None
+        if (self.store.get(key) == code_head or self.sup.code_sha != code_head
+                or not self.sup.prompt_checkout_clean(["tools/warroom/warroom"])):
             return None
         if self.store.rearm_held_defect(d["id"], b["id"], code_head):
             return code_head

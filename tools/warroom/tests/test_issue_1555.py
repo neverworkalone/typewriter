@@ -1348,6 +1348,7 @@ class IncidentRecoveryProof(unittest.TestCase):
                             data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
         w.store.set(f"defect_reproof_head_{d['id']}", HEAD1)
         w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: d_parallel: 이전 코드에서 prompt 집합을 계산할 수 없음")
+        w.sup.code_sha = HEAD1
         w.git.ancestor_pairs.add((MERGE, HEAD2))
         w.store.set(f"defect_hold_{b['id']}", "1")
         self.assertFalse(w.store.rearm_held_defect(d["id"], b["id"], HEAD2))
@@ -1357,6 +1358,9 @@ class IncidentRecoveryProof(unittest.TestCase):
         with mock.patch.object(w.git, "head", side_effect=lambda path: HEAD2 if Path(path) == w.sup.code_root else HEAD1), \
              mock.patch.object(dchunk, "read_active", return_value=active), \
              mock.patch.object(dchunk, "read_rejection", return_value=None):
+            d = self.settle(d)   # checkout H2 with H1 loaded must not consume H2's reproof
+            self.assertEqual((d["state"], w.store.get(f"defect_reproof_head_{d['id']}")), ("HELD", HEAD1))
+            w.sup.code_sha = HEAD2   # the Supervisor has now restarted from H2
             d = self.settle(d)
 
         self.assertEqual((d["state"], d["fix_kind"], d["applied_code_sha"]), ("RELEASED", "runtime", HEAD2))
@@ -1372,6 +1376,7 @@ class IncidentRecoveryProof(unittest.TestCase):
         w.store.add_tasks(b["id"], [(task, task)])
         w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
                             data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
+        w.sup.code_sha = HEAD1
         w.store.set(f"defect_reproof_head_{d['id']}", "c" * 40)
         w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: d_parallel: 이전 코드에서 prompt 집합을 계산할 수 없음")
         active = {"chunk_no": 9, "view_sha256": "v" * 64, "git_head": HEAD1}
