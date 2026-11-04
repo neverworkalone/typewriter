@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -418,6 +418,15 @@ async function readRawPreparedView(shard, chunk, root, scope = null) {
   return view;
 }
 
+// Digest of the prepared raw view (JSON.stringify, including hidden `_row` bindings), not the file bytes.
+function viewDigest(rawView) {
+  return createHash('sha256').update(JSON.stringify(rawView), 'utf8').digest('hex');
+}
+
+function assertChunkName(chunk) {
+  if (!/^\d{3}$/u.test(chunk ?? '')) fail('--chunk must be a three-digit chunk number such as 001');
+}
+
 async function refreshPendingChunks(shard, root = REPOSITORY_DIRECTORY, scope = null) {
   const checkpoint = await loadCheckpoint(shard, root, scope);
   const { views } = await renderPreparedViews(shard, root, scope);
@@ -447,6 +456,7 @@ async function refreshPendingChunks(shard, root = REPOSITORY_DIRECTORY, scope = 
     chunk_count: views.length,
     current_chunk: active?.fresh.chunk ?? null,
     active_changed: Boolean(active && !active.same),
+    pending_view_sha256: Object.fromEntries(pending.map((entry) => [entry.fresh.chunk, viewDigest(entry.fresh)])),
     current_view: active ? stripInternalRow(active.fresh) : null,
     prompt_view: active ? renderPromptView(stripInternalRow(active.fresh)) : null,
   };
@@ -468,12 +478,22 @@ async function readNextChunk(shard, root = REPOSITORY_DIRECTORY, scope = null) {
   return { shard, complete: true, remaining_chunks: 0 };
 }
 
-function parseDecisionText(text, view, checkpoint) {
+async function readChunkByNumber(shard, chunk, root = REPOSITORY_DIRECTORY) {
+  assertChunkName(chunk);
+  const checkpoint = await loadCheckpoint(shard, root);
+  if (Number(chunk) < 1 || Number(chunk) > checkpoint.chunk_total) fail(`Stage 3 chunk ${chunk} is outside 001..${String(checkpoint.chunk_total).padStart(3, '0')}`);
+  const raw = await readRawPreparedView(shard, chunk, root);
+  const stripped = stripInternalRow(raw);
+  return { ...stripped, prompt_view: renderPromptView(stripped), view_sha256: viewDigest(raw),
+    completed: checkpoint.completed_chunks.includes(chunk) };
+}
+
+function parseDecisionText(text, view, checkpoint, { explicit = false } = {}) {
   if (typeof text !== 'string') fail('Stage 3 chunk decisions must be text');
   const lines = text.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
   const match = /^chunk\s+(\d{3})$/u.exec(lines[0] ?? '');
   if (!match || match[1] !== view.chunk) fail(`decision input must begin with "chunk ${view.chunk}"`);
-  if (checkpoint.completed_chunks.includes(view.chunk)) fail(`Stage 3 chunk ${view.chunk} is already saved`);
+  if (!explicit && checkpoint.completed_chunks.includes(view.chunk)) fail(`Stage 3 chunk ${view.chunk} is already saved`);
   const relations = view.senses.flatMap((sense) => sense.relations);
   const byNumber = new Map(relations.map((relation) => [relation.n, relation]));
   if (lines[1] === 'none') {
@@ -510,6 +530,7 @@ function parseDecisionText(text, view, checkpoint) {
     }
     fail(`invalid decision line ${JSON.stringify(line)}; use D <row...>, L <row> T<target>, or none`);
   }
+  if (explicit && checkpoint.completed_chunks.includes(view.chunk)) return decisions;
   const rows = new Set(checkpoint.decisions.map((decision) => decision.row));
   for (const decision of decisions) if (rows.has(decision.row)) fail(`Relation row ${decision.row} already has a saved edit`);
   return decisions;
@@ -588,6 +609,37 @@ async function validatePreparedDecisions(shard, root, decisions, currentRelation
       fail(`saved Link Repair target meanings or same-spelling choices changed after prepare for Relation row ${decision.row}; prepare and review the changed targets again`);
     }
   }
+}
+
+function decisionKey(decision) {
+  return JSON.stringify([decision.row, decision.action, decision.target_record_id ?? null, decision.target_sense_id ?? null]);
+}
+
+async function saveChunkByNumber(shard, chunk, inputPath, expectedSha256, root = REPOSITORY_DIRECTORY) {
+  assertChunkName(chunk);
+  if (!/^[0-9a-f]{64}$/u.test(expectedSha256 ?? '')) fail('--expect-view-sha256 must be a 64-character lowercase SHA-256');
+  const checkpoint = await loadCheckpoint(shard, root);
+  if (Number(chunk) < 1 || Number(chunk) > checkpoint.chunk_total) fail(`Stage 3 chunk ${chunk} is outside 001..${String(checkpoint.chunk_total).padStart(3, '0')}`);
+  const view = await readRawPreparedView(shard, chunk, root);
+  if (viewDigest(view) !== expectedSha256) fail(`Stage 3 chunk ${chunk} view changed since it was launched`);
+  const input = path.isAbsolute(inputPath) ? inputPath : path.resolve(root, inputPath);
+  const decisions = parseDecisionText(await readFile(input, 'utf8'), view, checkpoint, { explicit: true });
+  const base = { shard, chunk, total_chunks: checkpoint.chunk_total };
+  if (checkpoint.completed_chunks.includes(chunk)) {
+    const saved = checkpoint.decisions.filter((decision) => decision.chunk === chunk);
+    const savedKeys = new Set(saved.map(decisionKey));
+    const same = saved.length === decisions.length && savedKeys.size === saved.length
+      && decisions.every((decision) => savedKeys.has(decisionKey(decision)));
+    if (!same) fail(`Stage 3 chunk ${chunk} is already saved with different decisions`);
+    return { ...base, already_saved: true, completed_chunks: checkpoint.completed_chunks.length };
+  }
+  const completed = [...checkpoint.completed_chunks, chunk].sort();
+  const merged = [...checkpoint.decisions, ...decisions].sort((a, b) => a.row - b.row);
+  await writeJsonAtomically(CHECKPOINT_PATH(shard, root), { ...checkpoint, completed_chunks: completed, decisions: merged });
+  return { ...base, already_saved: false, completed_chunks: completed.length,
+    dropped: decisions.filter((decision) => decision.action === 'drop').length,
+    repaired: decisions.filter((decision) => decision.action === 'repair').length,
+    kept: view.relation_count - decisions.length };
 }
 
 async function saveChunk(shard, inputPath, root = REPOSITORY_DIRECTORY, scope = null) {
@@ -953,9 +1005,11 @@ const USAGE = `Usage:
   node scripts/relation/edit-cli.mjs prepare --shard SSS --batch BB --part PP  # scoped text-only Link Repair
   node scripts/relation/edit-cli.mjs read-chunk --shard SSS [--out <file>]
   node scripts/relation/edit-cli.mjs read-chunk --shard SSS --batch BB --part PP
+  node scripts/relation/edit-cli.mjs read-chunk --shard SSS --chunk NNN  # explicit chunk (parallel Supervisor)
   node scripts/relation/edit-cli.mjs refresh-pending --shard SSS
   node scripts/relation/edit-cli.mjs save-chunk --shard SSS --in <decisions.txt>
   node scripts/relation/edit-cli.mjs save-chunk --shard SSS --batch BB --part PP --in <decisions.txt>
+  node scripts/relation/edit-cli.mjs save-chunk --shard SSS --chunk NNN --in <decisions.txt> --expect-view-sha256 <hash>
   node scripts/relation/edit-cli.mjs apply --shard SSS
   node scripts/relation/edit-cli.mjs apply --shard SSS --batch BB --part PP
   node scripts/relation/edit-cli.mjs report --shard SSS [--out <file>]`;
@@ -964,13 +1018,13 @@ function parseArgs(argv) {
   const command = argv[0];
   if (command === '--help' || command === '-h') return { command: 'help' };
   if (!['prepare', 'read-chunk', 'refresh-pending', 'save-chunk', 'apply', 'report'].includes(command)) fail(USAGE);
-  const options = { command, shard: null, batch: null, part: null, input: null, output: null };
+  const options = { command, shard: null, batch: null, part: null, input: null, output: null, chunk: null, expect: null };
   for (let index = 1; index < argv.length; index += 1) {
     const flag = argv[index];
     const value = argv[index + 1];
-    if (!['--shard', '--batch', '--part', '--in', '--out'].includes(flag) || !value || value.startsWith('--')) fail(`invalid arguments\n${USAGE}`);
+    if (!['--shard', '--batch', '--part', '--in', '--out', '--chunk', '--expect-view-sha256'].includes(flag) || !value || value.startsWith('--')) fail(`invalid arguments\n${USAGE}`);
     index += 1;
-    const key = flag === '--shard' ? 'shard' : flag === '--batch' ? 'batch' : flag === '--part' ? 'part' : flag === '--in' ? 'input' : 'output';
+    const key = flag === '--shard' ? 'shard' : flag === '--batch' ? 'batch' : flag === '--part' ? 'part' : flag === '--in' ? 'input' : flag === '--chunk' ? 'chunk' : flag === '--expect-view-sha256' ? 'expect' : 'output';
     if (options[key] !== null) fail(`${flag} may be supplied only once`);
     options[key] = value;
   }
@@ -985,6 +1039,12 @@ function parseArgs(argv) {
   if (command === 'save-chunk' && !options.input) fail(`save-chunk requires --in\n${USAGE}`);
   if (command !== 'save-chunk' && options.input) fail(`--in is only valid for save-chunk\n${USAGE}`);
   if (!['read-chunk', 'report'].includes(command) && options.output) fail(`--out is only valid for read-chunk/report\n${USAGE}`);
+  if (options.chunk !== null) {
+    if (!['read-chunk', 'save-chunk'].includes(command)) fail(`--chunk is only valid for read-chunk/save-chunk\n${USAGE}`);
+    if (options.batch !== null) fail(`--chunk cannot be combined with --batch/--part\n${USAGE}`);
+  }
+  if (options.expect !== null && (command !== 'save-chunk' || options.chunk === null)) fail(`--expect-view-sha256 is only valid with save-chunk --chunk\n${USAGE}`);
+  if (command === 'save-chunk' && options.chunk !== null && options.expect === null) fail(`save-chunk --chunk requires --expect-view-sha256\n${USAGE}`);
   options.scope = options.batch === null ? null : { batch: options.batch, part: options.part };
   return options;
 }
@@ -1003,8 +1063,10 @@ export async function run(argv, { root = REPOSITORY_DIRECTORY } = {}) {
   }
   let result;
   if (options.command === 'prepare') result = await prepare(options.shard, root, options.scope);
+  else if (options.command === 'read-chunk' && options.chunk !== null) result = await readChunkByNumber(options.shard, options.chunk, root);
   else if (options.command === 'read-chunk') result = await readNextChunk(options.shard, root, options.scope);
   else if (options.command === 'refresh-pending') result = await refreshPendingChunks(options.shard, root, options.scope);
+  else if (options.command === 'save-chunk' && options.chunk !== null) result = await saveChunkByNumber(options.shard, options.chunk, options.input, options.expect, root);
   else if (options.command === 'save-chunk') result = await saveChunk(options.shard, options.input, root, options.scope);
   else if (options.command === 'apply') result = await applyEdits(options.shard, root, options.scope);
   else result = await reportEdits(options.shard, root);
