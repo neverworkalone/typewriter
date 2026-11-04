@@ -214,9 +214,10 @@ class ProcessAdapter(AgentAdapter):
         env.pop("WARROOM_PROTECTED_PATHS", None)
         # The wrapper records the exit status so a restarted Supervisor can still
         # learn how the (detached) child ended.
-        # It also records its own PID (= the process group id) first, so a run whose PID the Supervisor never stored
-        # (it stopped right after the detached start) can still be found, stopped and confirmed gone.
-        wrapper = ['echo $$ > "$WARROOM_EXIT_FILE.pid"', '"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
+        # It records its own PID (= the process group id) first, and the child never starts if that record cannot be
+        # written: a run whose PID the Supervisor never stored (it stopped right after the detached start) is either
+        # findable through that record or has no worker at all.
+        wrapper = ['echo $$ > "$WARROOM_EXIT_FILE.pid" || { echo 126 > "$WARROOM_EXIT_FILE"; exit 126; }', '"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
         env["WARROOM_EXIT_FILE"] = str(exit_file)
         with open(log_file, "wb") as log:   # a launch's log is its own: never continued behind an earlier run's events
             p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],

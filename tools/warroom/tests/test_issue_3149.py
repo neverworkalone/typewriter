@@ -22,6 +22,37 @@ class _Crash(BaseException):
     pass
 
 
+class LaunchHandshake(unittest.TestCase):
+    def spawn(self, root, cmd):
+        from warroom.adapters import ProcessAdapter
+        ex = Path(root) / "run.exit"
+        handle = ProcessAdapter.__new__(ProcessAdapter)._spawn(cmd, root, {"PATH": "/usr/bin:/bin"}, Path(root) / "run.log", ex)
+        return handle, ex
+
+    def wait(self, path, seconds=10):
+        import time
+        end = time.time() + seconds
+        while not path.exists() and time.time() < end:
+            time.sleep(0.02)
+
+    def test_pid_record_is_written_before_the_child_runs(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            handle, ex = self.spawn(root, ["/usr/bin/true"])
+            self.wait(ex)
+            self.assertEqual(int(Path(f"{ex}.pid").read_text()), handle.pid)
+
+    def test_child_never_starts_when_the_pid_record_cannot_be_written(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            (Path(root) / "run.exit.pid").mkdir()   # the record path is unwritable
+            marker = Path(root) / "child-ran"
+            _handle, ex = self.spawn(root, ["/usr/bin/touch", str(marker)])
+            self.wait(ex)
+            self.assertEqual(ex.read_text().strip(), "126")
+            self.assertFalse(marker.exists())
+
+
 class Helpers:
     def world(self, chunks, *, cap=16):
         w = World()
