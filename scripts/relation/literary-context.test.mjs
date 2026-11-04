@@ -2020,6 +2020,12 @@ test('--chunk keeps chunk/add-form/submit inside the active chunk record; omitti
   try {
     const rendered = await chunk(fixture, { contexts: 4 });
     const activeIds = ['sense-000001', 'sense-000001-2'];
+    const initialCheckpoint = await load(fixture);
+    for (const record of initialCheckpoint.records) {
+      const outsideSense = record.senses.find((sense) => sense.sense_id === 'sense-000001-3');
+      if (outsideSense) outsideSense.shown = null;
+    }
+    await writeFile(fixture.checkpointPath, JSON.stringify(initialCheckpoint));
     const viewText = renderChunkText({ ...rendered, items: rendered.items.filter((item) => activeIds.includes(item.sense_id)) });
     const viewBytes = Buffer.from(viewText);
     await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.txt'), viewBytes);

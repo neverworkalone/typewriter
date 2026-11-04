@@ -188,12 +188,13 @@ class Issue3129(Helpers, unittest.TestCase):
                 w.tick()
                 active_ids = self.sense_ids(w, "001")
                 sibling_ids = self.sense_ids(w, "002")
+                initial_run_count = len(w.store.runs(self.b(w)["id"]))
                 self._fail_legacy_chunk_scope_run(w, requested_ids=requested(active_ids, sibling_ids))
                 w.tick(2)
                 status = control.line_status(w.store, "deepseek", "c")
                 self.assertEqual(self.b(w)["state"], "ERROR")
                 self.assertFalse(status["can_retry"])
-                self.assertEqual(len(w.store.runs(self.b(w)["id"])), 1)
+                self.assertEqual(len(w.store.runs(self.b(w)["id"])), initial_run_count)
 
         for label, overrides in (("wrong chunk", {"command_chunk": "002"}),
                                  ("other checkpoint", {"command_checkpoint": ".warroom-scratch/other.json"})):
@@ -202,10 +203,11 @@ class Issue3129(Helpers, unittest.TestCase):
                 w.start("single", "deepseek", "c")
                 w.tick()
                 active_ids = self.sense_ids(w, "001")
+                initial_run_count = len(w.store.runs(self.b(w)["id"]))
                 self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + ["s9998"], **overrides)
                 w.tick(2)
                 self.assertEqual(self.b(w)["state"], "ERROR")
-                self.assertEqual(len(w.store.runs(self.b(w)["id"])), 1)
+                self.assertEqual(len(w.store.runs(self.b(w)["id"])), initial_run_count)
 
         w = self.world(senses=24)
         w.start("single", "deepseek", "c")
@@ -215,13 +217,14 @@ class Issue3129(Helpers, unittest.TestCase):
         checkpoint = literary.names(self.b(w)).checkpoint
         add_form = (f"node {literary.cli_path()} add-form --checkpoint {checkpoint} "
                     f"--sense-id {sibling_ids[0]} --form 추가형 --basis 근거")
+        initial_run_count = len(w.store.runs(self.b(w)["id"]))
         self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:1],
                                           extra_cli_commands=[add_form])
         w.tick(2)
         status = control.line_status(w.store, "deepseek", "c")
         self.assertEqual(self.b(w)["state"], "ERROR")
         self.assertFalse(status["can_retry"])
-        self.assertEqual(len(w.store.runs(self.b(w)["id"])), 1)
+        self.assertEqual(len(w.store.runs(self.b(w)["id"])), initial_run_count)
 
     def _fail_legacy_chunk_scope_run(self, w, task="001", requested_ids=None, extra_cli_commands=None,
                                      command_chunk=None, command_checkpoint=None):
@@ -229,6 +232,11 @@ class Issue3129(Helpers, unittest.TestCase):
         row = w.store.task_row(b["id"], task)
         rec = literary.read_active(w.wt(), b, int(task))
         run = dict(w.store.run(row["run_id"]))
+        session_id = run.get("session_id") or w.adapter.session_id(Path(run["log_file"]))
+        if session_id:
+            w.store.set_run_session_by_id(run["id"], session_id)
+            w.store.update_task(b["id"], task, session_id=session_id)
+            row = w.store.task_row(b["id"], task)
         requested_ids = requested_ids or (list(rec["sense_ids"]) + ["s9998", "s9999"])
         diagnostic = {"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
                       "message": "The request is outside the active chunk.", "repair_scope": "stop_and_report"}
