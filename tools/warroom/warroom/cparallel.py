@@ -38,7 +38,7 @@ from .usage import submit_attempts
 RUN_KIND = "c_parallel"
 TRANSIENT = (GhTransient, GitTransient)
 PARALLEL = "parallel"
-NEW, FIX, RECOVERY = "c_chunk_new", "c_chunk_fix", "c_chunk_recovery"
+NEW, RESUME, FIX, RECOVERY = "c_chunk_new", "c_chunk_resume", "c_chunk_fix", "c_chunk_recovery"
 AUTO_FIX_LIMIT = 2   # automatic same-session corrections per task; an operator Retry adds one more chance per epoch
 EMPTY_RENDERS = 60   # ZERO_HITS-only views in a row before a selection is considered stuck
 _ERRORS = (literary.LiteraryError, OSError, ValueError, KeyError, TypeError)

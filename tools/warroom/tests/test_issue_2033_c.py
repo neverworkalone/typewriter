@@ -50,7 +50,8 @@ class CWorld(World):
         events.extend([{"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
                        "text": final}}, {"type": "turn.completed", "usage": {"input_tokens": 1,
                        "cached_input_tokens": 0, "output_tokens": 1, "reasoning_output_tokens": 0}}])
-        Path(self.row("deepseek", "c")["log_file"]).write_text(
+        run = self.store.runs(self.row("deepseek", "c")["id"])[0]
+        Path(run["log_file"]).write_text(
             "".join(json.dumps(event) + "\n" for event in events), encoding="utf-8")
 
     def kinds(self):
