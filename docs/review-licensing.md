@@ -1,41 +1,5 @@
-# Licensing Review
+# Licensing review — compatibility pointer
 
-Use only when external sources, provenance, import policy, licensing,
-attribution, or third-party material changes.
+The current specialized PR review card is [`review/prompts/licensing.md`](review/prompts/licensing.md). Read it only when licensing, provenance, third-party materials, import or distribution rights are affected, after root [`REVIEW.md`](../REVIEW.md).
 
-Consult `data-policy.md` and `repository-structure.md` only when their
-boundaries are affected.
-
-Check:
-
-- the source permits the intended use;
-- storage and redistribution are permitted where required;
-- attribution/notice requirements are satisfied;
-- raw API responses, scraped pages, restricted dictionary material, and
-  unlicensed content do not enter canonical/distributed data; **the selected,
-  permitted canonical projections from STDICT, KRDICT and 우리말샘 under CC BY-SA
-  2.0 KR are licensed source exceptions**, not raw downloads;
-- transformation or paraphrasing is not treated as removing source terms;
-- required provenance remains traceable.
-
-External sources may support reference, verification, or drafting only within
-their applicable terms. Selected licensed text and lexical links from
-STDICT, KRDICT and 우리말샘 may also be imported with source-specific rights
-and attribution recorded. Keep source-attributed examples and individually
-restricted multimedia out.
-
-## R&D visibility is not distribution permission
-
-The owner's Issue #239 decision permits the existing public **R&D** workflow;
-it is **not** third-party rights clearance and does not by itself authorize
-corpus-informed **product distribution**, redistribution of raw corpus/API
-material, or an unlicensed derivative artifact. Verify those permissions
-separately before distributing, and keep source-bound evidence traceable.
-
-Do not repeatedly block a previously settled public-R&D visibility decision
-without **new, concrete exposure evidence**. Do block an actual new rights,
-provenance, raw-material or distribution violation. A producer's statement
-of compliance or successful CI cannot override licensing constraints.
-
-Use CI for mechanically enforceable source-policy rules, but do not treat CI
-as proof that a newly introduced source or license is legally suitable.
+Product licensing terms remain defined by [`data-policy.md`](data-policy.md) and the relevant source contracts; this file adds no separate review obligations.
