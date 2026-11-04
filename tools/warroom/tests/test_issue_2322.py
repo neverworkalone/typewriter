@@ -22,6 +22,13 @@ def ready_for_review(w: World):
 
 
 class PromptContracts(unittest.TestCase):
+    def test_d_contract_rejects_gloss_attribute_and_category_restatements(self):
+        contract = prompts.method_contract("d", Path(__file__).resolve().parents[1] / "prompts")
+        self.assertIn("gloss의 속성+범주를 평이한 명사구로 압축해 반복하지 않는다", contract)
+        self.assertIn("`프랑스의 화가`→`프랑스 화가`", contract)
+        self.assertIn("`프랑스의 물리학자·화학자`→`프랑스 과학자`", contract)
+        self.assertIn("속성과 상위 범주를 바꾸거나 더 짧게 써도 같은 검사 기준", contract)
+
     def test_fix_cards_have_exact_method_paths_scopes_and_bounded_commands(self):
         event = {"kind": "review", "author": "reviewer", "key": "review:7", "body": "-1 w1-s1 `지목 후보`"}
         for method in ("a", "b", "c", "d"):
