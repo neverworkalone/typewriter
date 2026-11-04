@@ -874,6 +874,102 @@ class AutonomousIncident(unittest.TestCase):
         self.assertEqual(w.store.defects()[0]["state"], "RELEASED")
 
 
+class AutonomousIncidentReview(unittest.TestCase):
+    """Review fixes for #3326: fail-closed code gate, crash-safe diagnosis cleanup, explicit atomic evidence, per-phase outcomes."""
+
+    def setUp(self):
+        self.t = AutonomousIncident()
+        self.t.setUp()
+        self.w = self.t.w
+
+    def tearDown(self):
+        self.t.tearDown()
+
+    def test_unprovable_code_load_waits(self):
+        w = self.w
+        produce_and_report(w)
+        w.git.changed[MERGE] = ["tools/warroom/warroom/supervisor.py"]
+        w.cfg["shared_defect_verify"] = [["true"]]
+        w.sup.code_sha = None                        # unknown / dirty runtime source
+        run_maintainer_to_merge(w, 101)
+        w.tick(4)
+        self.assertEqual(w.store.defects()[0]["state"], "FIX_MERGED")
+        orig = w.git.changed_files
+        w.sup.code_sha = "1" * 40
+        w.git.ancestor_pairs.add((MERGE, w.sup.code_sha))
+        w.git.changed_files = lambda sha: (_ for _ in ()).throw(RuntimeError("lookup failed"))
+        w.tick(3)
+        self.assertEqual(w.store.defects()[0]["state"], "FIX_MERGED")   # a failed lookup is not proof either
+        w.git.changed_files = orig
+        w.tick(3)
+        self.assertEqual(w.store.defects()[0]["state"], "RELEASED")
+
+    def test_evidence_is_explicit_atomic_and_required(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        w.store.set(f"unrelated_secret_{b['id']}", "x")
+        w.sup._fail(b, "ERROR", t.rejected(b))
+        w.tick(4)
+        m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+        files = list((Path(m["worktree"]) / ".warroom-scratch/incident").glob("*.json"))
+        data = json.loads(files[0].read_text())
+        self.assertIn(f"d_base_head_{b['id']}", data["kv"])
+        self.assertNotIn(f"unrelated_secret_{b['id']}", data["kv"])
+        self.assertEqual(list(files[0].parent.glob("*.tmp")), [])
+
+    def test_evidence_write_failure_does_not_start_the_maintainer(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        launches = len(w.adapter.launches)
+        w.sup._fail(b, "ERROR", t.rejected(b))
+        orig, os_ = w.sup.maint.write_incident_evidence, None
+        w.sup.maint.write_incident_evidence = lambda mb: "증거 작성 실패(테스트)"
+        w.tick(4)
+        m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+        self.assertEqual((m["state"], len(w.adapter.launches)), ("ERROR", launches))
+
+    def test_diagnosis_cleanup_survives_a_crash_before_the_state_transaction(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        w.sup._fail(b, "ERROR", t.rejected(b))
+        w.tick(4)
+        m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+        wt = Path(m["worktree"])
+        (wt / ".warroom-scratch/incident-diagnosis.json").write_text(json.dumps({"version": 1, "issue": 102, "outcome": "external"}))
+        w.gh.comment_issue(102, "x\n\n" + defects.marker(defects.EVENT_MARK, "incident-diagnosis-102"))
+        real = w.store.complete_diagnosis
+        w.store.complete_diagnosis = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("crash"))
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        try:
+            w.tick(2)
+        except RuntimeError:
+            pass
+        self.assertFalse(wt.exists())                                   # removed, state not yet saved
+        self.assertIsNotNone(w.store.get(f"m_diag_{m['id']}"))          # but the proof was persisted first
+        w.store.complete_diagnosis = real
+        w.tick(2)                                                       # re-entry finishes the same diagnosis
+        self.assertEqual(w.store.batch(m["id"])["state"], "COMPLETE")
+        self.assertEqual(w.store.maintenance(102)["state"], "HELD")
+        self.assertEqual(w.row()["state"], "PAUSED")
+
+    def test_outcomes_are_reported_once_per_phase(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        d = w.store.defects()[0]
+        with w.store._conn() as c:
+            c.execute("UPDATE defects SET source='incident' WHERE id=?", (d["id"],))   # a RELEASED incident of this batch
+        w.store.update(b["id"], state="WAITING_REVIEW", pr_number=70)
+        w.tick(3)
+        w.store.update(b["id"], state="COMPLETE")
+        w.tick(3)
+        w.store.update(b["id"], state="ERROR", error="later failure")
+        w.tick(3)
+        w.tick(3)
+        bodies = [c["body"] for c in w.gh.issue_comments_.get(101, [])]
+        for phase in ("review", "complete", "stopped-error"):
+            self.assertEqual(sum(f"incident-outcome-{d['id']}-{phase}" in x for x in bodies), 1, phase)
+
+
 class MaintainerConfig(unittest.TestCase):
     def test_config_table(self):
         w = world()

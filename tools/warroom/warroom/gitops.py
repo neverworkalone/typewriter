@@ -411,6 +411,38 @@ class Git:
             raise CleanupBlocked(f"worktree is registered with a different branch (expected {branch}, got {registered!r})")
         self._remove_partial(path, branch, pr_head_sha, cleanup_proof)
 
+    def remove_diagnosis_worktree(self, path: Path, branch: str, base_sha: str) -> None:
+        """Non-force removal of a Maintainer worktree that never committed (a diagnosis-only result, #3326). Idempotent:
+        a re-entry after the removal already happened only finishes the branch. Anything unexpected is preserved."""
+        raw = Path(os.path.abspath(path))
+        if raw.is_symlink():
+            raise CleanupBlocked(f"worktree path is a symlink (preserved): {raw}")
+        path = raw.resolve()
+        try:
+            path.relative_to(self.worktrees_dir.resolve())
+        except ValueError:
+            raise CleanupBlocked(f"worktree is outside War Room's directory: {path}")
+        ref = self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}", check=False)
+        tip = ref.out.strip() if ref.ok else None
+        if not path.exists() and self.registered(path) is None:
+            if tip not in (None, base_sha):
+                raise CleanupBlocked(f"local branch {branch} moved from the diagnosed base {base_sha}; preserved")
+            if tip:
+                self._delete_owned_branch(branch, base_sha)
+            return
+        if self.registered(path) != branch or not path.is_dir():
+            raise CleanupBlocked(f"worktree is not registered to owned branch {branch} (preserved): {path}")
+        if self.head(path) != base_sha or tip != base_sha:
+            raise CleanupBlocked(f"worktree or branch moved from the diagnosed base {base_sha}; preserved")
+        if (d := self.dirty(path)).strip():
+            raise CleanupBlocked(f"uncommitted changes in the diagnosed worktree (preserved):\n{d.strip()[:400]}")
+        res = self._git("worktree", "remove", str(path), check=False)   # never --force
+        if not res.ok:
+            raise GitError(f"git worktree remove {path} (exit={res.code}; {res.err.strip() or res.out.strip()})")
+        if self.registered(path) is not None:
+            raise CleanupBlocked(f"Git did not remove the worktree registration (preserved): {path}")
+        self._delete_owned_branch(branch, base_sha)
+
     def _retry_registered_missing_checkout(self, path: Path, branch: str, pr_head_sha: str,
                                            proof: dict | None) -> None:
         """Retry non-force removal when Git registration survives but its checkout was already deleted."""

@@ -17,6 +17,7 @@ import json
 import os
 import re
 import secrets
+import subprocess
 import time
 import traceback
 from pathlib import Path
@@ -107,10 +108,7 @@ class Supervisor:
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
         # The Supervisor code this process loaded (#3326): a merged fix to tools/warroom/warroom/ is applied only after it is in this HEAD.
         self.code_root = Path(__file__).resolve().parents[3]
-        try:
-            self.code_sha = git.head(self.code_root) if self.code_root.joinpath(".git").exists() else None
-        except Exception:
-            self.code_sha = None
+        self.code_sha = self._loaded_code_sha(git)
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
         self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
         self.dp = dparallel.ParallelD(self)   # parallel D chunk tasks inside a new batch (#3074)
@@ -214,6 +212,20 @@ class Supervisor:
         if cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:
             return self.cp.poll(b)   # run_kind decides: c_finalize and the singleton Candidate repair keep the serial path
         return self._poll_run(b)
+
+    def _loaded_code_sha(self, git) -> str | None:
+        """HEAD of the checkout this process loaded its code from; None when unknown or its runtime source is modified
+        (then no commit can be claimed as loaded and runtime-code fixes wait)."""
+        try:
+            if not self.code_root.joinpath(".git").exists():
+                return None
+            r = subprocess.run(["git", "status", "--porcelain", "--", "tools/warroom/warroom"], cwd=self.code_root,
+                               capture_output=True, text=True, timeout=30)
+            if r.returncode != 0 or r.stdout.strip():
+                return None
+            return git.head(self.code_root)
+        except Exception:
+            return None
 
     def _fail(self, b, state: str, msg: str) -> None:
         prev = b["state"] if b["state"] not in ("PAUSED", "ERROR") else b["paused_from"]
@@ -1385,7 +1397,8 @@ class Supervisor:
         except (GitError, ValueError) as e:
             return self._fail(b, "ERROR", f"worktree 준비 실패: {e}")
         if b["method"] == MAINTENANCE_METHOD:
-            self.maint.write_incident_evidence(b)
+            if problem := self.maint.write_incident_evidence(b):
+                return self._fail(b, "ERROR", problem)
         if b["method"] == STAGE2_METHOD:
             if self._stage2_reconcile_task(b):
                 return self._stage2_reconcile_finalize(b)
