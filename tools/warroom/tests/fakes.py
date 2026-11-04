@@ -1014,6 +1014,7 @@ class World:
     parallel_s2 = False   # the serial Stage 2 path stays covered; test_issue_3047 turns the parallel path on
     parallel_s3 = False   # likewise the serial Stage 3 path; test_issue_3149 turns the parallel path on
     parallel_c = False    # likewise the serial C path; test_issue_3076 turns the parallel path on
+    intake = False        # autonomous ERROR intake (#3349) is off here so legacy tests keep observing their plain ERROR
 
     def make_sup(self):
         sup = Supervisor(self.paths, self.cfg, self.store, self.runner_obj(), self.adapter,
@@ -1021,6 +1022,8 @@ class World:
         sup.parallel_new_parts = self.parallel_s2
         sup.parallel_new_c = self.parallel_c
         sup.parallel_new_s3 = self.parallel_s3
+        if not self.intake:
+            sup.maint._intake_errors = lambda: None
         return sup
 
     def runner_obj(self):

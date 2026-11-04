@@ -212,10 +212,12 @@ class ParallelD:
         self._fill_slots(b, rows, round_)
 
     # ---- Git boundary ----------------------------------------------------------------------------------------
-    def _boundary_problem(self, b, round_: _Round) -> str | None:
-        """Cheap local ownership checks every time; remote ref and PR lookups once per processing round."""
-        self.sup.maint.adopt_released_baseline(b)   # crash between a Maintainer release and its baseline write
-        raw = self.store.get(dchunk.run_start_key(b["id"]))
+    def _boundary_problem(self, b, round_: _Round, base_override: dict | None = None) -> str | None:
+        """Cheap local ownership checks every time; remote ref and PR lookups once per processing round.
+        `base_override` (#3349): a pure query against a baseline the Maintainer has not stored yet."""
+        if base_override is None:
+            self.sup.maint.adopt_released_baseline(b)   # crash between a Maintainer release and its baseline write
+        raw = json.dumps(base_override) if base_override is not None else self.store.get(dchunk.run_start_key(b["id"]))
         try:
             base = json.loads(raw) if raw else None
             if not isinstance(base, dict) or base.get("branch") != b["branch"] or base.get("worktree") != str(b["worktree"]):

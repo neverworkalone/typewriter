@@ -161,6 +161,115 @@ def incident_report(site: str, bid: int, sha8: str, cases: list[str], reproducti
     }, ensure_ascii=False, sort_keys=True)
 
 
+# ---- Autonomous incident envelope (Issue #3349): every C/D/Stage 2/Stage 3 production ERROR -----------------------------
+INCIDENT_VERSION = 2
+INCIDENT_ERROR_MAX = 600
+_ENVELOPE_IDENTITY = ("batch_id", "method", "producer", "shard", "batch", "branch", "worktree", "state", "paused_from",
+                      "run_kind", "error_seq", "error_at", "error", "error_first")
+OBSERVATIONS = ("runs", "log_file", "events", "checkpoint", "git", "receipts", "error_evidence")
+STATUSES = ("ok", "missing", "unknown")
+
+
+def incident_event_key(bid: int, seq: int) -> str:
+    return f"incident:{bid}:e{seq}"
+
+
+def incident_class(method: str, bid: int, seq: int) -> str:
+    return f"incident-{method}-{bid}-e{seq}"   # unique per ERROR event: nothing merges two causes before one is known
+
+
+def observation(status: str, value=None) -> dict:
+    """One observed fact. `missing` = confirmed absent; `unknown` = the lookup failed or cannot be answered."""
+    if status not in STATUSES:
+        raise ReportProblem(f"관측 상태가 올바르지 않습니다: {status!r}")
+    return {"status": status, "value": value}
+
+
+def evidence_fingerprint(evidence: dict) -> str | None:
+    """Cause identity of a structured evidence record. Today: a BoundaryProblem receipt's (site, base, head)."""
+    if not isinstance(evidence, dict) or evidence.get("kind") != "boundary":
+        return None
+    parts = [evidence.get(k) for k in ("site", "base", "head")]
+    return digest("|".join(parts)) if all(isinstance(x, str) and x for x in parts) else None
+
+
+def incident_envelope(b, observed: dict, prior: list) -> dict:
+    """Identity of one ERROR event taken from the batch row, plus observations that may each be ok/missing/unknown.
+    No cause and no reproduction command is invented here."""
+    env = {"version": INCIDENT_VERSION, "kind": "incident",
+           "defect_class": incident_class(b["method"], b["id"], b["error_seq"]),
+           "batch_id": b["id"], "method": b["method"], "producer": b["producer"], "shard": b["shard"], "batch": b["batch"],
+           "branch": b["branch"], "worktree": b["worktree"], "state": b["state"], "paused_from": b["paused_from"],
+           "run_kind": b["run_kind"] or "", "error_seq": b["error_seq"], "error_at": b["error_at"],
+           "error": (b["error"] or "")[:INCIDENT_ERROR_MAX], "error_first": (b["error_first"] or "")[:INCIDENT_ERROR_MAX],
+           "observed": observed, "prior_incidents": prior}
+    return env
+
+
+def is_incident_envelope(text: str) -> bool:
+    try:
+        d = json.loads(text)
+    except ValueError:
+        return False
+    return isinstance(d, dict) and d.get("kind") == "incident" and d.get("version") == INCIDENT_VERSION
+
+
+def parse_incident(text: str) -> dict:
+    """Validate a stored envelope. Any missing/contradictory identity field raises ReportProblem (no intake, ERROR kept)."""
+    try:
+        d = json.loads(text)
+    except ValueError as e:
+        raise ReportProblem(f"incident envelope JSON을 해석할 수 없습니다: {e}") from e
+    if not isinstance(d, dict) or d.get("kind") != "incident" or d.get("version") != INCIDENT_VERSION:
+        raise ReportProblem("incident envelope의 kind/version이 올바르지 않습니다.")
+    for k in _ENVELOPE_IDENTITY:
+        if k not in d or (k not in ("run_kind", "error_first") and d[k] in (None, "")):
+            raise ReportProblem(f"incident envelope 필수 항목이 없습니다: {k}")
+    if d["state"] != "ERROR" or type(d["batch_id"]) is not int or type(d["error_seq"]) is not int or d["error_seq"] < 1:
+        raise ReportProblem("incident envelope의 상태/사건 번호가 올바르지 않습니다.")
+    if d["method"] not in ("c", "d", "s2", "s3") or d["defect_class"] != incident_class(d["method"], d["batch_id"], d["error_seq"]):
+        raise ReportProblem("incident envelope의 method/분류가 사건 번호와 모순됩니다.")
+    obs = d.get("observed")
+    if not isinstance(obs, dict) or set(obs) != set(OBSERVATIONS) or not all(
+            isinstance(v, dict) and v.get("status") in STATUSES and set(v) == {"status", "value"} for v in obs.values()):
+        raise ReportProblem("incident envelope 관측 항목이 올바르지 않습니다.")
+    if not isinstance(d.get("prior_incidents"), list):
+        raise ReportProblem("incident envelope의 prior_incidents가 올바르지 않습니다.")
+    return d
+
+
+def incident_issue_title(env: dict) -> str:
+    return f"[urgent][War Room] 장애 접수: {env['method'].upper()} {env['shard']}_{env['batch']} {env['run_kind'] or env['paused_from']}"
+
+
+def _short(value, limit: int = 160) -> str:
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True) if not isinstance(value, str) else value
+    return _safe(text if len(text) <= limit else text[:limit - 1] + "…")
+
+
+def incident_issue_body(env: dict, event_key: str) -> str:
+    """An investigation request. The raw error (bounded), observation statuses and prior incidents; never logs or secrets."""
+    rows = []
+    for name in OBSERVATIONS:
+        o = env["observed"][name]
+        rows.append(f"- `{name}`: {o['status']}" + (f" — {_short(o['value'])}" if o["status"] == "ok" and name != "events" else ""))
+    prior = [f"- defect #{p.get('defect_id')} · merge `{p.get('merge_sha')}` · 지문 `{p.get('fingerprint')}`" for p in env["prior_incidents"]]
+    return "\n".join([
+        "## 장애 접수·원인 분석 요청 (War Room 자동 접수)", "",
+        "C/D/Stage 2/Stage 3 생산 배치가 ERROR로 정지해 증거를 보존한 채 PAUSED로 접수했습니다. 원인은 아직 확정되지 않았습니다. "
+        "증거 묶음은 Maintainer worktree의 `.warroom-scratch/incident/`에 있습니다 (로그 원문은 이 Issue에 넣지 않았습니다). "
+        "코드·프롬프트 결함이면 PR로 고치고, 아니면 PR 없이 진단만 남기고 종료하세요.", "",
+        f"- 배치: `{env['shard']}_{env['batch']}` · Method {env['method'].upper()} · 생산자 `{env['producer']}`",
+        f"- 브랜치: `{env['branch']}`",
+        f"- 단계: `{env['run_kind'] or '(run 없음)'}` · ERROR 이전 상태 `{env['paused_from']}` · 사건 번호 e{env['error_seq']}",
+        f"- 최초 오류: {_short(env['error_first'] or env['error'], 600)}",
+        f"- 최신 오류: {_short(env['error'], 600)}", "",
+        "### 관측 항목", *rows, "",
+        *(["### 이전 incident", *prior, ""] if prior else []),
+        marker(EVENT_MARK, event_key), marker(CLASS_MARK, env["defect_class"]),
+    ])
+
+
 def batch_facts(b, pr: dict | None) -> str:
     """Origin of the report: which batch/method/producer, and the PR/HEAD it concerned."""
     lines = [f"- 배치: `{b['shard']}_{b['batch']}` · Method {b['method'].upper()} · 생산자 `{b['producer']}`",
