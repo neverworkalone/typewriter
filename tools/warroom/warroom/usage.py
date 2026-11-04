@@ -240,7 +240,7 @@ def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd
     Codex records command and output together, Claude pairs Bash tool calls with their tool results, and OpenCode
     records the command result in the completed tool state. CLI output counts only when its command resolves to the
     exact script path used by the Supervisor; assistant prose never counts. Optional `command_facts` records only
-    checkpoint-mutating operations and whether their `--checkpoint` resolved to the expected active checkpoint.
+    checkpoint-mutating operations, their exit code and whether `--checkpoint` resolved to the expected checkpoint.
     """
     if (not isinstance(log_file, (str, Path)) or not isinstance(expected_cli_path, (str, Path))
             or not isinstance(command_cwd, (str, Path))):
@@ -260,7 +260,7 @@ def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd
         operation = tokens[2] if tokens is not None else None
         if (command_facts is not None and tokens is not None
                 and operation in _CHECKPOINT_MUTATING_C_COMMANDS):
-            fact = {"operation": operation}
+            fact = {"operation": operation, "exit_code": exit_code}
             if expected_checkpoint_path is not None:
                 fact["checkpoint_matches"] = _c_checkpoint_matches(
                     _c_option_value(tokens, "--checkpoint"), expected_checkpoint_path, command_cwd)

@@ -178,7 +178,6 @@ class Issue3129(Helpers, unittest.TestCase):
 
     def test_legacy_scope_error_needs_one_or_two_excluded_ids_and_no_other_checkpoint_command(self):
         cases = [
-            ("no valid ID remains", lambda ids, sibling: [sibling[0]]),
             ("more than two excluded IDs", lambda ids, sibling: ids + ["s9997", "s9998", "s9999"]),
         ]
         for label, requested in cases:
@@ -227,7 +226,7 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertEqual(len(w.store.runs(self.b(w)["id"])), initial_run_count)
 
     def _fail_legacy_chunk_scope_run(self, w, task="001", requested_ids=None, extra_cli_commands=None,
-                                     command_chunk=None, command_checkpoint=None):
+                                     command_chunk=None, command_checkpoint=None, prior_chunk_reads=()):
         b = self.b(w)
         row = w.store.task_row(b["id"], task)
         rec = literary.read_active(w.wt(), b, int(task))
@@ -244,6 +243,17 @@ class Issue3129(Helpers, unittest.TestCase):
         checkpoint = command_checkpoint or literary.names(b).checkpoint
         chunk_no = command_chunk or task
         events = [{"type": "thread.started", "thread_id": session_id}]
+        for index, read_ids in enumerate(prior_chunk_reads):
+            read_valid = [sense_id for sense_id in read_ids if sense_id in rec["sense_ids"]]
+            read_invalid = [sense_id for sense_id in read_ids if sense_id not in rec["sense_ids"]]
+            output = (json.dumps({"status": "WARNING", "warning": "active_chunk_scope_ids_excluded",
+                                  "chunk_no": int(task), "applied_sense_ids": read_valid,
+                                  "excluded_sense_ids": read_invalid}) if read_invalid else "")
+            events.append({"type": "item.completed", "item": {
+                "id": f"prior-chunk-read-{index + 1}", "type": "command_execution",
+                "command": f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {chunk_no} "
+                           f"--sense-ids {','.join(read_ids)}",
+                "exit_code": 0, "aggregated_output": output}})
         events.extend({"type": "item.completed", "item": {"id": f"extra-cli-{index + 1}",
                        "type": "command_execution", "command": command, "exit_code": 0,
                        "aggregated_output": "FORM_ADDED\n"}}
@@ -321,6 +331,36 @@ class Issue3129(Helpers, unittest.TestCase):
                              for sense in record["senses"]}
         self.assertEqual({sense_id: submissions_after[sense_id] for sense_id in sibling_ids}, saved_before)
         self.assertEqual(self.tasks(w)["001"]["state"], "SAVED")
+
+    def test_legacy_scope_error_recovers_after_same_chunk_reads_and_shown_only_progress(self):
+        w = self.world(senses=24)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        sibling_ids = self.sense_ids(w, "002")
+        self.finish(w, "002")
+        w.tick()
+
+        active_ids = self.sense_ids(w, "001")
+        self._prepare_sixteen_context_state(w, "001")
+        before = self.data(w, "001")["run_start"]["retry_state"]["own_state"]
+        current = literary.own_state(w.wt(), b, active_ids)
+        self.assertIsNotNone(literary.shown_only_progress(before, current))
+
+        _, source_run = self._fail_legacy_chunk_scope_run(
+            w, requested_ids=[sibling_ids[0]],
+            prior_chunk_reads=[active_ids[:2], [active_ids[0], sibling_ids[0]]])
+        self.assertEqual(self.b(w)["state"], "ERROR")
+        w.tick(2)
+
+        recovery = max((run for run in w.store.runs(b["id"]) if run["task"] == "001"), key=lambda run: run["id"])
+        self.assertEqual(recovery["kind"], "c_chunk_scope_recovery")
+        self.assertEqual(recovery["session_id"], source_run["session_id"])
+        self.assertEqual(self.data(w, "001")["recovery"]["pending_sense_ids"], active_ids)
+        self.assertEqual(self.data(w, "001")["recovery"]["attempts"], 1)
+        prompt = w.adapter.launches[-1]["prompt"]
+        self.assertIn("Supervisor가 배정한 조회 허용 ID(아래 문자열을 그대로 복사): " + ", ".join(active_ids), prompt)
+        self.assertNotIn(sibling_ids[0], prompt)
 
     def test_unsaved_legacy_scope_recovery_is_not_started_twice(self):
         w = self.world(senses=12)
