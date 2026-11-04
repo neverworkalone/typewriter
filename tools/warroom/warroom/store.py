@@ -1270,6 +1270,35 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE defects SET {cols} WHERE id=?", (*fields.values(), defect_id))
 
+    def rearm_held_defect(self, defect_id: int, batch_id: int, code_head: str) -> bool:
+        """Requeue one previously unprovable incident only after a new code-root HEAD, honoring operator controls."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            d = c.execute("SELECT * FROM defects WHERE id=? AND batch_id=?", (defect_id, batch_id)).fetchone()
+            b = c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if (d is None or d["state"] != "HELD" or d["source"] != "incident"
+                    or not (d["hold_reason"] or "").startswith("재개 증명 불가:")
+                    or not d["merge_sha"] or b is None or b["state"] != "PAUSED"
+                    or b["pause_reason"] != "shared_defect" or b["defect_id"] != defect_id or b["pid"] is not None):
+                return False
+            marker = f"defect_reproof_head_{defect_id}"
+            previous = c.execute("SELECT value FROM kv WHERE key=?", (marker,)).fetchone()
+            if previous is not None and previous["value"] == code_head:
+                return False
+            line = c.execute("SELECT force_stop FROM lines WHERE model=? AND method=?",
+                             (b["producer"], b["method"])).fetchone()
+            if (c.execute("SELECT 1 FROM clear_requests WHERE batch_id=?", (batch_id,)).fetchone()
+                    or (line is not None and line["force_stop"])
+                    or c.execute("SELECT 1 FROM kv WHERE key=?", (f"stop_pin_{b['producer']}_{b['method']}",)).fetchone()
+                    or c.execute("SELECT 1 FROM kv WHERE key=? AND value!=''", (f"defect_hold_{batch_id}",)).fetchone()
+                    or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND task IS NOT NULL AND ended_at IS NULL",
+                                 (batch_id,)).fetchone()):
+                return False
+            c.execute("UPDATE defects SET state='FIX_MERGED', hold_reason=NULL, updated_at=? WHERE id=?",
+                      (now, defect_id))
+        return True
+
     def release_defect(self, defect_id: int, batch_id: int, integrated_sha: str | None,
                        run_start: tuple[str, str] | list[tuple[str, str]] | None = None, *, force_run: bool = True,
                        fix_kind: str | None = None, applied_code_sha: str | None = None) -> bool:

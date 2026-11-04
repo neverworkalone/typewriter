@@ -1333,6 +1333,58 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertEqual(launch["prompt"], prompts.d_chunk_fix(b, 1, "fixture rejection"))
         self.assertEqual(w.store.runs(b["id"])[0]["kind"], "d_chunk_fix")
 
+    def test_a_held_incident_is_reproved_after_the_code_checkout_changes(self):
+        from unittest import mock
+        from warroom import dchunk
+
+        w = self.w
+        files = ["tools/warroom/prompts/d_chunk.md", "tools/warroom/prompts/d_chunk_fix.md",
+                 "tools/warroom/prompts/d_chunk_resume.md"]
+        b, d = self.merged(files, run_kind="d_parallel")
+        task = "009"
+        w.store.add_tasks(b["id"], [(task, task)])
+        w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
+                            data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
+        w.store.set(f"defect_reproof_head_{d['id']}", HEAD1)
+        w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: d_parallel: 이전 코드에서 prompt 집합을 계산할 수 없음")
+        w.git.local_head = HEAD2
+        w.git.ancestor_pairs.add((MERGE, HEAD2))
+        w.store.set(f"defect_hold_{b['id']}", "1")
+        self.assertFalse(w.store.rearm_held_defect(d["id"], b["id"], HEAD2))
+        self.assertEqual(w.store.defect(d["id"])["state"], "HELD")
+        w.store.delete(f"defect_hold_{b['id']}")
+        active = {"chunk_no": 9, "view_sha256": "v" * 64, "git_head": HEAD1}
+        with mock.patch.object(dchunk, "read_active", return_value=active), \
+             mock.patch.object(dchunk, "read_rejection", return_value=None):
+            d = self.settle(d)
+
+        self.assertEqual((d["state"], d["fix_kind"], d["applied_code_sha"]), ("RELEASED", "runtime", HEAD2))
+        self.assertEqual((w.store.batch(b["id"])["state"], w.store.batch(b["id"])["pause_reason"]), ("PRODUCING", ""))
+
+    def test_a_failed_held_reproof_waits_for_another_code_change(self):
+        from unittest import mock
+        from warroom import dchunk
+
+        w = self.w
+        b, d = self.merged(["tools/warroom/prompts/d_chunk.md"], run_kind="d_parallel")
+        task = "009"
+        w.store.add_tasks(b["id"], [(task, task)])
+        w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
+                            data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
+        w.store.set(f"defect_reproof_head_{d['id']}", "c" * 40)
+        w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: d_parallel: 이전 코드에서 prompt 집합을 계산할 수 없음")
+        active = {"chunk_no": 9, "view_sha256": "v" * 64, "git_head": HEAD1}
+        with mock.patch.object(dchunk, "read_active", return_value=active), \
+             mock.patch.object(dchunk, "read_rejection", return_value=None):
+            d = self.settle(d)
+            held_events = [e["msg"] for e in w.store.batch_events(b["id"]) if "공통 수정 반영 보류" in e["msg"]]
+            self.assertEqual(d["state"], "HELD")
+            self.assertEqual(w.store.get(f"defect_reproof_head_{d['id']}"), HEAD1)
+
+            self.assertEqual(self.settle(d)["state"], "HELD")
+            again = [e["msg"] for e in w.store.batch_events(b["id"]) if "공통 수정 반영 보류" in e["msg"]]
+        self.assertEqual(again, held_events)
+
     def test_an_unmodelled_run_kind_cannot_prove_prompt_delivery(self):
         b, d = self.merged([self.PROMPT], run_kind="d_finalize", session_id="ses_1")
         d = self.settle(d)
