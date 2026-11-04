@@ -338,13 +338,41 @@ class StageTwoPartLayout(unittest.TestCase):
         w = s2_world(self, canon=self.canon(6, s6=1000))
         choice = self.choose(w)
         self.assertEqual((choice.status, choice.part), ("part", stage2.Part("006", "01", "01", 250)))
-        self.assertEqual(w.store.get(stage2.layout_key("006")), "250")
+        self.assertEqual(choice.part.layout_marker, "250")
+        self.assertIsNone(w.store.get(stage2.layout_key("006")), "choose() never writes the marker; the batch row does")
+        w.store.set(stage2.layout_key("006"), "250")   # what the first batch row's transaction commits
         done = [("006", "01", "01")]
         self.assertEqual(self.choose(w, done).part, stage2.Part("006", "01", "02", 250))
         done.append(("006", "01", "02"))   # there is never a Part 03: the next open Part is batch 02's first
         self.assertEqual(self.choose(w, done).part, stage2.Part("006", "02", "01", 250))
         self.assertEqual([r.split(":")[0] for r in w.runner.layout_refs][:1], [self.SHA])
         self.assertTrue(all(r.startswith(f"{self.SHA}:") for r in w.runner.layout_refs), "the layout is read from the fixed SHA")
+
+    def test_marker_is_committed_with_the_first_part_only_and_a_failed_start_leaves_none(self):
+        w = s2_world(self, canon=self.canon(6, s6=1000))
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.tick()
+        b = w.store.active_batch("claude", S2)
+        self.assertEqual((b["shard"], w.store.get(stage2.layout_key("006"))), ("006", "250"))
+        # a choose() that is never turned into a batch row (Stop/Drain/crash) leaves no marker
+        w2 = s2_world(self, canon=self.canon(6, s6=1000))
+        self.assertEqual(self.choose(w2).part.layout_marker, "250")
+        self.assertIsNone(w2.store.get(stage2.layout_key("006")))
+        self.assertEqual(self.choose(w2).part.layout_marker, "250")   # traces are still checked next time
+        w2.store.set(stage2.ok_key("006", "01", "01"), self.SHA)
+        self.assertEqual(self.choose(w2).status, "stop")
+        # once confirmed, later Parts carry no marker
+        w2.store.delete(stage2.ok_key("006", "01", "01"))
+        w2.store.set(stage2.layout_key("006"), "250")
+        self.assertIsNone(self.choose(w2).part.layout_marker)
+
+    def test_marker_with_a_wrong_value_stops_even_with_old_traces(self):
+        for value in ("100", "garbage", ""):
+            with self.subTest(value):
+                w = s2_world(self, canon=self.canon(6, s6=1000))
+                w.store.set(stage2.layout_key("006"), value)
+                w.store.set(stage2.ok_key("006", "01", "01"), self.SHA)
+                self.assertEqual(self.choose(w).status, "stop")
 
     def test_legacy_shard_keeps_five_100_record_parts_and_never_gets_a_marker(self):
         w = s2_world(self, canon=self.canon(5, s5=1000))

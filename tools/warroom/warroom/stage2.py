@@ -18,7 +18,7 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import batches
@@ -77,6 +77,8 @@ class Part:
     batch: str
     part: str
     records: int
+    # Set only on the first Part of a not-yet-confirmed new-layout Shard: the Supervisor commits it WITH the batch row.
+    layout_marker: str | None = field(default=None, compare=False)
 
     @property
     def key(self) -> str:   # stored in `batches.batch`
@@ -1105,7 +1107,11 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
         shard = f"{s:03d}"
         if pin and shard != pin:
             continue
-        if layout.is_new(shard) and not kv.get(layout_key(shard)):
+        marker = kv.get(layout_key(shard)) if layout.is_new(shard) else None
+        if marker is not None and marker != str(layout.size(shard)):
+            return Choice("stop", note=f"샤드 {shard}의 전환 표식 {layout_key(shard)}={marker!r}이 현재 Part 크기 "
+                                       f"{layout.size(shard)}와 다릅니다. 자동 해석하지 않습니다 — 운영자 확인")
+        if layout.is_new(shard) and marker is None:
             # #3385: a new-layout Shard must be untouched. Any earlier trace (even Part 01/02 under the old size) means
             # the transition cannot be proven, so the Line stops instead of re-splitting or re-running it.
             if traces is None:
@@ -1153,9 +1159,8 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
                     break
                 ok, _tail = verify("part", shard, batch, part)
                 if not ok:
-                    if layout.is_new(shard):
-                        kv.set(layout_key(shard), str(size))   # this Shard's layout is now fixed
-                    return Choice("part", Part(shard, batch, part, min(size, records - (int(part) - 1) * size)))
+                    unconfirmed = str(size) if layout.is_new(shard) and kv.get(layout_key(shard)) is None else None
+                    return Choice("part", Part(shard, batch, part, min(size, records - (int(part) - 1) * size), unconfirmed))
                 kv.set(part_key, sha)
             open_ = any(not kv.get(ok_key(shard, batch, part)) for part in parts)
             batches_open.append(open_)
