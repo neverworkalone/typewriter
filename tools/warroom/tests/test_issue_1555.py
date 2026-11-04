@@ -891,7 +891,7 @@ class AutonomousIncident(unittest.TestCase):
                          ("LINKED", "PAUSED"))
 
         w.tick(4)
-        attempts = [b for b in w.store.all_batches() if b["method"] == "m"]
+        attempts = [b for b in w.store.all_batches() if b["method"] == "m" and b["batch"] == "102"]
         second = attempts[-1]
         self.assertEqual(len(attempts), 2)
         self.assertNotEqual(second["id"], first["id"])
