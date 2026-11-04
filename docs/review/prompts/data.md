@@ -13,7 +13,7 @@ the sense but are not exhaustive; scope/facet differences and the possible
 coexistence of opposed qualities are prompts to inspect, not automatic
 rejections. Topical, causal or contrasting-scene links still need actual
 semantic similarity/opposition and cannot pass on association alone. The
-positive calibrations in [the relation policy](docs/relation-editorial-policy.md)
+positive calibrations in [the relation policy](../../relation-editorial-policy.md)
 are non-blocking when their bound meanings match the documented context.
 Preserve plausible `near`/`mood`/`scene`/`sensory`/`action`/`association`;
 check relevance against the same source/UI group. For authored relation PRs, Stage 1 samples exact sense/ID binding, Tier 1 assignments, both directions of ID↔ID relations and text-only behavior. Do not ask why a new authored 연상 was
@@ -86,7 +86,7 @@ association judgment, a broader definition or a slight relevance disagreement
    is **non-blocking feedback**.
 5. Mechanical invariants (IDs, reference integrity, duplicate/self edges,
    missing targets, inconsistent fixed metadata) still use shared validators
-   and their ordinary CI gate; see [review-toolchain.md](review-toolchain.md).
+   and their ordinary CI gate; see [review-toolchain.md](toolchain.md).
 
 ## Evidence boundaries
 
@@ -97,7 +97,7 @@ The authoritative **product** rules remain in `docs/relation-editorial-policy.md
 
 ## Lexical meaning and relation decisions
 
-**Apply the current owner decision in [relation-editorial-policy.md](relation-editorial-policy.md).**
+**Apply the current owner decision in [relation-editorial-policy.md](../../relation-editorial-policy.md).**
 It overrides stricter historical near/direct substitution and broader/narrower
 exclusion criteria. These rules apply to the focused independent Stage 1
 PR review of Issue #838 말의 결/연상 and of STDICT-sourced
@@ -116,7 +116,7 @@ material mismatch remains.
 
 Applies to new Typewriter-authored `near`/`mood`/`scene`/`sensory`/`action`/
 `association` (see "Scope of Issue #838" in
-[relation-editorial-policy.md](relation-editorial-policy.md)). The `direct`/
+[relation-editorial-policy.md](../../relation-editorial-policy.md)). The `direct`/
 `antonym` rules below validate STDICT-provided relations and approved `→`
 reference projections; they are not a reason to demand `direct` for, or to
 authorize adding, a new authored synonym. Rules below marked *historical/STDICT
