@@ -33357,7 +33357,7 @@
 {"id":"w3993","sid":"w3993-s1","tt":"X선","tp":"near","rv":2}
 {"id":"w3993","sid":"w3993-s1","tid":"w136212","tsid":"w136212-s1","tp":"association","rv":4,"ver":1,"fm":["방사선"],"rfm":[]}
 {"id":"w3993","sid":"w3993-s1","tt":"X선 촬영","tp":"association","rv":5}
-{"id":"w3993","sid":"w3993-s1","tid":"w465947","tsid":"w465947-s1","tp":"near","rv":1,"ver":1,"fm":["엑스레이"],"rfm":[]}
+{"id":"w3993","sid":"w3993-s1","tid":"w465947","tsid":"w465947-s1","tp":"association","rv":3,"ver":1,"fm":["엑스레이"],"rfm":[]}
 {"id":"w3993","sid":"w3993-s1","tid":"w251049","tsid":"w251049-s1","tp":"association","rv":6,"ver":1,"fm":["유리관"],"rfm":[]}
 {"id":"w3993","sid":"w3993-s1","tid":"w136111","tsid":"w136111-s1","tp":"near","rv":2,"ver":1,"fm":["방전관"],"rfm":[]}
 {"id":"w3993","sid":"w3993-s1","tid":"w337754","tsid":"w337754-s1","tp":"near","rv":2,"ver":1,"fm":["최초"],"rfm":[]}
@@ -33493,7 +33493,8 @@
 {"id":"w3997","sid":"w3997-s1","tid":"w165624","tsid":"w165624-s2","tp":"association","rv":4,"ver":1,"fm":["사대부"],"rfm":[]}
 {"id":"w3997","sid":"w3997-s1","tid":"w494881","tsid":"w494881-s1","tp":"association","rv":6,"ver":1,"fm":["친족"],"rfm":[]}
 {"id":"w3997","sid":"w3997-s1","tt":"가구소득","tp":"association","rv":4}
-{"id":"w3997","sid":"w3997-s2","tt":"가운","tp":"near","rv":1}
+{"id":"w3997","sid":"w3997-s2","tid":"w2554","tsid":"w2554-s1","tp":"near","rv":1,"ver":1,"fm":["가운"],"rfm":[]}
+{"id":"w3997","sid":"w3997-s2","tid":"w248235","tsid":"w248235-s1","tp":"near","rv":3,"ver":1,"fm":["운수"],"rfm":[]}
 {"id":"w3998","sid":"w3998-s1","tid":"w142881","tsid":"w142881-s1","tp":"near","rv":2,"ver":1,"fm":["보관"],"rfm":[]}
 {"id":"w3998","sid":"w3998-s1","tid":"w238609","tsid":"w238609-s1","tp":"near","rv":3,"ver":1,"fm":["예치"],"rfm":[]}
 {"id":"w3998","sid":"w3998-s1","tid":"w196749","tsid":"w196749-s1","tp":"near","rv":3,"ver":1,"fm":["수령"],"rfm":[]}
