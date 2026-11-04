@@ -49,7 +49,10 @@ function invalidCursor(message) {
 const corpusIdentity = new WeakMap();
 function getCorpusIdentity(database) {
   if (!corpusIdentity.has(database)) {
-    const metadata = database.prepare('SELECT * FROM index_metadata LIMIT 65').all();
+    const columns = database.prepare('PRAGMA table_info(index_metadata)').all().map((column) => column.name);
+    const metadata = columns.includes('key') && columns.includes('value')
+      ? database.prepare('SELECT key, value FROM index_metadata ORDER BY key LIMIT 65').all()
+      : database.prepare('SELECT * FROM index_metadata LIMIT 65').all();
     corpusIdentity.set(database, { metadata, maxRowid: database.prepare('SELECT max(paragraph_rowid) AS id FROM paragraphs').get().id ?? 0 });
   }
   return corpusIdentity.get(database);
