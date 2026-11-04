@@ -808,6 +808,18 @@ class FakeGit:
     def changed_files(self, sha):
         return self.changed.get(sha, ["README.md"])   # default: a documentation-only fix
 
+    def remove_diagnosis_worktree(self, path, branch, base_sha):
+        if self.block:
+            raise CleanupBlocked(self.block)
+        if not Path(path).exists():
+            return   # idempotent re-entry
+        if self.dirty_text.strip() or self.local_head != base_sha:
+            raise CleanupBlocked("dirty or moved")
+        self.removed.append((str(path), branch))
+        import shutil
+        shutil.rmtree(path)
+        self.reg.pop(str(path), None)
+
     def remove_owned(self, path, branch, pr_head, *, cleanup_proof=None, on_verified=None):
         if self.block:
             raise CleanupBlocked(self.block)

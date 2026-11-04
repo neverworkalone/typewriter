@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 import re
 from pathlib import Path
 
@@ -55,7 +56,8 @@ class Maintenance:
         return True
 
     def step(self) -> None:
-        for fn in (self._publish, self._publish_issue_requests, self._start, self._track, self._release):
+        for fn in (self._publish, self._publish_issue_requests, self._start, self._track, self._release,
+                   self._report_outcomes, self._resume_diagnoses):
             try:
                 fn()
             except Exception as e:   # GitHub/git trouble never stops the production Lines; the state is re-read next tick
@@ -67,7 +69,8 @@ class Maintenance:
         request = self.store.request_issue(event_key, title, body, urgent)
         return request["id"]
 
-    def report(self, b, source: str, event_key: str, raw: str, pr_info: dict | None = None) -> None:
+    def report(self, b, source: str, event_key: str, raw: str, pr_info: dict | None = None,
+               error: str | None = None) -> None:
         """Pause `b` for one defect event. A malformed or insufficient report holds the batch for the operator and
         creates no Issue; a valid one is queued for publication. Repeating the same event changes nothing."""
         try:
@@ -82,7 +85,7 @@ class Maintenance:
         did = self.store.report_defect(
             b["id"], event_key, source, report["defect_class"], "REPORTED",
             defects.canonical(report) + "\n" + facts, "shared_defect",
-            f"공통 결함 `{report['defect_class']}` 보고 — 배치 PAUSED, urgent Issue 등록·수정 반영 대기")
+            error or f"공통 결함 `{report['defect_class']}` 보고 — 배치 PAUSED, urgent Issue 등록·수정 반영 대기")
         if did is not None:
             self.store.log(b["id"], f"공통 결함 `{report['defect_class']}` 보고({source}) → 배치 PAUSED, 작업물·세션 보존", "warn")
 
@@ -223,7 +226,7 @@ class Maintenance:
                 continue
             try:
                 number, fresh = self._find_or_create_issue(
-                    defects.issue_title(report),
+                    defects.issue_title(report, d["source"]),
                     defects.issue_body(report, d["event_key"], facts, d["source"]), ["urgent"],
                     lambda: self._find(issues, d, report))
             except Exception as e:
@@ -473,6 +476,8 @@ class Maintenance:
                 continue
             if self.store.get(f"defect_hold_{b['id']}") or self._workers_running(b):
                 continue   # operator Stop is pending/active, or the stopped AI is not confirmed gone yet
+            if self._fix_not_loaded(d):
+                continue
             if not self._due(f"defect_release_try_{d['id']}"):
                 continue
             try:
@@ -715,6 +720,215 @@ class Maintenance:
         except Exception:
             return False
         return False
+
+    # ---- autonomous incident intake (Issue #3326) ----------------------------------------------------------------
+    # First scope: the batch's own RELEASED Maintainer integration HEAD that a boundary check then rejected. Everything
+    # else (an arbitrary HEAD, remote/dirty/PR trouble, a failed check) stays an ordinary ERROR for the operator.
+    DIAGNOSIS_FILE = ".warroom-scratch/incident-diagnosis.json"
+    DIAGNOSIS_OUTCOMES = ("no_code_fix", "external", "undetermined")
+
+    def approved_integration_receipt(self, b, base: str, head: str, site: str, remote_expected) -> dict | None:
+        """Proof, at the moment of rejection, that `head` is this batch's approved integration: the existing same-batch
+        RELEASED receipt + ancestry proof, the remote branch still where the baseline recorded it, and a clean worktree.
+        None (any doubt or error): the caller keeps its plain rejection."""
+        try:
+            wt = Path(b["worktree"])
+            for d in self.store.defects(("RELEASED",)):
+                if d["batch_id"] != b["id"] or d["integrated_sha"] != head:
+                    continue
+                if not self._released_integration_proof(b, base, head, d):
+                    continue
+                if self.sup.git.remote_head(b["branch"]) != remote_expected or self.sup.git.dirty(wt).strip():
+                    return None
+                return {"defect_id": d["id"], "base": base, "head": head, "site": site,
+                        "merge_sha": d["merge_sha"], "remote_head": remote_expected}
+        except Exception:
+            return None
+        return None
+
+    def report_incident(self, b0, problem) -> None:
+        """Called by `_fail` AFTER the ERROR and its log are recorded. Re-verifies, then reuses `report()`; every
+        refusal leaves the batch in the ERROR `_fail` wrote."""
+        r = problem.receipt
+        b = self.store.batch(b0["id"])
+        if b is None or b["state"] != "ERROR":
+            return
+        site, bid = r["site"], b["id"]
+        d = self.store.defect(r["defect_id"])
+        try:
+            current = self.sup.git.head(Path(b["worktree"]))
+        except Exception:
+            current = None
+        if (d is None or d["state"] != "RELEASED" or d["batch_id"] != bid or d["integrated_sha"] != r["head"]
+                or d["merge_sha"] != r["merge_sha"] or current != r["head"]):
+            return self.store.log(bid, "장애 접수 생략: 통합 receipt 또는 HEAD가 접수 직전 재검증과 다릅니다. ERROR 유지", "warn")
+        prefix = f"incident:{bid}:{site}:"
+        if any(x["source"] == "incident" and x["event_key"].startswith(prefix) for x in self.store.defects()):
+            return self.store.log(bid, f"동일 장애 재발({site}) — 자동 접수는 배치·지점당 1회뿐입니다. 운영자 확인 필요, ERROR 유지", "error")
+        sha = defects.digest(f"{r['base']}|{r['head']}|{problem}")
+        cases = [f"배치 {b['shard']}_{b['batch']} · Method {b['method'].upper()} · run_kind {b['run_kind']}",
+                 f"지점 `{site}`: 기준 HEAD {r['base']} → 현재 HEAD {r['head']}",
+                 f"승인 통합 receipt: defect #{r['defect_id']} · 수정 merge {r['merge_sha']}",
+                 f"원래 오류: {str(problem)[:500]}"]
+        raw = defects.incident_report(site, bid, sha[:8], cases,
+                                      f"배치 {bid}의 worktree/kv 경계 기준으로 `{site}` 검사를 같은 HEAD에서 다시 실행 (증거 묶음 참조)")
+        try:
+            defects.parse(raw)   # a rejected report must never become an UNVERIFIED pause
+            self.report(b, "incident", prefix + sha, raw, error=f"장애 접수 대기: {str(problem)[:600]}")
+        except Exception as e:
+            self.store.log(bid, f"장애 접수 실패(ERROR와 증거 보존): {e}", "warn")
+
+    @staticmethod
+    def _evidence_keys(bid: int) -> list[str]:
+        """The only kv entries an incident bundle may carry (no `*_{bid}` sweep)."""
+        return [f"d_base_head_{bid}", f"d_commit_head_{bid}", dchunk.run_start_key(bid)]
+
+    def write_incident_evidence(self, b) -> str | None:
+        """Atomically write the local evidence bundle of each incident Issue this Maintainer execution works on, BEFORE
+        the AI starts. Returns a problem text (the Maintainer must not start) or None."""
+        try:
+            n = int(b["batch"])
+            wt = Path(b["worktree"])
+            linked = [d for d in self.store.defects(("LINKED",)) if d["source"] == "incident" and d["issue_number"] == n]
+            if not linked:
+                return None
+            if self.store.get(f"m_base_head_{b['id']}") is None:
+                self.store.set(f"m_base_head_{b['id']}", self.sup.git.head(wt))
+            for d in linked:
+                ob = self.store.batch(d["batch_id"])
+                if (ob is None or ob["state"] != "PAUSED" or ob["pause_reason"] != "shared_defect"
+                        or ob["defect_id"] != d["id"]):
+                    return f"장애 증거 소유 확인 실패: 원 배치가 이 incident #{d['id']}로 PAUSED 상태가 아닙니다. Maintainer를 시작하지 않습니다"
+                owt = Path(ob["worktree"])
+                data = {
+                    "defect": {"id": d["id"], "event_key": d["event_key"], "class": d["defect_class"]},
+                    "batch": {k: ob[k] for k in ob.keys() if k != "log_file"},
+                    "events": [{"ts": e["ts"], "level": e["level"], "msg": e["msg"][:500]}
+                               for e in self.store.batch_events(ob["id"])[-50:]],
+                    "runs": [{"id": r["id"], "kind": r["kind"], "log_file": r["log_file"], "exit_status": r["exit_status"]}
+                             for r in self.store.runs(ob["id"])[:20]],
+                    "kv": {k: (self.store.get(k) or "")[:2000] for k in self._evidence_keys(ob["id"]) if self.store.get(k) is not None},
+                    "git": {"worktree": str(owt), "head": self.sup.git.head(owt) if owt.is_dir() else None,
+                            "remote_head": self.sup.git.remote_head(ob["branch"])},
+                    "receipts": [{"defect_id": x["id"], "merge_sha": x["merge_sha"], "integrated_sha": x["integrated_sha"]}
+                                 for x in self.store.defects(("RELEASED",)) if x["batch_id"] == ob["id"]],
+                    "db": {"path": str(self.store.path), "example": f"sqlite3 -readonly '{self.store.path}' "
+                           f"'select * from events where batch_id={ob['id']} order by id desc limit 50'"},
+                }
+                out = wt / ".warroom-scratch" / "incident" / f"{d['id']}.json"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                tmp = out.with_suffix(".json.tmp")
+                tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1, default=str), "utf-8")
+                os.replace(tmp, out)
+        except Exception as e:
+            return f"장애 증거 묶음을 작성하지 못해 Maintainer를 시작하지 않습니다: {e}"
+        return None
+
+    def finish_diagnosis(self, b) -> bool:
+        """A Maintainer that exited 0 without a PR is accepted ONLY as a documented diagnosis-only result: valid
+        diagnosis file + marked Issue comment, no commit, no remote branch, clean worktree. The proof is persisted
+        BEFORE anything is removed (`m_diag_<id>`); `_complete_diagnosis` then removes the worktree without force and
+        completes everything in one transaction, and can be re-entered after a crash. False: a condition is missing ->
+        the caller keeps the existing ERROR."""
+        key = f"m_diag_{b['id']}"
+        if self.store.get(key) is not None:
+            return self._complete_diagnosis(b)
+        try:
+            n, wt, git = int(b["batch"]), Path(b["worktree"]), self.sup.git
+            linked = [d for d in self.store.defects(("LINKED",)) if d["source"] == "incident" and d["issue_number"] == n]
+            base = self.store.get(f"m_base_head_{b['id']}")
+            if not linked or not base or b["pr_number"]:
+                return False
+            data = json.loads((wt / self.DIAGNOSIS_FILE).read_text("utf-8"))
+            if (not isinstance(data, dict) or data.get("version") != 1 or data.get("issue") != n
+                    or data.get("outcome") not in self.DIAGNOSIS_OUTCOMES or set(data) - {"version", "issue", "outcome", "summary"}):
+                return False
+            ev = f"incident-diagnosis-{n}"
+            if not any((defects.EVENT_MARK, ev) in defects.markers(c.get("body")) for c in self.sup.gh.issue_comments(n)):
+                return False
+            if (git.head(wt) != base or git.registered(wt) != b["branch"] or git.remote_head(b["branch"]) is not None
+                    or git.dirty(wt).strip() or self.sup.gh.prs_for_branch(b["branch"])):
+                return False
+            self.store.set(key, json.dumps({"issue": n, "outcome": data["outcome"], "base": base, "branch": b["branch"],
+                                            "worktree": str(wt)}, sort_keys=True))
+        except Exception:
+            return False
+        return self._complete_diagnosis(b)
+
+    def _complete_diagnosis(self, b) -> bool:
+        """Idempotent second half: non-force worktree removal, then ONE transaction. True: handled (done or retried later)."""
+        try:
+            m = json.loads(self.store.get(f"m_diag_{b['id']}"))
+            if m["branch"] != b["branch"] or m["worktree"] != b["worktree"] or m["issue"] != int(b["batch"]):
+                raise ValueError("진단 종료 표식이 이 Maintainer 실행과 다릅니다")
+            self.sup.git.remove_diagnosis_worktree(Path(m["worktree"]), m["branch"], m["base"])
+        except Exception as e:
+            if self._due(f"m_diag_retry_{b['id']}", 60):
+                self.store.log(b["id"], f"진단 종료 정리를 완료하지 못했습니다(소유 worktree 보존, 재시도 예정): {e}", "warn")
+            return True
+        why = f"진단만 종료({m['outcome']}): 코드 수정 PR 없음 — 운영자 확인 필요, 자동 재개하지 않음"
+        self.store.complete_diagnosis(b["id"], m["issue"], why)
+        self.store.finish_runs(b["id"], None)
+        self.store.log(b["id"], f"Issue #{m['issue']}: {why}; Maintainer worktree 정리·슬롯 반환")
+        return True
+
+    def _resume_diagnoses(self) -> None:
+        """A restart between the persisted proof and the transaction finishes the same diagnosis, never a second one."""
+        for m in self.store.maintenance_rows():
+            if m["state"] != "ACTIVE" or m["batch_id"] is None:
+                continue
+            b = self.store.batch(m["batch_id"])
+            if b is not None and b["state"] != "COMPLETE" and self.store.get(f"m_diag_{b['id']}") is not None:
+                self._complete_diagnosis(b)
+
+    def _fix_not_loaded(self, d) -> bool:
+        """Fail closed: a fix that changed the Supervisor's own code is applied only when the running process PROVABLY
+        loaded it. Unknown (no recorded code_sha, dirty runtime source, a failed lookup) waits."""
+        try:
+            runtime = any(f.startswith("tools/warroom/warroom/") for f in self.sup.git.changed_files(d["merge_sha"]))
+            if not runtime:
+                return False
+            code = getattr(self.sup, "code_sha", None)
+            if code and self.sup.git.is_ancestor(d["merge_sha"], code, path=self.sup.code_root):
+                return False
+            reason = "실행 중인 코드 SHA를 증명할 수 없거나 수정이 포함되지 않았습니다"
+        except Exception as e:
+            reason = f"로드 여부를 확인하지 못했습니다: {e}"
+        key = f"restart_needed_{d['id']}"
+        if self.store.get(key) is None:
+            self.store.set(key, "1")
+            self.store.log(d["batch_id"], f"수정 {d['merge_sha'][:10]}이 Supervisor 코드를 바꿨지만 {reason} — "
+                           "Supervisor 재시작 필요, 증명되기 전에는 배치를 재개하지 않습니다", "error")
+        return True
+
+    def _report_outcomes(self) -> None:
+        """Say on the Issue where a resumed incident batch actually is: one comment per phase (review / complete /
+        stopped-by-state), each with its own marker. A merged fix or an opened PR is not the final result."""
+        for d in self.store.defects(("RELEASED",)):
+            if d["source"] != "incident" or not d["issue_number"]:
+                continue
+            b = self.store.batch(d["batch_id"])
+            if b is None:
+                continue
+            phase = {"WAITING_REVIEW": "review", "COMPLETE": "complete", "ERROR": "stopped-error",
+                     "PAUSED": "stopped-paused"}.get(b["state"])
+            if phase is None:
+                continue
+            key = f"incident_outcome_{d['id']}_{phase}"
+            if self.store.get(key):
+                continue
+            ev = f"incident-outcome-{d['id']}-{phase}"
+            pr = f" · PR #{b['pr_number']}" if b["pr_number"] else ""
+            if phase == "review":
+                head = f"원 배치 `{b['shard']}_{b['batch']}`가 PR 리뷰 대기에 들어갔습니다{pr}. 아직 완료가 아닙니다."
+            elif phase == "complete":
+                head = f"원 배치 `{b['shard']}_{b['batch']}`가 COMPLETE에 도달했습니다{pr}."
+            else:
+                why = b["pause_reason"] or ""
+                head = (f"원 배치 `{b['shard']}_{b['batch']}`가 {b['state']}로 중단되었습니다{pr} "
+                        f"{('(' + why + ') ') if why else ''}— 작업물은 보존됩니다. 오류: {(b['error'] or '')[:300]}")
+            if self._comment_once(d["issue_number"], ev, head + "\n\n" + defects.marker(defects.EVENT_MARK, ev)):
+                self.store.set(key, "1")
 
     def _archive_report(self, d, b) -> bool:
         """Set the RESOLVED report aside so the resumed producer does not read it as an unresolved stop signal.

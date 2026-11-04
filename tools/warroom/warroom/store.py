@@ -432,6 +432,24 @@ class Store:
                           "WHERE model=? AND method=? AND (mode!='continuous' OR drain!=0)",
                           (now, b["producer"], b["method"]))
 
+    def complete_diagnosis(self, batch_id: int, issue: int, reason: str) -> None:
+        """One transaction for a diagnosis-only Maintainer result (#3326): the Issue and its incident defects are HELD, the
+        original batch stays PAUSED with the reason, and the Maintainer batch completes (the slot returns). Idempotent."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            m = c.execute("SELECT producer, method, state FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if m is None or m["state"] == "COMPLETE":
+                return
+            c.execute("UPDATE maintenance SET state='HELD', hold_reason=?, updated_at=? WHERE issue_number=?", (reason, now, issue))
+            for d in c.execute("SELECT id, batch_id FROM defects WHERE source='incident' AND issue_number=? AND state='LINKED'",
+                               (issue,)).fetchall():
+                c.execute("UPDATE defects SET state='HELD', hold_reason=?, updated_at=? WHERE id=?", (reason, now, d["id"]))
+                c.execute("UPDATE batches SET error=?, updated_at=? WHERE id=? AND state='PAUSED' AND defect_id=?",
+                          (f"장애 진단 완료 — {reason} (Issue #{issue})", now, d["batch_id"], d["id"]))
+            c.execute("UPDATE batches SET state='COMPLETE', error=NULL, updated_at=? WHERE id=?", (now, batch_id))
+            c.execute("UPDATE lines SET run=0, updated_at=? WHERE model=? AND method=?", (now, m["producer"], m["method"]))
+
     def batch(self, batch_id: int):
         with self._conn() as c:
             return c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()

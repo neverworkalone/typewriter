@@ -725,6 +725,251 @@ class ResolvedReportResume(unittest.TestCase):
         w.tmp.cleanup()
 
 
+class AutonomousIncident(unittest.TestCase):
+    """Issue #3326: an approved Maintainer integration HEAD that a boundary check rejects is received as an incident."""
+
+    def setUp(self):
+        self.w = world()
+        self.w.git.integrate_updates_head = True   # the integration HEAD is MERGE, a descendant of HEAD1
+
+    def tearDown(self):
+        self.w.tmp.cleanup()
+
+    def released(self, *models):
+        w = self.w
+        for m in models:
+            produce_and_report(w, m, "a")
+        run_maintainer_to_merge(w, 101)
+        w.tick(3)
+        for m in models:
+            b = w.row(m, "a")
+            self.assertEqual(b["state"], "PRODUCING")
+            w.store.set(f"d_base_head_{b['id']}", HEAD1)
+        return [w.row(m, "a") for m in models]
+
+    def rejected(self, b):
+        return self.w.sup._d_head_problem(b, Path(b["worktree"]))
+
+    def test_approved_integration_reaches_fail_typed_and_is_received_once(self):
+        w = self.w
+        b, = self.released("deepseek")
+        problem = self.rejected(b)
+        self.assertIsInstance(problem, defects.BoundaryProblem)
+        w.sup._fail(b, "ERROR", problem + " worktree를 보존합니다.")   # the exact concatenation _d_finalize performs
+        row = w.row()
+        self.assertEqual((row["state"], row["pause_reason"], row["paused_from"]), ("PAUSED", "shared_defect", "PRODUCING"))
+        self.assertIn("배치 기준 HEAD", row["error"])                  # the original message survives
+        self.assertTrue(any(e["level"] == "error" and "배치 기준 HEAD" in e["msg"] for e in w.store.batch_events(b["id"])))
+        incidents = [d for d in w.store.defects() if d["source"] == "incident"]
+        self.assertEqual(len(incidents), 1)
+        w.tick(2)
+        self.assertEqual(w.gh.created, [101, 102])
+        self.assertIn("장애 접수", w.gh.issues[102]["title"])
+        self.assertNotIn("Traceback", w.gh.issues[102]["body"])
+        # a repeated tick, a restart and a recurrence at the same batch and site never make a second incident
+        w.sup._fail(w.row(), "ERROR", problem)
+        w.tick(3)
+        self.assertEqual(w.row()["state"], "ERROR")
+        self.assertEqual(len([d for d in w.store.defects() if d["source"] == "incident"]), 1)
+        self.assertEqual(w.gh.created, [101, 102])
+
+    def test_anything_else_stays_a_plain_error(self):
+        w = self.w
+        b, = self.released("deepseek")
+        for label, arrange in (
+                ("arbitrary HEAD", lambda: setattr(w.git, "local_head", "d" * 40)),
+                ("remote moved", lambda: w.git.remote.__setitem__(b["branch"], "e" * 40)),
+                ("dirty worktree", lambda: setattr(w.git, "dirty_text", " M x.txt\n"))):
+            with self.subTest(label):
+                saved = (w.git.local_head, dict(w.git.remote), w.git.dirty_text)
+                arrange()
+                problem = self.rejected(b)
+                self.assertNotIsInstance(problem, defects.BoundaryProblem)
+                w.sup._fail(b, "ERROR", problem)
+                self.assertEqual(w.row()["state"], "ERROR")
+                w.git.local_head, w.git.remote, w.git.dirty_text = saved
+        # a receipt of ANOTHER batch is no proof for this one
+        d = w.store.defects()[0]
+        w.store.update_defect(d["id"], integrated_sha="f" * 40)
+        self.assertNotIsInstance(self.rejected(b), defects.BoundaryProblem)
+        self.assertEqual([x for x in w.store.defects() if x["source"] == "incident"], [])
+
+    def test_a_failing_report_keeps_the_error_and_its_evidence(self):
+        w = self.w
+        b, = self.released("deepseek")
+        problem = self.rejected(b)
+
+        def boom(*a, **k):
+            raise RuntimeError("db locked")
+        w.sup.maint.report = boom
+        w.sup._fail(b, "ERROR", problem)
+        row = w.row()
+        self.assertEqual((row["state"], row["error"]), ("ERROR", str(problem)))
+        self.assertTrue(any("장애 접수 실패" in e["msg"] for e in w.store.batch_events(b["id"])))
+        self.assertEqual([x for x in w.store.defects() if x["source"] == "incident"], [])
+
+    def test_two_batches_at_the_same_site_are_two_issues_never_merged_by_class(self):
+        w = self.w
+        batches = self.released("deepseek", "sonnet")
+        for b in batches:
+            w.sup._fail(b, "ERROR", self.rejected(b))
+        w.tick(3)
+        self.assertEqual(w.gh.created, [101, 102, 103])
+        classes = {d["defect_class"] for d in w.store.defects() if d["source"] == "incident"}
+        self.assertEqual(len(classes), 2)
+
+    def diagnose(self, valid=True, commit=False):
+        w = self.w
+        b, = self.released("deepseek")
+        w.sup._fail(b, "ERROR", self.rejected(b))
+        w.tick(4)   # Issue 102 -> its Maintainer starts
+        m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+        self.assertEqual((m["state"], m["batch"]), ("PRODUCING", "102"))
+        wt = Path(m["worktree"])
+        evidence = next((wt / ".warroom-scratch/incident").glob("*.json"))
+        self.assertIn("events", json.loads(evidence.read_text()))
+        if valid:
+            (wt / ".warroom-scratch/incident-diagnosis.json").write_text(
+                json.dumps({"version": 1, "issue": 102, "outcome": "no_code_fix"}))
+        w.gh.comment_issue(102, "진단\n\n" + defects.marker(defects.EVENT_MARK, "incident-diagnosis-102"))
+        if commit:
+            w.git.local_head = "9" * 40
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick(3)
+        return w, [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+
+    def test_diagnosis_only_holds_returns_the_slot_and_keeps_the_batch_paused(self):
+        w, m = self.diagnose()
+        self.assertEqual(m["state"], "COMPLETE")
+        self.assertEqual(w.store.maintenance(102)["state"], "HELD")
+        self.assertEqual([d["state"] for d in w.store.defects() if d["source"] == "incident"], ["HELD"])
+        row = w.row()
+        self.assertEqual((row["state"], row["pause_reason"]), ("PAUSED", "shared_defect"))
+        self.assertFalse(w.store.maintenance_batch_open())
+        w.tick(5)
+        self.assertEqual(w.row()["state"], "PAUSED")   # never auto-resumed
+
+    def test_diagnosis_missing_or_with_a_commit_keeps_the_existing_error(self):
+        for kwargs in ({"valid": False}, {"commit": True}):
+            with self.subTest(kwargs):
+                self.tearDown()
+                self.setUp()
+                w, m = self.diagnose(**kwargs)
+                self.assertEqual(m["state"], "ERROR")
+                self.assertIn("PR을 찾지 못했습니다", m["error"])
+
+    def test_fix_to_supervisor_code_waits_until_the_running_process_has_it(self):
+        w = self.w
+        b = produce_and_report(w)
+        w.git.changed[MERGE] = ["tools/warroom/warroom/supervisor.py"]
+        w.cfg["shared_defect_verify"] = [["true"]]
+        w.sup.code_sha = "1" * 40
+        run_maintainer_to_merge(w, 101)
+        w.tick(5)
+        self.assertEqual((w.row()["state"], w.store.defects()[0]["state"]), ("PAUSED", "FIX_MERGED"))
+        self.assertEqual(sum("재시작 필요" in e["msg"] for e in w.store.batch_events(b["id"])), 1)
+        w.git.ancestor_pairs.add((MERGE, w.sup.code_sha))   # restarted: the loaded code contains the fix
+        w.tick(3)
+        self.assertEqual(w.row()["state"], "PRODUCING")
+        self.assertEqual(w.store.defects()[0]["state"], "RELEASED")
+
+
+class AutonomousIncidentReview(unittest.TestCase):
+    """Review fixes for #3326: fail-closed code gate, crash-safe diagnosis cleanup, explicit atomic evidence, per-phase outcomes."""
+
+    def setUp(self):
+        self.t = AutonomousIncident()
+        self.t.setUp()
+        self.w = self.t.w
+
+    def tearDown(self):
+        self.t.tearDown()
+
+    def test_unprovable_code_load_waits(self):
+        w = self.w
+        produce_and_report(w)
+        w.git.changed[MERGE] = ["tools/warroom/warroom/supervisor.py"]
+        w.cfg["shared_defect_verify"] = [["true"]]
+        w.sup.code_sha = None                        # unknown / dirty runtime source
+        run_maintainer_to_merge(w, 101)
+        w.tick(4)
+        self.assertEqual(w.store.defects()[0]["state"], "FIX_MERGED")
+        orig = w.git.changed_files
+        w.sup.code_sha = "1" * 40
+        w.git.ancestor_pairs.add((MERGE, w.sup.code_sha))
+        w.git.changed_files = lambda sha: (_ for _ in ()).throw(RuntimeError("lookup failed"))
+        w.tick(3)
+        self.assertEqual(w.store.defects()[0]["state"], "FIX_MERGED")   # a failed lookup is not proof either
+        w.git.changed_files = orig
+        w.tick(3)
+        self.assertEqual(w.store.defects()[0]["state"], "RELEASED")
+
+    def test_evidence_is_explicit_atomic_and_required(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        w.store.set(f"unrelated_secret_{b['id']}", "x")
+        w.sup._fail(b, "ERROR", t.rejected(b))
+        w.tick(4)
+        m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+        files = list((Path(m["worktree"]) / ".warroom-scratch/incident").glob("*.json"))
+        data = json.loads(files[0].read_text())
+        self.assertIn(f"d_base_head_{b['id']}", data["kv"])
+        self.assertNotIn(f"unrelated_secret_{b['id']}", data["kv"])
+        self.assertEqual(list(files[0].parent.glob("*.tmp")), [])
+
+    def test_evidence_write_failure_does_not_start_the_maintainer(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        launches = len(w.adapter.launches)
+        w.sup._fail(b, "ERROR", t.rejected(b))
+        orig, os_ = w.sup.maint.write_incident_evidence, None
+        w.sup.maint.write_incident_evidence = lambda mb: "증거 작성 실패(테스트)"
+        w.tick(4)
+        m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+        self.assertEqual((m["state"], len(w.adapter.launches)), ("ERROR", launches))
+
+    def test_diagnosis_cleanup_survives_a_crash_before_the_state_transaction(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        w.sup._fail(b, "ERROR", t.rejected(b))
+        w.tick(4)
+        m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+        wt = Path(m["worktree"])
+        (wt / ".warroom-scratch/incident-diagnosis.json").write_text(json.dumps({"version": 1, "issue": 102, "outcome": "external"}))
+        w.gh.comment_issue(102, "x\n\n" + defects.marker(defects.EVENT_MARK, "incident-diagnosis-102"))
+        real = w.store.complete_diagnosis
+        w.store.complete_diagnosis = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("crash"))
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        try:
+            w.tick(2)
+        except RuntimeError:
+            pass
+        self.assertFalse(wt.exists())                                   # removed, state not yet saved
+        self.assertIsNotNone(w.store.get(f"m_diag_{m['id']}"))          # but the proof was persisted first
+        w.store.complete_diagnosis = real
+        w.tick(2)                                                       # re-entry finishes the same diagnosis
+        self.assertEqual(w.store.batch(m["id"])["state"], "COMPLETE")
+        self.assertEqual(w.store.maintenance(102)["state"], "HELD")
+        self.assertEqual(w.row()["state"], "PAUSED")
+
+    def test_outcomes_are_reported_once_per_phase(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        d = w.store.defects()[0]
+        with w.store._conn() as c:
+            c.execute("UPDATE defects SET source='incident' WHERE id=?", (d["id"],))   # a RELEASED incident of this batch
+        w.store.update(b["id"], state="WAITING_REVIEW", pr_number=70)
+        w.tick(3)
+        w.store.update(b["id"], state="COMPLETE")
+        w.tick(3)
+        w.store.update(b["id"], state="ERROR", error="later failure")
+        w.tick(3)
+        w.tick(3)
+        bodies = [c["body"] for c in w.gh.issue_comments_.get(101, [])]
+        for phase in ("review", "complete", "stopped-error"):
+            self.assertEqual(sum(f"incident-outcome-{d['id']}-{phase}" in x for x in bodies), 1, phase)
+
+
 class MaintainerConfig(unittest.TestCase):
     def test_config_table(self):
         w = world()
@@ -807,6 +1052,22 @@ class RealGitIntegration(unittest.TestCase):
         sh("git", "commit", "-qm", "shared fix", cwd=self.repo)
         sh("git", "push", "-q", "origin", "HEAD:master", cwd=self.repo)
         return sh("git", "rev-parse", "HEAD", cwd=self.repo)
+
+    def test_diagnosis_cleanup_never_force_deletes_an_unmerged_branch(self):
+        from warroom.gitops import CleanupBlocked
+        sh("git", "checkout", "-q", "-b", "side", cwd=self.repo)
+        (self.repo / "side.txt").write_text("s\n")
+        sh("git", "add", ".", cwd=self.repo)
+        sh("git", "commit", "-qm", "side", cwd=self.repo)
+        base = sh("git", "rev-parse", "HEAD", cwd=self.repo)
+        sh("git", "checkout", "-q", "master", cwd=self.repo)
+        wt = self.wt.parent / "diag"
+        sh("git", "worktree", "add", "-q", "-b", "diag", str(wt), base, cwd=self.repo)
+        for _ in range(2):   # the second pass is the re-entry after the worktree is already gone
+            with self.assertRaises(CleanupBlocked):
+                self.git.remove_diagnosis_worktree(wt, "diag", base)
+        self.assertEqual(sh("git", "rev-parse", "--verify", "refs/heads/diag", cwd=self.repo), base)
+        self.assertFalse(wt.exists())
 
     def test_fix_is_merged_and_partial_output_and_commits_survive(self):
         (self.wt / "partial.jsonl").write_text('{"id":"C1"}\n' * 3)          # uncommitted partial batch output

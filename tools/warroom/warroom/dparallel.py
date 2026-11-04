@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from . import dchunk, prompts, taskruns
+from . import dchunk, defects, prompts, taskruns
 from .gitops import GitError, GitTransient
 from .github import GhTransient
 
@@ -222,7 +222,10 @@ class ParallelD:
                 return "D 병렬 배치의 Git 경계 기준이 없거나 다른 실행을 가리킵니다. worktree를 보존합니다."
             head = self.sup.git.head(self._wt(b))
             if head != base.get("head"):
-                return f"D 병렬 실행 중 소유 HEAD가 변경됐습니다 ({base.get('head')} / {head}). 후속 실행을 중단합니다."
+                text = f"D 병렬 실행 중 소유 HEAD가 변경됐습니다 ({base.get('head')} / {head}). 후속 실행을 중단합니다."
+                receipt = self.sup.maint.approved_integration_receipt(b, base.get("head"), head, "d-parallel-boundary",
+                                                                      base.get("remote_head"))
+                return defects.BoundaryProblem(text, receipt) if receipt else text
             if round_.remote() != base.get("remote_head"):
                 return (f"D 병렬 실행 중 원격 브랜치 {b['branch']}가 변경됐습니다 "
                         f"({base.get('remote_head')} / {round_.remote()}). 후속 실행을 중단합니다.")
