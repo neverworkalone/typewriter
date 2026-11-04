@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -10,7 +11,39 @@ from .adapters import RunSpec
 from .usage import pricing_problems
 
 WARROOM_DIR = Path(__file__).resolve().parents[1]
-REPO_ROOT = WARROOM_DIR.parents[1]
+REPO_ROOT = WARROOM_DIR.parents[1]   # the checkout this module was imported from (#3378: not an authority when a launcher set one)
+ROOT_ENV = "TYPEWRITER_WARROOM_ROOT"   # the verified operating checkout, passed explicitly by `./war`, `./dashboard` and the TUI
+
+
+class RootError(Exception):
+    pass
+
+
+def operating_root(environ=None) -> Path:
+    """The one authoritative War Room checkout (#3378): prompts, `.local` state and Git admin data all hang off it.
+
+    A launcher passes it in TYPEWRITER_WARROOM_ROOT; it must be absolute and hold `tools/warroom/prompts`. Without the
+    variable (tests, ad-hoc use) the importing checkout is used. A cwd or a temporary Codex worktree is never consulted.
+    """
+    raw = (os.environ if environ is None else environ).get(ROOT_ENV, "")
+    if not raw:
+        return REPO_ROOT
+    root = Path(raw)
+    if not root.is_absolute():
+        raise RootError(f"{ROOT_ENV}는 절대 경로여야 합니다: {raw!r}")
+    root = root.resolve()
+    if not (root / "tools" / "warroom" / "prompts").is_dir():
+        raise RootError(f"운영 루트에 tools/warroom/prompts가 없습니다: {root}")
+    return root
+
+
+def check_runtime_root(environ=None) -> Path:
+    """Fail closed unless the running Python code was imported from the operating root (start and restart)."""
+    root = operating_root(environ)
+    if root != REPO_ROOT:
+        raise RootError(f"실행 중인 코드({REPO_ROOT})가 운영 루트({root})와 다릅니다. "
+                        "임시 worktree에서 시작된 프로세스입니다 — README의 Supervisor 재시작 절차로 운영 루트에서 다시 시작하세요.")
+    return root
 
 DEFAULTS = {
     "repo": "neverworkalone/typewriter",
@@ -60,7 +93,7 @@ DEFAULTS = {
 
 @dataclass
 class Paths:
-    repo_root: Path = REPO_ROOT
+    repo_root: Path = field(default_factory=operating_root)
     local: Path = field(default=None)  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
@@ -100,6 +133,11 @@ class Paths:
     def supervisor_state(self) -> Path:
         """Supervisor-only state inside Git administration data, outside writable worktree files."""
         return self.git_admin_dir / "typewriter-supervisor"
+
+    @property
+    def runtime_root_file(self) -> Path:
+        """The operating root the live Supervisor was started with (written after it takes the lock)."""
+        return self.supervisor_state / "runtime-root"
 
     @property
     def logs(self) -> Path:

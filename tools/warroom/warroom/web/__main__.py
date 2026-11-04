@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from ..config import Paths
+from ..config import Paths, RootError, check_runtime_root
 from .server import WebServer
 
 
@@ -15,7 +15,11 @@ def main(argv=None) -> int:
     ap.add_argument("--allow-host", action="append", default=[], metavar="NAME",
                     help="extra Host/Origin name to accept, e.g. the tailnet name Tailscale Serve forwards")
     args = ap.parse_args(argv)
-    paths = Paths()
+    try:
+        paths = Paths(repo_root=check_runtime_root())
+    except RootError as e:
+        print(f"[dashboard] 시작 거부: {e}", file=sys.stderr)
+        return 1
     paths.ensure()
     try:
         srv = WebServer(args.host, args.port, paths, args.allow_host)

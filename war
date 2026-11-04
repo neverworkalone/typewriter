@@ -5,6 +5,11 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 WR="$ROOT/tools/warroom"
 VENV="$WR/.local/venv"
 
+# #3378: the operating root must be the main checkout (a real .git directory, not a linked/temporary worktree)
+# holding the prompts. It is passed explicitly to every Python process, never inferred from import paths.
+if [ ! -d "$ROOT/.git" ] || [ ! -s "$WR/prompts/m.md" ]; then
+  echo "[war] $ROOT 는 운영 메인 checkout이 아닙니다 (.git 디렉터리 또는 tools/warroom/prompts/m.md 없음). 시작하지 않습니다." >&2; exit 1
+fi
 if ! command -v tmux >/dev/null 2>&1; then
   echo "tmux가 필요합니다: brew install tmux" >&2; exit 1
 fi
@@ -14,10 +19,17 @@ if [ ! -x "$VENV/bin/python" ]; then
   "$VENV/bin/pip" install -q -r "$WR/requirements.txt"
 fi
 
-CMD="cd '$ROOT' && env PYTHONPATH='$WR' '$VENV/bin/python' -m warroom.tui"
+CMD="cd '$ROOT' && env TYPEWRITER_WARROOM_ROOT='$ROOT' PYTHONPATH='$WR' '$VENV/bin/python' -m warroom.tui"
+if tmux has-session -t warroom 2>/dev/null; then
+  LIVE="$(tmux show-environment -t warroom TYPEWRITER_WARROOM_ROOT 2>/dev/null | sed -n 's/^TYPEWRITER_WARROOM_ROOT=//p')"
+  if [ "$LIVE" != "$ROOT" ]; then
+    echo "[war] 실행 중인 warroom TUI의 루트(${LIVE:-미기록})가 $ROOT 와 다릅니다. 붙지 않습니다." >&2
+    echo "[war] tools/warroom/README.md 의 'Supervisor 코드 수정 후 재시작' 절차를 따르세요." >&2; exit 1
+  fi
+fi
 if [ -n "$TMUX" ] && [ "$(tmux display-message -p '#S')" = "warroom" ]; then
   eval "$CMD"
 else
   # -A: attach if the session exists (re-entry after detach), else create it.
-  exec tmux new-session -A -s warroom "$CMD"
+  exec tmux new-session -A -s warroom -e TYPEWRITER_WARROOM_ROOT="$ROOT" "$CMD"
 fi
