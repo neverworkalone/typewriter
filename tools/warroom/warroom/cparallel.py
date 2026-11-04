@@ -257,7 +257,6 @@ def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcom
                 or rec.get("chunk_no") != chunk_no or rec.get("repair") is True
                 or retry.get("chunk_id") != rec.get("chunk_id") or retry.get("chunk_no") != chunk_no
                 or retry.get("view_sha256") != rec.get("view_sha256") or retry.get("repair") is not False
-                or retry.get("session_available") is not True
                 or pending != rec.get("sense_ids") or retry.get("pending_sense_ids") != pending
                 or not isinstance(retry.get("own_state"), dict)):
             return False
