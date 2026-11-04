@@ -1073,6 +1073,7 @@ class Maintenance:
                 owt = Path(ob["worktree"])
                 data = {
                     "defect": {"id": d["id"], "event_key": d["event_key"], "class": d["defect_class"]},
+                    "maintainer_attempt": b["id"],
                     "batch": {k: ob[k] for k in ob.keys() if k != "log_file"},
                     "events": [{"ts": e["ts"], "level": e["level"], "msg": e["msg"][:500]}
                                for e in self.store.batch_events(ob["id"])[-50:]],
@@ -1117,8 +1118,13 @@ class Maintenance:
                 return False
             if data["outcome"] == "recurrence" and not self._recurrence_verified(linked[0], data.get("recurrence_of")):
                 data["outcome"] = "undetermined"   # an unverified recurrence claim is held like any undetermined cause
-            ev = f"incident-diagnosis-{n}"
-            if not any((defects.EVENT_MARK, ev) in defects.markers(c.get("body")) for c in self.sup.gh.issue_comments(n)):
+            ev = f"incident-diagnosis-{n}-attempt-{b['id']}"
+            legacy_ev = f"incident-diagnosis-{n}"
+            if not any(
+                (defects.EVENT_MARK, ev) in defects.markers(c.get("body"))
+                or (b["shard"] == "issue" and (defects.EVENT_MARK, legacy_ev) in defects.markers(c.get("body")))
+                for c in self.sup.gh.issue_comments(n)
+            ):
                 return False
             if (git.head(wt) != base or git.registered(wt) != b["branch"] or git.remote_head(b["branch"]) is not None
                     or git.dirty(wt).strip() or self.sup.gh.prs_for_branch(b["branch"])):

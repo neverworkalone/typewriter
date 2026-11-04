@@ -1454,9 +1454,13 @@ class Store:
                 return None
             if c.execute("SELECT 1 FROM lines WHERE method=? AND drain=1", (MAINTENANCE_METHOD,)).fetchone():
                 return None   # Drain: the current Issue finishes normally, the next one is not claimed automatically
+            prior_attempts = c.execute(
+                "SELECT COUNT(*) AS n FROM batches WHERE method=? AND batch=?",
+                (MAINTENANCE_METHOD, str(issue_number))).fetchone()["n"]
+            shard = "issue" if prior_attempts == 0 else f"issue-{prior_attempts + 1}"
             bid = c.execute(
                 "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,model_tier,created_at,updated_at)"
-                " VALUES(?,?,?,?,?,?,?,?,?,?)", (MAINTENANCE_METHOD, producer, "issue", str(issue_number), branch,
+                " VALUES(?,?,?,?,?,?,?,?,?,?)", (MAINTENANCE_METHOD, producer, shard, str(issue_number), branch,
                                                  worktree, "PREPARE", "free", now, now)).lastrowid
             c.execute("UPDATE maintenance SET state='ACTIVE', batch_id=?, updated_at=? WHERE issue_number=?",
                       (bid, now, issue_number))
@@ -1467,14 +1471,64 @@ class Store:
         with self._conn() as c:
             return c.execute("SELECT 1 FROM lines WHERE method=? AND drain=1", (MAINTENANCE_METHOD,)).fetchone() is not None
 
-    def requeue_maintenance(self, issue_number: int) -> bool:
-        """Explicit operator Retry of an Issue the operator cleared: HELD with NO execution -> QUEUED, once.
+    @staticmethod
+    def _undetermined_diagnosis_retry(c, issue_number: int):
+        """Return the completed diagnosis and held incident rows only when this Issue can safely be retried."""
+        m = c.execute("SELECT * FROM maintenance WHERE issue_number=?", (issue_number,)).fetchone()
+        if (m is None or m["state"] != "HELD" or m["batch_id"] is None
+                or m["pr_number"] is not None or m["merge_sha"] is not None
+                or not (m["hold_reason"] or "").startswith("진단만 종료(undetermined):")):
+            return None
+        attempt = c.execute("SELECT * FROM batches WHERE id=?", (m["batch_id"],)).fetchone()
+        if (attempt is None or attempt["method"] != MAINTENANCE_METHOD or attempt["state"] != "COMPLETE"
+                or attempt["batch"] != str(issue_number) or attempt["pr_number"] is not None or attempt["merged"]):
+            return None
+        if c.execute("SELECT 1 FROM batches WHERE method=? AND state!='COMPLETE'",
+                     (MAINTENANCE_METHOD,)).fetchone():
+            return None
+        defects_ = c.execute(
+            "SELECT d.id,d.batch_id,b.state AS batch_state,b.pause_reason,b.defect_id AS batch_defect_id FROM defects d "
+            "JOIN batches b ON b.id=d.batch_id WHERE d.source='incident' AND d.issue_number=? AND d.state='HELD'",
+            (issue_number,)).fetchall()
+        if not defects_ or any(d["batch_state"] != "PAUSED" or d["pause_reason"] != "shared_defect"
+                               or d["batch_defect_id"] != d["id"] for d in defects_):
+            return None
+        return attempt, defects_
 
-        Refused (False) for any other row, so an Issue held for a merge/ownership problem, or one that still has an
-        execution, is never silently restarted (a new attempt cannot collide with an execution row).
+    def maintenance_retryable(self, issue_number: int) -> bool:
+        """Whether Detail may explicitly restart a completed `undetermined` diagnosis; never auto-requeue it."""
+        with self._conn() as c:
+            return self._undetermined_diagnosis_retry(c, issue_number) is not None
+
+    def requeue_maintenance(self, issue_number: int) -> bool:
+        """Explicit operator Retry of a cleared Issue or an undetermined diagnosis with no live execution.
+
+        A diagnosis retry relinks only its still-paused incident defects and keeps their production batches PAUSED.
+        Refuse other holds, stale pointers and live executions; a new attempt receives its own batch history.
         """
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
+            now = time.time()
             cur = c.execute("UPDATE maintenance SET state='QUEUED', hold_reason=NULL, updated_at=? "
-                            "WHERE issue_number=? AND state='HELD' AND batch_id IS NULL", (time.time(), issue_number))
-            return cur.rowcount == 1
+                            "WHERE issue_number=? AND state='HELD' AND batch_id IS NULL", (now, issue_number))
+            if cur.rowcount == 1:
+                return True
+            retry = self._undetermined_diagnosis_retry(c, issue_number)
+            if retry is None:
+                return False
+            attempt, incidents = retry
+            cur = c.execute("UPDATE maintenance SET state='QUEUED', batch_id=NULL, hold_reason=NULL, updated_at=? "
+                            "WHERE issue_number=? AND state='HELD' AND batch_id=?",
+                            (now, issue_number, attempt["id"]))
+            if cur.rowcount != 1:
+                return False
+            for defect in incidents:
+                c.execute("UPDATE defects SET state='LINKED', hold_reason=NULL, updated_at=? WHERE id=? AND state='HELD'",
+                          (now, defect["id"]))
+                c.execute("UPDATE batches SET error=NULL, updated_at=? WHERE id=? AND state='PAUSED' AND defect_id=?",
+                          (now, defect["batch_id"], defect["id"]))
+            c.execute("INSERT INTO events(batch_id,ts,level,msg) VALUES(?,?,?,?)", (
+                attempt["id"], now, "warn",
+                f"운영자 Retry: Issue #{issue_number}의 undetermined 진단을 재조사 대기열에 넣었습니다. "
+                "incident 배치는 PAUSED로 보존합니다."))
+            return True
