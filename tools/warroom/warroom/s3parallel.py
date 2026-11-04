@@ -620,6 +620,11 @@ class ParallelStage3:
 
     def _finish(self, b) -> None:
         """Every chunk is SAVED and the checkpoint is complete: persist `closed` first, then finalize."""
+        tasks = self.store.task_rows(b["id"])
+        if tasks and all(row["state"] == "SAVED" for row in tasks):
+            total = len(tasks)
+            self.store.update(b["id"], progress_kind="chunks", progress_done=total, progress_total=total,
+                              records_done=None)
         self.store.set(stage3.plan_key(b["id"]), "closed")
         self.store.log(b["id"], "Stage 3 병렬 청크 판정 완료: 모든 청크 저장, plan 종료. 최종화(apply → verify → PR)로 진행합니다.")
         self.store.update(b["id"], retries=0, retry_after=None, error=None, session_id=None)
