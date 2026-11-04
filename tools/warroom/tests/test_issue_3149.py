@@ -18,6 +18,10 @@ def answer(text):
     return json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": text}}) + "\n"
 
 
+class _Crash(BaseException):
+    pass
+
+
 class Helpers:
     def world(self, chunks, *, cap=16):
         w = World()
@@ -242,16 +246,56 @@ class Restart(Helpers, unittest.TestCase):
         self.assertEqual(w.store.task_row(b["id"], "001")["run_id"], row["run_id"])
         self.assertEqual(len(w.adapter.launches), 2)
 
-    def test_restart_before_pid_is_known_keeps_the_slot_and_starts_nothing_again(self):
+    def test_restart_before_pid_is_stored_recovers_the_workers_own_pid(self):
         w = self.world(2)
         b = self.batch(w)
         launched = len(w.adapter.launches)
         run_id = w.store.task_row(b["id"], "001")["run_id"]
+        pid = w.store.run(run_id)["pid"]
         w.store.set_run_pid(run_id, None)   # crash between the detached start and the PID write
         w.tick(2)
+        self.assertEqual(w.store.run(run_id)["pid"], pid)   # the wrapper's own PID record
         self.assertEqual(len(w.adapter.launches), launched)
-        self.assertEqual(self.states(w)["001"], "FAILED")
-        self.assertIn(run_id, [r["id"] for r in taskruns.open_runs(w.store, b["id"])])   # slot held until Stop
+        self.assertEqual(self.states(w)["001"], "RUNNING")
+
+    def test_unproven_worker_is_never_reported_stopped(self):
+        w = self.world(1)
+        b = self.batch(w)
+        run_id = w.store.task_row(b["id"], "001")["run_id"]
+        w.store.set_run_pid(run_id, None)
+        w.adapter.read_pid = lambda exit_file: None   # the PID record is not readable (yet)
+        ad = w.sup.s3p._adapter(b)
+        self.assertTrue(taskruns.workers_alive(w.store, ad, b["id"]))
+        self.assertFalse(taskruns.stop_open_runs(w.store, ad, b["id"], lambda run: None))
+        self.assertEqual([r["id"] for r in taskruns.open_runs(w.store, b["id"])], [run_id])
+        self.assertFalse(w.sup.s3p.stop_all(b) if hasattr(w.sup.s3p, "stop_all") else False)
+
+    def test_restart_between_add_run_and_task_link_reattaches_a_fresh_launch(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.cfg["producers"] = json.loads(json.dumps(PRODUCERS))
+        w.parallel_s3 = True
+        w.sup.parallel_new_s3 = True
+        w.runner.edit.chunks = 1
+        w.store.set(stage2.ok_key("001", None), w.git.base_sha)
+        s3p, real = w.sup.s3p, w.sup.s3p._set
+        crashed = []
+
+        def crash_once(b, task, data=None, **fields):
+            if fields.get("state") == "RUNNING" and not crashed:
+                crashed.append(1)
+                raise _Crash()
+            return real(b, task, data, **fields) if data is not None else real(b, task, **fields)
+        s3p._set = crash_once
+        self.assertTrue(control.start(w.store, "claude", S3, "single", cfg=w.cfg)[0])
+        with self.assertRaises(_Crash):   # the process dies right after add_run
+            w.tick(2)
+        s3p._set = real
+        w.tick(2)
+        b = self.batch(w)
+        self.assertEqual(self.states(w)["001"], "RUNNING")
+        self.assertEqual(len(taskruns.open_runs(w.store, b["id"])), 1)   # re-attached, not duplicated
+        self.assertEqual(w.store.task_row(b["id"], "001")["run_id"], taskruns.open_runs(w.store, b["id"])[0]["id"])
 
     def test_failed_start_releases_the_recorded_run(self):
         w = World()

@@ -95,6 +95,10 @@ class AgentAdapter:
     def session_id(self, log_file: Path) -> str | None: ...
     def exit_code(self, exit_file: Path) -> int | None: ...
 
+    def read_pid(self, exit_file: Path) -> int | None:
+        """The worker's PID as the launch wrapper itself recorded it (recovers a run whose PID was never stored)."""
+        return None
+
 
 def is_answer_only(env) -> bool:
     """The Supervisor marks an A/B answer-only chunk launch (`_launch_env`): the AI only answers; nothing it writes counts."""
@@ -210,7 +214,9 @@ class ProcessAdapter(AgentAdapter):
         env.pop("WARROOM_PROTECTED_PATHS", None)
         # The wrapper records the exit status so a restarted Supervisor can still
         # learn how the (detached) child ended.
-        wrapper = ['"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
+        # It also records its own PID (= the process group id) first, so a run whose PID the Supervisor never stored
+        # (it stopped right after the detached start) can still be found, stopped and confirmed gone.
+        wrapper = ['echo $$ > "$WARROOM_EXIT_FILE.pid"', '"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
         env["WARROOM_EXIT_FILE"] = str(exit_file)
         with open(log_file, "wb") as log:   # a launch's log is its own: never continued behind an earlier run's events
             p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],
@@ -261,6 +267,12 @@ class ProcessAdapter(AgentAdapter):
     def exit_code(self, exit_file: Path) -> int | None:
         try:
             return int(Path(exit_file).read_text().strip())
+        except (OSError, ValueError):
+            return None
+
+    def read_pid(self, exit_file: Path) -> int | None:
+        try:
+            return int(Path(f"{exit_file}.pid").read_text().strip())
         except (OSError, ValueError):
             return None
 

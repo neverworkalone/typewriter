@@ -353,11 +353,6 @@ class ParallelStage3:
         if run is None:
             return self._task_failed(b, row, data, f"[{task}] task 실행 기록(run)이 없습니다", "ownership")
         log = Path(run["log_file"])
-        if run["pid"] is None and run["ended_at"] is None and ad.exit_code(Path(run["exit_file"])) is None:
-            # the Supervisor stopped between recording the run and learning the worker's PID: the worker may still be
-            # running and cannot be identified. Its slot stays held and nothing is started again; Stop closes it.
-            return self._task_failed(b, row, data, f"[{task}] 시작 직후 중단돼 AI 프로세스를 확인할 수 없습니다. "
-                                     "중복 실행을 막기 위해 보존합니다 — 프로세스를 확인한 뒤 Stop하세요.", "ownership")
         seen = taskruns.observe_run(self.store, ad, run, row["session_id"])
         if seen[0] == "wait":
             if seen[1] and seen[1] != row["session_id"]:
@@ -533,6 +528,7 @@ class ParallelStage3:
                 data.pop(key, None)
             # The run and the view digest are recorded BEFORE the process exists (pid unknown until it starts), so a
             # crash right after the detached worker starts leaves a visible open run instead of an untracked process.
+            self._set(b, task, data, view_sha256=sha)   # makes a crash right after add_run re-attachable by `_adopt`
             run_id = self.store.add_run(b["id"], RUN_RECORD_KIND, None, None, log, ex, model=run.model,
                                         effort=run.effort, permission_profile=run.permission_profile, task=task)
             self._set(b, task, data, state="RUNNING", run_id=run_id, session_id=None, view_sha256=sha,
