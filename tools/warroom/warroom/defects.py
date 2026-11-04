@@ -275,7 +275,9 @@ def incident_issue_body(env: dict, event_key: str) -> str:
         "## 장애 접수·원인 분석 요청 (War Room 자동 접수)", "",
         "C/D/Stage 2/Stage 3 생산 배치가 ERROR로 정지해 증거를 보존한 채 PAUSED로 접수했습니다. 원인은 아직 확정되지 않았습니다. "
         "증거 묶음은 Maintainer worktree의 `.warroom-scratch/incident/`에 있습니다 (로그 원문은 이 Issue에 넣지 않았습니다). "
-        "코드·프롬프트 결함이면 PR로 고치고, 아니면 PR 없이 진단만 남기고 종료하세요.", "",
+        "Maintainer는 분류만 남기고 정상 종료하지 않습니다. 코드·프롬프트 결함은 PR로 고칩니다. "
+        "PR 없이 HELD 인계할 수 있는 경우는 접수 증거의 무결성/재현 가능성을 확인할 수 없어 더 조사할 수 없음이 입증된 때뿐이며, "
+        "근거와 구체적인 다음 조치를 남겨야 합니다. 그 외 PR 없는 종료는 미완료이며 원 배치는 PAUSED로 유지됩니다.", "",
         f"- 배치: `{env['shard']}_{env['batch']}` · Method {env['method'].upper()} · 생산자 `{env['producer']}`",
         f"- 브랜치: `{env['branch']}`",
         f"- 단계: `{env['run_kind'] or '(run 없음)'}` · ERROR 이전 상태 `{env['paused_from']}` · 사건 번호 e{env['error_seq']}",
@@ -307,7 +309,9 @@ def issue_body(report: dict, event_key: str, facts: str, source: str) -> str:
         *(["## 장애 접수·원인 분석 요청 (War Room 자동 접수)", "",
            "승인된 Maintainer 통합 HEAD를 배치의 Git 경계 검사가 거부해 배치가 ERROR가 되었고, 증거를 보존한 채 PAUSED로 접수했습니다. "
            "원인은 아직 확정되지 않았습니다. 증거 묶음은 Maintainer worktree의 `.warroom-scratch/incident/`에 있습니다 (로그 원문은 이 Issue에 넣지 않았습니다). "
-           "코드 결함이면 PR로 고치고, 아니면 PR 없이 진단만 남기고 종료하세요.", ""] if source == "incident" else []),
+           "Maintainer는 분류만 남기고 정상 종료하지 않습니다. 코드 결함이면 PR로 고칩니다. "
+           "PR 없이 HELD 인계할 수 있는 경우는 접수 증거의 무결성/재현 가능성을 확인할 수 없어 더 조사할 수 없음이 입증된 때뿐이며, "
+           "근거와 구체적인 다음 조치를 남겨야 합니다. 그 외 PR 없는 종료는 미완료이며 원 배치는 PAUSED로 유지.", ""] if source == "incident" else []),
         ("" if source == "incident" else
          f"원 배치가 **Shared defect**를 구조화된 보고({'생산자' if source == 'report' else '리뷰'})로 제출했습니다. ")
         + "해당 배치만 PAUSED 되었고 작업물·브랜치·세션은 보존됩니다. 이 Issue가 머지되고 Maintainer cleanup이 "
