@@ -124,8 +124,41 @@ def markers(body: str) -> set[tuple[str, str]]:
     return {(m.group(1), m.group(2)) for m in _MARK_LINE.finditer(body or "")}
 
 
-def issue_title(report: dict) -> str:
+def issue_title(report: dict, source: str = "report") -> str:
+    if source == "incident":
+        return f"[urgent][War Room] 장애 접수: {report['defect_class']}"
     return f"[urgent][War Room] 공통 결함: {report['defect_class']}"
+
+
+# ---- Autonomous incident intake (Issue #3326): an approved Maintainer integration HEAD the boundary check rejected ------
+class BoundaryProblem(str):
+    """A boundary rejection that was proven, at the moment of rejection, to be the batch's own RELEASED integration HEAD.
+
+    Only the HEAD-mismatch branch of a boundary check returns this, and only after `Maintenance.approved_integration_receipt`
+    proved it (same-batch RELEASED receipt, ancestry, unchanged remote, clean worktree). Every other rejection stays a plain
+    `str`. `+` keeps the type (callers append a suffix); f-strings, slicing and `format` drop it on purpose.
+    """
+    receipt: dict
+
+    def __new__(cls, text: str, receipt: dict):
+        obj = super().__new__(cls, text)
+        obj.receipt = receipt
+        return obj
+
+    def __add__(self, other):
+        return BoundaryProblem(str.__add__(self, other), self.receipt) if isinstance(other, str) else NotImplemented
+
+    def __radd__(self, other):
+        return BoundaryProblem(str.__add__(other, self), self.receipt) if isinstance(other, str) else NotImplemented
+
+
+def incident_report(site: str, bid: int, sha8: str, cases: list[str], reproduction: str) -> str:
+    """The report JSON for one incident. The class is unique per incident: nothing merges it with another before a cause is known."""
+    return json.dumps({
+        "version": VERSION, "defect_class": f"incident-{site}-{bid}-{sha8}",
+        "summary": f"승인된 Maintainer 통합 HEAD가 경계 검사에서 거부되어 배치가 ERROR가 되었습니다 ({site}). 원인 분석을 요청합니다.",
+        "failing_cases": cases, "reproduction": reproduction, "suspected_layer": site,
+    }, ensure_ascii=False, sort_keys=True)
 
 
 def batch_facts(b, pr: dict | None) -> str:
@@ -144,10 +177,14 @@ def issue_body(report: dict, event_key: str, facts: str, source: str) -> str:
     pending = "(보고자가 제시하지 않음 — Maintainer가 조사)"
     opt = lambda key: _safe(report[key]) if key in report else pending
     return "\n".join([
-        "## 공통 결함 (War Room 자동 등록)",
-        "",
-        f"원 배치가 **Shared defect**를 구조화된 보고({'생산자' if source == 'report' else '리뷰'})로 제출했습니다. "
-        "해당 배치만 PAUSED 되었고 작업물·브랜치·세션은 보존됩니다. 이 Issue가 머지되고 Maintainer cleanup이 "
+        *(["## 공통 결함 (War Room 자동 등록)", ""] if source != "incident" else []),
+        *(["## 장애 접수·원인 분석 요청 (War Room 자동 접수)", "",
+           "승인된 Maintainer 통합 HEAD를 배치의 Git 경계 검사가 거부해 배치가 ERROR가 되었고, 증거를 보존한 채 PAUSED로 접수했습니다. "
+           "원인은 아직 확정되지 않았습니다. 증거 묶음은 Maintainer worktree의 `.warroom-scratch/incident/`에 있습니다 (로그 원문은 이 Issue에 넣지 않았습니다). "
+           "코드 결함이면 PR로 고치고, 아니면 PR 없이 진단만 남기고 종료하세요.", ""] if source == "incident" else []),
+        ("" if source == "incident" else
+         f"원 배치가 **Shared defect**를 구조화된 보고({'생산자' if source == 'report' else '리뷰'})로 제출했습니다. ")
+        + "해당 배치만 PAUSED 되었고 작업물·브랜치·세션은 보존됩니다. 이 Issue가 머지되고 Maintainer cleanup이 "
         "끝나면 배치에 수정이 반영된 뒤 한 번만 자동 재개됩니다.",
         "",
         facts,

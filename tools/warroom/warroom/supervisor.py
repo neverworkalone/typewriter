@@ -105,6 +105,12 @@ class Supervisor:
         self._worker_git_executables = []
         self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
+        # The Supervisor code this process loaded (#3326): a merged fix to tools/warroom/warroom/ is applied only after it is in this HEAD.
+        self.code_root = Path(__file__).resolve().parents[3]
+        try:
+            self.code_sha = git.head(self.code_root) if self.code_root.joinpath(".git").exists() else None
+        except Exception:
+            self.code_sha = None
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
         self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
         self.dp = dparallel.ParallelD(self)   # parallel D chunk tasks inside a new batch (#3074)
@@ -214,6 +220,12 @@ class Supervisor:
         self.store.update(b["id"], state=state, paused_from=prev, error=msg)
         self._clear_batch_retry(b["id"])
         self.store.log(b["id"], msg, "error")
+        if state == "ERROR" and isinstance(msg, defects.BoundaryProblem):
+            # Only after the ERROR and its evidence are recorded; any failure here leaves them exactly as written.
+            try:
+                self.maint.report_incident(b, msg)
+            except Exception as e:
+                self.store.log(b["id"], f"장애 접수 예외(ERROR와 증거 보존): {e}", "warn")
 
     # ---- transient (retryable query) failures ---------------------------------------------------------------------
     # Invariant: a query that failed in a way asking again can fix never changes the Line (run/mode/drain) or the batch
@@ -1372,6 +1384,8 @@ class Supervisor:
             raise
         except (GitError, ValueError) as e:
             return self._fail(b, "ERROR", f"worktree 준비 실패: {e}")
+        if b["method"] == MAINTENANCE_METHOD:
+            self.maint.write_incident_evidence(b)
         if b["method"] == STAGE2_METHOD:
             if self._stage2_reconcile_task(b):
                 return self._stage2_reconcile_finalize(b)
@@ -2719,6 +2733,8 @@ class Supervisor:
             if b["state"] == "PRODUCING":
                 info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
                 if info is None:
+                    if b["method"] == MAINTENANCE_METHOD and self.maint.finish_diagnosis(b):
+                        return   # a documented diagnosis-only Maintainer result (#3326): HELD, slot returned
                     refusal = self._adapter(b["producer"]).policy_refusal(Path(b["log_file"]))
                     if refusal:   # the local CLI policy stopped the PR step: keep everything, wait for the operator
                         return self._fail(b, "PAUSED", f"{refusal}. PR이 만들어지지 않았습니다. 로컬 설정을 확인한 뒤 "
@@ -6522,7 +6538,10 @@ class Supervisor:
             candidate_child = head != baseline["head"] and self.git.is_candidate_child(
                 wt, baseline["head"], dchunk.names(b).output)
             if head != baseline["head"] and not candidate_child:
-                return f"worktree HEAD {head[:10]}가 승인된 D 병렬 기준 HEAD {baseline['head'][:10]}도, Candidate commit도 아닙니다."
+                text = f"worktree HEAD {head[:10]}가 승인된 D 병렬 기준 HEAD {baseline['head'][:10]}도, Candidate commit도 아닙니다."
+                receipt = self.maint.approved_integration_receipt(b, baseline["head"], head, "d-parallel-head",
+                                                                  baseline["remote_head"])
+                return defects.BoundaryProblem(text, receipt) if receipt else text
             committed = self.store.get(f"d_commit_head_{b['id']}")
             if committed is not None and (not re.fullmatch(r"[0-9a-f]{40}", committed) or committed != head):
                 return "기록된 D Candidate commit과 worktree HEAD가 다릅니다. worktree를 보존합니다."
@@ -6569,7 +6588,9 @@ class Supervisor:
             raise
         except Exception as e:
             return f"HEAD 결속을 확인하지 못했습니다: {e}"
-        return f"worktree HEAD {head[:10]}가 배치 기준 HEAD {base[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
+        text = f"worktree HEAD {head[:10]}가 배치 기준 HEAD {base[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
+        receipt = self.maint.approved_integration_receipt(b, base, head, "d-head", None)
+        return defects.BoundaryProblem(text, receipt) if receipt else text
 
     def _d_chunks_problem(self, b, done) -> str | None:
         """Every chunk accepted earlier must still be byte-identical (an AI session never edits a saved chunk).
