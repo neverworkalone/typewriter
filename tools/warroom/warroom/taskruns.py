@@ -6,7 +6,10 @@ is observed until it ends, how all of them are stopped, and how many slots they 
 """
 from __future__ import annotations
 
+import time
 from pathlib import Path
+
+PID_GRACE = 60   # seconds a freshly recorded run may still be waiting for its worker's own PID record
 
 
 def recorded_spec(run_row):
@@ -26,9 +29,29 @@ def slots_used(store, batch_id: int) -> int:
     return len(open_runs(store, batch_id))
 
 
+def resolve_pid(store, ad, run):
+    """The run with its PID: a run recorded before its process existed gets the PID the launch wrapper wrote.
+
+    Returns (run, unproven). `unproven` is True while there is no PID, no exit record and the launch is still recent:
+    the worker may be alive and cannot be identified yet, so the run must neither be closed nor treated as gone."""
+    if run["pid"] is not None or run["ended_at"] is not None:
+        return run, False
+    pid = ad.read_pid(Path(run["exit_file"]))
+    if pid is not None:
+        store.set_run_pid(run["id"], pid)
+        return store.run(run["id"]), False
+    if ad.exit_code(Path(run["exit_file"])) is not None:
+        return run, False
+    return run, time.time() - (run["started_at"] or 0) < PID_GRACE
+
+
 def workers_alive(store, ad, batch_id: int) -> bool:
-    """True while any task run may still be alive (no recorded PID, or its PID still lives)."""
-    return any(run["pid"] is None or ad.alive(run["pid"]) for run in open_runs(store, batch_id))
+    """True while any task run may still be alive (unproven PID, or its PID still lives)."""
+    for run in open_runs(store, batch_id):
+        run, unproven = resolve_pid(store, ad, run)
+        if unproven or (run["pid"] is not None and ad.alive(run["pid"])):
+            return True
+    return False
 
 
 def stop_open_runs(store, ad, batch_id: int, on_stopped) -> bool:
@@ -38,6 +61,10 @@ def stop_open_runs(store, ad, batch_id: int, on_stopped) -> bool:
     closed as "stopped" and handed to `on_stopped(run)`, which returns its task to the method's restartable state."""
     gone = True
     for run in open_runs(store, batch_id):
+        run, unproven = resolve_pid(store, ad, run)
+        if unproven:
+            gone = False   # fail closed: never report a possibly live worker as stopped
+            continue
         if run["pid"] is not None and ad.alive(run["pid"]):
             ad.stop(run["pid"])
             gone = False
@@ -59,6 +86,9 @@ def observe_run(store, ad, run, session_id):
     if run["ended_at"] is not None:
         status = run["exit_status"]
         return "ended", (None if status in (None, "unknown") else _int(status)), run
+    run, unproven = resolve_pid(store, ad, run)
+    if unproven:
+        return "wait", session_id
     sid = session_id or ad.session_id(log)
     if sid and sid != session_id:
         store.set_run_session_by_id(run["id"], sid)

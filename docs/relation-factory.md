@@ -268,6 +268,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 2. **AI 청크: 관계 350~500행 목표**, 출발 Sense의 관계 목록은 **분할하지 않는다**. 한 청크에 여러 Sense를 묶을 수 있다. Source Sense별 전체 gloss를 한 번 제공하고, target 의미 구분에 필요한 경우 ID Sense 뜻풀이를 제공한다. Link Repair 대상은 동일 표기 전체 Sense·전체 gloss를 제공한다.
 3. **최소 출력:** `chunk NN` 뒤에 `D 1 5 9`, `L 4 T1`, 또는 `none`만 출력. Keep은 별도 출력하지 않고 기존 Relation을 유지한다. 청크마다 새 AI 세션을 사용하고 이미 검토한 청크 전체를 반복해서 읽지 않는다. 재개용 로컬 checkpoint는 청크 완료 여부와 결정만 저장한다.
 4. **Shard당 Stage 3 데이터 PR 한 개.** 모든 청크 완료 후 Relation/Drop에 한꺼번에 반영하고 기존 `validateRelationRows`/`verifyAccounting` 및 실제 DB 결과를 확인한다. 생산 PR은 **해당 샤드의 Relation/Drop 두 파일만** 변경한다. Stage 2와 Stage 3의 같은 샤드 작업 경합은 금지한다.
+   - **청크 병렬 판정(#3149):** War Room Supervisor는 새로 시작하는 샤드의 `edit-cli` 청크를 오너 설정 `stage3_max_parallel`(기본 16) 범위에서 독립 answer-only 세션으로 동시에 판정할 수 있다. checkpoint 저장은 Supervisor의 단일 경로가 `save-chunk --chunk NNN --expect-view-sha256`(view digest 결속, 동일 입력 재저장은 `already_saved`, `decisions[]`는 행 순서 정렬)로 맡으며 완료 순서는 결과에 영향을 주지 않는다. worker는 다른 AI/CLI를 시작할 수 없고, 모델·effort·정책 카드·청크 크기·`apply → verify → PR` 흐름과 샤드당 PR 하나는 그대로다. 진행 중인 직렬 샤드와 `--batch/--part` 국소 Link Repair는 바뀌지 않는다.
 5. **리뷰:** Repair는 전건 정확한 source/target Sense 및 gloss 확인, Drop은 실제 PR diff에서 위험도 기준 표본 검토. 4만여 관계를 리뷰 AI가 다시 전수 편집하지 않는다. 잘못된 ID·고아 후보 회계·유익한 연상의 체계적 부당 삭제는 blocker; 취향 차이는 blocker가 아니다. 문서·지침 변경은 **별도 `no-review` PR**로 분리한다.
 
 ### 5-C. Cross-shard와 기존 Stage 2 보호

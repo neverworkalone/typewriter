@@ -490,7 +490,7 @@ class Maintenance:
             if run_start is None:
                 run_start = self._retargeted_run_start(b, head)
             if run_start is None and ((b["method"] == STAGE3_METHOD
-                    and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] == "s3_finalize"))
+                    and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] in ("s3_finalize", "s3_parallel")))
                     or (b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel")
                     or (b["method"] == literary.METHOD and b["run_kind"] == "c_parallel")):
                 self._hold(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
@@ -535,6 +535,8 @@ class Maintenance:
             except Exception:
                 return None
             return f"s3_finalize_released_head_{b['id']}", new_head
+        if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_parallel":
+            return self._retargeted_s3_parallel(b, new_head)
         if b["method"] == STAGE3_METHOD and isinstance(b["run_kind"], str) \
                 and b["run_kind"].startswith("s3_chunk_"):
             key = stage3.run_start_key(b["id"])
@@ -610,6 +612,43 @@ class Maintenance:
             self.store.log(b["id"], f"승인된 Maintainer 통합으로 {stage} 실행 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
         return key, json.dumps(base, sort_keys=True)
 
+    def _retargeted_s3_parallel(self, b, new_head: str) -> tuple[str, str] | None:
+        """Parallel Stage 3: move the one baseline forward and name the pending tasks whose rendered view changed.
+
+        Invalidation is decided from the CHECKPOINT and the prepared view digests, never from SQLite task state: a
+        chunk the checkpoint holds is never invalidated (if its view changed, `refresh-pending` fails and this HOLDs)."""
+        key = stage3.parallel_start_key(b["id"])
+        wt = Path(b["worktree"])
+        try:
+            base = json.loads(self.store.get(key) or "null")
+            if not isinstance(base, dict) or base.get("branch") != b["branch"] or base.get("worktree") != str(wt) \
+                    or not isinstance(base.get("head"), str) or "remote_head" not in base:
+                return None
+            if self.sup.git.registered(wt) != b["branch"]:
+                return None
+            if self.sup.git.head(wt) != new_head or not self.sup.git.contains(wt, base["head"]) \
+                    or self.sup.git.remote_head(b["branch"]) != base["remote_head"]:
+                return None
+            refreshed = stage3.refresh_pending_chunks(self.sup.runner, self.sup.env, wt, b["shard"])   # fails on completed-view/count change
+            digests = refreshed.get("pending_view_sha256")
+            state = stage3.checkpoint(wt, b["shard"])
+            if not isinstance(digests, dict) or state is None:
+                return None
+            done = set(state["completed_chunks"])
+            changed = {row["task"] for row in self.store.task_rows(b["id"])
+                       if row["task"] not in done and row["view_sha256"] and row["task"] in digests
+                       and digests[row["task"]] != row["view_sha256"]}
+            base["invalidated"] = sorted(set(base.get("invalidated") or []) | changed)
+        except GitTransient:
+            raise
+        except Exception:
+            return None
+        if base["head"] != new_head:
+            base["head"] = new_head
+            self.store.log(b["id"], f"승인된 Maintainer 통합으로 Stage 3 병렬 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다"
+                           + (f" (view 변경 task {len(base['invalidated'])}개는 새 세션으로 재판정)" if base["invalidated"] else "") + ".")
+        return key, json.dumps(base, sort_keys=True)
+
     def adopt_released_baseline(self, b) -> None:
         """Recover a released Stage 2/3 baseline only at this batch's verified Maintainer integration HEAD."""
         if b["method"] == STAGE2_METHOD:
@@ -617,6 +656,8 @@ class Maintenance:
         elif b["method"] == STAGE3_METHOD and isinstance(b["run_kind"], str) \
                 and b["run_kind"].startswith("s3_chunk_"):
             key = stage3.run_start_key(b["id"])
+        elif b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_parallel":
+            key = stage3.parallel_start_key(b["id"])
         elif b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
             key = f"s3_finalize_released_head_{b['id']}"
         elif b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":

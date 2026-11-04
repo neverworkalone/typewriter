@@ -326,6 +326,12 @@ def line_status(store: Store, model: str, method: str) -> dict:
                 count = lambda *states: sum(1 for t in tasks if t["state"] in states)
                 out["stage2"]["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING", "FIXQ", "RESPONDED"),
                                           "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
+        if method == STAGE3_METHOD:   # parallel Stage 3 chunks: running / queued / responded / saved / failed
+            tasks = store.task_rows(b["id"])
+            if tasks:
+                count = lambda *states: sum(1 for t in tasks if t["state"] in states)
+                out["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING"), "responded": count("RESPONDED"),
+                                "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
         if method in ("c", "d"):   # parallel C/D chunks: the same running / queued / saved task counts
             tasks = store.task_rows(b["id"])
             if tasks:

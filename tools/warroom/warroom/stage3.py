@@ -36,6 +36,28 @@ def run_start_key(batch_id: int) -> str:
     return f"s3_run_start_{batch_id}"
 
 
+PARALLEL = "parallel"
+TASKS_DIR = ".warroom-scratch/s3-tasks"
+
+
+def mode_key(batch_id: int) -> str:
+    """"parallel" for a shard that started with the chunk-task scheduler (#3149); no key = finish serially."""
+    return f"s3_mode_{batch_id}"
+
+
+def plan_key(batch_id: int) -> str:
+    """"open" while the chunk tasks own the checkpoint, "closed" once every chunk is saved."""
+    return f"s3_plan_{batch_id}"
+
+
+def parallel_start_key(batch_id: int) -> str:
+    return f"s3_parallel_start_{batch_id}"
+
+
+def task_path(task: str, name: str) -> str:
+    return f"{TASKS_DIR}/{task}/{name}"
+
+
 def checkpoint_path(worktree, shard: str) -> Path:
     return Path(worktree) / ".warroom-scratch" / f"relation-edit-{shard}.json"
 
@@ -471,3 +493,25 @@ def report(runner, env: dict, worktree, shard: str) -> dict:
     if not isinstance(value, dict) or value.get("shard") != shard:
         raise Stage3Error("edit-cli report returned an invalid shard report")
     return value
+
+
+def read_chunk_by_number(runner, env: dict, worktree, shard: str, chunk: str) -> tuple[dict, str, str, bool]:
+    """Explicit chunk read: (unchanged prepared view, validated compact prompt view, view digest, completed)."""
+    result = cli(runner, env, worktree, "read-chunk", "--shard", shard, "--chunk", chunk)
+    state = checkpoint(worktree, shard)
+    if (not isinstance(result, dict) or result.get("chunk") != chunk or state is None
+            or not isinstance(result.get("view_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", result["view_sha256"])
+            or type(result.get("completed")) is not bool):
+        raise Stage3Error(f"edit-cli read-chunk --chunk {chunk} returned an invalid result")
+    view = {key: value for key, value in result.items() if key not in ("prompt_view", "view_sha256", "completed")}
+    validate_prompt_view(result.get("prompt_view"), decision_context(view, chunk), state["chunk_total"])
+    return view, result["prompt_view"], result["view_sha256"], result["completed"]
+
+
+def save_chunk_by_number(runner, env: dict, worktree, shard: str, chunk: str, input_rel: str, view_sha256: str) -> dict:
+    """Explicit chunk save bound to the launch-time view digest; `already_saved` is the idempotent success."""
+    result = cli(runner, env, worktree, "save-chunk", "--shard", shard, "--chunk", chunk, "--in", input_rel,
+                 "--expect-view-sha256", view_sha256)
+    if not isinstance(result, dict) or result.get("chunk") != chunk:
+        raise Stage3Error("edit-cli save-chunk --chunk returned an invalid result")
+    return result

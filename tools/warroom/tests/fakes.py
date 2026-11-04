@@ -40,6 +40,9 @@ class FakeAdapter(AgentAdapter):
             Path(log).write_text(json.dumps({"sessionID": self.running[pid]["session"]}) + "\n")
         return Handle(pid, Path(ex), Path(log))
 
+    def read_pid(self, exit_file):
+        return next((pid for pid, r in self.running.items() if r.get("ex") == Path(exit_file)), None)
+
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         permission_profile=run.permission_profile,
@@ -997,6 +1000,7 @@ class World:
         self.sup_runner_ok()
 
     parallel_s2 = False   # the serial Stage 2 path stays covered; test_issue_3047 turns the parallel path on
+    parallel_s3 = False   # likewise the serial Stage 3 path; test_issue_3149 turns the parallel path on
     parallel_c = False    # likewise the serial C path; test_issue_3076 turns the parallel path on
 
     def make_sup(self):
@@ -1004,6 +1008,7 @@ class World:
                          self.gh, self.git, {"GH_CONFIG_DIR": "x"}, clock=lambda: self.now)
         sup.parallel_new_parts = self.parallel_s2
         sup.parallel_new_c = self.parallel_c
+        sup.parallel_new_s3 = self.parallel_s3
         return sup
 
     def runner_obj(self):

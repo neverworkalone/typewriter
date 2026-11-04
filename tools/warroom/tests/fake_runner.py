@@ -6,6 +6,7 @@ from pathlib import Path
 
 from tests.fake_dchunk import FakeDChunkCli
 from tests.fake_literary import FakeLiteraryCli
+from tests.fake_s3 import FakeEditCli
 from tests.fake_workbench import CLI as WORKBENCH_CLI, FakeWorkbenchCli
 from warroom.shell import Result, Runner
 
@@ -30,6 +31,7 @@ class ScriptedRunner(Runner):
         self.probe_gate = None                    # threading.Event: when set, a probe waits until it is released
         self.literary = FakeLiteraryCli()          # Method C literary-context CLI
         self.dchunk = FakeDChunkCli()              # Method D chunk CLI + Candidate v1 validator
+        self.edit = FakeEditCli()                  # Stage 3 explicit chunk CLI (#3149)
         self.workbench = FakeWorkbenchCli()        # A/B candidate-workbench (compact I/O)
         self.models_gate = None                   # threading.Event: `opencode models` waits until it is released
 
@@ -49,6 +51,8 @@ class ScriptedRunner(Runner):
             return self.literary.run(argv, cwd, env, input)
         if len(argv) > 1 and Path(argv[1]).name == "literary-context-supervisor-cli.mjs":
             return self.literary.run(argv, cwd, env, input)
+        if len(argv) > 2 and Path(argv[1]).name == "edit-cli.mjs":
+            return self.edit.run(argv, cwd)
         if argv[:2] == WORKBENCH_CLI:
             return self.workbench.run(argv, cwd)
         if len(argv) > 1 and Path(argv[1]).name in ("d-chunk-cli.mjs", "candidate-contract.mjs"):
