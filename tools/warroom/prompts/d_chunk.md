@@ -11,6 +11,8 @@ Supervisor는 최신 D CLI 경로와 이 배치의 scratch/Canonical 루트를 `
 
 view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record로 이미 조회한 **공유 문맥**(상태 줄 `COMPLETE`/`LIMITED`/`ZERO_HITS`/`SEARCH_FAILED`와 `[키] 표제 저자` 다음 줄의 발췌), 그리고 아래에 `s1…sK`로 번호가 붙은 record의 모든 Sense(정확한 Sense ID·품사·전체 gloss)가 온다. 문맥은 record의 Sense들이 공유하지만 **source-sense 판정과 후보 발굴은 Sense마다 따로** 한다. 머리 줄의 `decide=`는 이번 청크에서 판정할 필수 Sense 전체이며, `auto_z`는 War Room이 기계적으로 완전 0건을 증명해 자동 저장하므로 판정 줄에 넣지 않는다.
 
+**Sense·Record 결속:** `s1…sK`는 청크의 모든 Canonical Sense를 펼친 **청크 내부 순번**이지 Record 순번이 아니다. 하나의 `## <record_id>` 아래 여러 Sense가 있으면 `s6`·`s7`처럼 연속된 번호가 **같은 Record ID**에 속하고, 다음 Record의 첫 Sense가 `s8`일 수 있다. 각 `sN`의 소유 Record는 반드시 **해당 `##` 블록과 그 아래의 정확한 `sN <sense_id>` 행**으로 확인한다. `sN` 숫자, 동일한 표제어, 검색 결과 개수에서 Record ID를 추정하지 않는다.
+
 운영자가 `prepare --hada-prefetch`를 명시한 경우 첫 `search:` 줄에는 Canonical 검색형과 함께 제한된 `-하다` 활용형 검색 결과가 들어 있을 수 있다. 이는 해당 record에 이미 기록된 일반 검색 증거다. 같은 검색형을 다시 조회하지 말고 상태와 문맥을 판독한다. 옵션은 기본 실행에서 꺼져 있다. 추가 활용형이 필요하면 아래 검색 도구로 별도 조회할 수 있다.
 
 ## 정확한 source-sense 판독 (#1156 PASS A)
@@ -36,6 +38,7 @@ view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record
   `COMPLETE`·`ZERO_HITS` 결과에는 `next`를 쓰지 않는다. `DEFERRED`는 검색되지 않은 결과라 자체 cursor가 없다. 응답의 `retry_requests`에 있는 원래 요청을 그대로 다시 보내며, 그 요청에 이미 유효한 cursor가 있으면 그대로 보존한다. `INVALID_CURSOR`가 나면 같은 요청을 맹목적으로 반복하지 않는다. 먼저 마지막 기록 상태와 forms 순서·boundary가 같은지 확인한다. 유효한 미완료 `LIMITED`가 없거나 기록이 충돌·손상·모호하면 cursor를 추측하거나 같은 조건을 첫 검색으로 재시작하지 말고 상태를 보존해 보고한다. 새로운 검색 조건이 실제로 필요할 때만 그 새 조건으로 cursor 없이 검색한다.
 
   검색형·경계·cursor·문맥 수 등 결과에 영향을 주는 옵션이 모두 같으면 **record ID가 달라도** 한 번만 검색하고 문맥을 한 번만 출력하며, `shared_by`에 연결된 record마다 증거를 한 번 기록한다. 같은 record의 여러 Sense는 해당 record 증거를 공유하지만, source-sense 판독과 후보 발굴은 각각 독립 수행한다. 다른 조건은 합치지 않는다. `search-batch`는 반드시 위처럼 JSON 객체를 stdin으로 전달한다.
+  **검색 응답 결속 확인:** `search-batch`의 `requests[].sense`는 요청한 `sN`이며, `requests[].record_id`와 `results[].shared_by[].record_id`는 그 Sense가 속한 Canonical Record ID다. 같은 Record에 속한 두 Sense의 `record_id`가 동일한 것은 정상이다. 반대로 표제어·검색 조건이 같은 **서로 다른 Record**가 하나의 검색 결과를 공유해도 `shared_by`의 각 요청은 자기 Record ID를 유지한다. 불일치를 공통 결함으로 보고하기 전 **제공된 현재 청크 view의 모든 `##`·`sN <sense_id>` 행을 빠짐없이 대조**한다. 이미 주어진 입력을 반복 열람하거나 별도 Canonical/스크립트 소스를 탐색하지 않는다.
   CLI는 요청별 문맥 수를 채우거나 검색 완료 또는 요청 스캔 한도에 도달할 때까지 내부 페이지를 이어 읽는다. 짧은 검색형은 실제 확인한 문단 범위를, 3자 이상 FTS 검색형은 결과가 0건이어도 페이지 예산을 사용하므로 검색형을 많이 보내도 한도를 우회하지 않는다. 검색 한도에 도달하면 실제 모은 문맥과 유효한 `next_cursor`를 `LIMITED`로 돌려준다. 한 번의 `search-batch`에는 별도 합산 스캔 한도가 있다. 상위 `PARTIAL`은 이 합산 한도 때문에 일부 요청을 시작하지 않았다는 뜻이다. 그 결과는 `DEFERRED`이며, 해당 결과의 `retry_requests`에 들어 있는 원래 요청을 모아 다음 호출의 `requests` 배열에 그대로 넣는다. 이 요청은 아직 검색되지 않았고 증거도 기록되지 않는다. 다른 완료·진행 결과는 함께 반환된다. 결과의 `requests[].status`로 각 요청 상태를 확인한다.
   완료가 cursor 증거 체인으로 증명된 동일 record·forms 순서·boundary를 다시 요청하면 `ALREADY_COMPLETE`가 반환된다: 재검색·증거 추가 없이 `recorded_status`와 `recorded_hits`만 제공하고 `contexts:[]`이다. `context_source`가 `view`이면 기존 view 문맥을 읽고, `search_response`이면 이전 검색 응답을 읽는다. 문맥을 실제로 잃었을 때만 해당 요청에 `reread:true`를 명시한다. 완료 증거를 확인한 뒤 처음부터 문맥만 다시 읽으며 어떤 검색 증거·누적 hit·cursor도 바꾸지 않는다. hit 수만으로 `V/N`을 고르지 않는다. 전체 응답이 48 KiB 제한을 넘으면 명시적 오류로 종료되고 해당 호출의 검색 증거는 기록되지 않는다. 요청 수를 나누거나 `contexts`를 낮춰 다시 보낸다. 결과 안의 `SEARCH_FAILED`도 0건 완료로 보지 말고 보고한다.
 - 한 Sense만 추가 조회할 때는 기존 단일 검색을 계속 쓸 수 있다:
@@ -73,3 +76,22 @@ node "$TYPEWRITER_D_CHUNK_CLI" save --chunk {{chunk_no}} --in "$TYPEWRITER_D_SCR
 - 저장은 Candidate v1이 명백히 부적격으로 판정한 source lemma 반복·천 단위 쉼표 파편과 정규화 중복만 자동 제거하고 `removed_candidates`로 보고한다. 독립 합성어와 정상 후보는 보존하며 `V`의 후보가 모두 제거되어 빈 배열이 되어도 저장할 수 있다.
 - `V`는 내가 VERIFIED 문맥을 읽었다는 뜻이다. 저장 도구는 문맥의 source-sense 진위를 기계적으로 검증했다고 주장하지 않으며, `N`·`Z`의 의미적 타당성은 나와 독립 리뷰의 책임이다.
 - 셸 명령은 그 외에는 개별로 실행해 종료 코드와 출력을 확인한다.
+
+## 공통 결함 보고 (실제로 재현한 공유 계층 오류만)
+
+개별 Sense의 용례 불일치·후보 판단, 올바른 Sense/Record 결속, 정상적인 검색 결과 공유 또는 일시적인 CLI/인증/네트워크 오류는 **공통 결함 보고 대상이 아니다**. 공유 CLI·검증기·프롬프트 자체의 반복 가능한 오류를 실제 입력과 도구 결과로 확인했을 때만 이 청크 전용 보고 파일(상단 `session_note`의 `shared-defect-NNN.json` 경로)에 기록하고 즉시 중단한다. 보고 경로를 임의로 만들거나 다른 청크의 파일을 사용하지 않는다.
+
+아래의 **정확한 JSON 형식**을 쓴다. `version`은 1, `defect_class`는 소문자·숫자·하이픈으로 된 3~64자 slug, `failing_cases`는 실제 실패 사례를 담은 비어 있지 않은 문자열 배열이다. 필수 필드 이외에는 선택 필드 `root_cause`, `scope`, `proposed_fix`, `regression`만 허용한다. `batch`, `chunk`, `component`, `impact`, `issue`, `expected`, `observed`, `defect` 같은 임의 최상위 필드를 추가하지 않는다.
+
+```json
+{
+  "version": 1,
+  "defect_class": "shared-layer-failure",
+  "summary": "확인된 공통 결함 증상",
+  "failing_cases": ["실제로 실패한 Record/Sense와 관찰한 증거"],
+  "reproduction": "실패를 재현하는 명령 또는 절차",
+  "suspected_layer": "의심되는 공통 CLI/검증기/프롬프트"
+}
+```
+
+문자열 내부의 큰따옴표는 반드시 JSON 규칙대로 이스케이프하고, 쉼표·괄호가 올바른 **파싱 가능한 JSON**으로 작성한다. 근거가 불충분하면 오류를 꾸며서 보고서를 만들지 않는다. 잘못된 JSON이나 스키마 위반은 Issue를 만들지 못한 채 배치를 PAUSED로 멈추게 한다.
