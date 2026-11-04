@@ -709,11 +709,30 @@ const searchOptions = (contexts, boundary, cursor) => ({
   cursor: cursor ?? null,
 });
 
+/** Canonical sense IDs are the source-bound identity; active metadata's record_id is only a cached parent. */
+function canonicalSenseIndex(records) {
+  const byId = new Map();
+  for (const record of records) {
+    for (const sense of record.senses) {
+      if (byId.has(sense.id)) fail(`Canonical sense id ${sense.id} is duplicated in the active chunk`);
+      byId.set(sense.id, { record, sense });
+    }
+  }
+  return byId;
+}
+
+function canonicalOwnerForActiveSense(activeSense, senseIndex, ref) {
+  if (typeof activeSense.sense_id !== 'string') fail(`${ref} has no Canonical sense id in active metadata`);
+  const owner = senseIndex.get(activeSense.sense_id);
+  if (!owner) fail(`${ref} has no Canonical sense ${activeSense.sense_id} in the active chunk`);
+  return owner;
+}
+
 /** Resolve and deduplicate all same-condition searches before they reach the approved read-only index. */
 export function buildSearchBatch({ requests, meta, records, search, priorEntries = [], validateCursor, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
   if (!Array.isArray(requests) || requests.length === 0) fail('search-batch needs a non-empty requests array');
   const senses = new Map(meta.senses.map((item) => [item.ref, item]));
-  const canonical = new Map(records.map((record) => [record.id, record]));
+  const canonicalSenses = canonicalSenseIndex(records);
   const groups = new Map();
   const resolved = [];
   const recordConditions = new Map();
@@ -728,8 +747,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     const sense = senses.get(request.sense);
     if (!sense) fail(`${request.sense} is not a sense of the active chunk`);
     if (sense.auto) fail(`${request.sense} is an automatic ZERO_HITS sense of this chunk; it is not searched`);
-    const record = canonical.get(sense.record_id);
-    if (!record) fail(`${request.sense} has no Canonical record in the active chunk`);
+    const { record } = canonicalOwnerForActiveSense(sense, canonicalSenses, request.sense);
 
     let forms;
     if (request.forms === undefined) forms = recordForms(record);
@@ -778,7 +796,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
       };
       groups.set(groupKey, group);
     }
-    const requester = { request_id: requestId, sense: request.sense, record_id: sense.record_id };
+    const requester = { request_id: requestId, sense: request.sense, record_id: record.id };
     group.requesters.push(requester);
     group.originalRequests.push({ ...request, ...(Array.isArray(request.forms) ? { forms: [...request.forms] } : {}) });
     resolved.push({ ...requester, result_id: group.result_id });
@@ -906,11 +924,12 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
   const { directory, meta, files } = await findActive(root, chunkNumber);
   const sense = meta.senses.find((item) => item.ref === ref);
   if (!sense) fail(`${ref} is not a sense of the active chunk`);
-  if (sense.auto) fail(`${ref} is an automatic ZERO_HITS sense of this chunk; it is not searched`);
-  const record = meta.records.find((item) => item.record_id === sense.record_id);
   const rows = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
-  const source = rows.find((item) => item.id === record.record_id);
-  const list = normalizedSearchForms(forms ?? recordForms(source));
+  const activeRecords = new Set(meta.records.map((item) => item.record_id));
+  const canonicalSenses = canonicalSenseIndex(rows.filter((item) => activeRecords.has(item.id)));
+  const { record } = canonicalOwnerForActiveSense(sense, canonicalSenses, ref);
+  if (sense.auto) fail(`${ref} is an automatic ZERO_HITS sense of this chunk; it is not searched`);
+  const list = normalizedSearchForms(forms ?? recordForms(record));
   const count = contexts ?? INITIAL_CONTEXTS;
   if (!Number.isInteger(count) || count < 1 || count > MAX_CALL_CONTEXTS) fail(`--contexts must be 1..${MAX_CALL_CONTEXTS}`);
   if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail('--boundary must be left, none or both');
@@ -918,12 +937,12 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
   if (typeof reread !== 'boolean') fail('--reread must be a boolean');
   if (reread && requestedCursor !== null) fail('--reread cannot be combined with --cursor');
   const priorEntries = await readCursorEntries(directory, meta, ref);
-  const condition = recordedCondition({ recordId: record.record_id, forms: list, boundary, entries: priorEntries, ref });
+  const condition = recordedCondition({ recordId: record.id, forms: list, boundary, entries: priorEntries, ref });
   if (reread && !condition.complete) {
     throw cursorInputError(ref, `reread requires a proven completed condition (status=${condition.recorded_status ?? condition.status}, hits=${condition.recorded_hits})`);
   }
-  const resolvedCursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.record_id, forms: list, boundary, entries: priorEntries ?? [], ref });
-  const currentDecisionState = () => decisionState(recordEvidence(priorEntries, record.record_id));
+  const resolvedCursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms: list, boundary, entries: priorEntries ?? [], ref });
+  const currentDecisionState = () => decisionState(recordEvidence(priorEntries, record.id));
   if (condition.complete && !reread) {
     const result = {
       status: 'ALREADY_COMPLETE',
@@ -956,10 +975,10 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
     return { result, text, decision_state: currentDecisionState(), context_source: 'reread' };
   }
   const exactRequestKey = requestKey(list, boundary, options);
-  const evidence = { ...entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey),
+  const evidence = { ...entryOf(record.id, list, boundary, result, 'search', cursorIn, exactRequestKey),
     chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 };
   await appendSearchEvidence(directory, meta, [evidence], priorEntries);
-  return { result, text: renderContexts(result), decision_state: decisionStateAfterSearch(priorEntries, [evidence], record.record_id) };
+  return { result, text: renderContexts(result), decision_state: decisionStateAfterSearch(priorEntries, [evidence], record.id) };
 }
 
 // ---- save -----------------------------------------------------------------------------------------------------------
@@ -1004,6 +1023,7 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
     }
   }
   const bySense = new Map(meta.senses.map((item) => [item.ref, item]));
+  const canonicalSenses = canonicalSenseIndex(records);
   for (const ref of decisions.keys()) {
     if (!bySense.has(ref)) errors.push(`${ref}: unknown sense (this chunk has s1..s${meta.senses.length})`);
     else if (bySense.get(ref).auto) errors.push(`${ref}: automatic ZERO_HITS sense; omit it`);
@@ -1012,15 +1032,21 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
   const rowOf = new Map(rows.map((row) => [row.record_id, row]));
   const removedCandidates = [];
   for (const item of meta.senses) {
-    const record = records.find((entry) => entry.id === item.record_id);
-    const sourceSense = record.senses.find((sense) => sense.id === item.sense_id);
+    let owner;
+    try {
+      owner = canonicalOwnerForActiveSense(item, canonicalSenses, item.ref);
+    } catch (error) {
+      errors.push(`${item.ref}: ${error.message}`);
+      continue;
+    }
+    const { record, sense: sourceSense } = owner;
     const decision = item.auto ? { kind: 'Z', candidates: [] } : decisions.get(item.ref);
     if (!decision) {
       errors.push(`${item.ref}: missing (every non-automatic sense needs one line)`);
       continue;
     }
     if (!item.auto) {
-      const evidenceResult = evidenceByRecord.get(item.record_id);
+      const evidenceResult = evidenceByRecord.get(record.id);
       if (evidenceResult?.error) {
         errors.push(`${item.ref}: search evidence integrity error (${evidenceResult.error}); stop and report`);
       } else {
@@ -1054,7 +1080,7 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
       }
       candidates.push(candidate);
     }
-    rowOf.get(item.record_id).senses.push({ sense_id: item.sense_id, candidates });
+    rowOf.get(record.id).senses.push({ sense_id: sourceSense.id, candidates });
   }
   return { errors, rows, hitBearingZ, removedCandidates, failedEvidence };
 }
@@ -1062,15 +1088,23 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
 function failedRecordsForErrors(allErrors, meta, records) {
   const senseByRef = new Map(meta.senses.map((sense) => [sense.ref, sense]));
   const recordById = new Map(records.map((record) => [record.id, record]));
+  const canonicalSenses = canonicalSenseIndex(records);
   const grouped = new Map();
   for (const message of allErrors) {
     const match = /^(s[1-9]\d*):\s/u.exec(message);
     if (!match) return null;
     const sense = senseByRef.get(match[1]);
-    const record = sense && recordById.get(sense.record_id);
-    if (!sense || !record || !record.senses.some((item) => item.id === sense.sense_id)) return null;
+    if (!sense) return null;
+    let owner;
+    try {
+      owner = canonicalOwnerForActiveSense(sense, canonicalSenses, match[1]);
+    } catch {
+      return null;
+    }
+    const { record, sense: sourceSense } = owner;
+    if (!recordById.has(record.id)) return null;
     const item = grouped.get(record.id) ?? { record_id: record.id, failed_sense_ids: new Set(), errors: [] };
-    item.failed_sense_ids.add(sense.sense_id);
+    item.failed_sense_ids.add(sourceSense.id);
     item.errors.push(message.slice(0, MAX_REJECTED_ERROR_CHARS));
     grouped.set(record.id, item);
   }
