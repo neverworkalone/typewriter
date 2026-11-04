@@ -19,6 +19,7 @@ import {
   normalizeCandidate,
   orphanedCandidateDrops,
   partScope,
+  assertStage2Part,
   sameSpellingTargets,
   validateRelationRows,
   verifyAccounting,
@@ -371,7 +372,7 @@ async function renderPreparedViews(shard, root, scope = null) {
   if (inputStatus.trim()) fail('Stage 3 view refresh requires clean Canonical, Candidate, Relation, and Drop inputs');
   const context = await loadContext(shard, root, { relationText: relationBase.text, dropText: dropBase.text });
   const scopeRows = scope
-    ? partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part).scopeRows
+    ? partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part, shard).scopeRows
     : context.canonicalRows;
   const scopeSenseIds = scope ? new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id))) : null;
   const groups = buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations,
@@ -726,7 +727,7 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY, scope = null) {
   const beforeRelations = context.ownRelations;
   const beforeDrops = context.ownDrops;
   const scopedSenseIds = scope
-    ? new Set(partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part)
+    ? new Set(partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part, shard)
       .scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)))
     : null;
   if (relationLines.length !== beforeRelations.length || dropLines.length !== beforeDrops.length) {
@@ -1030,8 +1031,8 @@ function parseArgs(argv) {
   }
   assertShard(options.shard);
   if ((options.batch === null) !== (options.part === null)) fail(`--batch and --part must be supplied together\n${USAGE}`);
-  if (options.batch !== null && (!['01', '02'].includes(options.batch) || !['01', '02', '03', '04', '05'].includes(options.part))) {
-    fail(`--batch must be 01 or 02 and --part must be 01..05\n${USAGE}`);
+  if (options.batch !== null) {
+    try { assertStage2Part(options.shard, options.batch, options.part); } catch (error) { fail(`${error.message}\n${USAGE}`); }
   }
   if (options.batch !== null && !['prepare', 'read-chunk', 'refresh-pending', 'save-chunk', 'apply'].includes(command)) {
     fail(`--batch/--part are only valid for scoped Stage 3 Link Repair commands\n${USAGE}`);

@@ -89,6 +89,17 @@ class ParallelStage2(Helpers, unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 18)   # two slots opened, two refilled, no wave barrier
         self.assertEqual(len([t for t in self.tasks(w).values() if t["state"] == "RUNNING"]), 16)
 
+    def test_a_250_record_part_scale_plan_keeps_the_250_candidate_task_size_and_the_16_cap(self):
+        # #3385: a 250-record Part holds ~8k-12k candidates, i.e. 30-50 tasks of about 250 candidates; s2parallel is unchanged.
+        w = self.world([(f"sense-{i}", 240) for i in range(40)], cap=16, target=250)
+        self.launch(w, 40)
+        w.tick()
+        b = w.store.active_batch("claude", S2)
+        tasks = stage2.read_plan(b["worktree"])["tasks"]
+        self.assertTrue(30 <= len(tasks) <= 50, len(tasks))
+        self.assertTrue(all(t["candidate_count"] <= 500 for t in tasks))
+        self.assertEqual(len(w.adapter.launches), 16)   # still the configured concurrency, not the Part size
+
     def test_cap_one_runs_the_same_plan_sequentially(self):
         w = self.world([(f"sense-{i}", 240) for i in range(3)], cap=1)
         self.launch(w, 3)

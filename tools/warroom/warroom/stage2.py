@@ -1,7 +1,9 @@
 """Stage 2 Relation Admission as one serial War Room process (Issue #1684; data/work contract: #927, #1665).
 
-A Stage 2 unit is a *Part*: 100 canonical records of one Stage 1 batch (5 Parts per batch, 10 per shard; shard 428
-Batch 02 has 83 records = 1 Part). One Part = one AI edit run = one PR. It lives in the ordinary `batches` table
+A Stage 2 unit is a *Part*: a fixed slice of the canonical records of one Stage 1 batch. The size comes from
+`config/stage2-part-layout.json` (#3385), read from the already-fixed master SHA: Shards through the legacy boundary
+(001-005) keep 100-record Parts (5 per batch, 10 per shard); later Shards use 250-record Parts (2 per batch, 4 per
+shard). Shard 428 Batch 02 has 83 records = 1 Part either way. One Part = one AI edit run = one PR. It lives in the ordinary `batches` table
 under the reserved method `s2` with `batch` = "BB-PP", so launching, session/pin handling, PR watching, review
 fixes, Stop/Drain/Retry/Clear and recovery are the Supervisor's existing code.
 
@@ -26,7 +28,46 @@ from . import prompts
 from .store import STAGE2_METHOD
 
 METHOD = STAGE2_METHOD
-PART_SIZE = 100
+LAYOUT_PATH = "config/stage2-part-layout.json"
+_LAYOUT_KEYS = {"version", "legacy_through_shard", "legacy_part_size", "part_size"}
+_OK_KEY = re.compile(r"s2_ok[bs]?_(\d{3})(?:_|$)")
+_SHARD_FILE = re.compile(r"data/(?:relations/relation|relation-drops/drop)-(\d{3})\.jsonl")
+
+
+@dataclass(frozen=True)
+class Layout:
+    legacy_through_shard: str
+    legacy_part_size: int
+    part_size: int
+
+    def size(self, shard: str) -> int:
+        """Records per Part: Shards started before the boundary keep their legacy size for good."""
+        return self.legacy_part_size if shard <= self.legacy_through_shard else self.part_size
+
+    def is_new(self, shard: str) -> bool:
+        return shard > self.legacy_through_shard
+
+
+def read_layout(runner, root, env, sha: str) -> Layout:
+    """The Part layout committed at the already-fixed master `sha` (never a moving ref). Any problem fails closed."""
+    res = runner.run([batches._git_bin(env), "show", f"{sha}:{LAYOUT_PATH}"], cwd=root, env=env, timeout=60)
+    if not res.ok:
+        raise batches.BatchError(f"{LAYOUT_PATH}을 {sha[:12]}에서 읽을 수 없습니다: {res.err.strip()}")
+    try:
+        data = json.loads(res.out)
+    except ValueError as error:
+        raise batches.BatchError(f"{LAYOUT_PATH}가 올바른 JSON이 아닙니다: {error}") from error
+    sizes = (data.get("legacy_part_size"), data.get("part_size")) if isinstance(data, dict) else ()
+    if (not isinstance(data, dict) or set(data) != _LAYOUT_KEYS or data["version"] != 1
+            or not re.fullmatch(r"\d{3}", str(data["legacy_through_shard"]))
+            or not all(type(n) is int and n > 0 and 500 % n == 0 for n in sizes)):
+        raise batches.BatchError(f"{LAYOUT_PATH} 형식이 올바르지 않습니다")
+    return Layout(data["legacy_through_shard"], sizes[0], sizes[1])
+
+
+def layout_key(shard: str) -> str:
+    """kv marker written when the first Part of a new-layout Shard starts: its Part size is fixed from then on."""
+    return f"s2_layout_{shard}"
 _AB_MODELS = ("claude", "codex")   # #927: the six required Stage 1 inputs of a batch are A/B x Claude/Codex plus one C and one D
 
 
@@ -869,8 +910,26 @@ def run_start_key(batch_id: int) -> str:
     return f"s2_run_start_{batch_id}"
 
 
-def part_count(records: int) -> int:
-    return math.ceil(records / PART_SIZE)
+def part_count(records: int, size: int) -> int:
+    return math.ceil(records / size)
+
+
+def earlier_traces(runner, root, env, sha: str, kv) -> dict[str, str]:
+    """shard -> first trace of earlier Stage 2 work: kv success records, any `s2` batch row (Part 01/02 too), master files."""
+    found: dict[str, str] = {}
+    for row in kv.kv_prefix("s2_ok"):
+        if m := _OK_KEY.match(row["key"]):
+            found.setdefault(m.group(1), f"kv {row['key']}")
+    for shard in kv.stage2_shards():
+        found.setdefault(shard, "batches 표의 s2 행")
+    res = runner.run([batches._git_bin(env), "ls-tree", "-r", "--name-only", sha, "--", "data/relations", "data/relation-drops"],
+                     cwd=root, env=env, timeout=120)
+    if not res.ok:
+        raise batches.BatchError(f"git ls-tree data/relations: {res.err.strip()}")
+    for path in res.out.splitlines():
+        if m := _SHARD_FILE.fullmatch(path):
+            found.setdefault(m.group(1), f"master {path}")
+    return found
 
 
 def ok_key(shard: str, batch: str, part: str | None = None) -> str:
@@ -999,6 +1058,8 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
         return Choice("verify_failed", note=first.tail, failure=VerifyFailure(
             kind, shard, batch, sha, verify_command(kind, shard, batch), f["family"], tuple(f["errors"]), fps[0]))
 
+    layout = read_layout(runner, root, env, sha)
+    traces: dict[str, str] | None = None
     canon = batches._counts(runner, root, env, ref, "data/canonical/stdict-*.jsonl")
     cands = batches._candidate_counts(runner, root, env, ref)
     if changed is not None:
@@ -1012,7 +1073,7 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
                 if records == 0:
                     continue
                 batch_id = f"{batch_number:02d}"
-                for part_id in (f"{part:02d}" for part in range(1, part_count(records) + 1)):
+                for part_id in (f"{part:02d}" for part in range(1, part_count(records, layout.size(shard_id)) + 1)):
                     old = kv.get(ok_key(shard_id, batch_id, part_id))
                     if old and old != sha:
                         old_shas.add(old)
@@ -1044,6 +1105,15 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
         shard = f"{s:03d}"
         if pin and shard != pin:
             continue
+        if layout.is_new(shard) and not kv.get(layout_key(shard)):
+            # #3385: a new-layout Shard must be untouched. Any earlier trace (even Part 01/02 under the old size) means
+            # the transition cannot be proven, so the Line stops instead of re-splitting or re-running it.
+            if traces is None:
+                traces = earlier_traces(runner, root, env, sha, kv)
+            if shard in occupied or shard in traces:
+                why = traces.get(shard, "열린 Stage 2 PR")
+                return Choice("stop", note=f"샤드 {shard}는 새 Part 크기({layout.part_size}) 전환 표식({layout_key(shard)})이 없는데 "
+                                           f"이전 Stage 2 흔적이 있습니다({why}). 자동 전환·재분할하지 않습니다 — 운영자 확인")
         if shard in occupied:
             waiting.append(f"샤드 {shard}에 열린 Stage 2 PR이 있음")
             continue
@@ -1053,7 +1123,8 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
             if records == 0:
                 continue
             batch = f"{b:02d}"
-            parts = [f"{p:02d}" for p in range(1, part_count(records) + 1)]
+            size = layout.size(shard)
+            parts = [f"{p:02d}" for p in range(1, part_count(records, size) + 1)]
             for part in parts:
                 part_key = ok_key(shard, batch, part)
                 completed_sha = kv.get(part_key)
@@ -1082,7 +1153,9 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
                     break
                 ok, _tail = verify("part", shard, batch, part)
                 if not ok:
-                    return Choice("part", Part(shard, batch, part, min(PART_SIZE, records - (int(part) - 1) * PART_SIZE)))
+                    if layout.is_new(shard):
+                        kv.set(layout_key(shard), str(size))   # this Shard's layout is now fixed
+                    return Choice("part", Part(shard, batch, part, min(size, records - (int(part) - 1) * size)))
                 kv.set(part_key, sha)
             open_ = any(not kv.get(ok_key(shard, batch, part)) for part in parts)
             batches_open.append(open_)
