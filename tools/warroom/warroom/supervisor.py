@@ -257,7 +257,7 @@ class Supervisor:
                 return None
 
             # Retry decrements the prior correction count before deciding whether an existing rejection needs a fix.
-            if rec is not None and diag is not None and row["session_id"] and used > 1:
+            if rec is not None and diag is not None and row["session_id"] and used > 0:
                 names.add("d_chunk_fix")
             elif rec is not None and row["session_id"]:
                 names.add("d_chunk_resume")
