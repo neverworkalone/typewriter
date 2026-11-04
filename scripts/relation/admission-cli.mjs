@@ -27,6 +27,7 @@ import {
   normalizeCandidate,
   partScope,
   prepareShard,
+  relationCandidateKeys,
   sameSpellingTargets,
   shardDropPath,
   shardRelationPath,
@@ -714,6 +715,7 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
   const drops = new Set(baseDrops.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const sourceCandidatesForPair = new Map();
   const existingIdCandidates = new Set();
+  const existingIdCandidateRelations = new Map();
   const checkpointCandidates = new Map();
   const addSourceCandidateForPair = (pair, candidateKey) => {
     const candidates = sourceCandidatesForPair.get(pair) ?? new Set();
@@ -721,13 +723,14 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
     sourceCandidatesForPair.set(pair, candidates);
   };
   const markExistingIdCandidates = (row) => {
-    for (const item of checkpoint.items) {
-      const forward = item.candidates.filter((candidate) => item.sense_id === row.source_sense_id
-        && candidate.same_spelling_targets.some((target) => target.record_id === row.target_record_id));
-      const reverse = item.candidates.filter((candidate) => item.sense_id === row.target_sense_id
-        && candidate.same_spelling_targets.some((target) => target.record_id === row.source_record_id));
-      for (const candidate of forward) existingIdCandidates.add(`${item.sense_id}\u0000${candidate.text}`);
-      for (const candidate of reverse) existingIdCandidates.add(`${item.sense_id}\u0000${candidate.text}`);
+    const assignments = relationCandidateKeys(row, null, index);
+    for (const assignment of [...assignments.forward, ...assignments.reverse,
+      ...assignments.reverseAliases, ...assignments.deferredForward]) {
+      const key = `${assignment.senseId}\u0000${normalizeCandidate(assignment.candidate)}`;
+      existingIdCandidates.add(key);
+      const relations = existingIdCandidateRelations.get(key) ?? [];
+      relations.push(row);
+      existingIdCandidateRelations.set(key, relations);
     }
   };
   for (const item of checkpoint.items) for (const candidate of item.candidates) {
@@ -848,10 +851,7 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
   }
   for (const [key, candidate] of checkpointCandidates) {
     if (candidate.decision.disposition === 'drop' && existingIdCandidates.has(key)) {
-      const sourceSenseId = key.split('\u0000')[0];
-      const approved = baseRelations.filter((row) => !('text' in row) &&
-        ((row.source_sense_id === sourceSenseId && candidate.same_spelling_targets.some((target) => target.record_id === row.target_record_id)) ||
-         (row.target_sense_id === sourceSenseId && candidate.same_spelling_targets.some((target) => target.record_id === row.source_record_id))));
+      const approved = existingIdCandidateRelations.get(key) ?? [];
       addConflict('candidate-already-decided', [key], approved,
         `cannot merge a Drop already answered by an approved ID relation ${key.replace('\u0000', '/')}`);
     }

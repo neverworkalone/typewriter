@@ -130,6 +130,26 @@ function crossShardCounterpart() {
   };
 }
 
+async function singleCandidateRepository(t, candidates) {
+  const { root } = await sixCandidateRepository(t);
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const records = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  records.find((record) => record.id === 'w1').lemma = '각석';
+  records.find((record) => record.id === 'w2').lemma = '각자';
+  await writeFile(canonicalPath, jsonl(records));
+
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    const candidatePath = path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`);
+    const rows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map(JSON.parse);
+    for (const row of rows) for (const sense of row.senses) {
+      sense.candidates = producer === 'a_codex'
+        ? candidates.filter((entry) => entry.recordId === row.record_id).map((entry) => entry.text) : [];
+    }
+    await writeFile(candidatePath, jsonl(rows));
+  }
+  return root;
+}
+
 async function saveAllPrimaryAsDrops(root, checkpoint) {
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const decisions = chunk.items.flatMap((item) => item.candidates.map((candidate) => ({
@@ -2113,6 +2133,72 @@ test('repair --check normalizes a deterministic omission and reports every local
   assert.equal(replay.already_applied, true);
   const checkReplay = await request('유일', exactWithReverse(withoutResolution(exact)));
   assert.equal(checkReplay.already_applied, true, 'check recognizes an existing successful receipt first');
+});
+
+test('preflight and merge use explicit ver:1 forward and reverse candidate assignments', async (t) => {
+  const scenarios = [
+    { name: 'an unassigned reverse form remains available for Drop',
+      candidates: [{ recordId: 'w1', text: '각자' }, { recordId: 'w2', text: '각석' }],
+      dropRecordId: 'w2', dropCandidate: '각석',
+      initialForwardForms: ['각자'], initialReverseForms: [], forwardForms: ['각자'], reverseForms: [], conflict: false },
+    { name: 'an explicitly assigned reverse form remains a conflict',
+      candidates: [{ recordId: 'w1', text: '각자' }, { recordId: 'w2', text: '각석' }],
+      dropRecordId: 'w2', dropCandidate: '각석',
+      initialForwardForms: ['각자'], initialReverseForms: [], forwardForms: ['각자'], reverseForms: ['각석'], conflict: true },
+    { name: 'an explicitly assigned forward form remains a conflict',
+      candidates: [{ recordId: 'w1', text: '각자' }],
+      dropRecordId: 'w1', dropCandidate: '각자',
+      initialForwardForms: [], initialReverseForms: [], forwardForms: ['각자'], reverseForms: [], conflict: true },
+  ];
+
+  for (const scenario of scenarios) {
+    const root = await singleCandidateRepository(t, scenario.candidates);
+    const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+    const existing = {
+      source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+      type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
+      candidate_assignment_version: 1, candidate_forms: scenario.initialForwardForms,
+      reverse_candidate_forms: scenario.initialReverseForms,
+    };
+    await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([existing]));
+    await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+
+    const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+    assert.deepEqual(texts(chunk), [scenario.dropCandidate], scenario.name);
+    const item = chunk.items.find((entry) => entry.sense_id === `${scenario.dropRecordId}-s1`);
+    const drop = { source_sense_id: item.sense_id, candidate: scenario.dropCandidate, disposition: 'drop', reason: 'e' };
+    const input = '.warroom-scratch/one-candidate-drop.json';
+    await writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: [drop] }));
+    await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
+    await completeOptionalForTest(root, checkpoint);
+
+    existing.candidate_forms = scenario.forwardForms;
+    existing.reverse_candidate_forms = scenario.reverseForms;
+    await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([existing]));
+    await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
+
+    const preflight = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+    if (!scenario.conflict) {
+      assert.equal(preflight.ok, true, `${scenario.name}: ${JSON.stringify(preflight)}`);
+      assert.equal(preflight.total, 0, scenario.name);
+      const merged = await mergeForTest(root, checkpoint);
+      assert.deepEqual([merged.relations_added, merged.drops_added], [0, 1], scenario.name);
+      assert.deepEqual(await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl')), [existing]);
+      assert.deepEqual(await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl')), [{
+        source_record_id: scenario.dropRecordId, source_sense_id: item.sense_id, candidate: scenario.dropCandidate, reason: 'e',
+      }]);
+    } else {
+      assert.equal(preflight.ok, false, scenario.name);
+      assert.equal(preflight.repairable, true, scenario.name);
+      assert.deepEqual(preflight.unclassified, [], scenario.name);
+      assert.equal(preflight.problems.length, 1, scenario.name);
+      assert.ok(preflight.problems[0].conflicts.every((conflict) => conflict.code === 'candidate-already-decided'), scenario.name);
+      assert.ok(preflight.problems[0].conflicts.some((conflict) => conflict.relations.some((row) =>
+        row.source_sense_id === existing.source_sense_id && row.target_sense_id === existing.target_sense_id)), scenario.name);
+      await assert.rejects(() => mergeForTest(root, checkpoint), /cannot merge (?:a Drop already answered by an approved ID relation|duplicate or already-decided candidate)/u,
+        scenario.name);
+    }
+  }
 });
 
 test('preflight classifies a newly integrated cross-shard optional pair for local repair without changing primary decisions', async (t) => {
