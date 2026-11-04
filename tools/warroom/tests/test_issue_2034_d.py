@@ -1089,6 +1089,19 @@ class Prompts(unittest.TestCase):
         self.assertIn('--dir "$TYPEWRITER_D_SCRATCH" --canonical-root "$TYPEWRITER_D_CANONICAL_ROOT"', card)
         self.assertNotIn("{{", card)
 
+    def test_d_worker_prompts_keep_prepare_supervisor_only(self):
+        b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
+        prompts_to_check = (
+            prompts.d_chunk(b, 3, view="VIEW\n"),
+            prompts.d_chunk_resume(3, decisions="decision-003.txt", searches="search-003.jsonl"),
+            prompts.d_chunk_fix(b, 3, "fixture rejection"),
+        )
+        boundary = "`prepare`는 Supervisor 전용이며 작업자 세션에서는 호출하지 않는다."
+        for prompt in prompts_to_check:
+            with self.subTest(prompt=prompt[:24]):
+                self.assertIn(boundary, prompt)
+                self.assertIn("view가 없거나 불완전하면 `prepare`를 시도하지 말고", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()
