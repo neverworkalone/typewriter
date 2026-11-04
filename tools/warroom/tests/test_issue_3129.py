@@ -311,10 +311,94 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertIn("legacy_chunk_scope_recovery_used", status["retry_blocked_reason"])
         self.assertFalse(control.retry(w.store, "deepseek", "c"))
 
+    def test_scope_recovery_allows_one_owner_suffix_followup_after_shown_only_progress(self):
+        w = self.world(senses=24)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        sibling_ids = self.sense_ids(w, "002")
+        self.finish(w, "002")
+        w.tick()
+        checkpoint_path = w.wt() / literary.names(b).checkpoint
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        saved_before = {sense["sense_id"]: sense["submission"] for record in checkpoint["records"]
+                        for sense in record["senses"] if sense["sense_id"] in sibling_ids}
+
+        active_ids = self.sense_ids(w, "001")
+        _, source_run = self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:2])
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+        first_recovery = max((run for run in w.store.runs(b["id"]) if run["task"] == "001"), key=lambda run: run["id"])
+        self._prepare_sixteen_context_state(w, "001")
+        self._write_no_submit_log(w, first_recovery)
+        w.tick()
+
+        status = control.line_status(w.store, "deepseek", "c")
+        self.assertEqual(self.tasks(w)["001"]["state"], "FAILED")
+        self.assertEqual(self.data(w, "001")["guard"]["reason_codes"], ["shown_only_progress"])
+        self.assertTrue(status["can_retry"], status.get("retry_blocked_reason"))
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+
+        data = self.data(w, "001")
+        followup = max((run for run in w.store.runs(b["id"]) if run["task"] == "001"), key=lambda run: run["id"])
+        self.assertEqual(followup["kind"], "c_chunk_recovery")
+        self.assertEqual(data["recovery"]["source_run_id"], source_run["id"])
+        self.assertEqual(data["recovery"]["followup_attempts"], 1)
+        self.assertEqual(data["recovery"]["followup_source_run_id"], first_recovery["id"])
+        prompt = w.adapter.launches[-1]["prompt"]
+        self.assertIn("shown=16", prompt)
+        self.assertIn("--skip 12 --contexts 16", prompt)
+        self.assertIn("추가 문맥을 하나도 온전히 받지 못했을 때만", prompt)
+        self.assertNotIn("`--skip 8 --contexts 16` 조회만 사용", prompt)
+        self.assertEqual(self.tasks(w)["002"]["state"], "SAVED")
+
+        self._write_no_submit_log(w, followup, query=False)
+        w.tick()
+        status = control.line_status(w.store, "deepseek", "c")
+        self.assertEqual(sum(run["kind"] == "c_chunk_recovery" for run in w.store.runs(b["id"])), 2)
+        self.assertEqual(self.tasks(w)["001"]["state"], "FAILED")
+        self.assertFalse(status["can_retry"])
+        checkpoint_after = json.loads(checkpoint_path.read_text("utf-8"))
+        submissions_after = {sense["sense_id"]: sense["submission"] for record in checkpoint_after["records"]
+                             for sense in record["senses"]}
+        self.assertEqual({sense_id: submissions_after[sense_id] for sense_id in sibling_ids}, saved_before)
+
+    def test_scope_followup_retry_fails_closed_after_sibling_checkpoint_command(self):
+        w = self.world(senses=24)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        sibling_ids = self.sense_ids(w, "002")
+        self.finish(w, "002")
+        w.tick()
+        active_ids = self.sense_ids(w, "001")
+        self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:2])
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+        first_recovery = max((run for run in w.store.runs(b["id"]) if run["task"] == "001"), key=lambda run: run["id"])
+        self._prepare_sixteen_context_state(w, "001")
+        checkpoint = literary.names(b).checkpoint
+        sibling_add = (f"node {literary.cli_path()} add-form --checkpoint {checkpoint} "
+                       f"--sense-id {sibling_ids[0]} --form 추가형 --basis 근거")
+        self._write_no_submit_log(w, first_recovery, extra_cli_commands=[sibling_add])
+        w.tick()
+
+        status = control.line_status(w.store, "deepseek", "c")
+        self.assertEqual(self.tasks(w)["001"]["state"], "FAILED")
+        self.assertEqual(self.data(w, "001")["guard"]["reason_codes"], ["shown_only_progress"])
+        self.assertFalse(status["can_retry"])
+        self.assertFalse(control.retry(w.store, "deepseek", "c"))
+        self.assertEqual(self.tasks(w)["002"]["state"], "SAVED")
+
     @staticmethod
-    def _write_no_submit_log(w, run, *, query=True):
+    def _write_no_submit_log(w, run, *, query=True, extra_cli_commands=()):
         info = w.adapter.running[run["pid"]]
         events = [{"type": "thread.started", "thread_id": run["session_id"]}]
+        events.extend({"type": "item.completed", "item": {"id": f"extra-cli-{index + 1}",
+                       "type": "command_execution", "command": command, "exit_code": 0,
+                       "aggregated_output": "FORM_ADDED\n"}}
+                      for index, command in enumerate(extra_cli_commands))
         if query:
             events.append({"type": "item.completed", "item": {"id": "context-query", "type": "command_execution",
                            "command": "node scripts/relation/literary-context-cli.mjs chunk --db approved.sqlite "
