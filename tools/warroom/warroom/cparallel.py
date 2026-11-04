@@ -33,7 +33,7 @@ from pathlib import Path
 from . import literary, prompts, taskruns
 from .gitops import GitError, GitTransient
 from .github import GhTransient
-from .usage import submit_attempts
+from .usage import official_c_stop_diagnostics, submit_attempts
 
 RUN_KIND = "c_parallel"
 TRANSIENT = (GhTransient, GitTransient)
@@ -88,6 +88,8 @@ def retry_block_reason(store, b) -> str | None:
         recovery = _data(row).get("recovery")
         if (isinstance(recovery, dict) and recovery.get("scope_retry") == LEGACY_CHUNK_SCOPE_RECOVERY
                 and row["state"] in ("FAILED", "PENDING", "FIXQ", "RUNNING")):
+            if _legacy_scope_followup_retry_available(store, b, row):
+                return None   # one explicit owner Retry may use the separately bounded suffix recovery
             return "[legacy_chunk_scope_recovery_used] task-local one-time 복구가 저장 없이 끝났거나 시작되지 않아 추가 Retry를 차단했습니다."
     failed = [r for r in rows if r["state"] == "FAILED"]
     if not failed or not isinstance(b["worktree"], str) or not b["worktree"]:
@@ -113,6 +115,96 @@ def retry_block_reason(store, b) -> str | None:
             return None   # one owner Retry recovers this exact pre-policy 16-context no-submit task
     return (f"[same_failure; {','.join(dict.fromkeys(codes)) or 'checkpoint_or_chunk_mismatch'}] 실패한 task의 Sense·제출·진단 "
             "evidence가 그대로여서 Retry를 막았습니다. 증거가 바뀐 뒤 재시도하세요.")
+
+
+def _legacy_scope_followup_retry_available(store, b, row) -> bool:
+    """Allow one explicit task-local suffix recovery after the proven legacy scope recovery only.
+
+    The owner Retry is available only for a no-submit shown-only recovery with unchanged task evidence, closed workers,
+    saved sibling tasks, one exact source scope rejection and one exact recovery run. The follow-up is consumed before
+    launch so an unstarted or repeated run cannot grant another attempt.
+    """
+    data = _data(row)
+    recovery = data.get("recovery")
+    guard = data.get("guard")
+    if (row["state"] != "FAILED" or int(row["attempts"] or 0) != 2 or b["pid"] is not None
+            or not isinstance(recovery, dict) or recovery.get("scope_retry") != LEGACY_CHUNK_SCOPE_RECOVERY
+            or recovery.get("followup_attempts", 0) != 0
+            or data.get("operator_grants", 0) != 0 or data.get("last_operator_retry_epoch", 0) != 0
+            or data.get("completed_fix_runs") or data.get("auto_fix_runs") or data.get("progress_retry")
+            or not isinstance(guard, dict) or guard.get("reason_codes") != ["shown_only_progress"]
+            or not isinstance(guard.get("baseline"), dict)):
+        return False
+    try:
+        tasks = store.task_rows(b["id"])
+        if (sum(task["state"] == "FAILED" for task in tasks) != 1
+                or any(task["task"] != row["task"] and task["state"] != "SAVED" for task in tasks)
+                or store.open_task_runs(b["id"])
+                or any(task["state"] == "RUNNING" for task in tasks)):
+            return False
+        task_runs = [run for run in store.runs(b["id"]) if run["task"] == row["task"]]
+        source_row = store.run(recovery.get("source_run_id"))
+        run_row = store.run(row["run_id"]) if row["run_id"] is not None else None
+        source = dict(source_row) if source_row is not None else None
+        run = dict(run_row) if run_row is not None else None
+        if (len(task_runs) != 2 or source is None or run is None
+                or {source["id"], run["id"]} != {item["id"] for item in task_runs}
+                or source["id"] == run["id"] or source["task"] != row["task"] or source["kind"] != NEW
+                or str(source["exit_status"]) != "0" or source["ended_at"] is None
+                or run["id"] != row["run_id"] or run["task"] != row["task"] or run["kind"] != RECOVERY
+                or str(run["exit_status"]) != "0" or run["ended_at"] is None
+                or run["session_id"] != row["session_id"] or not row["session_id"]):
+            return False
+
+        wt = Path(b["worktree"])
+        chunk_no = int(row["task"])
+        rec = literary.read_active(wt, b, chunk_no)
+        pending = recovery.get("pending_sense_ids")
+        baseline_state = guard["baseline"]
+        start = data.get("run_start")
+        retry = start.get("retry_state") if isinstance(start, dict) else None
+        runtime = baseline(store, b)
+        if (rec is None or rec.get("repair") is True or not isinstance(pending, list) or not pending
+                or pending != rec.get("sense_ids") or pending != baseline_state.get("pending_sense_ids")
+                or not isinstance(retry, dict) or retry.get("pending_sense_ids") != pending
+                or retry.get("chunk_no") != chunk_no or retry.get("chunk_id") != rec.get("chunk_id")
+                or retry.get("view_sha256") != rec.get("view_sha256") or retry.get("repair") is not False
+                or not isinstance(runtime, dict) or start.get("branch") != b["branch"]
+                or Path(start.get("worktree", "")) != wt or start.get("head") != runtime.get("head")
+                or start.get("remote_head") != runtime.get("remote_head")
+                or start.get("head") != rec.get("git_head") or start.get("chunk_no") != chunk_no
+                or not literary.task_retry_unchanged(wt, b, chunk_no, baseline_state,
+                                                     session_available=bool(row["session_id"]))):
+            return False
+
+        # `scope_retry` is persisted only after the original scope rejection passed the one-time legacy proof.
+        # Recheck only the new recovery run and never regrant from its text answer or the older source log.
+        checkpoint = wt / literary.names(b).checkpoint
+        log = Path(run["log_file"]) if run.get("log_file") else None
+        if log is None or submit_attempts(log) != 0:
+            return False
+        recovery_facts = []
+        recovery_diagnostics = official_c_stop_diagnostics(
+            log, expected_cli_path=literary.cli_path(), command_cwd=wt,
+            expected_checkpoint_path=checkpoint, command_facts=recovery_facts)
+        if (recovery_diagnostics or not recovery_facts
+                or any(fact.get("operation") != "chunk" or fact.get("checkpoint_matches") is not True
+                       or fact.get("chunk_no") != chunk_no
+                       or not isinstance(fact.get("sense_ids"), list) or not fact["sense_ids"]
+                       or any(sense_id not in pending for sense_id in fact["sense_ids"])
+                       for fact in recovery_facts)):
+            return False
+
+        from .adapters import final_answer
+        outcome = literary.no_submission_result(
+            wt, b, rec, dict(run), start, pending, final_answer=final_answer(log),
+            submit_call_count=0, task_session=row["session_id"],
+            own_state_now=literary.own_state(wt, b, rec["sense_ids"]))
+        return (outcome.get("status") == "shown_only_progress"
+                and bool(outcome.get("shown_sense_ids"))
+                and set(outcome["shown_sense_ids"]) <= set(pending))
+    except (OSError, ValueError, KeyError, TypeError, literary.LiteraryError):
+        return False
 
 
 def _legacy_shown_only_guard(data: dict, guard) -> bool:
@@ -1014,13 +1106,14 @@ class ParallelC:
                 continue
             guard = data.get("guard")
             legacy_shown_retry = _legacy_shown_only_guard(data, guard)
+            scope_followup_retry = _legacy_scope_followup_retry_available(self.store, b, row)
             legacy_scope_retry = False
             if isinstance(guard, dict) and guard.get("reason_codes") == ["producer_reported_stop"]:
                 scope_status = _legacy_reported_stop_retry_status(self.store, b, row, guard)
                 legacy_scope_retry = scope_status == "chunk_scope_retry_available"
                 if scope_status not in ("retry_available", "chunk_scope_retry_available"):
                     return self.sup._fail(b, "ERROR", f"[{row['task']}] 공식 C chunk_scope 복구의 기존 run 증거가 달라져 Retry를 차단했습니다. 원본을 보존합니다.")
-            legacy_retry = legacy_shown_retry or legacy_scope_retry
+            legacy_retry = legacy_shown_retry or legacy_scope_retry or scope_followup_retry
             if legacy_shown_retry and not _legacy_shown_only_retry_available(self.store, b, row, guard):
                 return self.sup._fail(b, "ERROR", f"[{row['task']}] 16문맥 무제출 복구의 기존 증거가 달라져 Retry를 차단했습니다. 원본을 보존합니다.")
             for key in ("ack", "error", "pause", "guard", "progress_retry"):
@@ -1028,7 +1121,15 @@ class ParallelC:
             if not legacy_retry and epoch > int(data.get("last_operator_retry_epoch", 0)):
                 data["operator_grants"] = int(data.get("operator_grants", 0)) + 1
                 data["last_operator_retry_epoch"] = epoch
-            if legacy_scope_retry:
+            if scope_followup_retry:
+                recovery = dict(data["recovery"])
+                recovery["followup_attempts"] = 1
+                recovery["followup_source_run_id"] = row["run_id"]
+                recovery["followup_operator_retry_epoch"] = epoch
+                data["recovery"] = recovery
+                data["last_operator_retry_epoch"] = epoch
+                data["kind"] = "recovery"
+            elif legacy_scope_retry:
                 run = self.store.run(row["run_id"])
                 pending = list(guard["baseline"]["pending_sense_ids"])
                 data["kind"] = "recovery"
