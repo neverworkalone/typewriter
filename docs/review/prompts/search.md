@@ -1,0 +1,29 @@
+> Specialized PR-review card; root `REVIEW.md` owns shared gates. Load only when search behavior is affected.
+
+# Search Review
+
+Use for normalization, candidates, ranking, ordering, homonyms, senses, search
+state, and search regressions.
+
+Consult only when relevant:
+
+- `docs/search-regressions.md`
+- `docs/search-candidates.md`
+- `docs/domain-model.md`
+
+Check:
+
+- normalization preserves query meaning;
+- required candidates remain reachable;
+- candidate tiers and ranking follow the current contract;
+- tie behavior is deterministic where required;
+- relation or sense distinctions are not incorrectly collapsed;
+- homonyms resolve according to current product behavior;
+- search-state changes preserve intended navigation/history behavior;
+- the fix addresses the underlying rule, not only one fixture;
+- relevant regression coverage protects the reported defect.
+
+Do not manually replay regression cases already passed by CI.
+
+Do not require broader NLP/search architecture without a demonstrated current
+need.
