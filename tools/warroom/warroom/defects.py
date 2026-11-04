@@ -217,7 +217,7 @@ def incident_envelope(b, observed: dict, prior: list) -> dict:
            "batch_id": b["id"], "method": b["method"], "producer": b["producer"], "shard": b["shard"], "batch": b["batch"],
            "branch": b["branch"], "worktree": b["worktree"], "state": b["state"], "paused_from": b["paused_from"],
            "run_kind": b["run_kind"] or "", "error_seq": b["error_seq"], "error_at": b["error_at"],
-           "error": (b["error"] or "")[:INCIDENT_ERROR_MAX], "error_first": (b["error_first"] or "")[:INCIDENT_ERROR_MAX],
+           "error": public(b["error"] or "")[:INCIDENT_ERROR_MAX], "error_first": public(b["error_first"] or "")[:INCIDENT_ERROR_MAX],
            "observed": observed, "prior_incidents": prior}
     return env
 
@@ -260,7 +260,8 @@ def incident_issue_title(env: dict) -> str:
 
 def _short(value, limit: int = 160) -> str:
     text = json.dumps(value, ensure_ascii=False, sort_keys=True) if not isinstance(value, str) else value
-    return _safe(public(text if len(text) <= limit else text[:limit - 1] + "…"))
+    text = public(text)   # sanitize the WHOLE text first: a cut must never leave a credential fragment behind
+    return _safe(text if len(text) <= limit else text[:limit - 1] + "…")
 
 
 def incident_issue_body(env: dict, event_key: str) -> str:

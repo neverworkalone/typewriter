@@ -1185,6 +1185,8 @@ class IncidentNumberAndIntake(unittest.TestCase):
         w = self.w
         secrets = ["ghp_" + "a" * 30, "https://user:hunter2pass@example.com/x.git", "Bearer abcdef0123456789abcd"]
         raw = "git 실패: " + " ".join(secrets) + " token=zzzzzzzzzzzzzzzz1"
+        pad = "x" * (590 - len(raw) % 590)
+        raw = raw + " " + pad + " Bearer abcdefghijklmnop0123 https://u:pw1234567@h.example/r"   # secrets straddle the 600-char cut
         b = break_batch(w, make_batch(w), raw)
         w.tick(2)
         d, = incidents(w)
@@ -1194,7 +1196,7 @@ class IncidentNumberAndIntake(unittest.TestCase):
         published = [w.gh.issues[101]["body"]] + [c["body"] for c in w.gh.issue_comments_.get(101, [])]
         self.assertTrue(any("진단/보류 결과" in x for x in published))
         for text in published:
-            for secret in secrets + ["hunter2pass", "zzzzzzzzzzzzzzzz1"]:
+            for secret in secrets + ["hunter2pass", "zzzzzzzzzzzzzzzz1", "abcdefghijklmnop", "abcdefghijk", "pw1234567", "u:pw", "Bearer ab", "u:p"]:
                 self.assertNotIn(secret, text)
         self.assertIn("[REDACTED]", w.gh.issues[101]["body"])
         self.assertEqual(w.store.batch(b["id"])["error_first"], raw)       # the original stays local
