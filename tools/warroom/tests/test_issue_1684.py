@@ -220,7 +220,7 @@ class StageTwoSelection(unittest.TestCase):
     def test_last_shard_short_batch_two_is_a_single_83_record_part(self):
         self.w = w = s2_world(self, canon={1: 583})   # the real shard 428 has this shape: 500 + 83 records = 6 Parts
         canon = {"data/canonical/stdict-0001.jsonl": 583}
-        self.assertEqual([stage2.part_count(batches.expected_records(canon, 1, bb)) for bb in (1, 2)], [5, 1])
+        self.assertEqual([stage2.part_count(batches.expected_records(canon, 1, bb), 100) for bb in (1, 2)], [5, 1])
         w.git.verified |= {("part", "001", "01", f"{p:02d}") for p in range(1, 6)} | {("batch", "001", "01", None)}
         b = self.pick(w)
         self.assertEqual((b["batch"], w.git.verify_calls[-1]), ("02-01", ("part", "001", "02", "01")))
@@ -317,6 +317,107 @@ class StageTwoSelection(unittest.TestCase):
         w.git.verified.add(("part", shard, batch, part))
         w.tick(3)
         self.assertEqual(w.store.batch(bid)["state"], "COMPLETE")
+
+
+class StageTwoPartLayout(unittest.TestCase):
+    """#3385: Shards through the legacy boundary keep 100-record Parts; later Shards use 250 and need a fixed layout."""
+    SHA = "e" * 40
+
+    @staticmethod
+    def canon(last, **records):
+        """Shards 1..last exist on master; only the named ones (e.g. s6=1000) hold records."""
+        return {n: records.get(f"s{n}", 0) for n in range(1, last + 1)}
+
+    def choose(self, w, verified=(), open_prs=None, sha=None):
+        done = set(verified)
+        return stage2.choose(w.runner, w.paths.repo_root, w.sup.env, ref="origin/master", sha=sha or self.SHA,
+                             open_prs=open_prs or [], kv=w.store,
+                             verify=lambda kind, shard, batch, part: (kind != "part" or (shard, batch, part) in done, ""))
+
+    def test_new_shard_has_two_250_record_parts_per_batch_and_records_the_layout_marker(self):
+        w = s2_world(self, canon=self.canon(6, s6=1000))
+        choice = self.choose(w)
+        self.assertEqual((choice.status, choice.part), ("part", stage2.Part("006", "01", "01", 250)))
+        self.assertEqual(choice.part.layout_marker, "250")
+        self.assertIsNone(w.store.get(stage2.layout_key("006")), "choose() never writes the marker; the batch row does")
+        w.store.set(stage2.layout_key("006"), "250")   # what the first batch row's transaction commits
+        done = [("006", "01", "01")]
+        self.assertEqual(self.choose(w, done).part, stage2.Part("006", "01", "02", 250))
+        done.append(("006", "01", "02"))   # there is never a Part 03: the next open Part is batch 02's first
+        self.assertEqual(self.choose(w, done).part, stage2.Part("006", "02", "01", 250))
+        self.assertEqual([r.split(":")[0] for r in w.runner.layout_refs][:1], [self.SHA])
+        self.assertTrue(all(r.startswith(f"{self.SHA}:") for r in w.runner.layout_refs), "the layout is read from the fixed SHA")
+
+    def test_marker_is_committed_with_the_first_part_only_and_a_failed_start_leaves_none(self):
+        w = s2_world(self, canon=self.canon(6, s6=1000))
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.tick()
+        b = w.store.active_batch("claude", S2)
+        self.assertEqual((b["shard"], w.store.get(stage2.layout_key("006"))), ("006", "250"))
+        # a choose() that is never turned into a batch row (Stop/Drain/crash) leaves no marker
+        w2 = s2_world(self, canon=self.canon(6, s6=1000))
+        self.assertEqual(self.choose(w2).part.layout_marker, "250")
+        self.assertIsNone(w2.store.get(stage2.layout_key("006")))
+        self.assertEqual(self.choose(w2).part.layout_marker, "250")   # traces are still checked next time
+        w2.store.set(stage2.ok_key("006", "01", "01"), self.SHA)
+        self.assertEqual(self.choose(w2).status, "stop")
+        # once confirmed, later Parts carry no marker
+        w2.store.delete(stage2.ok_key("006", "01", "01"))
+        w2.store.set(stage2.layout_key("006"), "250")
+        self.assertIsNone(self.choose(w2).part.layout_marker)
+
+    def test_marker_with_a_wrong_value_stops_even_with_old_traces(self):
+        for value in ("100", "garbage", ""):
+            with self.subTest(value):
+                w = s2_world(self, canon=self.canon(6, s6=1000))
+                w.store.set(stage2.layout_key("006"), value)
+                w.store.set(stage2.ok_key("006", "01", "01"), self.SHA)
+                self.assertEqual(self.choose(w).status, "stop")
+
+    def test_legacy_shard_keeps_five_100_record_parts_and_never_gets_a_marker(self):
+        w = s2_world(self, canon=self.canon(5, s5=1000))
+        w.store.set(stage2.ok_key("005", "01", "01"), "f" * 40)   # started long ago: traces are fine for a legacy Shard
+        w.runner.master_stage2_files = ["data/relations/relation-005.jsonl"]
+        done = [("005", "01", f"{p:02d}") for p in range(1, 5)]
+        self.assertEqual(self.choose(w, done).part, stage2.Part("005", "01", "05", 100))
+        self.assertIsNone(w.store.get(stage2.layout_key("005")))
+
+    def test_last_shard_shape_is_three_parts_in_the_new_layout(self):
+        w = s2_world(self, canon=self.canon(7, s7=583))   # 428 has the same 500 + 83 shape
+        canon = {"data/canonical/stdict-0007.jsonl": 583}
+        self.assertEqual([stage2.part_count(batches.expected_records(canon, 7, bb), 250) for bb in (1, 2)], [2, 1])
+        done = [("007", "01", "01"), ("007", "01", "02")]
+        self.assertEqual(self.choose(w, done).part, stage2.Part("007", "02", "01", 83))
+
+    def test_new_shard_without_marker_stops_on_any_earlier_trace_including_parts_one_and_two(self):
+        def kv_part(w): w.store.set(stage2.ok_key("006", "01", "01"), self.SHA)
+        def kv_batch(w): w.store.set(stage2.ok_key("006", "01"), self.SHA)
+        def row(w):
+            w.store.create_batch(method=S2, producer="claude", shard="006", batch="01-02", branch="s2-claude-006-01-02",
+                                 worktree="w", from_run=False)
+        def master_file(w): w.runner.master_stage2_files = ["data/relation-drops/drop-006.jsonl"]
+        for name, setup, prs in (("kv", kv_part, None), ("kv batch", kv_batch, None), ("batches row", row, None),
+                                 ("master file", master_file, None),
+                                 ("open PR", lambda w: None, [{"number": 9, "files": [{"path": "data/relations/relation-006.jsonl"}]}])):
+            with self.subTest(name):
+                w = s2_world(self, canon=self.canon(6, s6=1000))
+                setup(w)
+                choice = self.choose(w, open_prs=prs)
+                self.assertEqual(choice.status, "stop")
+                self.assertIn("006", choice.note)
+                self.assertIsNone(w.store.get(stage2.layout_key("006")))
+                w.store.set(stage2.layout_key("006"), "250")   # the marker makes the Shard's layout confirmed
+                self.assertNotEqual(self.choose(w, open_prs=prs).status, "stop")
+
+    def test_unreadable_or_malformed_layout_fails_closed(self):
+        for text in (None, "not json", json.dumps({"version": 1}),
+                     json.dumps({"version": 1, "legacy_through_shard": "5", "legacy_part_size": 100, "part_size": 250}),
+                     json.dumps({"version": 1, "legacy_through_shard": "005", "legacy_part_size": 100, "part_size": 300})):
+            with self.subTest(text=text):
+                w = s2_world(self, canon=self.canon(6, s6=1000))
+                w.runner.layout_text = text
+                with self.assertRaises(batches.BatchError):
+                    self.choose(w)
 
 
 class StageTwoLifecycle(unittest.TestCase):
