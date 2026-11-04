@@ -2184,7 +2184,9 @@ test('preflight and merge use explicit ver:1 forward and reverse candidate assig
       const merged = await mergeForTest(root, checkpoint);
       assert.deepEqual([merged.relations_added, merged.drops_added], [0, 1], scenario.name);
       assert.deepEqual(await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl')), [existing]);
-      assert.deepEqual(await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl')), [drop]);
+      assert.deepEqual(await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl')), [{
+        source_record_id: scenario.dropRecordId, source_sense_id: item.sense_id, candidate: scenario.dropCandidate, reason: 'e',
+      }]);
     } else {
       assert.equal(preflight.ok, false, scenario.name);
       assert.equal(preflight.repairable, true, scenario.name);
