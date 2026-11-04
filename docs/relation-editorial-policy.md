@@ -232,7 +232,8 @@ relative order, nor mechanically score or test subjective usefulness.
    validators.
 5. Reverse links: STDICT `direct` (including `→`, #834) keeps its projection (#797); other STDICT types remain unchanged. All persisted authored ID links use the source Type/Tier in both directions under #2446. **Equal reverse values are required; historical approval does not permit persisted asymmetry.** Legacy checkpoints follow the current Part-boundary transition rules. Text-only has no reverse. Preserve review history; no quotas.
 
-The consolidated technical Stage 1 PR reviewer applies these principles with
-producer independence, exact-HEAD requirements and confirmed-error gates. Final
-Stage 2 verifies the effective technical PASS, current HEAD and required CI under
-`REVIEW.md`; it does not repeat the semantic/editorial review.
+The original focused independent Stage 1 PR reviewer applies the relevant
+principles with producer independence, exact-HEAD requirements and confirmed-error
+gates, without absorbing the deleted comprehensive second review. Final PR Stage 2
+verifies the effective `+1`, current HEAD and required CI under `REVIEW.md`; it does
+not conduct technical or semantic review.
