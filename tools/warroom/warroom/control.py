@@ -311,7 +311,8 @@ def line_status(store: Store, model: str, method: str) -> dict:
     if text := transient_wait_text(store, keys):   # a stage-2 Part wait and a retry wait may both be shown
         out["wait"] = "; ".join(x for x in (out["wait"], text) if x)
     if b is not None and b["state"] != "COMPLETE":   # a finished batch leaves the slot EMPTY; it stays in history
-        out.update(state=b["state"], batch=f"{b['shard']}_{b['batch']}", branch=b["branch"],
+        batch_name = f"Issue #{b['batch']}" if method == MAINTENANCE_METHOD else f"{b['shard']}_{b['batch']}"
+        out.update(state=b["state"], batch=batch_name, branch=b["branch"],
                    pr=b["pr_number"], head=b["head_sha"], session=b["session_id"],
                    error=b["error"], worktree=b["worktree"], batch_id=b["id"], updated=b["updated_at"],
                    records_total=b["records_total"], records_done=b["records_done"],
@@ -583,8 +584,10 @@ def maintainer_status(store: Store, cfg: dict, model: str) -> dict:
         info["drain_note"] = "Drain: 현재 Issue는 정상 완료하고 다음 Issue는 자동으로 시작하지 않습니다 (Cancel Drain으로 해제)."
     if not st["can_stop"]:
         info["reasons"]["stop"] = "Stop 비활성: 중지할 Maintainer 실행이 없습니다."
-    # Retry also revives an Issue the operator cleared (HELD, no execution); a hold with an execution needs the operator.
+    # Retry revives an operator-cleared Issue or explicitly reopens an undetermined diagnosis; other holds stay held.
     cleared = target is not None and not st["occupied"] and target[0]["state"] == "HELD" and target[0]["batch_id"] is None
-    st["can_retry"] = st["can_retry"] or cleared
+    diagnosis_retry = (target is not None and not st["occupied"] and target[0]["state"] == "HELD"
+                       and store.maintenance_retryable(target[0]["issue_number"]))
+    st["can_retry"] = st["can_retry"] or cleared or diagnosis_retry
     st["issue_number"] = info["issue"]
     return st

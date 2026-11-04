@@ -489,6 +489,8 @@ class LineDetail(Screen):
             with schedule_select.prevent(Select.Changed):
                 schedule_select.value = hour
         info = detail_header(st, reg, self.model)
+        if st.get("batch_id") is not None:
+            info = f"#{st['batch_id']} {info}"
         if schedule is not None:
             info += f"\nDrain scheduled for batch #{schedule['batch_id']}: {scheduled_at(schedule['due_at'])}"
         self.query_one("#info", Static).update(Text(info))
