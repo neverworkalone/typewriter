@@ -401,7 +401,7 @@ class Issue3129(Helpers, unittest.TestCase):
                       for index, command in enumerate(extra_cli_commands))
         if query:
             events.append({"type": "item.completed", "item": {"id": "context-query", "type": "command_execution",
-                           "command": "node scripts/relation/literary-context-cli.mjs chunk --db approved.sqlite "
+                           "command": f"node {literary.cli_path()} chunk --db approved.sqlite "
                                       "--checkpoint .warroom-scratch/001_01_c_deepseek.checkpoint.json "
                                       "--sense-ids s0000 --skip 8 --contexts 16 --format text --chunk 001",
                            "exit_code": 0}})
