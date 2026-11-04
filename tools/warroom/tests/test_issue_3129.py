@@ -280,13 +280,13 @@ class Issue3129(Helpers, unittest.TestCase):
         active_ids = self.sense_ids(w, "001")
         checkpoint = literary.names(b).checkpoint
         add_form = (f"node {literary.cli_path()} add-form --checkpoint {checkpoint} "
-                    f"--sense-id {sibling_ids[0]} --form 추가형 --basis 근거")
+                    f"--sense-id {sibling_ids[0]} --form 추가형 --basis 근거 && true")
         self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:2],
                                           extra_cli_commands=[add_form])
 
         status = control.line_status(w.store, "deepseek", "c")
         self.assertFalse(status["can_retry"])
-        self.assertIn("cli_chunk_scope", status["retry_blocked_reason"])
+        self.assertIn("checkpoint_mutation_command_unparsed", status["retry_blocked_reason"])
 
     def test_failed_scope_recovery_cannot_be_retried_again(self):
         w = self.world(senses=12)

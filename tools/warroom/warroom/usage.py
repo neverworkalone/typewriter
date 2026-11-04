@@ -103,15 +103,19 @@ def _c_cli_tokens(command: object, *, expected_cli_path, command_cwd) -> list[st
     if (len(tokens) < 3 or Path(tokens[0]).name != "node" or not tokens[2]
             or any(token in {";", "&&", "||", "|", "&"} for token in tokens)):
         return None
-    script = Path(tokens[1])
+    if not _c_script_matches(tokens[1], expected_cli_path=expected_cli_path, command_cwd=command_cwd):
+        return None
+    return tokens
+
+
+def _c_script_matches(script_arg: str, *, expected_cli_path, command_cwd) -> bool:
+    script = Path(script_arg)
     if not script.is_absolute():
         script = Path(command_cwd) / script
     try:
-        if script.resolve(strict=True) != Path(expected_cli_path).resolve(strict=True):
-            return None
+        return script.resolve(strict=True) == Path(expected_cli_path).resolve(strict=True)
     except (OSError, RuntimeError, ValueError):
-        return None
-    return tokens
+        return False
 
 
 def _c_option_value(tokens: list[str], name: str) -> str | None:
@@ -138,6 +142,39 @@ def _c_checkpoint_matches(raw_path: str | None, expected_path, command_cwd) -> b
         return actual.resolve() == expected.resolve()
     except (OSError, RuntimeError, ValueError):
         return False
+
+
+_CHECKPOINT_MUTATING_C_COMMANDS = {"init", "chunk", "submit", "add-form", "clear-candidates"}
+_READ_ONLY_C_COMMANDS = {"preflight", "report", "export", "validate"}
+
+
+def _c_unparsed_checkpoint_mutation(command: object, *, expected_cli_path, command_cwd) -> bool:
+    """Fail closed on shell-composed or unresolved invocations that could mutate the official CLI checkpoint."""
+    if not isinstance(command, str):
+        return False
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+        lexer.whitespace_split = True
+        tokens = list(lexer)
+    except ValueError:
+        return str(expected_cli_path) in command
+    if (len(tokens) == 3 and Path(tokens[0]).name in {"bash", "sh", "zsh"}
+            and tokens[1] in ("-c", "-lc")):
+        return _c_unparsed_checkpoint_mutation(tokens[2], expected_cli_path=expected_cli_path,
+                                               command_cwd=command_cwd)
+    for index, token in enumerate(tokens[:-2]):
+        if Path(token).name != "node":
+            continue
+        script, operation = tokens[index + 1], tokens[index + 2]
+        if operation in _READ_ONLY_C_COMMANDS:
+            continue
+        if operation not in _CHECKPOINT_MUTATING_C_COMMANDS:
+            continue
+        if _c_script_matches(script, expected_cli_path=expected_cli_path, command_cwd=command_cwd):
+            return True
+        if "$" in script or "${" in script:
+            return True
+    return False
 
 
 def _c_chunk_scope_request(tokens: list[str]) -> dict | None:
@@ -198,9 +235,6 @@ def _c_write_failure(command: object, output: object, *, exit_code=None, tool_er
     return None
 
 
-_CHECKPOINT_MUTATING_C_COMMANDS = {"init", "chunk", "submit", "add-form", "clear-candidates"}
-
-
 def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd=None,
                                 expected_checkpoint_path=None, command_facts: list[dict] | None = None) -> list[dict]:
     """Read command-bound C stop evidence from the configured CLI and prompted write-failure wrapper.
@@ -237,6 +271,10 @@ def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd
                 if request is not None:
                     fact.update(request)
             command_facts.append(fact)
+        elif (command_facts is not None and tokens is None
+              and _c_unparsed_checkpoint_mutation(command, expected_cli_path=expected_cli_path,
+                                                  command_cwd=command_cwd)):
+            command_facts.append({"operation": "unparsed_checkpoint_mutation", "checkpoint_matches": False})
         result = (_c_stop_diagnostic(operation, output) if operation is not None else None)
         if result is None:
             result = _c_write_failure(command, output, exit_code=exit_code, tool_error=tool_error)
