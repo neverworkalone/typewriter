@@ -88,7 +88,7 @@ def submit_attempts(log_file) -> int | None:
     return len(attempts) if recognized else None
 
 
-def _c_cli_operation(command: object) -> str | None:
+def _c_cli_operation(command: object, *, expected_cli_path, command_cwd) -> str | None:
     if not isinstance(command, str):
         return None
     try:
@@ -99,11 +99,18 @@ def _c_cli_operation(command: object) -> str | None:
         return None
     if (len(tokens) == 3 and Path(tokens[0]).name in {"bash", "sh", "zsh"}
             and tokens[1] in ("-c", "-lc")):
-        return _c_cli_operation(tokens[2])
+        return _c_cli_operation(tokens[2], expected_cli_path=expected_cli_path, command_cwd=command_cwd)
     if (len(tokens) < 3 or Path(tokens[0]).name != "node"
-            or Path(tokens[1]).name != "literary-context-cli.mjs"
             or tokens[2] not in {"chunk", "add-form"}
             or any(token in {";", "&&", "||", "|", "&"} for token in tokens)):
+        return None
+    script = Path(tokens[1])
+    if not script.is_absolute():
+        script = Path(command_cwd) / script
+    try:
+        if script.resolve(strict=True) != Path(expected_cli_path).resolve(strict=True):
+            return None
+    except (OSError, RuntimeError, ValueError):
         return None
     return tokens[2]
 
@@ -148,14 +155,15 @@ def _c_write_failure(command: object, output: object, *, exit_code=None, tool_er
     return None
 
 
-def official_c_stop_diagnostics(log_file) -> list[dict]:
-    """Read command-bound C stop evidence from official CLI results and the prompted write-failure wrapper.
+def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd=None) -> list[dict]:
+    """Read command-bound C stop evidence from the configured CLI and prompted write-failure wrapper.
 
     Codex records command and output together, Claude pairs Bash tool calls with their tool results, and OpenCode
-    records the command result in the completed tool state. Assistant prose never counts; returned fields are safe
-    reason codes only.
+    records the command result in the completed tool state. CLI output counts only when its command resolves to the
+    exact script path used by the Supervisor; assistant prose never counts. Returned fields are safe reason codes only.
     """
-    if not isinstance(log_file, (str, Path)):
+    if (not isinstance(log_file, (str, Path)) or not isinstance(expected_cli_path, (str, Path))
+            or not isinstance(command_cwd, (str, Path))):
         return []
     try:
         lines = Path(log_file).read_text("utf-8", errors="replace").splitlines()
@@ -167,7 +175,7 @@ def official_c_stop_diagnostics(log_file) -> list[dict]:
     commands: dict[str, str] = {}
 
     def add(command: object, output: object, *, exit_code=None, tool_error=False) -> None:
-        operation = _c_cli_operation(command)
+        operation = _c_cli_operation(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
         result = (_c_stop_diagnostic(operation, output) if operation is not None else None)
         if result is None:
             result = _c_write_failure(command, output, exit_code=exit_code, tool_error=tool_error)

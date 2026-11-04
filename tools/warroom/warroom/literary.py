@@ -403,7 +403,8 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
         return {"status": "search_failed", "sense_count": len(failed)}
     if unsearchable:
         return {"status": "unsearchable", "sense_count": len(unsearchable)}
-    for diagnostic in official_c_stop_diagnostics(run.get("log_file")):
+    for diagnostic in official_c_stop_diagnostics(
+            run.get("log_file"), expected_cli_path=cli_path(), command_cwd=Path(worktree)):
         status = (diagnostic["diagnostic"] if diagnostic["operation"] == "submit_write"
                   else f"cli_{diagnostic['diagnostic']}")
         return {"status": status, "operation": diagnostic["operation"]}

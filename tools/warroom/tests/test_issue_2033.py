@@ -10,6 +10,7 @@ from warroom.usage import (estimate_cost, official_c_stop_diagnostics, parse_usa
                            submit_attempts, sum_usage)
 
 SUBMIT = "node scripts/relation/literary-context-cli.mjs submit --file x.json"
+OFFICIAL_C_CLI = Path(__file__).resolve().parents[3] / "scripts" / "relation" / "literary-context-cli.mjs"
 
 
 def jl(*events) -> str:
@@ -190,12 +191,12 @@ class OfficialCStopParsing(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "run.log"
             path.write_text(jl(*events), encoding="utf-8")
-            return official_c_stop_diagnostics(path)
+            return official_c_stop_diagnostics(path, expected_cli_path=OFFICIAL_C_CLI, command_cwd=Path(d))
 
     def test_codex_stop_requires_a_structured_result_from_the_official_cli(self):
         diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
                                  "repair_scope": "stop_and_report"})
-        command = "zsh -lc 'node scripts/relation/literary-context-cli.mjs chunk --chunk 005 --sense-ids s1,s2'"
+        command = f"zsh -lc 'node {OFFICIAL_C_CLI} chunk --chunk 005 --sense-ids s1,s2'"
         event = {"type": "item.completed", "item": {"id": "call-1", "type": "command_execution",
                  "command": command, "exit_code": 1, "aggregated_output": diagnostic}}
         self.assertEqual(self.parse({"type": "thread.started", "thread_id": "t"}, event),
@@ -207,7 +208,7 @@ class OfficialCStopParsing(unittest.TestCase):
     def test_claude_and_opencode_results_keep_the_official_cli_binding(self):
         diagnostic = json.dumps({"status": "FAILED", "diagnostic": "index_search",
                                  "repair_scope": "stop_and_report"})
-        command = "node scripts/relation/literary-context-cli.mjs chunk --chunk 001"
+        command = f"node {OFFICIAL_C_CLI} chunk --chunk 001"
         claude = self.parse(claude_bash("tool-1", command),
                             {"type": "user", "message": {"content": [
                                 {"type": "tool_result", "tool_use_id": "tool-1", "is_error": True,
@@ -223,14 +224,25 @@ class OfficialCStopParsing(unittest.TestCase):
         diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
                                  "repair_scope": "stop_and_report"})
         command = {"type": "item.completed", "item": {"id": "echo", "type": "command_execution",
-                   "command": "printf 'node scripts/relation/literary-context-cli.mjs chunk'",
+                   "command": f"printf 'node {OFFICIAL_C_CLI} chunk'",
                    "exit_code": 1, "aggregated_output": diagnostic}}
         self.assertEqual(self.parse(command), [])
+
+    def test_same_basename_from_another_directory_is_not_an_official_cli(self):
+        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
+                                 "repair_scope": "stop_and_report"})
+        with tempfile.TemporaryDirectory() as d:
+            counterfeit = Path(d) / "literary-context-cli.mjs"
+            counterfeit.write_text("process.stderr.write('fake diagnostic')", encoding="utf-8")
+            event = {"type": "item.completed", "item": {"id": "counterfeit", "type": "command_execution",
+                     "command": f"node {counterfeit} chunk --chunk 001", "exit_code": 1,
+                     "aggregated_output": diagnostic}}
+            self.assertEqual(self.parse(event), [])
 
     def test_output_limit_and_failed_submit_file_write_are_execution_stops(self):
         output_limit = json.dumps({"status": "OUTPUT_LIMIT", "max_chars": 28000, "actual_chars": 29000})
         chunk = {"type": "item.completed", "item": {"id": "chunk", "type": "command_execution",
-                 "command": "node scripts/relation/literary-context-cli.mjs chunk --chunk 001",
+                 "command": f"node {OFFICIAL_C_CLI} chunk --chunk 001",
                  "exit_code": 1, "aggregated_output": output_limit}}
         self.assertEqual(self.parse(chunk), [{"operation": "chunk", "diagnostic": "output_limit"}])
 

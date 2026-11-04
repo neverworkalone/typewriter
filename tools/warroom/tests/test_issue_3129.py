@@ -141,7 +141,7 @@ class Issue3129(Helpers, unittest.TestCase):
         if official_diagnostic is not None:
             events.append({"type": "item.completed", "item": {
                 "id": "chunk-1", "type": "command_execution",
-                "command": "node scripts/relation/literary-context-cli.mjs chunk --chunk 001 --sense-ids s9999",
+                "command": f"node {literary.cli_path()} chunk --chunk 001 --sense-ids s9999",
                 "exit_code": 1, "aggregated_output": json.dumps(official_diagnostic)}})
         events.extend([
             {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",

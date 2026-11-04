@@ -433,10 +433,10 @@ class SerialChunks(unittest.TestCase):
                          "{ echo WRITE_FAILED >&2; exit 90; }'")
         cases = [
             ("official chunk-scope stop", {"final": "The CLI reported stop_and_report; I will not retry.",
-             "commands": ({"command": "node scripts/relation/literary-context-cli.mjs chunk --chunk 001 --sense-ids s1,s2",
+             "commands": ({"command": f"node {literary.cli_path()} chunk --chunk 001 --sense-ids s1,s2",
                            "exit_code": 1, "output": stop_diagnostic},)}, "cli_chunk_scope", None),
             ("official output limit", {"final": "The context output reached its official limit.",
-             "commands": ({"command": "node scripts/relation/literary-context-cli.mjs chunk --chunk 001",
+             "commands": ({"command": f"node {literary.cli_path()} chunk --chunk 001",
                            "exit_code": 1, "output": json.dumps({"status": "OUTPUT_LIMIT", "actual_chars": 30000})},)},
              "cli_output_limit", None),
             ("failed submit-file write", {"final": "WRITE_FAILED; I am stopping.",
