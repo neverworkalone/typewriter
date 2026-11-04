@@ -292,7 +292,7 @@ class ParallelDFinalization(ParallelDHelpers, unittest.TestCase):
         defect_id = w.store.report_defect(b["id"], "event:released-d-fix", "maintainer",
                                           "shared-validator-bug", "RELEASED", "{}", "shared_defect", "")
         w.store.update_defect(defect_id, merge_sha=HEAD2, integrated_sha=HEAD2)
-        w.store.update(b["id"], state="PRODUCING", paused_from=None, pause_reason=None, error=None,
+        w.store.update(b["id"], state="PRODUCING", paused_from="PRODUCING", pause_reason="", error=None,
                        run_kind="d_parallel")
         w.sup.maint.adopt_released_baseline(w.store.batch(b["id"]))
         w.store.update(b["id"], run_kind="d_finalize")
