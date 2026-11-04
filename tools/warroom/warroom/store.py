@@ -138,6 +138,7 @@ RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_toke
 SCHEMA_VERSION = 15
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
+MAINTENANCE_DIAGNOSIS_HOLD_PREFIX = "증거 검증 차단으로 HELD 인계"
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
 STAGE2_METHOD = "s2"       # Stage 2 Relation Admission: ONE Part at a time across all models, not a Stage 1 queue method
 STAGE3_METHOD = "s3"       # Stage 3 editorial pass: one owned shard and one PR at a time
@@ -1483,7 +1484,8 @@ class Store:
         m = c.execute("SELECT * FROM maintenance WHERE issue_number=?", (issue_number,)).fetchone()
         if (m is None or m["state"] != "HELD" or m["batch_id"] is None
                 or m["pr_number"] is not None or m["merge_sha"] is not None
-                or not (m["hold_reason"] or "").startswith("진단만 종료(undetermined):")):
+                or not (m["hold_reason"] or "").startswith(
+                    f"{MAINTENANCE_DIAGNOSIS_HOLD_PREFIX}(undetermined):")):
             return None
         attempt = c.execute("SELECT * FROM batches WHERE id=?", (m["batch_id"],)).fetchone()
         if (attempt is None or attempt["method"] != MAINTENANCE_METHOD or attempt["state"] != "COMPLETE"
