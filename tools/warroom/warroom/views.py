@@ -207,7 +207,7 @@ def card_text(st: dict) -> str:
     phase = PHASE.get(st["state"], st["state"])
     if st["drain"]:
         phase += "+DRAIN"
-    identity = f"Stage 2 {s2['shard']}/{s2['batch']}/{s2['part']}" if s2 else f"{m} · {st['batch']}"
+    identity = f"Stage 2 · {s2['shard']}/{s2['batch']}/{s2['part']}" if s2 else f"{m} · {st['batch']}"
     title = _two_sided(identity, f"{phase}  {icon}")
     done, total, unit = progress_of(st)
     observed = done is not None and bool(total)
