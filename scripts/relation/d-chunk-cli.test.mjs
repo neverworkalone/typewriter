@@ -596,6 +596,23 @@ test('search-batch shares identical search work across homonym records and keeps
   assert.deepEqual(evidenceSummary(continuationHistory, 'w1'), { searches: 4, hits: 7, allComplete: true });
 });
 
+test('search-batch binds a sense ref to its Canonical sense owner instead of a stale preceding record id', () => {
+  const records = [
+    rec('w88715', '동관 대궐', [['expression', '예전에 창덕궁을 달리 이르던 말.']]),
+    rec('w88716', '동관이', [['noun', '여자가 남자에게 글을 써 보내어 은근한 정을 전하는 것을 비유적으로 이르는 말.']]),
+  ];
+  const metaValue = { senses: [{ ref: 's16', record_id: 'w88715', sense_id: 'w88716-s1', auto: false }] };
+  const forms = ['동관', '동관을', '동관의'];
+  const search = () => ({ result: { status: 'COMPLETE', items: [{ paragraph_rowid: 1, excerpt: '동관이.' }], next_cursor: null, scanned_rows: 1 } });
+  const { output, evidence } = buildSearchBatch({
+    requests: [{ sense: 's16', forms, boundary: 'both', contexts: 4 }],
+    meta: metaValue, records, search,
+  });
+
+  assert.equal(output.requests[0].record_id, 'w88716');
+  assert.deepEqual(evidence.map((entry) => entry.record_id), ['w88716']);
+});
+
 test('search-batch resolves recorded cursors and leaves actual SEARCH_FAILED intact', () => {
   const records = [rec('w1', '난주', [['noun', '첫 뜻.'], ['noun', '둘째 뜻.']]), rec('w2', '난주', [['noun', '다른 record.']])];
   const metaValue = { senses: [
@@ -1017,6 +1034,24 @@ withWorld('search-batch reuses prepare completion for same-record senses without
   assert.equal(evidence.length, 1, 'same-record senses share one request evidence row');
   assert.equal(evidence[0].source, 'prepare', 'the identical completed prepare search already supplies the record evidence');
   assert.equal(evidence[0].forms[0], '새벽안개');
+});
+
+withWorld('search-batch CLI corrects a stale active record id from the Canonical sense owner', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const active = await meta(world);
+  const target = active.senses.find((sense) => sense.ref === 's4');
+  assert.equal(target.sense_id, 'w003-s1');
+  target.record_id = 'w002';
+  await writeFile(chunkPath(world, 'active'), JSON.stringify(active));
+
+  const result = await runCli(['search-batch', '--dir', world.root], JSON.stringify({
+    requests: [{ sense: 's4', forms: ['달리다'], boundary: 'both', contexts: 4 }],
+  }), { TYPEWRITER_APPROVED_CORPUS_DB: world.options.databasePath });
+  assert.equal(result.code, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.requests[0].record_id, 'w003');
+  const evidence = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(evidence.at(-1).record_id, 'w003');
 });
 
 withWorld('single and batch reread return context without changing evidence or decision state', async (world) => {
