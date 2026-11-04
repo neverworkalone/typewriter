@@ -213,6 +213,28 @@ class Supervisor:
             return self.cp.poll(b)   # run_kind decides: c_finalize and the singleton Candidate repair keep the serial path
         return self._poll_run(b)
 
+    # Names of the prompt templates the NEXT launch of a released batch renders, as a pure function of the batch row (#3349).
+    # Only the chunk kinds whose resume-vs-new choice is decided by the recorded session are modelled; every other
+    # run_kind returns None = "cannot prove what is delivered" and a prompt-only fix is held, never guessed.
+    _CHUNK_PROMPTS = {dchunk.METHOD: ("d_chunk_resume", ("d_chunk", "contract_d")),
+                      literary.METHOD: ("c_chunk_resume", ("c_chunk", "contract_c"))}
+
+    def resume_prompt_names(self, b) -> set[str] | None:
+        spec = self._CHUNK_PROMPTS.get(b["method"])
+        if (spec is None or b["pr_number"] or not isinstance(b["run_kind"], str) or not b["run_kind"].startswith(("d_chunk_", "c_chunk_"))
+                or b["run_kind"] in ("d_chunk_fix", "c_chunk_recovery")):
+            return None
+        return {spec[0]} if b["session_id"] else set(spec[1])
+
+    def prompt_checkout_clean(self, paths: list[str]) -> bool:
+        """The main checkout (where prompts are re-read) has these files committed and unmodified."""
+        try:
+            r = subprocess.run(["git", "status", "--porcelain", "--", *paths], cwd=self.code_root,
+                               capture_output=True, text=True, timeout=30)
+            return r.returncode == 0 and not r.stdout.strip()
+        except Exception:
+            return False
+
     def _loaded_code_sha(self, git) -> str | None:
         """HEAD of the checkout this process loaded its code from; None when unknown or its runtime source is modified
         (then no commit can be claimed as loaded and runtime-code fixes wait)."""
@@ -233,11 +255,16 @@ class Supervisor:
         self._clear_batch_retry(b["id"])
         self.store.log(b["id"], msg, "error")
         if state == "ERROR" and isinstance(msg, defects.BoundaryProblem):
-            # Only after the ERROR and its evidence are recorded; any failure here leaves them exactly as written.
+            # Structured evidence of THIS event for the Maintainer sweep (#3349). The first record of an event is kept.
             try:
-                self.maint.report_incident(b, msg)
+                seq = self.store.batch(b["id"])["error_seq"]
+                key = f"error_evidence_{b['id']}_{seq}"
+                if seq and self.store.get(key) is None:
+                    r = msg.receipt
+                    self.store.set(key, json.dumps({"kind": "boundary", "site": r["site"], "base": r["base"], "head": r["head"],
+                                                    "defect_id": r["defect_id"], "merge_sha": r["merge_sha"]}, sort_keys=True))
             except Exception as e:
-                self.store.log(b["id"], f"장애 접수 예외(ERROR와 증거 보존): {e}", "warn")
+                self.store.log(b["id"], f"ERROR 구조화 증거 기록 실패(ERROR는 보존): {e}", "warn")
 
     # ---- transient (retryable query) failures ---------------------------------------------------------------------
     # Invariant: a query that failed in a way asking again can fix never changes the Line (run/mode/drain) or the batch
@@ -1543,8 +1570,8 @@ class Supervisor:
         except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):
             return False
 
-    def _stage3_chunk_boundary_problem(self, b) -> str | None:
-        raw = self.store.get(stage3.run_start_key(b["id"]))
+    def _stage3_chunk_boundary_problem(self, b, base_override: dict | None = None) -> str | None:
+        raw = json.dumps(base_override) if base_override is not None else self.store.get(stage3.run_start_key(b["id"]))
         if raw is None:
             return "Stage 3 청크 실행 기준이 없어 재개를 중단합니다. worktree를 보존합니다."
         try:
@@ -2975,8 +3002,8 @@ class Supervisor:
     def _save_stage2_repair_state(self, b, state: dict) -> None:
         self.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, ensure_ascii=False, sort_keys=True))
 
-    def _stage2_repair_boundary_problem(self, b) -> str | None:
-        raw = self.store.get(stage2.repair_run_start_key(b["id"]))
+    def _stage2_repair_boundary_problem(self, b, base_override: dict | None = None) -> str | None:
+        raw = json.dumps(base_override) if base_override is not None else self.store.get(stage2.repair_run_start_key(b["id"]))
         if raw is None:
             return "Stage 2 repair has no persisted run boundary; preserving the worktree"
         try:
@@ -4896,11 +4923,11 @@ class Supervisor:
             return False
         return stage2.chunk_saved_since(baseline["checkpoint"], after)
 
-    def _stage2_chunk_boundary_problem(self, b, key: str | None = None) -> str | None:
+    def _stage2_chunk_boundary_problem(self, b, key: str | None = None, base_override: dict | None = None) -> str | None:
         """Fail closed if a chunk run changed or lost the Part's owned HEAD or remote branch ref."""
         label = {STAGE2_METHOD: "Stage 2", literary.METHOD: "C", dchunk.METHOD: "D"}.get(
             b["method"], str(b["method"]).upper())
-        raw = self.store.get(key or stage2.run_start_key(b["id"]))
+        raw = json.dumps(base_override) if base_override is not None else self.store.get(key or stage2.run_start_key(b["id"]))
         if raw is None:
             return f"{label} 청크의 Git 경계 기준이 없어 Retry를 중단합니다. worktree와 브랜치를 보존합니다."
         try:
@@ -4922,9 +4949,9 @@ class Supervisor:
             return f"{label} 청크의 HEAD/원격 브랜치 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
         return None
 
-    def _stage2_links_boundary_problem(self, b) -> str | None:
+    def _stage2_links_boundary_problem(self, b, base_override: dict | None = None) -> str | None:
         """Optional-link sessions may read, but cannot change checkpoint, tracked outputs, HEAD, or remote ref."""
-        raw = self.store.get(stage2.links_start_key(b["id"]))
+        raw = json.dumps(base_override) if base_override is not None else self.store.get(stage2.links_start_key(b["id"]))
         if raw is None:
             return "Stage 2 optional-link Git/checkpoint 기준이 없어 실행을 중단합니다. worktree를 보존합니다."
         try:
@@ -5729,23 +5756,43 @@ class Supervisor:
     def _c_env(self, b) -> dict:
         return self._launch_env(b, "c_cli", self.env)
 
-    def _c_head_problem(self, b, wt: Path) -> str | None:
-        """The checkpoint is bound to the HEAD it was created on; the only later HEAD allowed is our own Candidate commit."""
+    def _c_head_problem(self, b, wt: Path, base_override: dict | None = None, pending: dict | None = None) -> str | None:
+        """The checkpoint is bound to the HEAD it was created on; the only later HEAD allowed is our own Candidate commit,
+        or (#3349) the execution baseline's HEAD when it is a proven Maintainer integration of the checkpoint HEAD.
+        With `base_override`/`pending` this is a pure query (nothing is written)."""
+        pure = base_override is not None
         try:
             created = literary.checkpoint_head(wt, b)
             head = self.git.head(wt)
+            run_base = None
             if cparallel.is_parallel(self.store, b):   # the checkpoint keeps its original identity; the run follows ONE baseline
-                base = cparallel.baseline(self.store, b)
-                created = base["head"] if base else created
+                run_base = base_override if pure else cparallel.baseline(self.store, b)
+                created = run_base["head"] if run_base else created
+            elif pure:
+                run_base = base_override
+            else:
+                try:
+                    run_base = json.loads(self.store.get(literary.run_start_key(b["id"])) or "null")
+                except ValueError:
+                    run_base = None
         except TRANSIENT:
             raise
         except Exception as e:
             return f"checkpoint/HEAD 결속을 확인하지 못했습니다: {e}"
         if head == created or head == self.store.get(f"c_commit_head_{b['id']}"):
             return None
+        if (not cparallel.is_parallel(self.store, b) and isinstance(run_base, dict) and run_base.get("head") == head):
+            try:   # serial C: the checkpoint HEAD never moves; the run baseline may follow an approved integration only
+                if self.maint._released_integration_proof(b, literary.checkpoint_head(wt, b), head, pending=pending):
+                    return None
+            except TRANSIENT:
+                raise
+            except Exception:
+                pass
         try:   # a crash between our commit and recording it: accept only that exact commit, then remember it
             if self.git.is_candidate_child(wt, created, literary.names(b).output):
-                self.store.set(f"c_commit_head_{b['id']}", head)
+                if not pure:
+                    self.store.set(f"c_commit_head_{b['id']}", head)
                 return None
         except GitError:
             pass
@@ -6521,12 +6568,14 @@ class Supervisor:
     def _d_env(self, b) -> dict:
         return self._launch_env(b, "d_cli", self.env)
 
-    def _d_parallel_head_problem(self, b, wt: Path) -> str | None:
-        """Check the parallel run baseline, an exact released integration, and the one owned Candidate commit."""
+    def _d_parallel_head_problem(self, b, wt: Path, base_override: dict | None = None, pending: dict | None = None) -> str | None:
+        """Check the parallel run baseline, an exact released integration, and the one owned Candidate commit.
+        `base_override`/`pending` (#3349) make this a pure query about a baseline the Maintainer has not stored yet."""
+        pure = base_override is not None
         try:
-            if b["run_kind"] == "d_parallel":
+            if b["run_kind"] == "d_parallel" and not pure:
                 self.maint.adopt_released_baseline(b)
-            raw = self.store.get(dchunk.run_start_key(b["id"]))
+            raw = json.dumps(base_override) if pure else self.store.get(dchunk.run_start_key(b["id"]))
             if raw is None:
                 # A crash between recording parallel mode and its first run boundary is recoverable only before any
                 # task or chunk exists, while the original owned HEAD and a clean worktree are still present.
@@ -6567,7 +6616,7 @@ class Supervisor:
             if not isinstance(original, str) or not re.fullmatch(r"[0-9a-f]{40}", original):
                 return "D 병렬 배치의 최초 기준 HEAD를 확인할 수 없습니다. worktree를 보존합니다."
             if baseline["head"] != original and not self.maint._released_integration_proof(
-                    b, original, baseline["head"]):
+                    b, original, baseline["head"], pending=pending):
                 return "D 병렬 기준 HEAD가 같은 배치의 RELEASED Maintainer 통합으로 증명되지 않습니다. worktree를 보존합니다."
 
             remote = self.git.remote_head(b["branch"])
@@ -6586,20 +6635,32 @@ class Supervisor:
             return f"D 병렬 HEAD/소유권 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
         return None
 
-    def _d_head_problem(self, b, wt: Path) -> str | None:
-        """The batch is bound to the HEAD of its first chunk; the only later HEAD allowed is our own Candidate commit."""
+    def _d_head_problem(self, b, wt: Path, base_override: dict | None = None, pending: dict | None = None) -> str | None:
+        """The batch is bound to the HEAD of its first chunk; the only later HEAD allowed is our own Candidate commit, or
+        (#3349) the serial run baseline's HEAD when it is a proven Maintainer integration of that first HEAD.
+        The first HEAD (`d_base_head`) is never moved. `base_override`/`pending`: a pure query."""
         if dparallel.is_parallel(self.store, b):
-            return self._d_parallel_head_problem(b, wt)
+            return self._d_parallel_head_problem(b, wt, base_override, pending)
+        pure = base_override is not None
         try:
             head = self.git.head(wt)
             base = self.store.get(f"d_base_head_{b['id']}")
             if base is None:
-                self.store.set(f"d_base_head_{b['id']}", head)
+                if not pure:
+                    self.store.set(f"d_base_head_{b['id']}", head)
                 return None
             if head == base or head == self.store.get(f"d_commit_head_{b['id']}"):
                 return None
+            try:
+                run_base = base_override if pure else json.loads(self.store.get(dchunk.run_start_key(b["id"])) or "null")
+            except ValueError:
+                run_base = None
+            if isinstance(run_base, dict) and run_base.get("head") == head and self.maint._released_integration_proof(
+                    b, base, head, pending=pending):
+                return None
             if self.git.is_candidate_child(wt, base, dchunk.names(b).output):
-                self.store.set(f"d_commit_head_{b['id']}", head)
+                if not pure:
+                    self.store.set(f"d_commit_head_{b['id']}", head)
                 return None
         except TRANSIENT:
             raise

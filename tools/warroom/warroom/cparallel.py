@@ -502,12 +502,13 @@ class ParallelC:
         return True
 
     # ---- Git boundary ----------------------------------------------------------------------------------------
-    def _boundary_problem(self, b, round_: _Round) -> str | None:
+    def _boundary_problem(self, b, round_: _Round, base_override: dict | None = None) -> str | None:
         """The single runtime baseline: HEAD must equal it (an older approved HEAD is no longer valid), the remote ref must
         be as recorded and no PR may exist. Local checks every time; remote ref and PR lookups once per round."""
-        self.sup.maint.adopt_released_baseline(b)   # crash between a Maintainer release and its baseline write
+        if base_override is None:
+            self.sup.maint.adopt_released_baseline(b)   # crash between a Maintainer release and its baseline write
         try:
-            base = baseline(self.store, b)
+            base = base_override if base_override is not None else baseline(self.store, b)
             if base is None or base.get("branch") != b["branch"] or base.get("worktree") != str(b["worktree"]):
                 return "C 병렬 배치의 Git 경계 기준이 없거나 다른 실행을 가리킵니다. worktree를 보존합니다."
             head = self.sup.git.head(self._wt(b))

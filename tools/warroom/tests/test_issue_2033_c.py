@@ -396,6 +396,7 @@ class SerialChunks(unittest.TestCase):
         # A restarted Supervisor sees the stale source-run row, then must fail closed on owner retry.
         w.sup = Supervisor(w.paths, w.cfg, w.store, w.runner, w.adapter, w.gh, w.git,
                            {"GH_CONFIG_DIR": "x"}, clock=lambda: w.now)
+        w.sup.maint._intake_errors = lambda: None   # the legacy ERROR is observed, not received (#3349)
         w.tick()
         self.assertEqual(len(w.adapter.launches), 2)
         self.assertEqual(w.row("deepseek", "c")["state"], "ERROR")

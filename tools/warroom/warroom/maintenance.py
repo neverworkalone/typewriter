@@ -56,7 +56,7 @@ class Maintenance:
         return True
 
     def step(self) -> None:
-        for fn in (self._publish, self._publish_issue_requests, self._start, self._track, self._release,
+        for fn in (self._intake_errors, self._publish, self._publish_issue_requests, self._start, self._track, self._release,
                    self._report_outcomes, self._resume_diagnoses):
             try:
                 fn()
@@ -70,9 +70,25 @@ class Maintenance:
         return request["id"]
 
     def report(self, b, source: str, event_key: str, raw: str, pr_info: dict | None = None,
-               error: str | None = None) -> None:
+               error: str | None = None, expect: dict | None = None) -> None:
         """Pause `b` for one defect event. A malformed or insufficient report holds the batch for the operator and
-        creates no Issue; a valid one is queued for publication. Repeating the same event changes nothing."""
+        creates no Issue; a valid one is queued for publication. Repeating the same event changes nothing.
+
+        `source == "incident"` (#3349) carries an envelope of observed facts instead of a reproduced defect; an invalid
+        envelope never pauses the batch (its ERROR stays) and `expect` is re-verified inside the pausing transaction."""
+        if source == "incident":
+            try:
+                env = defects.parse_incident(raw)
+            except defects.ReportProblem as e:
+                return self.store.log(b["id"], f"장애 접수 거부(incident envelope): {e} — ERROR 유지", "warn")
+            did = self.store.report_defect(
+                b["id"], event_key, source, env["defect_class"], "REPORTED",
+                defects.canonical(env) + "\n" + defects.batch_facts(b, None), "shared_defect", error, expect=expect)
+            if did is not None:
+                self.store.log(b["id"], f"ERROR 사건 e{env['error_seq']}를 장애 `{env['defect_class']}`로 접수 → 배치 PAUSED, 작업물·세션 보존", "warn")
+            elif self._due(f"incident_deferred_{b['id']}_{env['error_seq']}", 600):
+                self.store.log(b["id"], f"장애 접수 보류(e{env['error_seq']}): 접수 직전 재검증이 달라졌거나 운영자 제어가 우선합니다. ERROR 유지", "warn")
+            return
         try:
             report = defects.parse(raw)
         except defects.ReportProblem as e:
@@ -203,6 +219,8 @@ class Maintenance:
     @staticmethod
     def _split(d) -> tuple[dict, str]:
         text, _, facts = d["report"].partition("\n")
+        if d["source"] == "incident" and defects.is_incident_envelope(text):
+            return defects.parse_incident(text), facts
         return defects.parse(text), facts
 
     # ---- 1. Issue publication (idempotent) --------------------------------------------------------------------
@@ -225,9 +243,11 @@ class Maintenance:
                 self._issue_retry_failed(retry_key, e)
                 continue
             try:
+                envelope = d["source"] == "incident" and report.get("kind") == "incident"
                 number, fresh = self._find_or_create_issue(
-                    defects.issue_title(report, d["source"]),
-                    defects.issue_body(report, d["event_key"], facts, d["source"]), ["urgent"],
+                    defects.incident_issue_title(report) if envelope else defects.issue_title(report, d["source"]),
+                    defects.incident_issue_body(report, d["event_key"]) if envelope
+                    else defects.issue_body(report, d["event_key"], facts, d["source"]), ["urgent"],
                     lambda: self._find(issues, d, report))
             except Exception as e:
                 self.store.log(d["batch_id"], f"urgent Issue 생성 실패(보고·작업물 보존, 재시도 예정): {e}", "warn")
@@ -250,6 +270,8 @@ class Maintenance:
             if (defects.EVENT_MARK, d["event_key"]) in defects.markers(i["body"]):
                 return i["number"], True
         for i in issues:
+            if d["source"] == "incident":   # every ERROR event is its own incident: never merged by class
+                break
             if i["state"] != "open" or (defects.CLASS_MARK, report["defect_class"]) not in defects.markers(i["body"]):
                 continue
             m = self.store.maintenance(i["number"])
@@ -421,6 +443,10 @@ class Maintenance:
                 f"labels={issue['labels']}) — 수정 PR 없이 닫힌 Issue는 해제 근거가 아닙니다. 운영자 확인 필요."))
             return self.store.log(None, self.store.maintenance(m["issue_number"])["hold_reason"], "error")
         n = m["issue_number"]
+        linked = [x for x in self.store.defects() if x["source"] == "incident" and x["issue_number"] == n]
+        if linked and all(x["state"] == "OVERRIDDEN" for x in linked):   # the operator already took these batches over
+            self.store.update_maintenance(n, state="HELD", hold_reason="연결된 incident가 모두 운영자에 의해 OVERRIDDEN — Maintainer를 시작하지 않습니다")
+            return self.store.log(None, f"Issue #{n}: 연결된 incident가 모두 운영자 제어로 해제되어 Maintainer를 시작하지 않습니다", "warn")
         wt = self.sup.paths.worktrees / f"maint-{n}"
         bid = self.store.claim_maintenance(n, producer, f"maint-{n}", str(wt))
         if bid is not None:
@@ -476,6 +502,16 @@ class Maintenance:
                 continue
             if self.store.get(f"defect_hold_{b['id']}") or self._workers_running(b):
                 continue   # operator Stop is pending/active, or the stopped AI is not confirmed gone yet
+            if d["source"] == "incident":
+                try:
+                    self._release_incident(d, b)
+                except GitTransient as e:
+                    self.store.log(b["id"], f"incident 수정 반영 중 일시 오류(재시도 예정): {e}", "warn")
+                except IntegrationBlocked as e:
+                    self._hold(d, b, f"재개 증명 불가: {b['run_kind'] or b['paused_from']}: {e}")
+                except GitError as e:
+                    self.store.log(b["id"], f"수정 반영 중 Git 오류(재시도 예정): {e}", "warn")
+                continue
             if self._fix_not_loaded(d):
                 continue
             if not self._due(f"defect_release_try_{d['id']}"):
@@ -545,12 +581,13 @@ class Maintenance:
         if b["method"] == STAGE3_METHOD and isinstance(b["run_kind"], str) \
                 and b["run_kind"].startswith("s3_chunk_"):
             key = stage3.run_start_key(b["id"])
-        elif b["method"] == STAGE2_METHOD:
-            key = stage2.run_start_key(b["id"])
-        elif b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":
-            key = dchunk.run_start_key(b["id"])
-        elif b["method"] == literary.METHOD and b["run_kind"] == "c_parallel":
-            key = literary.run_start_key(b["id"])   # the one approved runtime baseline of a parallel C batch
+        elif b["method"] == STAGE2_METHOD:   # each Stage 2 step checks its OWN baseline key
+            key = {"s2_links_new": stage2.links_start_key, "s2_links_fix": stage2.links_start_key,
+                   "s2_repair_new": stage2.repair_run_start_key}.get(b["run_kind"], stage2.run_start_key)(b["id"])
+        elif b["method"] == dchunk.METHOD and (b["run_kind"] == "d_parallel" or self._serial_d(b)):
+            key = dchunk.run_start_key(b["id"])   # only the run baseline moves; `d_base_head` stays the first HEAD
+        elif b["method"] == literary.METHOD and (b["run_kind"] == "c_parallel" or self._serial_c(b)):
+            key = literary.run_start_key(b["id"])   # the one approved runtime baseline; the checkpoint HEAD stays
         else:
             return None
         raw = self.store.get(key)
@@ -570,9 +607,12 @@ class Maintenance:
             if b["method"] == literary.METHOD:
                 # The baseline only moves forward when the integration kept every input the batch is bound to: the
                 # Canonical shard, the checkpoint's original identity and the exact view of each active chunk.
-                canonical = hashlib.sha256((wt / literary.names(b).canonical).read_bytes()).hexdigest()
-                if not isinstance(base.get("canonical_sha256"), str) or base["canonical_sha256"] != canonical:
-                    return None
+                if isinstance(base.get("canonical_sha256"), str):
+                    canonical = hashlib.sha256((wt / literary.names(b).canonical).read_bytes()).hexdigest()
+                    if base["canonical_sha256"] != canonical:
+                        return None
+                elif literary.names(b).canonical in self.sup.git.changed_between(base["head"], new_head):
+                    return None   # a serial baseline records no canonical sha: the integration itself must not touch it
                 literary.checkpoint_head(wt, b)
                 for number, rec in literary.active_chunks(wt, b).items():
                     literary.read_view(wt, rec, number)
@@ -611,11 +651,31 @@ class Maintenance:
                         tmp.replace(path)
             except Exception:
                 return None
+        if b["method"] == dchunk.METHOD and self._serial_d(b):   # each preserved active chunk follows the run baseline
+            try:
+                for number, rec in dchunk.active_chunks(wt, b).items():
+                    if rec["git_head"] != new_head:
+                        path = wt / dchunk.chunk_names(b, number).active
+                        tmp = path.with_name(path.name + ".tmp")
+                        tmp.write_text(json.dumps({**rec, "git_head": new_head}, sort_keys=True), "utf-8")
+                        tmp.replace(path)
+            except Exception:
+                return None
         if base["head"] != new_head:
             base["head"] = new_head
             stage = {STAGE2_METHOD: "Stage 2", dchunk.METHOD: "D", literary.METHOD: "C"}.get(b["method"], "Stage 3")
             self.store.log(b["id"], f"승인된 Maintainer 통합으로 {stage} 실행 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
         return key, json.dumps(base, sort_keys=True)
+
+    @staticmethod
+    def _serial_d(b) -> bool:
+        k = b["run_kind"] or ""
+        return b["method"] == dchunk.METHOD and (k.startswith("d_chunk_") or k == "d_finalize")
+
+    @staticmethod
+    def _serial_c(b) -> bool:
+        k = b["run_kind"] or ""
+        return b["method"] == literary.METHOD and (k.startswith("c_chunk_") or k == "c_finalize")
 
     def _retargeted_s3_parallel(self, b, new_head: str) -> tuple[str, str] | None:
         """Parallel Stage 3: move the one baseline forward and name the pending tasks whose rendered view changed.
@@ -695,8 +755,12 @@ class Maintenance:
         except Exception:
             return   # unreadable evidence: the unchanged baseline keeps failing closed
 
-    def _released_integration_proof(self, b, old_head: str, integrated_head: str, receipt=None) -> bool:
-        """Prove a same-batch RELEASED Maintainer merge is an ancestor of this owned worktree."""
+    def _released_integration_proof(self, b, old_head: str, integrated_head: str, receipt=None, pending: dict | None = None) -> bool:
+        """Prove a same-batch RELEASED Maintainer merge is an ancestor of this owned worktree.
+
+        `pending` (#3349) stands in for the receipt that does not exist yet: the immutable result of
+        `_fix_merged_integration_proof` for the FIX_MERGED defect. It is accepted only while that very row is still
+        FIX_MERGED, and only for the integrated HEAD it was proven for. Nothing is stored."""
         if (not isinstance(old_head, str) or not re.fullmatch(r"[0-9a-f]{40}", old_head)
                 or not isinstance(integrated_head, str) or not re.fullmatch(r"[0-9a-f]{40}", integrated_head)
                 or old_head == integrated_head):
@@ -707,6 +771,12 @@ class Maintenance:
                     or not self.sup.git.is_ancestor(old_head, integrated_head, path=wt)
                     or not self.sup.git.contains(wt, integrated_head)):
                 return False
+            if pending is not None:
+                row = self.store.defect(pending["defect_id"])
+                return bool(row is not None and row["state"] == "FIX_MERGED" and row["batch_id"] == b["id"]
+                            and row["merge_sha"] == pending["merge_sha"] and pending["head"] == integrated_head
+                            and isinstance(pending["merge_sha"], str) and re.fullmatch(r"[0-9a-f]{40}", pending["merge_sha"])
+                            and self.sup.git.contains(wt, pending["merge_sha"]))
             receipts = [receipt] if receipt is not None else self.store.defects(("RELEASED",))
             for item in receipts:
                 merge_sha = item["merge_sha"]
@@ -721,11 +791,185 @@ class Maintenance:
             return False
         return False
 
-    # ---- autonomous incident intake (Issue #3326) ----------------------------------------------------------------
-    # First scope: the batch's own RELEASED Maintainer integration HEAD that a boundary check then rejected. Everything
-    # else (an arbitrary HEAD, remote/dirty/PR trouble, a failed check) stays an ordinary ERROR for the operator.
+    def _fix_merged_integration_proof(self, b, d, old_base: str, new_head: str) -> dict | None:
+        """Direct proof, from the FIX_MERGED defect itself (no RELEASED receipt needed), that `new_head` is this batch's
+        own integration of the merged fix. Returns the immutable `pending` object, or None."""
+        sha = d["merge_sha"]
+        if d["state"] != "FIX_MERGED" or d["batch_id"] != b["id"] or not (isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40}", sha)):
+            return None
+        pending = {"defect_id": d["id"], "merge_sha": sha, "head": new_head}
+        return pending if self._released_integration_proof(b, old_base, new_head, pending=pending) \
+            and self.sup.git.head(Path(b["worktree"])) == new_head else None
+
+    # ---- autonomous incident intake (Issues #3326, #3349) ---------------------------------------------------------
+    # Every non-ERROR -> ERROR transition of a C/D/Stage 2/Stage 3 batch carries an incident number (`Store.update`). The
+    # sweep below is the single intake boundary: whatever wrote the ERROR (`_fail`, a direct write, a parallel task, a
+    # restart) is received here, after the batch's process and task runs are confirmed gone.
     DIAGNOSIS_FILE = ".warroom-scratch/incident-diagnosis.json"
-    DIAGNOSIS_OUTCOMES = ("no_code_fix", "external", "undetermined")
+    DIAGNOSIS_OUTCOMES = ("no_code_fix", "external", "undetermined", "recurrence")
+    INTAKE_METHODS = ("c", "d", "s2", "s3")
+
+    def _intake_errors(self) -> None:
+        legacy = self.store.legacy_errors()
+        if legacy and self.store.get("incident_legacy_logged") is None:
+            self.store.set("incident_legacy_logged", "1")
+            self.store.log(None, "사건 번호가 없는 기존 ERROR 배치는 자동 접수하지 않습니다(운영자 확인): "
+                           + ", ".join(f"#{r['id']} {r['method']} {r['shard']}_{r['batch']}" for r in legacy), "warn")
+        for b in self.store.intake_candidates():
+            try:
+                self._intake(b)
+            except Exception as e:   # one batch's trouble never blocks the others; the ERROR stays as written
+                self.store.log(b["id"], f"장애 접수 예외(ERROR와 증거 보존, 재시도 예정): {e}", "warn")
+
+    def _intake(self, b) -> None:
+        bid, seq = b["id"], b["error_seq"]
+        if b["pid"] is not None or self.store.open_task_runs(bid):
+            return   # the stopped process / task runs must be confirmed gone first: the next sweep
+        if self.store.get(f"incident_recurrence_{bid}_{seq}") == "done":
+            return
+        evidence = self._error_evidence(bid, seq)
+        prior = self._prior_incidents(bid)
+        fp = evidence.get("fingerprint") if evidence else None
+        if fp:
+            again = [p for p in prior if p["fingerprint"] == fp and b["error_at"] is not None and b["error_at"] > p["released_at"]]
+            if again:
+                return self._recurrence_blocked(b, again[0])
+        for other in self.store.incomplete_batches():
+            if other["id"] != bid and (other["branch"] == b["branch"] or other["worktree"] == b["worktree"]):
+                if self._due(f"incident_conflict_{bid}_{seq}", 600):
+                    self.store.log(bid, f"장애 접수 차단: 같은 branch/worktree를 다른 미완료 배치 #{other['id']}가 소유합니다. ERROR 유지", "error")
+                return
+        env = defects.incident_envelope(b, self._observe(b, evidence), [
+            {k: p[k] for k in ("defect_id", "merge_sha", "fingerprint")} for p in prior])
+        try:
+            raw = defects.canonical(env)
+            defects.parse_incident(raw)
+        except defects.ReportProblem as e:
+            if self._due(f"incident_envelope_{bid}_{seq}", 600):
+                self.store.log(bid, f"장애 접수 차단(envelope 불완전: {e}). ERROR 유지", "error")
+            return
+        self.report(b, "incident", defects.incident_event_key(bid, seq), raw,
+                    expect={k: b[k] for k in ("error_seq", "paused_from", "run_kind", "branch", "worktree")})
+
+    def _error_evidence(self, bid: int, seq: int) -> dict | None:
+        try:
+            ev = json.loads(self.store.get(f"error_evidence_{bid}_{seq}") or "null")
+        except ValueError:
+            return None
+        if not isinstance(ev, dict):
+            return None
+        return {**ev, "fingerprint": defects.evidence_fingerprint(ev)}
+
+    def _prior_incidents(self, bid: int) -> list[dict]:
+        out = []
+        for d in self.store.defects(("RELEASED",)):
+            if d["batch_id"] != bid or d["source"] != "incident":
+                continue
+            fp = None
+            try:
+                env = defects.parse_incident(d["report"].partition("\n")[0])
+                o = env["observed"]["error_evidence"]
+                fp = o["value"].get("fingerprint") if o["status"] == "ok" and isinstance(o["value"], dict) else None
+            except (defects.ReportProblem, KeyError):
+                pass
+            out.append({"defect_id": d["id"], "merge_sha": d["merge_sha"], "fingerprint": fp, "released_at": d["updated_at"],
+                        "issue_number": d["issue_number"]})
+        return out
+
+    def _recurrence_blocked(self, b, prior: dict) -> None:
+        """Proven same cause after its fix was applied: no new incident, the ERROR stays, the old Issue says so once."""
+        bid, seq = b["id"], b["error_seq"]
+        key = f"incident_recurrence_{bid}_{seq}"
+        if self.store.get(key) is None:
+            self.store.log(bid, f"수정 후 동일 증거 재발(defect #{prior['defect_id']}, 지문 {prior['fingerprint']}) — 자동 재수정 차단, "
+                           "운영자 확인 필요. ERROR 유지", "error")
+            self.store.set(key, "seen")
+        if not prior["issue_number"]:
+            return self.store.set(key, "done")
+        ev = f"incident-recurrence-{bid}-{seq}"
+        if self._comment_once(prior["issue_number"], ev,
+                              "수정 후 동일 증거 재발 — 자동 재수정 차단, 운영자 확인\n\n"
+                              f"- 배치 `{b['shard']}_{b['batch']}` · 사건 e{seq} · 증거 지문 `{prior['fingerprint']}`\n\n"
+                              + defects.marker(defects.EVENT_MARK, ev)):
+            self.store.set(key, "done")
+
+    # observations ---------------------------------------------------------------------------------------------
+    def _git_facts(self, b) -> dict:
+        wt = Path(b["worktree"])
+        return {"head": self.sup.git.head(wt), "remote_head": self.sup.git.remote_head(b["branch"]),
+                "dirty": bool(self.sup.git.dirty(wt).strip()), "registered": self.sup.git.registered(wt),
+                "pr_number": b["pr_number"], "pr_head": b["head_sha"]}
+
+    @staticmethod
+    def _scratch_digests(b) -> dict | None:
+        """sha256 of every checkpoint / view / chunk file under the worktree scratch (None: no scratch directory)."""
+        root = Path(b["worktree"]) / ".warroom-scratch"
+        if not root.is_dir():
+            return None
+        out = {}
+        for f in sorted(root.rglob("*")):
+            rel = f.relative_to(root)
+            if not f.is_file() or rel.parts[0] in ("resolved-defects", "incident") or f.suffix in (".log", ".tmp"):
+                continue
+            out[str(rel)] = hashlib.sha256(f.read_bytes()).hexdigest()
+        return out
+
+    def _observe(self, b, evidence: dict | None) -> dict:
+        ok, missing, unknown = defects.observation, lambda: defects.observation("missing"), lambda e: defects.observation("unknown", str(e)[:200])
+        obs = {}
+
+        def put(name, fn):
+            try:
+                obs[name] = fn()
+            except Exception as e:   # a failed lookup is `unknown`, never a blocked intake
+                obs[name] = unknown(e)
+        wt_exists = Path(b["worktree"]).is_dir()
+        put("runs", lambda: (ok("ok", [{"id": r["id"], "kind": r["kind"], "exit_status": r["exit_status"], "log_file": r["log_file"]}
+                                       for r in self.store.runs(b["id"])[:20]]) if self.store.runs(b["id"]) else missing()))
+        put("log_file", lambda: ok("ok", {"path": b["log_file"], "size": Path(b["log_file"]).stat().st_size})
+            if b["log_file"] and Path(b["log_file"]).is_file() else missing())
+        put("events", lambda: ok("ok", [{"ts": e["ts"], "level": e["level"], "msg": e["msg"][:300]}
+                                        for e in self.store.batch_events(b["id"])[-20:]]))
+        put("checkpoint", lambda: (lambda d: ok("ok", d) if d is not None else missing())(self._scratch_digests(b)))
+        put("git", lambda: ok("ok", self._git_facts(b)) if wt_exists else missing())
+        put("receipts", lambda: ok("ok", [{"defect_id": x["id"], "merge_sha": x["merge_sha"], "integrated_sha": x["integrated_sha"],
+                                           "fix_kind": x["fix_kind"]} for x in self.store.defects(("RELEASED",))
+                                          if x["batch_id"] == b["id"]]))
+        put("error_evidence", lambda: ok("ok", evidence) if evidence else missing())
+        return obs
+
+    def _preserved(self, b, obs: dict, head_moves: bool) -> str | None:
+        """Compare the intake-time observations with now. None = preserved; else the reason it cannot be proven."""
+        for name, o in obs.items():
+            if o["status"] == "unknown":
+                return f"접수 시 `{name}` 관측이 unknown이라 보존을 증명할 수 없습니다"
+        try:
+            wt_exists = Path(b["worktree"]).is_dir()
+            git = obs["git"]
+            if git["status"] == "missing":
+                if wt_exists:
+                    return "접수 시 없던 worktree가 지금은 존재합니다"
+            else:
+                if not wt_exists:
+                    return "접수 시 있던 worktree가 사라졌습니다"
+                now, then = self._git_facts(b), git["value"]
+                for key in ("remote_head", "dirty", "pr_number", "pr_head") + (() if head_moves else ("head",)):
+                    if now[key] != then[key]:
+                        return f"접수 이후 {key}가 바뀌었습니다"
+            cp, digests = obs["checkpoint"], (self._scratch_digests(b) if wt_exists else None)
+            if cp["status"] == "missing" and digests is not None:
+                return "접수 시 없던 checkpoint/view 산출물이 생겼습니다"
+            if cp["status"] == "ok" and digests != cp["value"]:
+                return "접수 이후 checkpoint/view/완료 청크 digest가 바뀌었습니다"
+            runs = obs["runs"]
+            now_runs = [r["id"] for r in self.store.runs(b["id"])[:20]]
+            if (runs["status"] == "missing") != (not now_runs) or (runs["status"] == "ok" and now_runs != [r["id"] for r in runs["value"]]):
+                return "접수 이후 새 실행(run) 기록이 생겼습니다"
+        except GitTransient:
+            raise
+        except Exception as e:
+            return f"보존 증명 중 조회 실패: {e}"
+        return None
 
     def approved_integration_receipt(self, b, base: str, head: str, site: str, remote_expected) -> dict | None:
         """Proof, at the moment of rejection, that `head` is this batch's approved integration: the existing same-batch
@@ -746,42 +990,36 @@ class Maintenance:
             return None
         return None
 
-    def report_incident(self, b0, problem) -> None:
-        """Called by `_fail` AFTER the ERROR and its log are recorded. Re-verifies, then reuses `report()`; every
-        refusal leaves the batch in the ERROR `_fail` wrote."""
-        r = problem.receipt
-        b = self.store.batch(b0["id"])
-        if b is None or b["state"] != "ERROR":
-            return
-        site, bid = r["site"], b["id"]
-        d = self.store.defect(r["defect_id"])
-        try:
-            current = self.sup.git.head(Path(b["worktree"]))
-        except Exception:
-            current = None
-        if (d is None or d["state"] != "RELEASED" or d["batch_id"] != bid or d["integrated_sha"] != r["head"]
-                or d["merge_sha"] != r["merge_sha"] or current != r["head"]):
-            return self.store.log(bid, "장애 접수 생략: 통합 receipt 또는 HEAD가 접수 직전 재검증과 다릅니다. ERROR 유지", "warn")
-        prefix = f"incident:{bid}:{site}:"
-        if any(x["source"] == "incident" and x["event_key"].startswith(prefix) for x in self.store.defects()):
-            return self.store.log(bid, f"동일 장애 재발({site}) — 자동 접수는 배치·지점당 1회뿐입니다. 운영자 확인 필요, ERROR 유지", "error")
-        sha = defects.digest(f"{r['base']}|{r['head']}|{problem}")
-        cases = [f"배치 {b['shard']}_{b['batch']} · Method {b['method'].upper()} · run_kind {b['run_kind']}",
-                 f"지점 `{site}`: 기준 HEAD {r['base']} → 현재 HEAD {r['head']}",
-                 f"승인 통합 receipt: defect #{r['defect_id']} · 수정 merge {r['merge_sha']}",
-                 f"원래 오류: {str(problem)[:500]}"]
-        raw = defects.incident_report(site, bid, sha[:8], cases,
-                                      f"배치 {bid}의 worktree/kv 경계 기준으로 `{site}` 검사를 같은 HEAD에서 다시 실행 (증거 묶음 참조)")
-        try:
-            defects.parse(raw)   # a rejected report must never become an UNVERIFIED pause
-            self.report(b, "incident", prefix + sha, raw, error=f"장애 접수 대기: {str(problem)[:600]}")
-        except Exception as e:
-            self.store.log(bid, f"장애 접수 실패(ERROR와 증거 보존): {e}", "warn")
+    @staticmethod
+    def _evidence_keys(b) -> list[str]:
+        """The only kv entries an incident bundle may carry: explicit per method (no `*_{bid}` sweep)."""
+        bid = b["id"]
+        extra = f"error_evidence_{bid}_{b['error_seq']}"
+        if b["method"] == "d":
+            return [f"d_base_head_{bid}", f"d_commit_head_{bid}", dchunk.run_start_key(bid), extra]
+        if b["method"] == "c":
+            return [literary.run_start_key(bid), f"c_commit_head_{bid}", extra]
+        if b["method"] == STAGE2_METHOD:
+            return [stage2.run_start_key(bid), stage2.links_start_key(bid), stage2.repair_run_start_key(bid),
+                    f"s2_commit_head_{bid}", extra]
+        return [stage3.run_start_key(bid), stage3.parallel_start_key(bid), f"s3_commit_head_{bid}", extra]
 
     @staticmethod
-    def _evidence_keys(bid: int) -> list[str]:
-        """The only kv entries an incident bundle may carry (no `*_{bid}` sweep)."""
-        return [f"d_base_head_{bid}", f"d_commit_head_{bid}", dchunk.run_start_key(bid)]
+    def _envelope_of(d):
+        try:
+            return defects.parse_incident(d["report"].partition("\n")[0])
+        except defects.ReportProblem:
+            return None
+
+    def _bundle_git(self, ob, owt: Path) -> dict:
+        """Observed Git facts with the same ok/missing/unknown meaning as the envelope; never raises."""
+        if not owt.is_dir():
+            return {"worktree": str(owt), "status": "missing"}
+        try:
+            return {"worktree": str(owt), "status": "ok", "head": self.sup.git.head(owt),
+                    "remote_head": self.sup.git.remote_head(ob["branch"])}
+        except Exception as e:
+            return {"worktree": str(owt), "status": "unknown", "error": str(e)[:200]}
 
     def write_incident_evidence(self, b) -> str | None:
         """Atomically write the local evidence bundle of each incident Issue this Maintainer execution works on, BEFORE
@@ -807,9 +1045,9 @@ class Maintenance:
                                for e in self.store.batch_events(ob["id"])[-50:]],
                     "runs": [{"id": r["id"], "kind": r["kind"], "log_file": r["log_file"], "exit_status": r["exit_status"]}
                              for r in self.store.runs(ob["id"])[:20]],
-                    "kv": {k: (self.store.get(k) or "")[:2000] for k in self._evidence_keys(ob["id"]) if self.store.get(k) is not None},
-                    "git": {"worktree": str(owt), "head": self.sup.git.head(owt) if owt.is_dir() else None,
-                            "remote_head": self.sup.git.remote_head(ob["branch"])},
+                    "kv": {k: (self.store.get(k) or "")[:2000] for k in self._evidence_keys(ob) if self.store.get(k) is not None},
+                    "envelope": self._envelope_of(d),
+                    "git": self._bundle_git(ob, owt),
                     "receipts": [{"defect_id": x["id"], "merge_sha": x["merge_sha"], "integrated_sha": x["integrated_sha"]}
                                  for x in self.store.defects(("RELEASED",)) if x["batch_id"] == ob["id"]],
                     "db": {"path": str(self.store.path), "example": f"sqlite3 -readonly '{self.store.path}' "
@@ -841,8 +1079,11 @@ class Maintenance:
                 return False
             data = json.loads((wt / self.DIAGNOSIS_FILE).read_text("utf-8"))
             if (not isinstance(data, dict) or data.get("version") != 1 or data.get("issue") != n
-                    or data.get("outcome") not in self.DIAGNOSIS_OUTCOMES or set(data) - {"version", "issue", "outcome", "summary"}):
+                    or data.get("outcome") not in self.DIAGNOSIS_OUTCOMES
+                    or set(data) - {"version", "issue", "outcome", "summary", "recurrence_of", "evidence"}):
                 return False
+            if data["outcome"] == "recurrence" and not self._recurrence_verified(linked[0], data.get("recurrence_of")):
+                data["outcome"] = "undetermined"   # an unverified recurrence claim is held like any undetermined cause
             ev = f"incident-diagnosis-{n}"
             if not any((defects.EVENT_MARK, ev) in defects.markers(c.get("body")) for c in self.sup.gh.issue_comments(n)):
                 return False
@@ -854,6 +1095,16 @@ class Maintenance:
         except Exception:
             return False
         return self._complete_diagnosis(b)
+
+    def _recurrence_verified(self, d, claimed) -> bool:
+        """The Maintainer's `recurrence_of` must name a RELEASED incident of the SAME batch that the envelope listed."""
+        env = self._envelope_of(d)
+        if env is None or type(claimed) is not int:
+            return False
+        listed = {p.get("defect_id") for p in env["prior_incidents"]}
+        prior = self.store.defect(claimed)
+        return (claimed in listed and prior is not None and prior["state"] == "RELEASED" and prior["source"] == "incident"
+                and prior["batch_id"] == d["batch_id"])
 
     def _complete_diagnosis(self, b) -> bool:
         """Idempotent second half: non-force worktree removal, then ONE transaction. True: handled (done or retried later)."""
@@ -881,6 +1132,203 @@ class Maintenance:
             if b is not None and b["state"] != "COMPLETE" and self.store.get(f"m_diag_{b['id']}") is not None:
                 self._complete_diagnosis(b)
 
+    # ---- applying a merged incident fix (Issue #3349) -------------------------------------------------------------
+    # Two proofs, never mixed: RUNTIME-ONLY (the fix lives in War Room's own code/prompts: the worktree is not touched,
+    # `integrated_sha` stays NULL and `applied_code_sha` says which checkout carried it) and WORKTREE INTEGRATION (the fix
+    # reaches the production worktree; the run baseline moves to the integrated HEAD in the release transaction itself).
+    # Whatever cannot be proven is HELD with its reason and the batch stays PAUSED.
+    class _Shim:
+        """The two lookups a parallel guard takes from its per-round object, answered fresh (pure queries)."""
+
+        def __init__(self, maint, b):
+            self.maint, self.b = maint, b
+
+        def remote(self):
+            return self.maint.sup.git.remote_head(self.b["branch"])
+
+        def pr(self):
+            return self.maint.sup._find_recovery_pr(self.b)
+
+    def _hold_unprovable(self, d, b, why: str) -> None:
+        self._hold(d, b, f"재개 증명 불가: {b['run_kind'] or b['paused_from']}: {why}")
+
+    def _release_incident(self, d, b) -> None:
+        if self.store.get(f"stop_pin_{b['producer']}_{b['method']}") or self.store.clear_request(b["producer"], b["method"]):
+            return   # the operator's Stop / Clear decides; the release transaction re-checks them as well
+        try:
+            files = self.sup.git.changed_files(d["merge_sha"])
+        except Exception as e:
+            return self.store.log(b["id"], f"수정 변경 파일 조회 실패(재시도 예정): {e}", "warn")
+        env = self._envelope_of(d)
+        if not files:
+            return self._hold_unprovable(d, b, "수정 PR의 변경 파일을 확인할 수 없습니다")
+        if env is None:
+            return self._hold_unprovable(d, b, "접수 시 관측값(envelope)이 없는 이전 형식의 incident입니다")
+        runtime = (all(f.startswith("tools/warroom/") for f in files)
+                   and any(f.startswith(("tools/warroom/warroom/", "tools/warroom/prompts/")) for f in files))
+        if runtime and self._runtime_not_ready(d, b, files):
+            return
+        if not self._due(f"defect_release_try_{d['id']}"):
+            return
+        if runtime:
+            return self._release_runtime(d, b, env)
+        return self._release_worktree(d, b, env)
+
+    def _runtime_not_ready(self, d, b, files) -> bool:
+        """True = wait (restart / checkout not yet carrying the fix) or held. Python: the loaded code_sha; prompts: the
+        main checkout has them clean AND the resumed launch actually renders the changed prompt."""
+        if any(f.startswith("tools/warroom/warroom/") for f in files) and self._fix_not_loaded(d):
+            return True
+        prompt_files = [f for f in files if f.startswith("tools/warroom/prompts/")]
+        if not prompt_files:
+            return False
+        try:
+            carried = self.sup.git.is_ancestor(d["merge_sha"], self.sup.git.head(self.sup.code_root), path=self.sup.code_root)
+            clean = self.sup.prompt_checkout_clean(prompt_files)
+        except Exception as e:
+            carried, clean = False, False
+            self.store.log(b["id"], f"프롬프트 반영 여부 조회 실패: {e}", "warn")
+        if not (carried and clean):
+            key = f"restart_needed_{d['id']}"
+            if self.store.get(key) is None:
+                self.store.set(key, "1")
+                self.store.log(b["id"], f"수정 {d['merge_sha'][:10]}이 프롬프트를 바꿨지만 메인 checkout이 아직 이를 포함·clean 상태가 "
+                               "아닙니다 — checkout 반영 전에는 배치를 재개하지 않습니다(프로세스 재시작은 필요 없음)", "error")
+            return True
+        names = self.sup.resume_prompt_names(b)
+        changed = {Path(f).stem for f in prompt_files if f.endswith(".md")}
+        if names is None:
+            self._hold_unprovable(d, b, "재개될 launch의 prompt 집합을 정할 수 없어 수정 prompt의 전달을 증명할 수 없음")
+            return True
+        if not changed <= names:
+            self._hold_unprovable(d, b, f"수정 prompt가 재개 실행에 전달되지 않음 (수정 {sorted(changed)} / 재개 {sorted(names)})")
+            return True
+        return False
+
+    def _pr_state_problem(self, b) -> str | None:
+        """WAITING_REVIEW / MERGED / CLEANUP: the PR and its ownership are read again before anything resumes."""
+        pf = b["paused_from"]
+        if pf not in ("WAITING_REVIEW", "MERGED", "CLEANUP"):
+            return None
+        if not b["pr_number"]:
+            return f"{pf} 배치에 PR 번호가 없습니다"
+        info = self.sup.gh.pull(b["pr_number"])
+        if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
+            return f"PR #{b['pr_number']}의 번호 또는 head 브랜치가 소유 기록과 다릅니다"
+        if pf == "WAITING_REVIEW":
+            if info.get("merged"):
+                return None   # the existing merged path takes over after the resume
+            if info.get("state") != "open":
+                return f"PR #{b['pr_number']}이 머지 없이 닫혀 있어 재개하지 않습니다"
+            if info.get("head_sha") != b["head_sha"]:
+                return f"PR #{b['pr_number']} HEAD가 기록값과 다릅니다"
+            return None
+        return None if info.get("merged") is True else f"PR #{b['pr_number']}의 merged=true를 확인하지 못했습니다"
+
+    def _release_runtime(self, d, b, env) -> None:
+        if why := self._preserved(b, env["observed"], head_moves=False):
+            return self._hold_unprovable(d, b, why)
+        if why := self._pr_state_problem(b):
+            return self._hold_unprovable(d, b, why)
+        code_root = self.sup.code_root
+        problem = self._verify(d, code_root)   # the fix runs from the code checkout, never inside the production worktree
+        if problem:
+            return self._hold_unprovable(d, b, f"수정 반영 후 필수 검증 실패: {problem}")
+        if not self._archive_report(d, b):
+            return
+        applied = self.sup.git.head(code_root)
+        if self.store.release_defect(d["id"], b["id"], None, None, force_run=False, fix_kind="runtime", applied_code_sha=applied):
+            self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} runtime 반영 확인(code {applied[:10]}, worktree 통합 없음) → "
+                           f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
+
+    def _resume_kind(self, b) -> str | None:
+        """The run_kinds whose resume guard can be run BEFORE the release (None = no such guard: the integration is held)."""
+        k, m = b["run_kind"] or "", b["method"]
+        if k.startswith("fix_") and b["pr_number"] and b["paused_from"] == "FIXING":
+            return "fix"
+        if m == dchunk.METHOD:
+            return "d_parallel" if k == "d_parallel" else ("d_serial" if self._serial_d(b) else None)
+        if m == literary.METHOD:
+            return "c_parallel" if k == "c_parallel" else ("c_serial" if self._serial_c(b) else None)
+        if m == STAGE2_METHOD:
+            return ("s2_chunk" if k.startswith("s2_chunk_") else "s2_links" if k in ("s2_links_new", "s2_links_fix")
+                    else "s2_repair" if k == "s2_repair_new" else None)
+        if m == STAGE3_METHOD:
+            return "s3_chunk" if k.startswith("s3_chunk_") else None
+        return None
+
+    def _first_head(self, b, kind: str) -> str | None:
+        """The FIRST recorded HEAD of the batch's current baseline chain (never rewritten by this module)."""
+        if kind.startswith("d_"):
+            return self.store.get(f"d_base_head_{b['id']}")
+        if kind.startswith("c_"):
+            return literary.checkpoint_head(Path(b["worktree"]), b)
+        key = {"s2_links": stage2.links_start_key, "s2_repair": stage2.repair_run_start_key,
+               "s3_chunk": stage3.run_start_key}.get(kind, stage2.run_start_key)(b["id"])
+        try:
+            return json.loads(self.store.get(key) or "null")["head"]
+        except (ValueError, KeyError, TypeError):
+            return None
+
+    def _prerun_guards(self, b, kind: str, base: dict, pending: dict) -> str | None:
+        """Run the resume guards of this run_kind as PURE queries against the proposed baseline. None = they all pass."""
+        sup, wt = self.sup, Path(b["worktree"])
+        shim = self._Shim(self, b)
+        if kind == "d_parallel":
+            return sup._d_parallel_head_problem(b, wt, base, pending) or sup.dp._boundary_problem(b, shim, base)
+        if kind == "d_serial":
+            return sup._d_head_problem(b, wt, base, pending) or sup._stage2_chunk_boundary_problem(b, None, base)
+        if kind == "c_parallel":
+            return sup._c_head_problem(b, wt, base, pending) or sup.cp._boundary_problem(b, shim, base)
+        if kind == "c_serial":
+            return sup._c_head_problem(b, wt, base, pending) or sup._stage2_chunk_boundary_problem(b, None, base)
+        if kind == "s2_chunk":
+            return sup._stage2_chunk_boundary_problem(b, None, base)
+        if kind == "s2_links":
+            return sup._stage2_links_boundary_problem(b, base)
+        if kind == "s2_repair":
+            return sup._stage2_repair_boundary_problem(b, base)
+        if kind == "s3_chunk":
+            return sup._stage3_chunk_boundary_problem(b, base)
+        return "사전 실행할 guard가 없습니다"
+
+    def _release_worktree(self, d, b, env) -> None:
+        wt = Path(b["worktree"])
+        kind = self._resume_kind(b)
+        if b["paused_from"] in ("WAITING_REVIEW", "MERGED", "CLEANUP"):
+            return self._hold_unprovable(d, b, "완료·리뷰·정리 단계의 배치는 worktree에 통합하지 않습니다(runtime-only 수정만 재개 가능)")
+        if not wt.is_dir():
+            return self._hold_unprovable(d, b, "worktree가 없어 통합할 수 없습니다(runtime-only 수정만 재개 가능)")
+        if kind is None:
+            return self._hold_unprovable(d, b, "이 단계는 재개 guard를 사전에 실행해 증명할 수 없습니다")
+        if self._fix_not_loaded(d):
+            return
+        old_first = self._first_head(b, kind) if kind != "fix" else None
+        if kind != "fix" and not old_first:
+            return self._hold_unprovable(d, b, "최초 기준 HEAD를 확인할 수 없습니다")
+        if why := self._preserved(b, env["observed"], head_moves=True):
+            return self._hold_unprovable(d, b, why)
+        head, run_start = self._apply(d, b)
+        if head is None:
+            return
+        if kind == "fix":
+            pairs = []
+        else:
+            pending = self._fix_merged_integration_proof(b, d, old_first, head)
+            if pending is None:
+                return self._hold_unprovable(d, b, "수정 통합 HEAD를 FIX_MERGED 상태에서 직접 증명하지 못했습니다")
+            moved = self._retargeted_run_start(b, head)
+            if moved is None:
+                return self._hold_unprovable(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다")
+            if problem := self._prerun_guards(b, kind, json.loads(moved[1]), pending):
+                return self._hold_unprovable(d, b, f"재개 guard 사전 검증 실패: {str(problem)[:300]}")
+            pairs = [moved]
+        if not self._archive_report(d, b):
+            return
+        if self.store.release_defect(d["id"], b["id"], head, pairs, force_run=False, fix_kind="worktree"):
+            self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} worktree 통합·검증·guard 사전 확인 완료 (HEAD {head[:10]}) → "
+                           f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
+
     def _fix_not_loaded(self, d) -> bool:
         """Fail closed: a fix that changed the Supervisor's own code is applied only when the running process PROVABLY
         loaded it. Unknown (no recorded code_sha, dirty runtime source, a failed lookup) waits."""
@@ -902,33 +1350,51 @@ class Maintenance:
         return True
 
     def _report_outcomes(self) -> None:
-        """Say on the Issue where a resumed incident batch actually is: one comment per phase (review / complete /
-        stopped-by-state), each with its own marker. A merged fix or an opened PR is not the final result."""
+        """Say on the Issue where an incident batch actually is, one comment per phase with its own marker: diagnosis
+        result (HELD), fix applied (runtime / worktree), review (intermediate), complete (final), stopped. A merged fix
+        or an opened PR is not the final result."""
+        for d in self.store.defects(("HELD",)):
+            if d["source"] != "incident" or not d["issue_number"] or not d["hold_reason"]:
+                continue
+            key = f"incident_outcome_{d['id']}_diagnosis"
+            ev = f"incident-outcome-{d['id']}-diagnosis"
+            if not self.store.get(key) and self._comment_once(
+                    d["issue_number"], ev, f"진단/보류 결과: {defects.public(d['hold_reason'])[:500]} — 배치는 PAUSED로 보존됩니다.\n\n"
+                    + defects.marker(defects.EVENT_MARK, ev)):
+                self.store.set(key, "1")
         for d in self.store.defects(("RELEASED",)):
             if d["source"] != "incident" or not d["issue_number"]:
                 continue
             b = self.store.batch(d["batch_id"])
             if b is None:
                 continue
-            phase = {"WAITING_REVIEW": "review", "COMPLETE": "complete", "ERROR": "stopped-error",
-                     "PAUSED": "stopped-paused"}.get(b["state"])
-            if phase is None:
-                continue
-            key = f"incident_outcome_{d['id']}_{phase}"
-            if self.store.get(key):
-                continue
-            ev = f"incident-outcome-{d['id']}-{phase}"
-            pr = f" · PR #{b['pr_number']}" if b["pr_number"] else ""
-            if phase == "review":
-                head = f"원 배치 `{b['shard']}_{b['batch']}`가 PR 리뷰 대기에 들어갔습니다{pr}. 아직 완료가 아닙니다."
-            elif phase == "complete":
-                head = f"원 배치 `{b['shard']}_{b['batch']}`가 COMPLETE에 도달했습니다{pr}."
-            else:
-                why = b["pause_reason"] or ""
-                head = (f"원 배치 `{b['shard']}_{b['batch']}`가 {b['state']}로 중단되었습니다{pr} "
-                        f"{('(' + why + ') ') if why else ''}— 작업물은 보존됩니다. 오류: {(b['error'] or '')[:300]}")
-            if self._comment_once(d["issue_number"], ev, head + "\n\n" + defects.marker(defects.EVENT_MARK, ev)):
-                self.store.set(key, "1")
+            phases = []
+            if d["fix_kind"] in ("runtime", "worktree"):
+                phases.append("applied")
+            phases.append({"WAITING_REVIEW": "review", "COMPLETE": "complete", "ERROR": "stopped-error",
+                           "PAUSED": "stopped-paused"}.get(b["state"]))
+            for phase in phases:
+                if phase is None:
+                    continue
+                key = f"incident_outcome_{d['id']}_{phase}"
+                if self.store.get(key):
+                    continue
+                ev = f"incident-outcome-{d['id']}-{phase}"
+                pr = f" · PR #{b['pr_number']}" if b["pr_number"] else ""
+                if phase == "applied":
+                    head = (f"수정 {(d['merge_sha'] or '')[:10]}가 반영·확인되어 원 배치 `{b['shard']}_{b['batch']}`를 한 번 재개했습니다 "
+                            + (f"(runtime-only: worktree 통합 없음, code {(d['applied_code_sha'] or '?')[:10]})." if d["fix_kind"] == "runtime"
+                               else f"(worktree 통합 HEAD {(d['integrated_sha'] or '?')[:10]}). 아직 완료가 아닙니다."))
+                elif phase == "review":
+                    head = f"원 배치 `{b['shard']}_{b['batch']}`가 PR 리뷰 대기에 들어갔습니다{pr}. 아직 완료가 아닙니다."
+                elif phase == "complete":
+                    head = f"원 배치 `{b['shard']}_{b['batch']}`가 COMPLETE에 도달했습니다{pr}."
+                else:
+                    why = b["pause_reason"] or ""
+                    head = (f"원 배치 `{b['shard']}_{b['batch']}`가 {b['state']}로 중단되었습니다{pr} "
+                            f"{('(' + why + ') ') if why else ''}— 작업물은 보존됩니다. 오류: {defects.public(b['error'] or '')[:300]}")
+                if self._comment_once(d["issue_number"], ev, head + "\n\n" + defects.marker(defects.EVENT_MARK, ev)):
+                    self.store.set(key, "1")
 
     def _archive_report(self, d, b) -> bool:
         """Set the RESOLVED report aside so the resumed producer does not read it as an unresolved stop signal.
@@ -981,7 +1447,7 @@ class Maintenance:
         done = [d for d in self.store.defects(("RELEASED",)) if d["batch_id"] == b["id"]]
         if not done:
             return ""
-        refs = ", ".join(f"#{d['id']}(`{d['defect_class']}`, 수정 {d['merge_sha'][:10]}, 반영 HEAD {d['integrated_sha'][:10]})"
+        refs = ", ".join(f"#{d['id']}(`{d['defect_class']}`, 수정 {d['merge_sha'][:10]}, 반영 {('HEAD ' + d['integrated_sha'][:10]) if d['integrated_sha'] else 'runtime ' + (d['applied_code_sha'] or '?')[:10]})"
                          for d in done)
         if short:
             return (f"이 배치는 공통 결함 {refs}의 수정이 반영·검증된 뒤 재개된 실행입니다. 재개된 AI가 이미 해결된 보고서 "

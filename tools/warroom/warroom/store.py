@@ -133,7 +133,9 @@ CREATE TABLE IF NOT EXISTS s2_tasks (
 RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
                         "reasoning_output_tokens", "tool_calls", "submit_failures")
 # Additive migration (user_version 12, Issue #2361): best-effort/incomplete OpenCode usage quality for honest totals.
-SCHEMA_VERSION = 14
+# Additive migration (user_version 15, Issue #3349): `batches.error_seq/error_at/error_first` number each non-ERROR -> ERROR
+# transition; `defects.fix_kind/applied_code_sha` record how a merged Maintainer fix was proven applied.
+SCHEMA_VERSION = 15
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -256,6 +258,14 @@ class Store:
             name = column.split()[0]
             if name not in handled_columns:
                 c.execute(f"ALTER TABLE handled_events ADD COLUMN {column}")
+        have = {r["name"] for r in c.execute("PRAGMA table_info(batches)")}
+        for col in ("error_seq INTEGER NOT NULL DEFAULT 0", "error_at REAL", "error_first TEXT"):
+            if col.split()[0] not in have:
+                c.execute(f"ALTER TABLE batches ADD COLUMN {col}")
+        have = {r["name"] for r in c.execute("PRAGMA table_info(defects)")}
+        for col in ("fix_kind TEXT", "applied_code_sha TEXT"):
+            if col.split()[0] not in have:
+                c.execute(f"ALTER TABLE defects ADD COLUMN {col}")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
@@ -402,10 +412,17 @@ class Store:
     def update(self, batch_id: int, **fields) -> None:
         if not fields:
             return
-        fields["updated_at"] = time.time()
-        cols = ", ".join(f"{k}=?" for k in fields)
+        now = fields["updated_at"] = time.time()
+        sets, params = [f"{k}=?" for k in fields], list(fields.values())
+        if fields.get("state") == "ERROR":
+            # Incident number (#3349): SET expressions read the OLD row, so only a non-ERROR -> ERROR transition counts.
+            # Repeated ERROR writes (a new message, a repeated _fail) keep the number, the first time and the first text.
+            sets += ["error_seq=error_seq+CASE WHEN state='ERROR' THEN 0 ELSE 1 END",
+                     "error_at=CASE WHEN state='ERROR' THEN error_at ELSE ? END",
+                     "error_first=CASE WHEN state='ERROR' THEN error_first ELSE ? END"]
+            params += [now, None if fields.get("error") is None else str(fields["error"])]
         with self._conn() as c:
-            c.execute(f"UPDATE batches SET {cols} WHERE id=?", (*fields.values(), batch_id))
+            c.execute(f"UPDATE batches SET {', '.join(sets)} WHERE id=?", (*params, batch_id))
 
     def complete_batch(self, batch_id: int) -> None:
         """Mark a batch complete and apply its Line's completion policy atomically with Drain requests."""
@@ -822,6 +839,10 @@ class Store:
                 c.execute("DELETE FROM clear_requests WHERE batch_id=?", (req["batch_id"],))
                 return None
             if b["state"] != "CLEARING":
+                # An operator Clear outranks an automatic incident: its open defects are OVERRIDDEN in the same transaction.
+                c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason='운영자 Clear', updated_at=? "
+                          "WHERE batch_id=? AND source='incident' AND state IN ('REPORTED','LINKED','FIX_MERGED','HELD')",
+                          (time.time(), req["batch_id"]))
                 c.execute("UPDATE batches SET state='CLEARING', error=NULL, updated_at=? WHERE id=?",
                           (time.time(), req["batch_id"]))
                 c.execute("UPDATE lines SET run=0, drain=CASE WHEN method=? THEN drain ELSE 0 END, "
@@ -1175,20 +1196,40 @@ class Store:
 
     # --- shared defects (Issue #1555) ---
     def report_defect(self, batch_id: int, event_key: str, source: str, defect_class: str, state: str,
-                      report: str, pause_reason: str, error: str) -> int | None:
+                      report: str, pause_reason: str, error: str | None, expect: dict | None = None) -> int | None:
         """Record one defect event and pause its batch in ONE transaction. A repeated event_key changes nothing (None).
 
         The batch keeps its worktree, branch, PR and session; only its state moves to PAUSED (`paused_from` = where it
         was) so a duplicate event, a restart or a crash between the two writes can never leave a half-paused batch.
+
+        `expect` (autonomous incident intake, #3349) makes the transaction re-verify everything the intake decided on:
+        the exact ERROR event, no live process or task run, and every operator control (Clear, Stop, Retry, stop pin,
+        defect hold). Any difference changes nothing (None) and the batch stays in its ERROR.
         """
         now = time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             if c.execute("SELECT 1 FROM defects WHERE event_key=?", (event_key,)).fetchone():
                 return None
-            b = c.execute("SELECT state, paused_from FROM batches WHERE id=?", (batch_id,)).fetchone()
+            b = c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()
             if b is None or b["state"] in ("COMPLETE", "MERGED", "CLEANUP"):
                 return None
+            if expect is not None:
+                if (b["state"] != "ERROR" or b["pid"] is not None
+                        or any(b[k] != expect.get(k) for k in ("error_seq", "paused_from", "run_kind", "branch", "worktree"))
+                        or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND task IS NOT NULL AND ended_at IS NULL",
+                                     (batch_id,)).fetchone()
+                        or c.execute("SELECT 1 FROM clear_requests WHERE batch_id=?", (batch_id,)).fetchone()):
+                    return None
+                ln = c.execute("SELECT force_stop, retry_batch FROM lines WHERE model=? AND method=?",
+                               (b["producer"], b["method"])).fetchone()
+                if ln is not None and (ln["force_stop"] or ln["retry_batch"] == batch_id):
+                    return None
+                for key in (f"stop_pin_{b['producer']}_{b['method']}", f"defect_hold_{batch_id}"):
+                    row = c.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+                    if row is not None and (key.startswith("stop_pin_") or row["value"]):
+                        return None
+                error = b["error"]   # the original text is kept as written
             prev = b["paused_from"] if b["state"] in ("PAUSED", "ERROR") else b["state"]
             did = c.execute("INSERT INTO defects(event_key,batch_id,source,defect_class,state,report,created_at,updated_at)"
                             " VALUES(?,?,?,?,?,?,?,?)", (event_key, batch_id, source, defect_class, state, report,
@@ -1196,6 +1237,19 @@ class Store:
             c.execute("UPDATE batches SET state='PAUSED', paused_from=?, pause_reason=?, defect_id=?, error=?, "
                       "retry_after=NULL, updated_at=? WHERE id=?", (prev, pause_reason, did, error, now, batch_id))
             return did
+
+    def intake_candidates(self):
+        """ERROR batches of the autonomous-recovery methods that carry an incident number and no incident row yet."""
+        with self._conn() as c:
+            rows = c.execute("SELECT * FROM batches WHERE state='ERROR' AND error_seq>0 AND method IN ('c','d','s2','s3') "
+                             "AND COALESCE(paused_from,'')!='CLEARING' ORDER BY id").fetchall()
+            done = {r["event_key"] for r in c.execute("SELECT event_key FROM defects WHERE source='incident'")}
+        return [r for r in rows if f"incident:{r['id']}:e{r['error_seq']}" not in done]
+
+    def legacy_errors(self):
+        with self._conn() as c:
+            return c.execute("SELECT id, method, shard, batch FROM batches WHERE state='ERROR' AND error_seq=0 "
+                             "AND method IN ('c','d','s2','s3') ORDER BY id").fetchall()
 
     def defect(self, defect_id: int):
         with self._conn() as c:
@@ -1216,17 +1270,22 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE defects SET {cols} WHERE id=?", (*fields.values(), defect_id))
 
-    def release_defect(self, defect_id: int, batch_id: int, integrated_sha: str,
-                       run_start: tuple[str, str] | None = None) -> bool:
+    def release_defect(self, defect_id: int, batch_id: int, integrated_sha: str | None,
+                       run_start: tuple[str, str] | list[tuple[str, str]] | None = None, *, force_run: bool = True,
+                       fix_kind: str | None = None, applied_code_sha: str | None = None) -> bool:
         """The ONE automatic Retry: batch back to the phase it was paused in, defect RELEASED, in one transaction.
 
-        `run_start` = (kv key, value): a verified Stage 2/3 execution baseline retargeted to the integrated HEAD,
+        `run_start` = (kv key, value) or a list of them: verified execution baselines retargeted to the integrated HEAD,
         written in the same transaction so a crash can never leave RELEASED with the superseded baseline.
+        `integrated_sha` is None for a runtime-only fix (no worktree integration happened: never a false HEAD).
+        `force_run=False` (incidents) leaves the Line's run/drain flags to the operator; the transaction then also
+        re-checks every operator control and refuses to release over one.
 
         False (nothing changed) unless the batch is still paused for exactly this defect and the defect is still
         FIX_MERGED, so a repeated poll or a restart can never retry twice.
         """
         now = time.time()
+        pairs = [] if run_start is None else ([run_start] if isinstance(run_start, tuple) else list(run_start))
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             d = c.execute("SELECT state FROM defects WHERE id=?", (defect_id,)).fetchone()
@@ -1234,17 +1293,29 @@ class Store:
             if (d is None or d["state"] != "FIX_MERGED" or b is None or b["state"] != "PAUSED"
                     or b["pause_reason"] != "shared_defect" or b["defect_id"] != defect_id or b["pid"] is not None):
                 return False
+            if not force_run:
+                ln = c.execute("SELECT force_stop FROM lines WHERE model=? AND method=?",
+                               (b["producer"], b["method"])).fetchone()
+                if (c.execute("SELECT 1 FROM clear_requests WHERE batch_id=?", (batch_id,)).fetchone()
+                        or (ln is not None and ln["force_stop"])
+                        or c.execute("SELECT 1 FROM kv WHERE key=?", (f"stop_pin_{b['producer']}_{b['method']}",)).fetchone()
+                        or c.execute("SELECT 1 FROM kv WHERE key=? AND value!=''", (f"defect_hold_{batch_id}",)).fetchone()
+                        or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND task IS NOT NULL AND ended_at IS NULL",
+                                     (batch_id,)).fetchone()):
+                    return False
             c.execute("UPDATE batches SET state=?, pause_reason='', defect_id=NULL, error=NULL, retries=0, "
                       "retry_after=NULL, updated_at=? WHERE id=?", (b["paused_from"] or "PRODUCING", now, batch_id))
             c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)",
                       (b["producer"], b["method"], now))
-            c.execute("UPDATE lines SET run=1, retry_batch=NULL, updated_at=? WHERE model=? AND method=?",
-                      (now, b["producer"], b["method"]))
-            c.execute("UPDATE defects SET state='RELEASED', integrated_sha=?, hold_reason=NULL, updated_at=? WHERE id=?",
-                      (integrated_sha, now, defect_id))
-            if run_start is not None:
+            if force_run:
+                c.execute("UPDATE lines SET run=1, retry_batch=NULL, updated_at=? WHERE model=? AND method=?",
+                          (now, b["producer"], b["method"]))
+            c.execute("UPDATE defects SET state='RELEASED', integrated_sha=?, fix_kind=?, applied_code_sha=?, "
+                      "hold_reason=NULL, updated_at=? WHERE id=?",
+                      (integrated_sha, fix_kind, applied_code_sha, now, defect_id))
+            for pair in pairs:
                 c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
-                          "ON CONFLICT(key) DO UPDATE SET value=excluded.value", run_start)
+                          "ON CONFLICT(key) DO UPDATE SET value=excluded.value", pair)
             return True
 
     # --- Stage 2 verify blocks (Issue #2154): a completed Batch/shard whose exact verify fails deterministically ---

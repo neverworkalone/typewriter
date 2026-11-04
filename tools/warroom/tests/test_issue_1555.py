@@ -1,6 +1,7 @@
 """Issue #1555: structured shared defect -> PAUSED batch -> one urgent Issue -> hidden serial Maintainer -> merged PR +
 Maintainer cleanup -> fix applied to the paused batch and verified -> exactly one automatic Retry. Fake AI/GitHub/git
 plus a real-git section (temp repo, linked worktree with uncommitted partial output)."""
+import hashlib
 import json
 import os
 import sqlite3
@@ -12,7 +13,7 @@ from pathlib import Path
 from tests.fakes import HEAD1, HEAD2
 from tests.test_lines import PRODUCERS, multi_world
 from tests.test_supervisor import review
-from warroom import control, defects
+from warroom import control, dchunk, defects, dparallel, literary, stage2
 from warroom.config import config_problem, maintainer_problem, reload_problem, registry
 from warroom.gitops import Git, IntegrationBlocked
 from warroom.shell import Runner
@@ -725,100 +726,126 @@ class ResolvedReportResume(unittest.TestCase):
         w.tmp.cleanup()
 
 
+RELEASE_HEAD = MERGE
+
+
+def make_batch(w, method="d", model="deepseek", shard="001", batch="01", run_kind="d_chunk_new", state="PRODUCING",
+               worktree=True, **fields):
+    """A production batch row of any method with an (optionally real) fake worktree, no AI process and no live task run."""
+    branch = f"{method}-{model}-{shard}-{batch}"
+    path = w.paths.worktrees / branch
+    bid = w.store.create_batch(method=method, producer=model, shard=shard, batch=batch, branch=branch, worktree=str(path))
+    if worktree:
+        w.git.create_worktree(path, branch, "master")
+    w.store.update(bid, state=state, run_kind=run_kind, **fields)
+    return w.store.batch(bid)
+
+
+def break_batch(w, b, error="boom", direct=False, paused_from="PRODUCING"):
+    """The batch enters ERROR: through `_fail` (default) or a direct Store write."""
+    if direct:
+        w.store.update(b["id"], state="ERROR", paused_from=paused_from, error=error)
+    else:
+        w.sup._fail(w.store.batch(b["id"]), "ERROR", error)
+    return w.store.batch(b["id"])
+
+
+def incidents(w):
+    return [d for d in w.store.defects() if d["source"] == "incident"]
+
+
 class AutonomousIncident(unittest.TestCase):
-    """Issue #3326: an approved Maintainer integration HEAD that a boundary check rejects is received as an incident."""
+    """Issues #3326 / #3349: every C/D/Stage 2/Stage 3 production ERROR is received by the Maintainer sweep as an incident."""
 
     def setUp(self):
         self.w = world()
+        self.w.intake = True
+        self.w.sup.maint.__dict__.pop("_intake_errors", None)   # the autonomous intake is on in these tests
         self.w.git.integrate_updates_head = True   # the integration HEAD is MERGE, a descendant of HEAD1
 
     def tearDown(self):
         self.w.tmp.cleanup()
 
     def released(self, *models):
+        """Batches (converted to Method D, no AI running) that already own a RELEASED same-batch Maintainer receipt."""
         w = self.w
         for m in models:
             produce_and_report(w, m, "a")
         run_maintainer_to_merge(w, 101)
         w.tick(3)
+        out = []
         for m in models:
             b = w.row(m, "a")
             self.assertEqual(b["state"], "PRODUCING")
+            w.store.set_line(m, "a", run=0)
+            w.store.finish_runs(b["id"], None)
+            with w.store._conn() as c:
+                c.execute("UPDATE batches SET method='d', pid=NULL, run_kind='d_chunk_new' WHERE id=?", (b["id"],))
             w.store.set(f"d_base_head_{b['id']}", HEAD1)
-        return [w.row(m, "a") for m in models]
+            out.append(w.store.batch(b["id"]))
+        return out
 
     def rejected(self, b):
         return self.w.sup._d_head_problem(b, Path(b["worktree"]))
 
-    def test_approved_integration_reaches_fail_typed_and_is_received_once(self):
+    def test_approved_integration_error_keeps_its_evidence_and_is_received_by_the_sweep_once(self):
         w = self.w
         b, = self.released("deepseek")
         problem = self.rejected(b)
         self.assertIsInstance(problem, defects.BoundaryProblem)
         w.sup._fail(b, "ERROR", problem + " worktree를 보존합니다.")   # the exact concatenation _d_finalize performs
-        row = w.row()
+        row = w.store.batch(b["id"])
+        self.assertEqual((row["state"], row["error_seq"], incidents(w)), ("ERROR", 1, []))   # nothing is received inside _fail
+        ev = json.loads(w.store.get(f"error_evidence_{b['id']}_1"))
+        self.assertEqual((ev["kind"], ev["site"], ev["head"]), ("boundary", "d-head", MERGE))
+        w.tick(2)
+        row = w.store.batch(b["id"])
         self.assertEqual((row["state"], row["pause_reason"], row["paused_from"]), ("PAUSED", "shared_defect", "PRODUCING"))
         self.assertIn("배치 기준 HEAD", row["error"])                  # the original message survives
-        self.assertTrue(any(e["level"] == "error" and "배치 기준 HEAD" in e["msg"] for e in w.store.batch_events(b["id"])))
-        incidents = [d for d in w.store.defects() if d["source"] == "incident"]
-        self.assertEqual(len(incidents), 1)
-        w.tick(2)
+        self.assertEqual(len(incidents(w)), 1)
         self.assertEqual(w.gh.created, [101, 102])
         self.assertIn("장애 접수", w.gh.issues[102]["title"])
         self.assertNotIn("Traceback", w.gh.issues[102]["body"])
-        # a repeated tick, a restart and a recurrence at the same batch and site never make a second incident
-        w.sup._fail(w.row(), "ERROR", problem)
+        w.sup = w.make_sup()                                          # a restart over the same DB
+        w.sup.maint.__dict__.pop("_intake_errors", None)
         w.tick(3)
-        self.assertEqual(w.row()["state"], "ERROR")
-        self.assertEqual(len([d for d in w.store.defects() if d["source"] == "incident"]), 1)
-        self.assertEqual(w.gh.created, [101, 102])
+        self.assertEqual((len(incidents(w)), w.gh.created), (1, [101, 102]))
 
-    def test_anything_else_stays_a_plain_error(self):
+    def test_any_error_without_structured_evidence_is_received_with_that_item_missing(self):
         w = self.w
-        b, = self.released("deepseek")
-        for label, arrange in (
-                ("arbitrary HEAD", lambda: setattr(w.git, "local_head", "d" * 40)),
-                ("remote moved", lambda: w.git.remote.__setitem__(b["branch"], "e" * 40)),
-                ("dirty worktree", lambda: setattr(w.git, "dirty_text", " M x.txt\n"))):
-            with self.subTest(label):
-                saved = (w.git.local_head, dict(w.git.remote), w.git.dirty_text)
-                arrange()
-                problem = self.rejected(b)
-                self.assertNotIsInstance(problem, defects.BoundaryProblem)
-                w.sup._fail(b, "ERROR", problem)
-                self.assertEqual(w.row()["state"], "ERROR")
-                w.git.local_head, w.git.remote, w.git.dirty_text = saved
-        # a receipt of ANOTHER batch is no proof for this one
-        d = w.store.defects()[0]
-        w.store.update_defect(d["id"], integrated_sha="f" * 40)
-        self.assertNotIsInstance(self.rejected(b), defects.BoundaryProblem)
-        self.assertEqual([x for x in w.store.defects() if x["source"] == "incident"], [])
+        b = make_batch(w)
+        break_batch(w, b, "plain failure text")
+        w.tick(2)
+        d, = incidents(w)
+        env = defects.parse_incident(d["report"].partition("\n")[0])
+        self.assertEqual(env["observed"]["error_evidence"]["status"], "missing")
+        self.assertEqual(env["error"], "plain failure text")
+        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
 
-    def test_a_failing_report_keeps_the_error_and_its_evidence(self):
+    def test_a_failing_report_keeps_the_error(self):
         w = self.w
-        b, = self.released("deepseek")
-        problem = self.rejected(b)
+        b = make_batch(w)
+        break_batch(w, b)
 
         def boom(*a, **k):
             raise RuntimeError("db locked")
         w.sup.maint.report = boom
-        w.sup._fail(b, "ERROR", problem)
-        row = w.row()
-        self.assertEqual((row["state"], row["error"]), ("ERROR", str(problem)))
-        self.assertTrue(any("장애 접수 실패" in e["msg"] for e in w.store.batch_events(b["id"])))
-        self.assertEqual([x for x in w.store.defects() if x["source"] == "incident"], [])
+        w.tick(2)
+        row = w.store.batch(b["id"])
+        self.assertEqual((row["state"], row["error"]), ("ERROR", "boom"))
+        self.assertTrue(any("장애 접수 예외" in e["msg"] for e in w.store.batch_events(b["id"])))
+        self.assertEqual(incidents(w), [])
 
-    def test_two_batches_at_the_same_site_are_two_issues_never_merged_by_class(self):
+    def test_two_batches_are_two_issues_never_merged_by_class(self):
         w = self.w
         batches = self.released("deepseek", "sonnet")
         for b in batches:
             w.sup._fail(b, "ERROR", self.rejected(b))
         w.tick(3)
         self.assertEqual(w.gh.created, [101, 102, 103])
-        classes = {d["defect_class"] for d in w.store.defects() if d["source"] == "incident"}
-        self.assertEqual(len(classes), 2)
+        self.assertEqual(len({d["defect_class"] for d in incidents(w)}), 2)
 
-    def diagnose(self, valid=True, commit=False):
+    def diagnose(self, valid=True, commit=False, outcome="no_code_fix", **extra):
         w = self.w
         b, = self.released("deepseek")
         w.sup._fail(b, "ERROR", self.rejected(b))
@@ -827,10 +854,12 @@ class AutonomousIncident(unittest.TestCase):
         self.assertEqual((m["state"], m["batch"]), ("PRODUCING", "102"))
         wt = Path(m["worktree"])
         evidence = next((wt / ".warroom-scratch/incident").glob("*.json"))
-        self.assertIn("events", json.loads(evidence.read_text()))
+        data = json.loads(evidence.read_text())
+        self.assertIn("events", data)
+        self.assertEqual(data["envelope"]["error_seq"], 1)
         if valid:
             (wt / ".warroom-scratch/incident-diagnosis.json").write_text(
-                json.dumps({"version": 1, "issue": 102, "outcome": "no_code_fix"}))
+                json.dumps({"version": 1, "issue": 102, "outcome": outcome, **extra}))
         w.gh.comment_issue(102, "진단\n\n" + defects.marker(defects.EVENT_MARK, "incident-diagnosis-102"))
         if commit:
             w.git.local_head = "9" * 40
@@ -842,12 +871,20 @@ class AutonomousIncident(unittest.TestCase):
         w, m = self.diagnose()
         self.assertEqual(m["state"], "COMPLETE")
         self.assertEqual(w.store.maintenance(102)["state"], "HELD")
-        self.assertEqual([d["state"] for d in w.store.defects() if d["source"] == "incident"], ["HELD"])
-        row = w.row()
+        self.assertEqual([d["state"] for d in incidents(w)], ["HELD"])
+        row = w.store.batch(incidents(w)[0]["batch_id"])
         self.assertEqual((row["state"], row["pause_reason"]), ("PAUSED", "shared_defect"))
         self.assertFalse(w.store.maintenance_batch_open())
         w.tick(5)
-        self.assertEqual(w.row()["state"], "PAUSED")   # never auto-resumed
+        self.assertEqual(w.store.batch(row["id"])["state"], "PAUSED")   # never auto-resumed
+
+    def test_an_unverified_recurrence_diagnosis_is_held_like_an_undetermined_one(self):
+        w, m = self.diagnose(outcome="recurrence", recurrence_of=999, evidence="same cause")
+        self.assertEqual((m["state"], w.store.maintenance(102)["state"]), ("COMPLETE", "HELD"))
+        d, = incidents(w)
+        self.assertEqual(d["state"], "HELD")
+        self.assertIn("undetermined", d["hold_reason"])
+        self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED")
 
     def test_diagnosis_missing_or_with_a_commit_keeps_the_existing_error(self):
         for kwargs in ({"valid": False}, {"commit": True}):
@@ -914,6 +951,7 @@ class AutonomousIncidentReview(unittest.TestCase):
         files = list((Path(m["worktree"]) / ".warroom-scratch/incident").glob("*.json"))
         data = json.loads(files[0].read_text())
         self.assertIn(f"d_base_head_{b['id']}", data["kv"])
+        self.assertIn(f"error_evidence_{b['id']}_1", data["kv"])
         self.assertNotIn(f"unrelated_secret_{b['id']}", data["kv"])
         self.assertEqual(list(files[0].parent.glob("*.tmp")), [])
 
@@ -922,7 +960,6 @@ class AutonomousIncidentReview(unittest.TestCase):
         b, = t.released("deepseek")
         launches = len(w.adapter.launches)
         w.sup._fail(b, "ERROR", t.rejected(b))
-        orig, os_ = w.sup.maint.write_incident_evidence, None
         w.sup.maint.write_incident_evidence = lambda mb: "증거 작성 실패(테스트)"
         w.tick(4)
         m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
@@ -950,7 +987,7 @@ class AutonomousIncidentReview(unittest.TestCase):
         w.tick(2)                                                       # re-entry finishes the same diagnosis
         self.assertEqual(w.store.batch(m["id"])["state"], "COMPLETE")
         self.assertEqual(w.store.maintenance(102)["state"], "HELD")
-        self.assertEqual(w.row()["state"], "PAUSED")
+        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
 
     def test_outcomes_are_reported_once_per_phase(self):
         t, w = self.t, self.w
@@ -958,6 +995,7 @@ class AutonomousIncidentReview(unittest.TestCase):
         d = w.store.defects()[0]
         with w.store._conn() as c:
             c.execute("UPDATE defects SET source='incident' WHERE id=?", (d["id"],))   # a RELEASED incident of this batch
+            c.execute("UPDATE batches SET method='a' WHERE id=?", (b["id"],))          # an A batch is never re-received
         w.store.update(b["id"], state="WAITING_REVIEW", pr_number=70)
         w.tick(3)
         w.store.update(b["id"], state="COMPLETE")
@@ -968,6 +1006,527 @@ class AutonomousIncidentReview(unittest.TestCase):
         bodies = [c["body"] for c in w.gh.issue_comments_.get(101, [])]
         for phase in ("review", "complete", "stopped-error"):
             self.assertEqual(sum(f"incident-outcome-{d['id']}-{phase}" in x for x in bodies), 1, phase)
+
+
+class IncidentNumberAndIntake(unittest.TestCase):
+    """#3349 §1–§4: the incident number counts transitions only; one sweep receives every supported production ERROR;
+    operator controls win inside the pausing transaction; intake is idempotent and fails safe."""
+
+    def setUp(self):
+        self.t = AutonomousIncident()
+        self.t.setUp()
+        self.w = self.t.w
+
+    def tearDown(self):
+        self.t.tearDown()
+
+    def test_the_number_counts_transitions_and_keeps_the_first_values(self):
+        w = self.w
+        b = make_batch(w)
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="first text")
+        one = w.store.batch(b["id"])
+        self.assertEqual((one["error_seq"], one["error_first"]), (1, "first text"))
+        w.store.update(b["id"], state="ERROR", error="second text")          # same ERROR, new wording
+        two = w.store.batch(b["id"])
+        self.assertEqual((two["error_seq"], two["error_at"], two["error_first"], two["error"]),
+                         (1, one["error_at"], "first text", "second text"))
+        w.store.update(b["id"], state="PRODUCING", error=None)               # operator Retry
+        w.store.update(b["id"], state="ERROR", error="again")
+        three = w.store.batch(b["id"])
+        self.assertEqual((three["error_seq"], three["error_first"]), (2, "again"))
+        w.store.update(b["id"], pid=None, session_id="x")                     # a non-state write never counts
+        self.assertEqual(w.store.batch(b["id"])["error_seq"], 2)
+
+    def test_error_evidence_of_an_event_keeps_its_first_record(self):
+        w = self.w
+        b, = self.t.released("deepseek")
+        problem = self.t.rejected(b)
+        w.sup._fail(b, "ERROR", problem)
+        first = w.store.get(f"error_evidence_{b['id']}_1")
+        w.git.local_head = "d" * 40                       # a later write of the SAME ERROR with another receipt
+        w.sup._fail(w.store.batch(b["id"]), "ERROR", defects.BoundaryProblem("later", {**problem.receipt, "head": "d" * 40}))
+        self.assertEqual((w.store.get(f"error_evidence_{b['id']}_1"), w.store.batch(b["id"])["error_seq"]), (first, 1))
+
+    def test_batches_without_a_number_are_not_received_and_are_listed_once(self):
+        w = self.w
+        b = make_batch(w)
+        with w.store._conn() as c:
+            c.execute("UPDATE batches SET state='ERROR', paused_from='PRODUCING', error='old' WHERE id=?", (b["id"],))
+        w.tick(3)
+        self.assertEqual((incidents(w), w.store.batch(b["id"])["state"]), ([], "ERROR"))
+        self.assertEqual(sum("사건 번호가 없는" in e["msg"] for e in w.store.recent_events(500)), 1)
+
+    def test_one_sweep_receives_c_d_stage2_stage3_through_any_error_path(self):
+        w = self.w
+        rows = [make_batch(w, "c", "deepseek", "001", "01", "c_parallel"),
+                make_batch(w, "d", "deepseek", "002", "01", "d_chunk_new"),
+                make_batch(w, "s2", "deepseek", "003", "01-01", "s2_parallel"),
+                make_batch(w, "s3", "deepseek", "004", "00", "s3_finalize")]
+        for i, b in enumerate(rows):
+            break_batch(w, b, direct=bool(i % 2))          # `_fail` for two, a direct Store write for the others
+        w.tick(2)
+        self.assertEqual(sorted(d["event_key"] for d in incidents(w)), sorted(f"incident:{b['id']}:e1" for b in rows))
+        self.assertTrue(all(w.store.batch(b["id"])["state"] == "PAUSED" for b in rows))
+
+    def test_a_b_maintainer_stop_and_clearing_are_never_received(self):
+        w = self.w
+        a = make_batch(w, "a", "deepseek", "001", "01", "produce")
+        break_batch(w, a)
+        d = make_batch(w, "d", "deepseek", "002", "01")
+        w.store.update(d["id"], state="PAUSED", paused_from="PRODUCING", error="Stop")              # not an ERROR
+        c = make_batch(w, "c", "deepseek", "003", "01", "c_chunk_new")
+        w.store.update(c["id"], state="ERROR", paused_from="CLEARING", error="clear failed")        # Clear in progress
+        w.tick(3)
+        self.assertEqual(incidents(w), [])
+        self.assertEqual(w.store.batch(a["id"])["state"], "ERROR")
+
+    def test_a_prepare_error_without_a_worktree_is_received_with_missing_observations(self):
+        w = self.w
+        b = make_batch(w, "d", state="PREPARE", run_kind=None, worktree=False)
+        break_batch(w, b, "worktree 준비 실패: boom", paused_from="PREPARE")
+        w.tick(2)
+        d, = incidents(w)
+        env = defects.parse_incident(d["report"].partition("\n")[0])
+        self.assertEqual([env["observed"][k]["status"] for k in ("git", "checkpoint", "runs", "log_file")], ["missing"] * 4)
+        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
+
+    def test_a_live_process_or_task_run_defers_the_intake_and_a_conflicting_owner_blocks_it(self):
+        w = self.w
+        b = break_batch(w, make_batch(w))
+        w.store.update(b["id"], pid=4242)
+        w.sup.maint._intake_errors()
+        self.assertEqual(incidents(w), [])
+        w.store.update(b["id"], pid=None)
+        other = make_batch(w, "d", "sonnet", "009", "01")
+        with w.store._conn() as c:
+            c.execute("UPDATE batches SET branch=? WHERE id=?", (b["branch"], other["id"]))
+        w.sup.maint._intake_errors()
+        self.assertEqual((incidents(w), w.store.batch(b["id"])["state"]), ([], "ERROR"))   # contradictory identity
+        w.store.update(other["id"], state="COMPLETE")
+        w.sup.maint._intake_errors()
+        self.assertEqual(len(incidents(w)), 1)
+
+    def test_operator_controls_win_inside_the_pausing_transaction(self):
+        w = self.w
+        cases = {
+            "clear request": lambda b: w.store.request_clear("deepseek", "d", b["id"]),
+            "force stop": lambda b: w.store.set_line("deepseek", "d", force_stop=1),
+            "retry": lambda b: w.store.set_line("deepseek", "d", retry_batch=b["id"]),
+            "stop pin": lambda b: w.store.set("stop_pin_deepseek_d", str(b["id"])),
+            "defect hold": lambda b: w.store.set(f"defect_hold_{b['id']}", "1"),
+            "live pid": lambda b: w.store.update(b["id"], pid=77),
+            "task run": lambda b: w.store.add_run(b["id"], "d_chunk_new", None, 5, "/l", "/e", task="001"),
+        }
+        for n, (name, arrange) in enumerate(cases.items()):
+            with self.subTest(name):
+                b = break_batch(w, make_batch(w, "d", "deepseek", f"{n + 1:03d}", "01"))
+                expect = {k: b[k] for k in ("error_seq", "paused_from", "run_kind", "branch", "worktree")}
+                kw = dict(batch_id=b["id"], event_key=f"k{n}", source="incident", defect_class="incident-d-1-e1", state="REPORTED",
+                          report="{}", pause_reason="shared_defect", error=None)
+                arrange(b)
+                self.assertIsNone(w.store.report_defect(expect=expect, **kw))
+                self.assertEqual((w.store.batch(b["id"])["state"], incidents(w)), ("ERROR", []))
+                w.store.set_line("deepseek", "d", force_stop=0, retry_batch=None)       # the next case starts clean
+                w.store.delete("stop_pin_deepseek_d")
+                with w.store._conn() as c:
+                    c.execute("DELETE FROM clear_requests")
+                w.store.update(b["id"], state="COMPLETE", pid=None)
+        b = break_batch(w, make_batch(w, "d", "deepseek", "099", "01"))
+        kw = dict(batch_id=b["id"], event_key="kx", source="incident", defect_class="incident-d-1-e1", state="REPORTED",
+                  report="{}", pause_reason="shared_defect", error=None)
+        expect = {k: b[k] for k in ("error_seq", "paused_from", "run_kind", "branch", "worktree")}
+        self.assertIsNone(w.store.report_defect(expect={**expect, "error_seq": 9}, **kw))   # another event
+        self.assertIsNotNone(w.store.report_defect(expect=expect, **kw))                     # the exact one passes
+
+    def test_defect_hold_and_stop_pin_each_block_and_an_emptied_hold_does_not(self):
+        w = self.w
+        b = break_batch(w, make_batch(w))
+        w.store.set(f"defect_hold_{b['id']}", "1")
+        w.sup.maint._intake_errors()
+        self.assertEqual(incidents(w), [])
+        w.store.set(f"defect_hold_{b['id']}", "")          # an emptied hold is no hold
+        w.store.set("stop_pin_deepseek_d", "1")
+        w.sup.maint._intake_errors()
+        self.assertEqual(incidents(w), [])
+        w.store.delete("stop_pin_deepseek_d")
+        w.sup.maint._intake_errors()
+        self.assertEqual(len(incidents(w)), 1)
+
+    def test_operator_clear_overrides_the_incident_and_the_maintainer_is_not_started(self):
+        w = self.w
+        b = break_batch(w, make_batch(w))
+        w.sup.maint._intake_errors()
+        d, = incidents(w)
+        w.store.request_clear("deepseek", "d", b["id"])
+        w.store.pin_clear("deepseek", "d")
+        self.assertEqual(w.store.defect(d["id"])["state"], "OVERRIDDEN")
+        w.store.update_defect(d["id"], issue_number=101, state="OVERRIDDEN")
+        w.store.ensure_maintenance(101)
+        w.tick(3)
+        self.assertIsNone(maintainer_row(w))
+        self.assertEqual(w.store.maintenance(101)["state"], "HELD")
+
+    def test_repeated_ticks_other_events_and_other_batches(self):
+        w = self.w
+        b = break_batch(w, make_batch(w))
+        w.tick(4)
+        self.assertEqual((len(incidents(w)), w.gh.created), (1, [101]))
+        # operator Retry resumes it; the next ERROR is a NEW event and a NEW Issue; another batch is separate too
+        w.store.update(b["id"], state="PRODUCING", pause_reason="", defect_id=None, error=None)
+        w.store.update_defect(incidents(w)[0]["id"], state="OVERRIDDEN")
+        break_batch(w, w.store.batch(b["id"]), "second event")
+        other = break_batch(w, make_batch(w, "c", "deepseek", "005", "01", "c_chunk_new"))
+        w.tick(4)
+        self.assertEqual(sorted(d["event_key"] for d in incidents(w)),
+                         sorted([f"incident:{b['id']}:e1", f"incident:{b['id']}:e2", f"incident:{other['id']}:e1"]))
+        self.assertEqual(len(w.gh.created), 3)
+
+    def test_credentials_in_an_error_never_reach_github_but_stay_in_the_local_record(self):
+        w = self.w
+        secrets = ["ghp_" + "a" * 30, "https://user:hunter2pass@example.com/x.git", "Bearer abcdef0123456789abcd"]
+        raw = "git 실패: " + " ".join(secrets) + " token=zzzzzzzzzzzzzzzz1"
+        pad = "x" * (590 - len(raw) % 590)
+        raw = raw + " " + pad + " Bearer abcdefghijklmnop0123 https://u:pw1234567@h.example/r"   # secrets straddle the 600-char cut
+        b = break_batch(w, make_batch(w), raw)
+        w.tick(2)
+        d, = incidents(w)
+        w.store.update_defect(d["id"], state="HELD", hold_reason="검증 실패 " + raw)
+        w.store.update(b["id"], error=raw)
+        w.sup.maint._report_outcomes()
+        published = [w.gh.issues[101]["body"]] + [c["body"] for c in w.gh.issue_comments_.get(101, [])]
+        self.assertTrue(any("진단/보류 결과" in x for x in published))
+        for text in published:
+            for secret in secrets + ["hunter2pass", "zzzzzzzzzzzzzzzz1", "abcdefghijklmnop", "abcdefghijk", "pw1234567", "u:pw", "Bearer ab", "u:p"]:
+                self.assertNotIn(secret, text)
+        self.assertIn("[REDACTED]", w.gh.issues[101]["body"])
+        self.assertEqual(w.store.batch(b["id"])["error_first"], raw)       # the original stays local
+        self.assertIn(secrets[1], d["report"] + (w.store.batch(b["id"])["error"] or ""))
+
+    def test_envelope_failure_keeps_the_error(self):
+        w = self.w
+        b = break_batch(w, make_batch(w))
+        w.sup.maint._observe = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no envelope"))
+        w.tick(2)
+        self.assertEqual((w.store.batch(b["id"])["state"], incidents(w)), ("ERROR", []))
+        del w.sup.maint._observe
+        w.tick(2)
+        self.assertEqual(len(incidents(w)), 1)
+
+    def test_an_unobservable_item_is_unknown_not_a_blocked_intake(self):
+        w = self.w
+        b = break_batch(w, make_batch(w))
+        real = w.git.remote_head
+        w.git.remote_head = lambda branch: (_ for _ in ()).throw(RuntimeError("git down"))
+        w.tick(2)
+        w.git.remote_head = real
+        d, = incidents(w)
+        env = defects.parse_incident(d["report"].partition("\n")[0])
+        self.assertEqual(env["observed"]["git"]["status"], "unknown")
+
+
+class IncidentRecoveryProof(unittest.TestCase):
+    """#3349 §4–§6: recurrence only when proven; Runtime-only vs Worktree-integration proofs; HOLD when unprovable."""
+
+    PROMPT = "tools/warroom/prompts/d_chunk_resume.md"
+    PY = "tools/warroom/warroom/supervisor.py"
+
+    def setUp(self):
+        self.t = AutonomousIncident()
+        self.t.setUp()
+        self.w = self.t.w
+        self.w.cfg["shared_defect_verify"] = [["true"]]
+        self.w.sup.prompt_checkout_clean = lambda paths: True      # the main checkout carries the prompts unmodified
+        self.w.sup.code_sha = "1" * 40
+        self.w.git.ancestor_pairs |= {(MERGE, HEAD1), (MERGE, "d" * 40), (MERGE, self.w.sup.code_sha)}   # the checkouts contain the fix
+
+    def tearDown(self):
+        self.t.tearDown()
+
+    def merged(self, files, method="d", run_kind="d_chunk_resume", paused_from="PRODUCING", error_fields=None, **fields):
+        """An incident for a fresh batch, its Maintainer fix merged (FIX_MERGED), nothing applied yet."""
+        w = self.w
+        b = make_batch(w, method, run_kind=run_kind, **fields)
+        w.store.update(b["id"], state="ERROR", paused_from=paused_from, error="boom", **(error_fields or {}))
+        w.git.changed[MERGE] = files
+        w.tick(2)                                  # the sweep receives it, the Issue is published, the Maintainer starts
+        d, = incidents(w)
+        return self.merge_fix(b, d)
+
+    def merge_fix(self, b, d):
+        """The Maintainer's PR merges and is cleaned up; the release is held back so a test can arrange its situation."""
+        w = self.w
+        w.sup.maint._release = lambda: None
+        run_maintainer_to_merge(w, d["issue_number"])
+        d = w.store.defect(d["id"])
+        self.assertEqual(d["state"], "FIX_MERGED")
+        return w.store.batch(b["id"]), d
+
+    def settle(self, d, ticks=1):
+        self.w.sup.maint.__dict__.pop("_release", None)
+        self.w.tick(ticks)
+        return self.w.store.defect(d["id"])
+
+    # ---- Runtime-only ---------------------------------------------------------------------------------------------
+    def test_prompt_only_fix_resumes_without_restart_integration_or_line_flag_change(self):
+        w = self.w
+        b, d = self.merged([self.PROMPT], session_id="ses_1")
+        before = dict(w.store.line("deepseek", "d"))
+        d = self.settle(d)
+        row = w.store.batch(b["id"])
+        self.assertEqual((d["state"], d["fix_kind"], d["integrated_sha"], d["applied_code_sha"]), ("RELEASED", "runtime", None, HEAD1))
+        self.assertEqual((row["state"], row["pause_reason"]), ("PRODUCING", ""))
+        self.assertEqual(w.git.integrated, [x for x in w.git.integrated if x[0] != b["worktree"]])   # production worktree untouched
+        after = dict(w.store.line("deepseek", "d"))
+        self.assertEqual((after["run"], after["drain"], after["force_stop"]), (before["run"], before["drain"], before["force_stop"]))
+        self.assertIsNone(w.store.get(f"restart_needed_{d['id']}"))
+        bodies = [c["body"] for c in w.gh.issue_comments_.get(d["issue_number"], [])]
+        self.assertEqual(sum(f"incident-outcome-{d['id']}-applied" in x for x in bodies), 1)
+
+    def test_python_fix_waits_for_the_loaded_code_then_resumes(self):
+        w = self.w
+        w.git.ancestor_pairs.discard((MERGE, w.sup.code_sha))
+        b, d = self.merged([self.PY])
+        d = self.settle(d)
+        d = self.settle(d)
+        self.assertEqual((d["state"], w.store.batch(b["id"])["state"]), ("FIX_MERGED", "PAUSED"))
+        self.assertEqual(sum("재시작 필요" in e["msg"] for e in w.store.batch_events(b["id"])), 1)
+        w.git.ancestor_pairs.add((MERGE, w.sup.code_sha))
+        d = self.settle(d)
+        self.assertEqual((d["state"], d["fix_kind"], d["integrated_sha"]), ("RELEASED", "runtime", None))
+
+    def test_a_prompt_the_resumed_launch_does_not_render_holds(self):
+        w = self.w
+        b, d = self.merged(["tools/warroom/prompts/d_chunk.md"], session_id="ses_1")   # a resume sends only d_chunk_resume
+        d = self.settle(d)
+        self.assertEqual(d["state"], "HELD")
+        self.assertIn("재개 증명 불가", d["hold_reason"])
+        self.assertIn("재개 실행에 전달되지 않음", d["hold_reason"])
+        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
+
+    def test_an_unmodelled_run_kind_cannot_prove_prompt_delivery(self):
+        b, d = self.merged([self.PROMPT], run_kind="d_finalize", session_id="ses_1")
+        d = self.settle(d)
+        self.assertEqual(d["state"], "HELD")
+        self.assertIn("prompt 집합을 정할 수 없어", d["hold_reason"])
+
+    def test_the_prompt_must_be_in_the_main_checkout_and_clean(self):
+        w = self.w
+        w.sup.prompt_checkout_clean = lambda paths: False
+        b, d = self.merged([self.PROMPT], session_id="ses_1")
+        d = self.settle(d)
+        self.assertEqual((d["state"], w.store.batch(b["id"])["state"]), ("FIX_MERGED", "PAUSED"))   # waits, no restart needed
+        w.sup.prompt_checkout_clean = lambda paths: True
+        self.assertEqual(self.settle(d)["state"], "RELEASED")
+
+    def test_changed_or_unobserved_state_holds(self):
+        for label, arrange in (("head moved", lambda w, b: setattr(w.git, "local_head", "d" * 40)),
+                               ("remote moved", lambda w, b: w.git.remote.__setitem__(b["branch"], "e" * 40)),
+                               ("checkpoint changed", lambda w, b: (Path(b["worktree"]) / ".warroom-scratch").mkdir(parents=True, exist_ok=True)
+                                or (Path(b["worktree"]) / ".warroom-scratch/c.json").write_text("{}")),
+                               ("unknown observation", lambda w, b: self.make_unknown(b))):
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                w = self.w
+                b, d = self.merged([self.PROMPT], session_id="ses_1")
+                arrange(w, b)
+                d = self.settle(d)
+                self.assertEqual(d["state"], "HELD", label)
+                self.assertIn("재개 증명 불가", d["hold_reason"])
+                self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
+
+    def make_unknown(self, b):
+        w = self.w
+        d, = incidents(w)
+        text, _, facts = d["report"].partition("\n")
+        env = json.loads(text)
+        env["observed"]["git"] = {"status": "unknown", "value": "git down"}
+        w.store.update_defect(d["id"], report=defects.canonical(env) + "\n" + facts)
+
+    def test_waiting_review_resumes_on_an_open_owned_pr_and_holds_on_an_unmerged_close(self):
+        for state, merged, want in (("open", False, "RELEASED"), ("closed", False, "HELD")):
+            with self.subTest(state=state, merged=merged):
+                self.tearDown()
+                self.setUp()
+                w = self.w
+                branch = "d-deepseek-001-01"
+                w.pr_info(70, HEAD1, state=state, merged=merged, head_ref=branch)
+                b, d = self.merged([self.PY], run_kind=None, paused_from="WAITING_REVIEW", pr_number=70, head_sha=HEAD1)
+                d = self.settle(d)
+                self.assertEqual(d["state"], want)
+                self.assertEqual(w.store.batch(b["id"])["state"], "WAITING_REVIEW" if want == "RELEASED" else "PAUSED")
+                if want == "HELD":
+                    self.assertIn("머지 없이 닫혀", d["hold_reason"])
+
+    def test_a_prepare_error_without_a_worktree_resumes_on_a_runtime_fix_only(self):
+        w = self.w
+        b, d = self.merged([self.PY], run_kind=None, paused_from="PREPARE", state="PREPARE", worktree=False)
+        d = self.settle(d)
+        self.assertEqual((d["state"], d["fix_kind"], w.store.batch(b["id"])["state"]), ("RELEASED", "runtime", "PREPARE"))
+
+    # ---- Worktree integration ---------------------------------------------------------------------------------------
+    def d_baseline(self, b, head=HEAD1):
+        wt = Path(b["worktree"])
+        self.w.git.integrated.append((str(wt), head))
+        self.w.store.set(f"d_base_head_{b['id']}", head)
+        self.w.store.set(dchunk.run_start_key(b["id"]), json.dumps(
+            {"branch": b["branch"], "worktree": str(wt), "head": head, "remote_head": None, "chunk_no": 1}, sort_keys=True))
+
+    def worktree_fix(self, run_kind, parallel=False):
+        w = self.w
+        b = make_batch(w, "d", run_kind=run_kind, session_id="ses_1")
+        if parallel:
+            w.store.set(dparallel.mode_key(b["id"]), dparallel.PARALLEL)
+        self.d_baseline(b)
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
+        w.git.changed[MERGE] = ["scripts/relation/d-chunk-cli.mjs"]
+        w.tick(2)
+        d, = incidents(w)
+        return self.merge_fix(b, d)
+
+    def test_serial_d_integration_moves_only_the_run_baseline_and_the_resume_guard_passes(self):
+        w = self.w
+        b, d = self.worktree_fix("d_chunk_resume")
+        d = self.settle(d)
+        row = w.store.batch(b["id"])
+        self.assertEqual((d["state"], d["fix_kind"], d["integrated_sha"]), ("RELEASED", "worktree", MERGE))
+        self.assertEqual(row["state"], "PRODUCING")
+        self.assertEqual(w.store.get(f"d_base_head_{b['id']}"), HEAD1)                         # the first HEAD never moves
+        self.assertEqual(json.loads(w.store.get(dchunk.run_start_key(b["id"])))["head"], MERGE)
+        self.assertIsNone(w.sup._d_head_problem(row, Path(row["worktree"])))                   # the real guard, now by receipt
+
+    def test_parallel_d_integration_keeps_the_first_head_and_passes_both_guards(self):
+        w = self.w
+        b, d = self.worktree_fix("d_parallel", parallel=True)
+        d = self.settle(d)
+        row = w.store.batch(b["id"])
+        self.assertEqual((d["state"], d["integrated_sha"]), ("RELEASED", MERGE))
+        self.assertEqual(w.store.get(f"d_base_head_{b['id']}"), HEAD1)
+        self.assertIsNone(w.sup._d_head_problem(row, Path(row["worktree"])))
+
+    def test_serial_c_keeps_the_checkpoint_head_and_resumes_on_the_run_baseline(self):
+        w = self.w
+        b = make_batch(w, "c", run_kind="c_chunk_new", session_id="ses_1")
+        wt = Path(b["worktree"])
+        cp = wt / literary.names(b).checkpoint
+        cp.parent.mkdir(parents=True, exist_ok=True)
+        cp.write_text(json.dumps({"batch": {"git_head": HEAD1}}))
+        w.git.integrated.append((str(wt), HEAD1))
+        w.store.set(literary.run_start_key(b["id"]), json.dumps(
+            {"branch": b["branch"], "worktree": str(wt), "head": HEAD1, "remote_head": None, "chunk_no": 1}, sort_keys=True))
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
+        w.git.changed[MERGE] = ["scripts/relation/c-chunk-cli.mjs"]
+        w.tick(2)
+        d, = incidents(w)
+        b, d = self.merge_fix(b, d)
+        d = self.settle(d)
+        row = w.store.batch(b["id"])
+        self.assertEqual((d["state"], d["integrated_sha"], row["state"]), ("RELEASED", MERGE, "PRODUCING"))
+        self.assertEqual(literary.checkpoint_head(wt, row), HEAD1)                                   # never rewritten
+        self.assertEqual(json.loads(w.store.get(literary.run_start_key(b["id"])))["head"], MERGE)
+        self.assertIsNone(w.sup._c_head_problem(row, wt))                                            # the real guard, by receipt
+
+    def test_stage2_links_use_their_own_baseline_key(self):
+        w = self.w
+        b = make_batch(w, "s2", run_kind="s2_links_new", shard="001", batch="01-01", session_id="ses_1")
+        wt = Path(b["worktree"])
+        cp = wt / ".warroom-scratch" / "relation-admission-001-01-01.json"
+        cp.parent.mkdir(parents=True, exist_ok=True)
+        cp.write_text("{}")
+        base = {"branch": b["branch"], "worktree": str(wt), "head": HEAD1, "remote_head": None,
+                "checkpoint_sha256": hashlib.sha256(b"{}").hexdigest(), "digest": "a" * 64}
+        w.git.integrated.append((str(wt), HEAD1))
+        w.store.set(stage2.links_start_key(b["id"]), json.dumps(base, sort_keys=True))
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
+        w.git.changed[MERGE] = ["scripts/relation/admission-cli.mjs"]
+        w.tick(2)
+        d, = incidents(w)
+        b, d = self.merge_fix(b, d)
+        d = self.settle(d)
+        row = w.store.batch(b["id"])
+        self.assertEqual((d["state"], d["integrated_sha"], row["state"]), ("RELEASED", MERGE, "PRODUCING"))
+        self.assertEqual(json.loads(w.store.get(stage2.links_start_key(b["id"])))["head"], MERGE)
+        self.assertIsNone(w.store.get(stage2.run_start_key(b["id"])))                                # no other step's key invented
+        self.assertIsNone(w.sup._stage2_links_boundary_problem(row))
+
+    def test_a_failed_pre_run_guard_holds_and_leaves_the_first_head_and_chunks_alone(self):
+        w = self.w
+        b, d = self.worktree_fix("d_chunk_resume")
+        real = w.sup._stage2_chunk_boundary_problem
+        w.sup._stage2_chunk_boundary_problem = lambda *a, **k: "청크 경계 거부(테스트)"
+        d = self.settle(d)
+        self.assertEqual((d["state"], w.store.batch(b["id"])["state"]), ("HELD", "PAUSED"))
+        self.assertIn("재개 guard 사전 검증 실패", d["hold_reason"])
+        self.assertEqual(w.store.get(f"d_base_head_{b['id']}"), HEAD1)
+        self.assertEqual(json.loads(w.store.get(dchunk.run_start_key(b["id"])))["head"], HEAD1)   # nothing was stored
+        w.sup._stage2_chunk_boundary_problem = real
+
+    def test_a_run_kind_without_a_pre_runnable_guard_is_held_before_any_integration(self):
+        w = self.w
+        b = make_batch(w, "s3", "deepseek", "004", "00", "s3_finalize")
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
+        w.git.changed[MERGE] = ["scripts/relation/edit-cli.mjs"]
+        w.tick(2)
+        d, = incidents(w)
+        self.merge_fix(b, d)
+        d = self.settle(d)
+        self.assertEqual(d["state"], "HELD")
+        self.assertIn("사전에 실행해 증명할 수 없습니다", d["hold_reason"])
+        self.assertEqual(w.git.integrated, [x for x in w.git.integrated if x[0] != b["worktree"]])   # no integration happened
+
+    # ---- recurrence ---------------------------------------------------------------------------------------------------
+    EVIDENCE = {"kind": "boundary", "site": "d-head", "base": HEAD1, "head": MERGE}
+
+    def test_same_structured_evidence_after_the_fix_is_not_received_again_and_says_so_once(self):
+        w = self.w
+        b = make_batch(w, "d", run_kind="d_chunk_resume", session_id="ses_1")
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
+        w.store.set(f"error_evidence_{b['id']}_1", json.dumps(self.EVIDENCE))
+        w.git.changed[MERGE] = [self.PROMPT]
+        w.tick(2)
+        d, = incidents(w)
+        self.merge_fix(b, d)
+        d = self.settle(d)
+        self.assertEqual(d["state"], "RELEASED")
+        import time as _t
+        _t.sleep(0.02)
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="a different wording")
+        w.store.set(f"error_evidence_{b['id']}_2", json.dumps(self.EVIDENCE))
+        for _ in range(3):
+            w.sup.maint._intake_errors()
+        w.sup.maint.step()
+        self.assertEqual((len(incidents(w)), w.store.batch(b["id"])["state"], w.store.batch(b["id"])["error_seq"]), (1, "ERROR", 2))
+        bodies = [c["body"] for c in w.gh.issue_comments_.get(d["issue_number"], [])]
+        self.assertEqual(sum(f"incident-recurrence-{b['id']}-2" in x for x in bodies), 1)
+        # a different fingerprint, and one with no evidence at all, are new incidents that list the earlier one
+        w.store.update(b["id"], state="PRODUCING", error=None)
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="elsewhere")
+        w.store.set(f"error_evidence_{b['id']}_3", json.dumps({**self.EVIDENCE, "site": "d-parallel-head"}))
+        w.sup.maint._intake_errors()
+        newest = incidents(w)[-1]
+        self.assertEqual(newest["event_key"], f"incident:{b['id']}:e3")
+        env = defects.parse_incident(newest["report"].partition("\n")[0])
+        self.assertEqual([p["defect_id"] for p in env["prior_incidents"]], [d["id"]])
+
+    def test_a_recurrence_diagnosis_is_verified_against_the_released_incidents_of_the_same_batch(self):
+        w = self.w
+        b = make_batch(w, "d", run_kind="d_chunk_resume", session_id="ses_1")
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
+        w.git.changed[MERGE] = [self.PROMPT]
+        w.tick(2)
+        d, = incidents(w)
+        self.merge_fix(b, d)
+        d = self.settle(d)
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="again")
+        w.sup.maint._intake_errors()
+        later = incidents(w)[-1]
+        m = w.sup.maint
+        self.assertTrue(m._recurrence_verified(later, d["id"]))
+        self.assertFalse(m._recurrence_verified(later, 999))
+        self.assertFalse(m._recurrence_verified(later, "x"))
+        self.assertFalse(m._recurrence_verified(later, later["id"]))      # not RELEASED
+        other = make_batch(w, "c", "sonnet", "007", "01", "c_chunk_new")
+        self.assertFalse(m._recurrence_verified({**dict(later), "batch_id": other["id"]}, d["id"]))   # another batch's defect
 
 
 class MaintainerConfig(unittest.TestCase):
