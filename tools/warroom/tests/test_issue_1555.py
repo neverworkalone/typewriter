@@ -846,7 +846,7 @@ class AutonomousIncident(unittest.TestCase):
         self.assertEqual(len({d["defect_class"] for d in incidents(w)}), 2)
 
     def diagnose(self, valid=True, commit=False, outcome="undetermined", blocked=False,
-                 unknown_observation="checkpoint", **extra):
+                 unknown_observation="checkpoint", stale_marker=False, **extra):
         w = self.w
         b, = self.released("deepseek")
         blocker = {"observation": unknown_observation,
@@ -986,6 +986,11 @@ class AutonomousIncident(unittest.TestCase):
         self.assertEqual(m["state"], "ERROR")
         self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE")
 
+    def test_prior_attempt_marker_cannot_authorize_a_new_handoff(self):
+        w, m = self.diagnose(blocked=True, stale_marker=True)
+        self.assertEqual(m["state"], "ERROR")
+        self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE")
+
     def test_diagnosis_missing_or_with_a_commit_keeps_the_existing_error(self):
         for kwargs in ({"valid": False}, {"commit": True, "blocked": True}):
             with self.subTest(kwargs):
@@ -1052,6 +1057,8 @@ class AutonomousIncidentReview(unittest.TestCase):
         data = json.loads(files[0].read_text())
         self.assertIn(f"d_base_head_{b['id']}", data["kv"])
         self.assertIn(f"error_evidence_{b['id']}_1", data["kv"])
+        self.assertEqual(data["maintainer_attempt"], m["id"])
+        self.assertEqual(data["maintainer_attempt"], m["id"])
         self.assertNotIn(f"unrelated_secret_{b['id']}", data["kv"])
         self.assertEqual(list(files[0].parent.glob("*.tmp")), [])
 
@@ -1098,6 +1105,7 @@ class AutonomousIncidentReview(unittest.TestCase):
         data = {"version": 1, "issue": 102, "outcome": "undetermined", "summary": summary,
                 "blocker": {"observation": "checkpoint", "reason": reason}, "next_action": next_action}
         (wt / ".warroom-scratch/incident-diagnosis.json").write_text(json.dumps(data))
+        marker = f"incident-diagnosis-102-attempt-{m['id']}"
         w.gh.comment_issue(102, f"{summary}\n{reason}\n{next_action}\n\n"
                               + defects.marker(defects.EVENT_MARK, f"incident-diagnosis-102-attempt-{m['id']}"))
         real = w.store.complete_diagnosis
