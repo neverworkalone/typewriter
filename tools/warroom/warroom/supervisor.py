@@ -6488,8 +6488,72 @@ class Supervisor:
     def _d_env(self, b) -> dict:
         return self._launch_env(b, "d_cli", self.env)
 
+    def _d_parallel_head_problem(self, b, wt: Path) -> str | None:
+        """Check the parallel run baseline, an exact released integration, and the one owned Candidate commit."""
+        try:
+            if b["run_kind"] == "d_parallel":
+                self.maint.adopt_released_baseline(b)
+            raw = self.store.get(dchunk.run_start_key(b["id"]))
+            if raw is None:
+                # A crash between recording parallel mode and its first run boundary is recoverable only before any
+                # task or chunk exists, while the original owned HEAD and a clean worktree are still present.
+                base = self.store.get(f"d_base_head_{b['id']}")
+                head = self.git.head(wt)
+                if (not isinstance(base, str) or not re.fullmatch(r"[0-9a-f]{40}", base)
+                        or self.git.registered(wt) != b["branch"] or head != base
+                        or self.git.dirty(wt).strip() or self.store.runs(b["id"]) or self.store.task_rows(b["id"])):
+                    return "D 병렬 배치의 최초 Git 경계를 복구할 수 없습니다. worktree를 보존합니다."
+                saved, _total = dchunk.verified_chunks(wt, b)
+                if saved or dchunk.active_chunks(wt, b):
+                    return "D 병렬 배치의 최초 Git 경계 전에 청크가 생겼습니다. worktree를 보존합니다."
+                return None
+            baseline = json.loads(raw)
+            if (not isinstance(baseline, dict) or baseline.get("branch") != b["branch"]
+                    or baseline.get("worktree") != str(wt) or "remote_head" not in baseline
+                    or not isinstance(baseline.get("head"), str)
+                    or not re.fullmatch(r"[0-9a-f]{40}", baseline["head"])):
+                return "D 병렬 배치의 Git 경계 기준이 손상되거나 다른 실행을 가리킵니다. worktree를 보존합니다."
+            if baseline["remote_head"] is not None and not re.fullmatch(r"[0-9a-f]{40}", baseline["remote_head"]):
+                return "D 병렬 배치의 원격 경계 기준이 잘못되었습니다. worktree를 보존합니다."
+            if self.git.registered(wt) != b["branch"]:
+                return f"D 병렬 worktree가 소유 브랜치 {b['branch']}에 연결되어 있지 않습니다. worktree를 보존합니다."
+
+            head = self.git.head(wt)
+            candidate_child = head != baseline["head"] and self.git.is_candidate_child(
+                wt, baseline["head"], dchunk.names(b).output)
+            if head != baseline["head"] and not candidate_child:
+                return f"worktree HEAD {head[:10]}가 승인된 D 병렬 기준 HEAD {baseline['head'][:10]}도, Candidate commit도 아닙니다."
+            committed = self.store.get(f"d_commit_head_{b['id']}")
+            if committed is not None and (not re.fullmatch(r"[0-9a-f]{40}", committed) or committed != head):
+                return "기록된 D Candidate commit과 worktree HEAD가 다릅니다. worktree를 보존합니다."
+
+            original = self.store.get(f"d_base_head_{b['id']}")
+            if not isinstance(original, str) or not re.fullmatch(r"[0-9a-f]{40}", original):
+                return "D 병렬 배치의 최초 기준 HEAD를 확인할 수 없습니다. worktree를 보존합니다."
+            if baseline["head"] != original and not self.maint._released_integration_proof(
+                    b, original, baseline["head"]):
+                return "D 병렬 기준 HEAD가 같은 배치의 RELEASED Maintainer 통합으로 증명되지 않습니다. worktree를 보존합니다."
+
+            remote = self.git.remote_head(b["branch"])
+            if remote != baseline["remote_head"] and not (candidate_child and remote == head):
+                return f"D 병렬 원격 경계가 변경되었습니다 ({baseline['remote_head']} / {remote}). worktree를 보존합니다."
+            dirty = self.git.dirty(wt).strip()
+            if dirty:
+                paths = {line[3:].strip() for line in dirty.splitlines() if len(line) >= 4}
+                output = dchunk.names(b).output
+                if paths != {output} or not (wt / output).is_file():
+                    return "D 병렬 worktree에 최종 Candidate 출력 외의 변경이 있습니다. worktree를 보존합니다."
+                # assemble() below proves an interrupted pre-commit output is byte-identical to the saved chunks.
+        except TRANSIENT:
+            raise
+        except Exception as e:
+            return f"D 병렬 HEAD/소유권 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
+        return None
+
     def _d_head_problem(self, b, wt: Path) -> str | None:
         """The batch is bound to the HEAD of its first chunk; the only later HEAD allowed is our own Candidate commit."""
+        if dparallel.is_parallel(self.store, b):
+            return self._d_parallel_head_problem(b, wt)
         try:
             head = self.git.head(wt)
             base = self.store.get(f"d_base_head_{b['id']}")

@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from tests.test_issue_2034_d import DWorld, REL
+from tests.fakes import HEAD2
 from warroom import control, dchunk, taskruns
 
 
@@ -266,3 +267,81 @@ class ParallelDRecovery(ParallelDHelpers, unittest.TestCase):
         w.runner.dchunk.failed = set()
         w.tick(3)                                             # an automatic release alone never re-enters the failure
         self.assertEqual(w.store.task_row(w.row_()["id"], "002")["state"], "FAILED")
+
+
+class ParallelDFinalization(ParallelDHelpers, unittest.TestCase):
+    def ready_to_finalize(self):
+        w = self.world(records=25)
+        self.plan_all(w, [1])
+        w.start("single", "deepseek", "d")
+        w.tick()
+        b = w.row_()
+        self.finish_task(w, "001")
+        w.store.set(f"d_chunk_sha_{b['id']}_1", dchunk.chunk_sha(w.wt(), b, 1))
+        for row in w.store.task_rows(b["id"]):
+            w.store.update_task(b["id"], row["task"], state="SAVED")
+        w.store.update(b["id"], state="PRODUCING", run_kind="d_finalize", pid=None, session_id=None)
+        return w, w.store.batch(b["id"])
+
+    def release_integration(self, w, b):
+        initial = json.loads(w.store.get(dchunk.run_start_key(b["id"])))
+        old_head = initial["head"]
+        w.git.local_head = HEAD2
+        w.git.ancestor_pairs.add((old_head, HEAD2))
+        w.git.integrated.extend([(str(w.wt()), old_head), (str(w.wt()), HEAD2)])
+        defect_id = w.store.report_defect(b["id"], "event:released-d-fix", "maintainer",
+                                          "shared-validator-bug", "RELEASED", "{}", "shared_defect", "")
+        w.store.update_defect(defect_id, merge_sha=HEAD2, integrated_sha=HEAD2)
+        w.store.update(b["id"], state="PRODUCING", paused_from=None, pause_reason=None, error=None,
+                       run_kind="d_parallel")
+        w.sup.maint.adopt_released_baseline(w.store.batch(b["id"]))
+        w.store.update(b["id"], run_kind="d_finalize")
+
+    def test_released_same_batch_integration_allows_saved_parallel_chunks_to_finalize(self):
+        w, b = self.ready_to_finalize()
+        self.release_integration(w, b)
+
+        w.sup._d_finalize_do(w.store.batch(b["id"]))
+
+        self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
+        self.assertEqual((len(w.git.commits), len(w.git.pushes), len(w.gh.created_prs)), (1, 1, 1))
+        self.assertEqual(dchunk.verified_prefix(w.wt(), w.row_())[0], 1)
+
+    def test_unapproved_head_detached_worktree_and_unrelated_dirty_file_block_finalize(self):
+        for failure in ("unapproved HEAD", "detached worktree", "unrelated dirty file"):
+            with self.subTest(failure=failure):
+                w, b = self.ready_to_finalize()
+                if failure == "unapproved HEAD":
+                    w.git.local_head = HEAD2
+                elif failure == "detached worktree":
+                    w.git.reg[str(w.wt())] = None
+                else:
+                    w.git.dirty_text = " M README.md\n"
+
+                w.sup._d_finalize_do(w.store.batch(b["id"]))
+
+                self.assertEqual(w.row_()["state"], "ERROR")
+                self.assertEqual((getattr(w.git, "commits", []), getattr(w.git, "pushes", []),
+                                  getattr(w.gh, "created_prs", [])), ([], [], []))
+
+    def test_restarting_after_candidate_commit_does_not_duplicate_commit_or_pr(self):
+        w, b = self.ready_to_finalize()
+        self.release_integration(w, b)
+        real_set, armed = w.store.set, [True]
+
+        def crash_after_commit(key, value):
+            if key.startswith("d_commit_head_") and armed[0]:
+                armed[0] = False
+                raise RuntimeError("restart after Candidate commit")
+            return real_set(key, value)
+
+        w.store.set = crash_after_commit
+        w.sup._d_finalize_do(w.store.batch(b["id"]))
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertEqual(len(w.git.commits), 1)
+        w.git.child_of = (HEAD2, dchunk.names(b).output)
+
+        w.sup._d_finalize_do(w.store.batch(b["id"]))
+
+        self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
+        self.assertEqual((len(w.git.commits), len(w.git.pushes), len(w.gh.created_prs)), (1, 1, 1))
