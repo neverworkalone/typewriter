@@ -488,10 +488,33 @@ class Maintenance:
         """The batch's AI process, or (parallel Stage 2) ANY task run, is not confirmed gone."""
         return b["pid"] is not None or bool(self.store.open_task_runs(b["id"]))
 
+    def _rearm_held_incident(self, d, b) -> str | None:
+        """Re-prove a formerly held runtime incident after the carrying checkout advances.
+
+        Older Supervisors could hold a merged incident when they could not model the resumed prompt set. A clean
+        code-root advance gives that exact proof another chance; other HELD outcomes remain operator-owned.
+        """
+        if (d["source"] != "incident" or not (d["hold_reason"] or "").startswith("재개 증명 불가:")
+                or not d["merge_sha"]):
+            return None
+        code_head = self.sup.git.head(self.sup.code_root)
+        key = f"defect_reproof_head_{d['id']}"
+        if not isinstance(code_head, str) or not re.fullmatch(r"[0-9a-f]{40}", code_head):
+            return None
+        if (self.store.get(key) == code_head or self.sup.code_sha != code_head
+                or not self.sup.prompt_checkout_clean(["tools/warroom/warroom"])):
+            return None
+        if self.store.rearm_held_defect(d["id"], b["id"], code_head):
+            return code_head
+        return None
+
     def _release(self) -> None:
-        for d in self.store.defects(("FIX_MERGED",)):
+        for d in self.store.defects(("FIX_MERGED", "HELD")):
             if d["source"] == "verify":   # no production batch: the scope's exact verify on master releases it (stage2.choose)
                 continue
+            if (d["state"] == "HELD" and (d["source"] != "incident"
+                    or not (d["hold_reason"] or "").startswith("재개 증명 불가:") or not d["merge_sha"])):
+                continue   # only formerly unprovable incident releases are eligible for a new proof
             b = self.store.batch(d["batch_id"])
             if b is None:   # the batch no longer exists: this defect can never be applied, and must not block the others
                 self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="배치가 더 이상 존재하지 않음")
@@ -502,6 +525,12 @@ class Maintenance:
                 continue
             if self.store.get(f"defect_hold_{b['id']}") or self._workers_running(b):
                 continue   # operator Stop is pending/active, or the stopped AI is not confirmed gone yet
+            reproof_head = None
+            if d["state"] == "HELD":
+                reproof_head = self._rearm_held_incident(d, b)
+                if reproof_head is None:
+                    continue
+                d = self.store.defect(d["id"])
             if d["source"] == "incident":
                 try:
                     self._release_incident(d, b)
@@ -511,6 +540,10 @@ class Maintenance:
                     self._hold(d, b, f"재개 증명 불가: {b['run_kind'] or b['paused_from']}: {e}")
                 except GitError as e:
                     self.store.log(b["id"], f"수정 반영 중 Git 오류(재시도 예정): {e}", "warn")
+                if reproof_head is not None:
+                    current = self.store.defect(d["id"])
+                    if current is not None and current["state"] == "HELD":
+                        self.store.set(f"defect_reproof_head_{d['id']}", reproof_head)
                 continue
             if self._fix_not_loaded(d):
                 continue
