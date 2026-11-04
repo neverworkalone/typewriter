@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -1390,6 +1391,63 @@ withWorld('search-batch cursor next resumes its recorded cursor and rejects a mi
   const recorded = (await readFile(searchesPath, 'utf8')).trim().split('\n').map(JSON.parse)
     .filter((entry) => entry.record_id === 'w001' && entry.forms[0] === '새벽안개' && entry.source === 'search');
   assert.equal(recorded.at(-1).cursor_in, firstCursor, 'search-batch stores the resolved raw cursor');
+});
+
+withWorld('search-batch upgrades a pre-stabilization cursor on the same corpus index', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const database = new DatabaseSync(world.options.databasePath);
+  const firstNewRow = database.prepare('SELECT max(paragraph_rowid) AS id FROM paragraphs').get().id + 1;
+  for (let index = 0; index < 16; index += 1) {
+    const rowid = firstNewRow + index;
+    const form = `되깔다 문맥 ${index}.`;
+    database.prepare('INSERT INTO paragraphs VALUES (?, 1, ?, ?, ?)').run(rowid, `legacy-${rowid}`, rowid, form);
+    database.prepare('INSERT INTO paragraph_fts(rowid, form) VALUES (?, ?)').run(rowid, form);
+  }
+  const legacyMetadata = database.prepare('SELECT * FROM index_metadata LIMIT 65').all();
+  const maxRowid = database.prepare('SELECT max(paragraph_rowid) AS id FROM paragraphs').get().id;
+  database.close();
+
+  const forms = ['되깔다', '되깔아', '되깔고', '되깐', '되까는'];
+  const legacyId = createHash('sha256')
+    .update(JSON.stringify([forms, 'both', legacyMetadata, maxRowid]))
+    .digest('hex').slice(0, 12);
+  const searchesPath = chunkPath(world, 'searches');
+  const first = await searchBatchActive({
+    requests: [{ sense: 's1', forms, boundary: 'both', contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(first.results[0].status, 'LIMITED');
+  const currentId = JSON.parse(Buffer.from(first.results[0].cursor_out, 'base64url').toString('utf8')).id;
+  const oldCursorState = JSON.parse(Buffer.from(first.results[0].cursor_out, 'base64url').toString('utf8'));
+  oldCursorState.id = legacyId;
+  const legacyCursor = Buffer.from(JSON.stringify(oldCursorState), 'utf8').toString('base64url');
+
+  const entries = (await readFile(searchesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const firstSearch = entries.findLast((entry) => entry.record_id === 'w001' && entry.source === 'search'
+    && JSON.stringify(entry.forms) === JSON.stringify(forms) && entry.boundary === 'both');
+  assert.ok(firstSearch);
+  firstSearch.cursor_out = legacyCursor;
+  await writeFile(searchesPath, `${entries.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+
+  const second = await searchBatchActive({
+    requests: [{ sense: 's1', forms, boundary: 'both', cursor: 'next', contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(second.results[0].status, 'LIMITED');
+  assert.equal(second.results[0].cursor_in, legacyCursor, 'the recorded legacy token is used verbatim');
+  assert.notEqual(second.results[0].cursor_out, legacyCursor);
+  assert.equal(JSON.parse(Buffer.from(second.results[0].cursor_out, 'base64url').toString('utf8')).id, currentId,
+    'the next page emits a cursor with the stable metadata identity');
+  assert.equal(first.results[0].contexts.some((item) => second.results[0].contexts.some((next) => next.paragraph_rowid === item.paragraph_rowid)), false);
+
+  const third = await searchBatchActive({
+    requests: [{ sense: 's1', forms, boundary: 'both', cursor: 'next', contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(third.results[0].status, 'LIMITED');
+  assert.equal(third.results[0].cursor_in, second.results[0].cursor_out,
+    'the upgraded cursor continues under the stable identity');
+  assert.equal(second.results[0].contexts.some((item) => third.results[0].contexts.some((next) => next.paragraph_rowid === item.paragraph_rowid)), false);
 });
 
 withWorld('search-batch output overflow records no partial evidence', async (world) => {
