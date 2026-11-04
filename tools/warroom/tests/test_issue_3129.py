@@ -349,6 +349,11 @@ class Issue3129(Helpers, unittest.TestCase):
         recovery_prompt = next(launch["prompt"] for launch in reversed(w.adapter.launches)
                                if "16문맥 상한 Sense" in launch["prompt"])
         self.assertIn("--skip 8 --contexts 16", recovery_prompt)
+        self.assertIn("shown=16", recovery_prompt)
+        self.assertIn("--skip 12 --contexts 16", recovery_prompt)
+        self.assertIn("마지막으로 완전히 판독한 앞 문맥 수", recovery_prompt)
+        self.assertIn("추가 문맥을 하나도 온전히 받지 못했을 때만", recovery_prompt)
+        self.assertNotIn("`--skip 8 --contexts 16` 조회만 사용", recovery_prompt)
         self.assertIn("SAMPLED_NO_VERIFIED", recovery_prompt)
         self.assertIn("`--skip 16`은 호출하지 않는다.", recovery_prompt)
 

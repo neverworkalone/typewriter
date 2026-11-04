@@ -962,9 +962,12 @@ class ParallelC:
                          "부분집합만 사용하고 다른 task/view ID는 넣지 않는다. 모든 조회는 지정된 `--chunk "
                          f"{n:03d}`를 그대로 사용한다. 허용 ID: " + ", ".join(remaining) + "\n")
             if capped:
-                note += ("이전에 기록된 16문맥 상한 Sense: " + ", ".join(capped) + ". 전체 16개가 이미 보였으므로 추가 페이지를 요구하지 않는다. "
-                         "같은 표본을 다시 판독해야 하면 카드의 `--skip 8 --contexts 16` 조회만 사용하고, 16개에 VERIFIED가 없으면 "
-                         "`verified: []`, `candidates: []`로 제출한다. `unseen_hits`가 남아 있어도 정상적인 `SAMPLED_NO_VERIFIED` 완료다.\n")
+                note += ("이전에 CLI가 기록한 16문맥 상한 Sense: " + ", ".join(capped) + ". `shown=16`은 CLI 노출 기록일 뿐, "
+                         "이 세션이 9–16 문맥 전체를 받아 판독했다는 증거가 아니다. 출력이 잘렸거나 읽지 못한 문맥이 있으면 마지막으로 "
+                         "완전히 판독한 앞 문맥 수(8–15)를 `--skip`으로 지정해 그 Sense의 미수신 suffix만 `--contexts 16`으로 다시 조회한다. "
+                         "예: 9–12를 판독했고 13–16을 받지 못했다면 `--skip 12 --contexts 16`; 추가 문맥을 하나도 온전히 받지 못했을 때만 "
+                         "`--skip 8 --contexts 16`을 쓴다. 16개 전체를 읽고도 VERIFIED가 없을 때만 `verified: []`, `candidates: []`로 제출한다. "
+                         "`unseen_hits`가 남아 있어도 정상적인 `SAMPLED_NO_VERIFIED` 완료이며 16개 상한을 넘지 않는다.\n")
             view = literary.view_for_senses(view, remaining)
         elif data.get("continued") or len(remaining) < len(rec["sense_ids"]):
             note += ("같은 활성 청크의 미완료 Sense만 새 세션으로 이어간다. 제공된 view와 제출 배열에는 아래 남은 ID만 포함하고, "
