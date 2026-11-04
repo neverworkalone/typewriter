@@ -72,6 +72,21 @@ def _data(row) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _command_failed(fact: dict) -> bool | None:
+    """Resolve exact exit codes or adapter error flags; contradictory or absent evidence stays unknown."""
+    code = fact.get("exit_code")
+    tool_error = fact.get("tool_error")
+    exact_code = type(code) is int
+    exact_flag = type(tool_error) is bool
+    if exact_code and exact_flag and tool_error != (code != 0):
+        return None
+    if exact_code:
+        return code != 0
+    if exact_flag:
+        return tool_error
+    return None
+
+
 def baseline(store, b) -> dict | None:
     """The batch's current approved runtime baseline (`c_run_start_<id>`), or None when absent or damaged."""
     try:
@@ -290,7 +305,7 @@ def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcom
                 or diagnostic.get("occurrences") != 1 or diagnostic.get("chunk_no") != chunk_no
                 or not isinstance(command, dict) or command.get("operation") != "chunk"
                 or command.get("checkpoint_matches") is not True or command.get("chunk_no") != chunk_no
-                or command.get("exit_code") != 1):
+                or _command_failed(command) is not True):
             return False
         requested = diagnostic.get("sense_ids")
         if (not isinstance(requested, list) or not requested or len(set(requested)) != len(requested)
@@ -308,7 +323,7 @@ def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcom
         for fact in commands[:-1]:
             if (not isinstance(fact, dict) or fact.get("operation") != "chunk"
                     or fact.get("checkpoint_matches") is not True or fact.get("chunk_no") != chunk_no
-                    or fact.get("exit_code") != 0):
+                    or _command_failed(fact) is not False):
                 return False
             read_ids = fact.get("sense_ids")
             if not isinstance(read_ids, list) or not read_ids or len(set(read_ids)) != len(read_ids):

@@ -226,7 +226,8 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertEqual(len(w.store.runs(self.b(w)["id"])), initial_run_count)
 
     def _fail_legacy_chunk_scope_run(self, w, task="001", requested_ids=None, extra_cli_commands=None,
-                                     command_chunk=None, command_checkpoint=None, prior_chunk_reads=()):
+                                     command_chunk=None, command_checkpoint=None, prior_chunk_reads=(),
+                                     log_format="codex", final_tool_error=True):
         b = self.b(w)
         row = w.store.task_row(b["id"], task)
         rec = literary.read_active(w.wt(), b, int(task))
@@ -242,31 +243,43 @@ class Issue3129(Helpers, unittest.TestCase):
                       "message": "The request is outside the active chunk.", "repair_scope": "stop_and_report"}
         checkpoint = command_checkpoint or literary.names(b).checkpoint
         chunk_no = command_chunk or task
-        events = [{"type": "thread.started", "thread_id": session_id}]
+        commands = []
         for index, read_ids in enumerate(prior_chunk_reads):
             read_valid = [sense_id for sense_id in read_ids if sense_id in rec["sense_ids"]]
             read_invalid = [sense_id for sense_id in read_ids if sense_id not in rec["sense_ids"]]
             output = (json.dumps({"status": "WARNING", "warning": "active_chunk_scope_ids_excluded",
                                   "chunk_no": int(task), "applied_sense_ids": read_valid,
                                   "excluded_sense_ids": read_invalid}) if read_invalid else "")
-            events.append({"type": "item.completed", "item": {
-                "id": f"prior-chunk-read-{index + 1}", "type": "command_execution",
-                "command": f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {chunk_no} "
-                           f"--sense-ids {','.join(read_ids)}",
-                "exit_code": 0, "aggregated_output": output}})
-        events.extend({"type": "item.completed", "item": {"id": f"extra-cli-{index + 1}",
-                       "type": "command_execution", "command": command, "exit_code": 0,
-                       "aggregated_output": "FORM_ADDED\n"}}
-                      for index, command in enumerate(extra_cli_commands or []))
-        events.extend([
-            {"type": "item.completed", "item": {"id": "chunk", "type": "command_execution",
-             "command": f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {chunk_no} --sense-ids {','.join(requested_ids)}",
-             "exit_code": 1, "aggregated_output": json.dumps(diagnostic)}},
-            {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
-             "text": "The official CLI returned LITERARY_CHUNK_SCOPE; I stop_and_report."}},
-            {"type": "turn.completed", "usage": {"input_tokens": 1, "cached_input_tokens": 0,
-                                                       "output_tokens": 1, "reasoning_output_tokens": 0}},
-        ])
+            commands.append((f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {chunk_no} "
+                             f"--sense-ids {','.join(read_ids)}", output, 0, False))
+        commands.extend((command, "FORM_ADDED\n", 0, False) for command in extra_cli_commands or [])
+        commands.append((f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {chunk_no} "
+                         f"--sense-ids {','.join(requested_ids)}", json.dumps(diagnostic), 1, final_tool_error))
+        if log_format == "claude":
+            events = []
+            for index, (command, output, _exit_code, tool_error) in enumerate(commands):
+                tool_id = f"tool-{index + 1}"
+                events.append({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": tool_id,
+                               "name": "Bash", "input": {"command": command}}]}})
+                result = {"type": "tool_result", "tool_use_id": tool_id, "content": output}
+                if tool_error is not None:
+                    result["is_error"] = tool_error
+                events.append({"type": "user", "message": {"content": [result]}})
+            events.append({"type": "result", "subtype": "success", "is_error": False,
+                           "session_id": session_id,
+                           "result": "The official CLI returned LITERARY_CHUNK_SCOPE; I stopped."})
+        else:
+            events = [{"type": "thread.started", "thread_id": session_id}]
+            events.extend({"type": "item.completed", "item": {"id": f"cmd-{index + 1}",
+                           "type": "command_execution", "command": command, "exit_code": exit_code,
+                           "aggregated_output": output}}
+                          for index, (command, output, exit_code, _tool_error) in enumerate(commands))
+            events.extend([
+                {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
+                 "text": "The official CLI returned LITERARY_CHUNK_SCOPE; I stop_and_report."}},
+                {"type": "turn.completed", "usage": {"input_tokens": 1, "cached_input_tokens": 0,
+                                                           "output_tokens": 1, "reasoning_output_tokens": 0}},
+            ])
         w.adapter.running[run["pid"]]["text"] = "".join(json.dumps(event) + "\n" for event in events)
         w.adapter.finish(run["pid"])
         w.store.finish_run(run["id"], "0")
@@ -275,6 +288,26 @@ class Issue3129(Helpers, unittest.TestCase):
         w.sup.cp._incomplete_failed(b, row, data, rec, rec["sense_ids"], {"status": "producer_reported_stop"})
         w.sup.cp._halt(b, [w.store.task_row(b["id"], task)])
         return rec, run
+
+    def _claude_scope_error_after_context_progress(self, *, final_tool_error=True):
+        w = self.world(senses=24)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        sibling_ids = self.sense_ids(w, "002")
+        self.finish(w, "002")
+        w.tick()
+
+        active_ids = self.sense_ids(w, "001")
+        self._prepare_sixteen_context_state(w, "001")
+        before = self.data(w, "001")["run_start"]["retry_state"]["own_state"]
+        current = literary.own_state(w.wt(), b, active_ids)
+        self.assertIsNotNone(literary.shown_only_progress(before, current))
+        _, source_run = self._fail_legacy_chunk_scope_run(
+            w, requested_ids=[sibling_ids[0]], prior_chunk_reads=[active_ids[:2], [active_ids[0], sibling_ids[0]]],
+            log_format="claude", final_tool_error=final_tool_error)
+        self.assertEqual(self.b(w)["state"], "ERROR")
+        return w, b, active_ids, sibling_ids, source_run
 
     def test_legacy_scope_error_resumes_once_in_same_session_and_preserves_sibling_saves(self):
         w = self.world(senses=24)
@@ -361,6 +394,26 @@ class Issue3129(Helpers, unittest.TestCase):
         prompt = w.adapter.launches[-1]["prompt"]
         self.assertIn("Supervisor가 배정한 조회 허용 ID(아래 문자열을 그대로 복사): " + ", ".join(active_ids), prompt)
         self.assertNotIn(sibling_ids[0], prompt)
+
+    def test_legacy_scope_error_recovers_from_claude_tool_result_status(self):
+        w, b, active_ids, sibling_ids, source_run = self._claude_scope_error_after_context_progress()
+        w.tick(2)
+
+        recovery = max((run for run in w.store.runs(b["id"]) if run["task"] == "001"), key=lambda run: run["id"])
+        self.assertEqual(recovery["kind"], "c_chunk_scope_recovery")
+        self.assertEqual(recovery["session_id"], source_run["session_id"])
+        self.assertEqual(self.data(w, "001")["recovery"]["pending_sense_ids"], active_ids)
+        prompt = w.adapter.launches[-1]["prompt"]
+        self.assertIn("Supervisor가 배정한 조회 허용 ID(아래 문자열을 그대로 복사): " + ", ".join(active_ids), prompt)
+        self.assertNotIn(sibling_ids[0], prompt)
+
+    def test_legacy_scope_error_with_missing_claude_status_stays_fail_closed(self):
+        w, b, _active_ids, _sibling_ids, _source_run = self._claude_scope_error_after_context_progress(
+            final_tool_error=None)
+        w.tick(2)
+
+        self.assertEqual(self.b(w)["state"], "ERROR")
+        self.assertFalse(any(run["kind"] == "c_chunk_scope_recovery" for run in w.store.runs(b["id"])))
 
     def test_unsaved_legacy_scope_recovery_is_not_started_twice(self):
         w = self.world(senses=12)
