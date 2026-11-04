@@ -229,6 +229,7 @@ def _legacy_reported_stop_retry_status(store, b, row, guard) -> str | None:
 def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcome) -> bool:
     """Prove one task-local, read-only scope rejection before scheduling a same-session recovery."""
     try:
+        run = dict(run)
         if (row["state"] not in ("RUNNING", "FAILED") or int(row["attempts"] or 0) != 1
                 or row["run_id"] != run.get("id") or run.get("task") != row["task"]
                 or run.get("kind") != NEW or str(run.get("exit_status")) != "0" or run.get("ended_at") is None
