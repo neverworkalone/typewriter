@@ -1,6 +1,6 @@
 # Typewriter PR Review
 
-This root `REVIEW.md` is the **authoritative gate policy**. Read it from the **latest PR HEAD** before every review; never read `AGENTS.md`, personal/global `MEMORY.md`, agent memories or implementation instructions while reviewing. Review the reported problem **and the validity of the approach**. Use the smallest sufficient evidence; required correctness is non-negotiable, **but speculative safeguards must not override recurring production speed and AI token efficiency**.
+This root `REVIEW.md` is the **authoritative gate policy**. Read it from the **latest PR HEAD** before every review; never read `AGENTS.md`, personal/global `MEMORY.md` or agent memories while reviewing. Producer/implementation issue execution instructions do **not** define reviewer tool procedure; inspect linked task acceptance requirements only when materially relevant under Section 4. Review the reported problem **and the validity of the approach**. Use the smallest sufficient evidence; required correctness is non-negotiable, **but speculative safeguards must not override recurring production speed and AI token efficiency**.
 
 ## Production efficiency review
 
