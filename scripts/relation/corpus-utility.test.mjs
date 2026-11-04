@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { InvalidCursorError, corpusScanRows, createSearchContextReuse, openReadonlyDb, renderContexts, saveChunk, searchContexts } from './corpus-utility.mjs';
 
-async function makeCorpus(paragraphs) {
+async function makeCorpus(paragraphs, metadata = [['schema_version', '1'], ['input_manifest_sha256', 'a'.repeat(64)]]) {
   const root = await mkdtemp(path.join((await mkdir(path.resolve('.warroom-scratch'), { recursive: true })) ?? path.resolve('.warroom-scratch'), 'corpus-utility-'));
   const databasePath = path.join(root, 'corpus.sqlite');
   const database = new DatabaseSync(databasePath);
@@ -16,10 +16,11 @@ async function makeCorpus(paragraphs) {
     CREATE TABLE paragraphs (paragraph_rowid INTEGER PRIMARY KEY, document_rowid INTEGER, paragraph_id TEXT, ordinal INTEGER, form TEXT);
     CREATE VIRTUAL TABLE paragraph_fts USING fts5(form, content='paragraphs', content_rowid='paragraph_rowid', tokenize='trigram');
     CREATE TABLE index_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-    INSERT INTO index_metadata VALUES ('schema_version', '1'), ('input_manifest_sha256', '${'a'.repeat(64)}');
     INSERT INTO source_files VALUES ('s', 't', 'c', '2000', 'x');
     INSERT INTO documents VALUES (1, 's', 'd', 1, '합성 문서', '합성 저자');
   `);
+  const insertMetadata = database.prepare('INSERT INTO index_metadata VALUES (?, ?)');
+  for (const row of metadata) insertMetadata.run(...row);
   paragraphs.forEach((form, index) => {
     database.prepare('INSERT INTO paragraphs VALUES (?, 1, ?, ?, ?)').run(index + 1, `p${index}`, index, form);
     database.prepare('INSERT INTO paragraph_fts(rowid, form) VALUES (?, ?)').run(index + 1, form);
@@ -27,6 +28,30 @@ async function makeCorpus(paragraphs) {
   database.close();
   return { root, databasePath };
 }
+
+test('a cursor resumes against the same logical corpus when metadata rows were built in a different order', async () => {
+  const paragraphs = Array.from({ length: 10 }, (_, index) => `문단 ${index}에서 기현.`);
+  const metadata = [['schema_version', '1'], ['input_manifest_sha256', 'a'.repeat(64)]];
+  const firstIndex = await makeCorpus(paragraphs, metadata);
+  const rebuiltIndex = await makeCorpus(paragraphs, [...metadata].reverse());
+  try {
+    const firstDatabase = openReadonlyDb(firstIndex.databasePath);
+    const rebuiltDatabase = openReadonlyDb(rebuiltIndex.databasePath);
+    try {
+      const first = searchContexts(firstDatabase, ['기현'], { maxSamples: 2 });
+      assert.equal(first.status, 'LIMITED');
+      const next = searchContexts(rebuiltDatabase, ['기현'], { maxSamples: 2, cursor: first.next_cursor });
+      assert.equal(next.status, 'LIMITED');
+      assert.deepEqual(next.items.map((item) => item.paragraph_rowid), [3, 4]);
+    } finally {
+      firstDatabase.close();
+      rebuiltDatabase.close();
+    }
+  } finally {
+    await rm(firstIndex.root, { recursive: true, force: true });
+    await rm(rebuiltIndex.root, { recursive: true, force: true });
+  }
+});
 
 const drain = (database, forms, options) => {
   const pages = [];
