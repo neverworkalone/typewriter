@@ -1359,7 +1359,7 @@ class Maintenance:
             key = f"incident_outcome_{d['id']}_diagnosis"
             ev = f"incident-outcome-{d['id']}-diagnosis"
             if not self.store.get(key) and self._comment_once(
-                    d["issue_number"], ev, f"진단/보류 결과: {d['hold_reason'][:500]} — 배치는 PAUSED로 보존됩니다.\n\n"
+                    d["issue_number"], ev, f"진단/보류 결과: {defects.public(d['hold_reason'])[:500]} — 배치는 PAUSED로 보존됩니다.\n\n"
                     + defects.marker(defects.EVENT_MARK, ev)):
                 self.store.set(key, "1")
         for d in self.store.defects(("RELEASED",)):
@@ -1392,7 +1392,7 @@ class Maintenance:
                 else:
                     why = b["pause_reason"] or ""
                     head = (f"원 배치 `{b['shard']}_{b['batch']}`가 {b['state']}로 중단되었습니다{pr} "
-                            f"{('(' + why + ') ') if why else ''}— 작업물은 보존됩니다. 오류: {(b['error'] or '')[:300]}")
+                            f"{('(' + why + ') ') if why else ''}— 작업물은 보존됩니다. 오류: {defects.public(b['error'] or '')[:300]}")
                 if self._comment_once(d["issue_number"], ev, head + "\n\n" + defects.marker(defects.EVENT_MARK, ev)):
                     self.store.set(key, "1")
 

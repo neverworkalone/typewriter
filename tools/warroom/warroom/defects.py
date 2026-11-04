@@ -14,6 +14,8 @@ import hashlib
 import json
 import re
 
+from .logtail import redact as _redact_tokens
+
 REPORT_FILE = ".warroom-scratch/shared-defect.json"   # inside the batch worktree; git-ignored scratch
 FENCE = "warroom-shared-defect"
 VERSION = 1
@@ -113,6 +115,20 @@ _MARK_LINE = re.compile(r"^<!-- (warroom-defect-(?:event|class)):([a-z0-9:_-]{1,
 def _safe(text: str) -> str:
     """Report text is data: it can neither close a comment nor forge an identity marker inside the Issue body."""
     return text.replace("<!--", "&lt;!--").replace("-->", "--&gt;").replace("```", "'''")
+
+
+_URL_USERINFO = re.compile(r"(?i)(\b[a-z][a-z0-9+.-]*://)[^/\s@]+@")
+_BASIC = re.compile(r"(?i)\b(basic)(\s+)[A-Za-z0-9+/=]{8,}")
+_ASSIGNED = re.compile(r"(?i)\b(password|passwd|secret|credential)s?(\"?\s*[:=]\s*\"?)[^\s\"',;&]+")
+
+
+def public(text) -> str:
+    """Text that may leave this machine (GitHub Issue / comment): credentials removed. The raw text stays in the local
+    DB and evidence bundle; only this safe form is ever published."""
+    text = _redact_tokens(str(text))
+    text = _URL_USERINFO.sub(lambda m: m.group(1) + "[REDACTED]@", text)
+    text = _BASIC.sub(lambda m: m.group(1) + m.group(2) + "[REDACTED]", text)
+    return _ASSIGNED.sub(lambda m: m.group(1) + m.group(2) + "[REDACTED]", text)
 
 
 def marker(kind: str, value: str) -> str:
@@ -244,7 +260,7 @@ def incident_issue_title(env: dict) -> str:
 
 def _short(value, limit: int = 160) -> str:
     text = json.dumps(value, ensure_ascii=False, sort_keys=True) if not isinstance(value, str) else value
-    return _safe(text if len(text) <= limit else text[:limit - 1] + "…")
+    return _safe(public(text if len(text) <= limit else text[:limit - 1] + "…"))
 
 
 def incident_issue_body(env: dict, event_key: str) -> str:

@@ -1181,6 +1181,25 @@ class IncidentNumberAndIntake(unittest.TestCase):
                          sorted([f"incident:{b['id']}:e1", f"incident:{b['id']}:e2", f"incident:{other['id']}:e1"]))
         self.assertEqual(len(w.gh.created), 3)
 
+    def test_credentials_in_an_error_never_reach_github_but_stay_in_the_local_record(self):
+        w = self.w
+        secrets = ["ghp_" + "a" * 30, "https://user:hunter2pass@example.com/x.git", "Bearer abcdef0123456789abcd"]
+        raw = "git 실패: " + " ".join(secrets) + " token=zzzzzzzzzzzzzzzz1"
+        b = break_batch(w, make_batch(w), raw)
+        w.tick(2)
+        d, = incidents(w)
+        w.store.update_defect(d["id"], state="HELD", hold_reason="검증 실패 " + raw)
+        w.store.update(b["id"], error=raw)
+        w.sup.maint._report_outcomes()
+        published = [w.gh.issues[101]["body"]] + [c["body"] for c in w.gh.issue_comments_.get(101, [])]
+        self.assertTrue(any("진단/보류 결과" in x for x in published))
+        for text in published:
+            for secret in secrets + ["hunter2pass", "zzzzzzzzzzzzzzzz1"]:
+                self.assertNotIn(secret, text)
+        self.assertIn("[REDACTED]", w.gh.issues[101]["body"])
+        self.assertEqual(w.store.batch(b["id"])["error_first"], raw)       # the original stays local
+        self.assertIn(secrets[1], d["report"] + (w.store.batch(b["id"])["error"] or ""))
+
     def test_envelope_failure_keeps_the_error(self):
         w = self.w
         b = break_batch(w, make_batch(w))
