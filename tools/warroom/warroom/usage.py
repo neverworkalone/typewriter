@@ -100,8 +100,7 @@ def _c_cli_tokens(command: object, *, expected_cli_path, command_cwd) -> list[st
     if (len(tokens) == 3 and Path(tokens[0]).name in {"bash", "sh", "zsh"}
             and tokens[1] in ("-c", "-lc")):
         return _c_cli_tokens(tokens[2], expected_cli_path=expected_cli_path, command_cwd=command_cwd)
-    if (len(tokens) < 3 or Path(tokens[0]).name != "node"
-            or tokens[2] not in {"chunk", "add-form"}
+    if (len(tokens) < 3 or Path(tokens[0]).name != "node" or not tokens[2]
             or any(token in {";", "&&", "||", "|", "&"} for token in tokens)):
         return None
     script = Path(tokens[1])
@@ -115,30 +114,38 @@ def _c_cli_tokens(command: object, *, expected_cli_path, command_cwd) -> list[st
     return tokens
 
 
-def _c_cli_operation(command: object, *, expected_cli_path, command_cwd) -> str | None:
-    tokens = _c_cli_tokens(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
-    return tokens[2] if tokens is not None else None
+def _c_option_value(tokens: list[str], name: str) -> str | None:
+    matches = []
+    for index, token in enumerate(tokens[3:], 3):
+        if token == name:
+            if index + 1 >= len(tokens):
+                return None
+            matches.append(tokens[index + 1])
+        elif token.startswith(name + "="):
+            matches.append(token[len(name) + 1:])
+    return matches[0] if len(matches) == 1 and matches[0] else None
 
 
-def _c_chunk_scope_request(command: object, *, expected_cli_path, command_cwd) -> dict | None:
+def _c_checkpoint_matches(raw_path: str | None, expected_path, command_cwd) -> bool:
+    if raw_path is None:
+        return False
+    actual, expected = Path(raw_path), Path(expected_path)
+    if not actual.is_absolute():
+        actual = Path(command_cwd) / actual
+    if not expected.is_absolute():
+        expected = Path(command_cwd) / expected
+    try:
+        return actual.resolve() == expected.resolve()
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
+def _c_chunk_scope_request(tokens: list[str]) -> dict | None:
     """Safe task-scope facts from one exact official C `chunk` invocation, if its args are unambiguous."""
-    tokens = _c_cli_tokens(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
-    if tokens is None or tokens[2] != "chunk":
+    if len(tokens) < 3 or tokens[2] != "chunk":
         return None
-
-    def option_value(name: str) -> str | None:
-        matches = []
-        for index, token in enumerate(tokens[3:], 3):
-            if token == name:
-                if index + 1 >= len(tokens):
-                    return None
-                matches.append(tokens[index + 1])
-            elif token.startswith(name + "="):
-                matches.append(token[len(name) + 1:])
-        return matches[0] if len(matches) == 1 and matches[0] else None
-
-    chunk = option_value("--chunk")
-    raw_ids = option_value("--sense-ids")
+    chunk = _c_option_value(tokens, "--chunk")
+    raw_ids = _c_option_value(tokens, "--sense-ids")
     if chunk is None or not re.fullmatch(r"\d{1,6}", chunk) or int(chunk) < 1 or raw_ids is None:
         return None
     sense_ids = raw_ids.split(",")
@@ -191,12 +198,17 @@ def _c_write_failure(command: object, output: object, *, exit_code=None, tool_er
     return None
 
 
-def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd=None) -> list[dict]:
+_CHECKPOINT_MUTATING_C_COMMANDS = {"init", "chunk", "submit", "add-form", "clear-candidates"}
+
+
+def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd=None,
+                                expected_checkpoint_path=None, command_facts: list[dict] | None = None) -> list[dict]:
     """Read command-bound C stop evidence from the configured CLI and prompted write-failure wrapper.
 
     Codex records command and output together, Claude pairs Bash tool calls with their tool results, and OpenCode
     records the command result in the completed tool state. CLI output counts only when its command resolves to the
-    exact script path used by the Supervisor; assistant prose never counts. Returned fields are safe reason codes only.
+    exact script path used by the Supervisor; assistant prose never counts. Optional `command_facts` records only
+    checkpoint-mutating operations and whether their `--checkpoint` resolved to the expected active checkpoint.
     """
     if (not isinstance(log_file, (str, Path)) or not isinstance(expected_cli_path, (str, Path))
             or not isinstance(command_cwd, (str, Path))):
@@ -212,7 +224,19 @@ def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd
     commands: dict[str, str] = {}
 
     def add(command: object, output: object, *, exit_code=None, tool_error=False) -> None:
-        operation = _c_cli_operation(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
+        tokens = _c_cli_tokens(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
+        operation = tokens[2] if tokens is not None else None
+        if (command_facts is not None and tokens is not None
+                and operation in _CHECKPOINT_MUTATING_C_COMMANDS):
+            fact = {"operation": operation}
+            if expected_checkpoint_path is not None:
+                fact["checkpoint_matches"] = _c_checkpoint_matches(
+                    _c_option_value(tokens, "--checkpoint"), expected_checkpoint_path, command_cwd)
+            if operation == "chunk":
+                request = _c_chunk_scope_request(tokens)
+                if request is not None:
+                    fact.update(request)
+            command_facts.append(fact)
         result = (_c_stop_diagnostic(operation, output) if operation is not None else None)
         if result is None:
             result = _c_write_failure(command, output, exit_code=exit_code, tool_error=tool_error)
@@ -226,9 +250,10 @@ def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd
         seen.add(key)
         if key == ("chunk", "chunk_scope"):
             result["occurrences"] = 1
-            request = _c_chunk_scope_request(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
-            if request is not None:
-                result.update(request)
+            if tokens is not None:
+                request = _c_chunk_scope_request(tokens)
+                if request is not None:
+                    result.update(request)
         indexes[key] = len(diagnostics)
         diagnostics.append(result)
 

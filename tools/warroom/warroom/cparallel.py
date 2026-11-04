@@ -252,12 +252,21 @@ def _legacy_chunk_scope_retry_is_proven(store, b, row, guard, run, start, rec, o
     diagnostics = outcome.get("stop_diagnostics")
     if not isinstance(diagnostics, list) or len(diagnostics) != 1:
         return False
+    checkpoint_commands = outcome.get("checkpoint_commands")
+    if not isinstance(checkpoint_commands, list) or len(checkpoint_commands) != 1:
+        return False
+    checkpoint_command = checkpoint_commands[0]
+    if (not isinstance(checkpoint_command, dict) or checkpoint_command.get("operation") != "chunk"
+            or checkpoint_command.get("checkpoint_matches") is not True
+            or checkpoint_command.get("chunk_no") != rec.get("chunk_no")):
+        return False
     diagnostic = diagnostics[0]
     if (not isinstance(diagnostic, dict) or diagnostic.get("operation") != "chunk"
             or diagnostic.get("diagnostic") != "chunk_scope"
             or diagnostic.get("error_code") != "LITERARY_CHUNK_SCOPE"
             or diagnostic.get("occurrences") != 1
-            or diagnostic.get("chunk_no") != rec.get("chunk_no")):
+            or diagnostic.get("chunk_no") != rec.get("chunk_no")
+            or diagnostic.get("sense_ids") != checkpoint_command.get("sense_ids")):
         return False
     requested = diagnostic.get("sense_ids")
     active_ids = rec.get("sense_ids")

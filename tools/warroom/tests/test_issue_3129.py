@@ -130,7 +130,8 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
         self.assertFalse(control.retry(w.store, "deepseek", "c"))
 
-    def _legacy_stop_task_status(self, *, official_diagnostic=None, command_chunk="001", command_ids="s9999"):
+    def _legacy_stop_task_status(self, *, official_diagnostic=None, command_chunk="001", command_ids="s9999",
+                                 command_checkpoint=None):
         w = self.world(senses=12)
         w.start("single", "deepseek", "c")
         w.tick(2)
@@ -138,12 +139,13 @@ class Issue3129(Helpers, unittest.TestCase):
         row = w.store.task_row(b["id"], "001")
         run = w.store.run(row["run_id"])
         events = [{"type": "thread.started", "thread_id": run["session_id"]}]
+        checkpoint = command_checkpoint or literary.names(b).checkpoint
         if official_diagnostic is not None:
             diagnostics = official_diagnostic if isinstance(official_diagnostic, list) else [official_diagnostic]
             for index, diagnostic in enumerate(diagnostics):
                 events.append({"type": "item.completed", "item": {
                     "id": f"chunk-{index + 1}", "type": "command_execution",
-                    "command": f"node {literary.cli_path()} chunk --chunk {command_chunk} --sense-ids {command_ids}",
+                    "command": f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {command_chunk} --sense-ids {command_ids}",
                     "exit_code": 1, "aggregated_output": json.dumps(diagnostic)}})
         events.extend([
             {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
@@ -182,6 +184,7 @@ class Issue3129(Helpers, unittest.TestCase):
             ("missing CLI error code", {"official_diagnostic": bad_code}),
             ("wrong active task chunk", {"official_diagnostic": scope, "command_chunk": "002"}),
             ("request only contains active IDs", {"official_diagnostic": scope, "command_ids": "s0000"}),
+            ("different checkpoint", {"official_diagnostic": scope, "command_checkpoint": ".warroom-scratch/other.json"}),
             ("repeated scope stop", {"official_diagnostic": [scope, scope]}),
             ("another stop reason", {"official_diagnostic": [scope, other_stop]}),
         ]
@@ -191,7 +194,7 @@ class Issue3129(Helpers, unittest.TestCase):
                 self.assertFalse(status["can_retry"])
                 self.assertIn("cli_chunk_scope", status["retry_blocked_reason"])
 
-    def _fail_legacy_chunk_scope_run(self, w, task="001", requested_ids=None):
+    def _fail_legacy_chunk_scope_run(self, w, task="001", requested_ids=None, extra_cli_commands=None):
         b = self.b(w)
         row = w.store.task_row(b["id"], task)
         rec = literary.read_active(w.wt(), b, int(task))
@@ -199,16 +202,21 @@ class Issue3129(Helpers, unittest.TestCase):
         requested_ids = requested_ids or (list(rec["sense_ids"]) + ["s9998", "s9999"])
         diagnostic = {"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
                       "message": "The request is outside the active chunk.", "repair_scope": "stop_and_report"}
-        events = [
-            {"type": "thread.started", "thread_id": run["session_id"]},
+        checkpoint = literary.names(b).checkpoint
+        events = [{"type": "thread.started", "thread_id": run["session_id"]}]
+        events.extend({"type": "item.completed", "item": {"id": f"extra-cli-{index + 1}",
+                       "type": "command_execution", "command": command, "exit_code": 0,
+                       "aggregated_output": "FORM_ADDED\n"}}
+                      for index, command in enumerate(extra_cli_commands or []))
+        events.extend([
             {"type": "item.completed", "item": {"id": "chunk", "type": "command_execution",
-             "command": f"node {literary.cli_path()} chunk --chunk {task} --sense-ids {','.join(requested_ids)}",
+             "command": f"node {literary.cli_path()} chunk --checkpoint {checkpoint} --chunk {task} --sense-ids {','.join(requested_ids)}",
              "exit_code": 1, "aggregated_output": json.dumps(diagnostic)}},
             {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
              "text": "The official CLI returned LITERARY_CHUNK_SCOPE; I stop_and_report."}},
             {"type": "turn.completed", "usage": {"input_tokens": 1, "cached_input_tokens": 0,
                                                        "output_tokens": 1, "reasoning_output_tokens": 0}},
-        ]
+        ])
         w.adapter.running[run["pid"]]["text"] = "".join(json.dumps(event) + "\n" for event in events)
         w.adapter.finish(run["pid"])
         w.store.finish_run(run["id"], "0")
@@ -260,6 +268,25 @@ class Issue3129(Helpers, unittest.TestCase):
         submissions_after = {sense["sense_id"]: sense["submission"] for record in checkpoint_after["records"]
                              for sense in record["senses"]}
         self.assertEqual({sense_id: submissions_after[sense_id] for sense_id in sibling_ids}, saved_before)
+
+    def test_sibling_add_form_in_source_run_blocks_scope_retry(self):
+        w = self.world(senses=24)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        sibling_ids = self.sense_ids(w, "002")
+        self.finish(w, "002")
+        w.tick()
+        active_ids = self.sense_ids(w, "001")
+        checkpoint = literary.names(b).checkpoint
+        add_form = (f"node {literary.cli_path()} add-form --checkpoint {checkpoint} "
+                    f"--sense-id {sibling_ids[0]} --form 추가형 --basis 근거")
+        self._fail_legacy_chunk_scope_run(w, requested_ids=active_ids + sibling_ids[:2],
+                                          extra_cli_commands=[add_form])
+
+        status = control.line_status(w.store, "deepseek", "c")
+        self.assertFalse(status["can_retry"])
+        self.assertIn("cli_chunk_scope", status["retry_blocked_reason"])
 
     def test_failed_scope_recovery_cannot_be_retried_again(self):
         w = self.world(senses=12)
