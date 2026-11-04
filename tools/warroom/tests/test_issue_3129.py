@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from tests.test_issue_3076 import Helpers
-from warroom import literary, prompts, control
+from warroom import cparallel, literary, prompts, control
 
 
 def _digest(value):
@@ -237,12 +237,13 @@ class Issue3129(Helpers, unittest.TestCase):
             w.store.set_run_session_by_id(run["id"], session_id)
             w.store.update_task(b["id"], task, session_id=session_id)
             row = w.store.task_row(b["id"], task)
+            run["session_id"] = session_id
         requested_ids = requested_ids or (list(rec["sense_ids"]) + ["s9998", "s9999"])
         diagnostic = {"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
                       "message": "The request is outside the active chunk.", "repair_scope": "stop_and_report"}
         checkpoint = command_checkpoint or literary.names(b).checkpoint
         chunk_no = command_chunk or task
-        events = [{"type": "thread.started", "thread_id": run["session_id"]}]
+        events = [{"type": "thread.started", "thread_id": session_id}]
         events.extend({"type": "item.completed", "item": {"id": f"extra-cli-{index + 1}",
                        "type": "command_execution", "command": command, "exit_code": 0,
                        "aggregated_output": "FORM_ADDED\n"}}
