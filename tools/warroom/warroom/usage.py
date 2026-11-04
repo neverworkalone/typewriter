@@ -15,12 +15,15 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 from pathlib import Path
 
 FIELDS = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
           "reasoning_output_tokens", "tool_calls", "submit_failures")
 _SUBMIT = re.compile(r"(?:literary-context-cli\.mjs\s+submit|d-chunk-cli\.mjs\s+save)\b")
 _C_SUBMIT = re.compile(r"literary-context-cli\.mjs\s+submit\b")
+_C_DIAGNOSTIC = re.compile(r"^[a-z][a-z0-9_]{0,47}$")
+_C_SUBMIT_FILE_WRITE = re.compile(r"cat\s+>\s+['\"]?\.warroom-scratch/c-chunk-\d{3}\.submit\.json")
 
 
 def submit_attempts(log_file) -> int | None:
@@ -83,6 +86,142 @@ def submit_attempts(log_file) -> int | None:
             recognized = True
 
     return len(attempts) if recognized else None
+
+
+def _c_cli_operation(command: object) -> str | None:
+    if not isinstance(command, str):
+        return None
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+        lexer.whitespace_split = True
+        tokens = list(lexer)
+    except ValueError:
+        return None
+    if (len(tokens) == 3 and Path(tokens[0]).name in {"bash", "sh", "zsh"}
+            and tokens[1] in ("-c", "-lc")):
+        return _c_cli_operation(tokens[2])
+    if (len(tokens) < 3 or Path(tokens[0]).name != "node"
+            or Path(tokens[1]).name != "literary-context-cli.mjs"
+            or tokens[2] not in {"chunk", "add-form"}
+            or any(token in {";", "&&", "||", "|", "&"} for token in tokens)):
+        return None
+    return tokens[2]
+
+
+def _c_cli_output_text(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(
+            item if isinstance(item, str) else item.get("text", "")
+            for item in value
+            if isinstance(item, str) or isinstance(item, dict) and isinstance(item.get("text"), str)
+        )
+    return ""
+
+
+def _c_stop_diagnostic(operation: str, output: object) -> dict | None:
+    for line in _c_cli_output_text(output).splitlines():
+        try:
+            result = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(result, dict):
+            continue
+        if result.get("status") == "OUTPUT_LIMIT":
+            return {"operation": operation, "diagnostic": "output_limit"}
+        if result.get("status") != "FAILED" or result.get("repair_scope") != "stop_and_report":
+            continue
+        diagnostic = result.get("diagnostic")
+        if isinstance(diagnostic, str) and _C_DIAGNOSTIC.fullmatch(diagnostic):
+            return {"operation": operation, "diagnostic": diagnostic}
+    return None
+
+
+def _c_write_failure(command: object, output: object, *, exit_code=None, tool_error=False) -> dict | None:
+    if (not isinstance(command, str) or not _C_SUBMIT_FILE_WRITE.search(command)
+            or "echo WRITE_FAILED" not in command or "exit 90" not in command
+            or not (exit_code == 90 or tool_error)):
+        return None
+    if any(line.strip() == "WRITE_FAILED" for line in _c_cli_output_text(output).splitlines()):
+        return {"operation": "submit_write", "diagnostic": "write_failed"}
+    return None
+
+
+def official_c_stop_diagnostics(log_file) -> list[dict]:
+    """Read command-bound C stop evidence from official CLI results and the prompted write-failure wrapper.
+
+    Codex records command and output together, Claude pairs Bash tool calls with their tool results, and OpenCode
+    records the command result in the completed tool state. Assistant prose never counts; returned fields are safe
+    reason codes only.
+    """
+    if not isinstance(log_file, (str, Path)):
+        return []
+    try:
+        lines = Path(log_file).read_text("utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+
+    diagnostics: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    commands: dict[str, str] = {}
+
+    def add(command: object, output: object, *, exit_code=None, tool_error=False) -> None:
+        operation = _c_cli_operation(command)
+        result = (_c_stop_diagnostic(operation, output) if operation is not None else None)
+        if result is None:
+            result = _c_write_failure(command, output, exit_code=exit_code, tool_error=tool_error)
+        if result is None:
+            return
+        key = (result["operation"], result["diagnostic"])
+        if key not in seen:
+            seen.add(key)
+            diagnostics.append(result)
+
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        item = event.get("item") if isinstance(event.get("item"), dict) else {}
+        if kind == "item.completed" and item.get("type") == "command_execution":
+            output = item.get("aggregated_output")
+            if output is None:
+                output = item.get("output")
+            add(item.get("command"), output,
+                exit_code=item.get("exit_code"))
+        elif kind in ("assistant", "user", "system"):
+            message = event.get("message") if isinstance(event.get("message"), dict) else {}
+            blocks = message.get("content")
+            for block in blocks if isinstance(blocks, list) else []:
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "tool_use" and block.get("name") == "Bash":
+                    tool_id = block.get("id")
+                    inp = block.get("input") if isinstance(block.get("input"), dict) else {}
+                    if isinstance(tool_id, str) and isinstance(inp.get("command"), str):
+                        commands[tool_id] = inp["command"]
+                elif block.get("type") == "tool_result":
+                    tool_id = block.get("tool_use_id")
+                    add(commands.get(tool_id) if isinstance(tool_id, str) else None, block.get("content"),
+                        tool_error=block.get("is_error") is True)
+        elif kind == "tool_use":
+            part = event.get("part") if isinstance(event.get("part"), dict) else {}
+            state = part.get("state") if isinstance(part.get("state"), dict) else {}
+            inp = state.get("input") if isinstance(state.get("input"), dict) else {}
+            output = state.get("output")
+            if output is None:
+                metadata = state.get("metadata") if isinstance(state.get("metadata"), dict) else {}
+                output = metadata.get("output")
+            metadata = state.get("metadata") if isinstance(state.get("metadata"), dict) else {}
+            if state.get("status") in ("completed", "error"):
+                add(inp.get("command"), output, exit_code=metadata.get("exit"),
+                    tool_error=state.get("status") == "error")
+
+    return diagnostics
 
 
 def _count(v):

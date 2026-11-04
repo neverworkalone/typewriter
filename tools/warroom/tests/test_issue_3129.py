@@ -130,6 +130,48 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
         self.assertFalse(control.retry(w.store, "deepseek", "c"))
 
+    def _legacy_stop_task_status(self, *, official_diagnostic=None):
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick(2)
+        b = self.b(w)
+        row = w.store.task_row(b["id"], "001")
+        run = w.store.run(row["run_id"])
+        events = [{"type": "thread.started", "thread_id": run["session_id"]}]
+        if official_diagnostic is not None:
+            events.append({"type": "item.completed", "item": {
+                "id": "chunk-1", "type": "command_execution",
+                "command": "node scripts/relation/literary-context-cli.mjs chunk --chunk 001 --sense-ids s9999",
+                "exit_code": 1, "aggregated_output": json.dumps(official_diagnostic)}})
+        events.extend([
+            {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
+             "text": "The stop_and_report marker is being discussed; I did not call submit."}},
+            {"type": "turn.completed", "usage": {"input_tokens": 1, "cached_input_tokens": 0,
+                                                        "output_tokens": 1, "reasoning_output_tokens": 0}},
+        ])
+        w.adapter.running[run["pid"]]["text"] = "".join(json.dumps(event) + "\n" for event in events)
+        w.adapter.finish(run["pid"])
+        w.store.finish_run(run["id"], "0")
+
+        row = w.store.task_row(b["id"], "001")
+        rec = literary.read_active(w.wt(), b, 1)
+        data = self.data(w, "001")
+        w.sup.cp._incomplete_failed(b, row, data, rec, rec["sense_ids"],
+                                    {"status": "producer_reported_stop"})
+        w.sup._fail(w.store.batch(b["id"]), "ERROR", "legacy producer_reported_stop fixture")
+        return w, control.line_status(w.store, "deepseek", "c")
+
+    def test_legacy_text_stop_guard_unlocks_only_without_official_stop_evidence(self):
+        w, status = self._legacy_stop_task_status()
+        self.assertTrue(status["can_retry"], status.get("retry_blocked_reason"))
+        self.assertIsNone(status.get("retry_blocked_reason"))
+
+        diagnostic = {"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
+                      "message": "The request is outside the active chunk.", "repair_scope": "stop_and_report"}
+        w, status = self._legacy_stop_task_status(official_diagnostic=diagnostic)
+        self.assertFalse(status["can_retry"])
+        self.assertIn("cli_chunk_scope", status["retry_blocked_reason"])
+
     @staticmethod
     def _write_no_submit_log(w, run, *, query=True):
         info = w.adapter.running[run["pid"]]

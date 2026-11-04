@@ -40,9 +40,13 @@ class CWorld(World):
 
     def write_codex_log(self, final="Work is complete, but I did not invoke submit.", commands=(), session="ses_c"):
         events = [{"sessionID": session}, {"type": "thread.started", "thread_id": session}]
-        for i, command in enumerate(commands):
-            events.append({"type": "item.completed", "item": {"id": f"cmd-{i}",
-                           "type": "command_execution", "command": command, "exit_code": 0}})
+        for i, spec in enumerate(commands):
+            command = spec.get("command") if isinstance(spec, dict) else spec
+            code = spec.get("exit_code", 0) if isinstance(spec, dict) else 0
+            item = {"id": f"cmd-{i}", "type": "command_execution", "command": command, "exit_code": code}
+            if isinstance(spec, dict) and isinstance(spec.get("output"), str):
+                item["aggregated_output"] = spec["output"]
+            events.append({"type": "item.completed", "item": item})
         events.extend([{"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
                        "text": final}}, {"type": "turn.completed", "usage": {"input_tokens": 1,
                        "cached_input_tokens": 0, "output_tokens": 1, "reasoning_output_tokens": 0}}])
@@ -419,9 +423,24 @@ class SerialChunks(unittest.TestCase):
         self.assertIsNone(w.store.get(literary.no_submission_recovery_key(
             w.row("deepseek", "c")["id"], active["chunk_id"])))
 
-    def test_stop_report_and_unknown_submit_evidence_fail_closed_with_distinct_reasons(self):
+    def test_official_stop_and_unknown_submit_evidence_fail_closed_with_distinct_reasons(self):
+        stop_diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
+                                      "code": "LITERARY_CHUNK_SCOPE",
+                                      "message": "The request is outside this worker's active chunk.",
+                                      "repair_scope": "stop_and_report"})
+        write_failure = ("zsh -lc 'cat > .warroom-scratch/c-chunk-001.submit.json <<JSON || "
+                         "{ echo WRITE_FAILED >&2; exit 90; }'")
         cases = [
-            ("reported stop", {"final": "SEARCH_FAILED: source search could not complete."}, "producer_reported_stop", None),
+            ("official chunk-scope stop", {"final": "The CLI reported stop_and_report; I will not retry.",
+             "commands": ({"command": "node scripts/relation/literary-context-cli.mjs chunk --chunk 001 --sense-ids s1,s2",
+                           "exit_code": 1, "output": stop_diagnostic},)}, "cli_chunk_scope", None),
+            ("official output limit", {"final": "The context output reached its official limit.",
+             "commands": ({"command": "node scripts/relation/literary-context-cli.mjs chunk --chunk 001",
+                           "exit_code": 1, "output": json.dumps({"status": "OUTPUT_LIMIT", "actual_chars": 30000})},)},
+             "cli_output_limit", None),
+            ("failed submit-file write", {"final": "WRITE_FAILED; I am stopping.",
+             "commands": ({"command": write_failure, "exit_code": 90, "output": "WRITE_FAILED\n"},)},
+             "write_failed", None),
             ("unknown log", None, "submission_status_unknown", None),
             ("submit called without artifacts", {"commands": (
                 "node scripts/relation/literary-context-cli.mjs submit --file x.json",)},
@@ -447,6 +466,18 @@ class SerialChunks(unittest.TestCase):
                 self.assertEqual(b["state"], "ERROR")
                 self.assertIn(expected, b["error"])
                 self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_final_answer_stop_words_without_official_diagnostic_get_one_recovery(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        w.finish_last()
+        w.write_codex_log(final="SEARCH_FAILED and stop_and_report are only being discussed; no submit was called.")
+        w.tick()
+        b = w.row("deepseek", "c")
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("PRODUCING", 2))
+        self.assertEqual(w.kinds(), ["c_chunk_new", "c_chunk_recovery"])
+        self.assertEqual(w.store.get(literary.retry_guard_key(b["id"])), None)
 
     def test_legacy_no_submission_guard_allows_one_owner_retry_without_resetting_budget(self):
         w = self.w

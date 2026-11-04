@@ -6,7 +6,8 @@ from pathlib import Path
 
 from warroom.config import DEFAULTS, config_problem
 from warroom.store import Store
-from warroom.usage import estimate_cost, parse_usage, pricing_problems, submit_attempts, sum_usage
+from warroom.usage import (estimate_cost, official_c_stop_diagnostics, parse_usage, pricing_problems,
+                           submit_attempts, sum_usage)
 
 SUBMIT = "node scripts/relation/literary-context-cli.mjs submit --file x.json"
 
@@ -182,6 +183,61 @@ class SubmitAttemptParsing(unittest.TestCase):
             path = Path(d) / "run.log"
             path.write_text("ordinary output\nnot json\n", encoding="utf-8")
             self.assertIsNone(submit_attempts(path))
+
+
+class OfficialCStopParsing(unittest.TestCase):
+    def parse(self, *events):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "run.log"
+            path.write_text(jl(*events), encoding="utf-8")
+            return official_c_stop_diagnostics(path)
+
+    def test_codex_stop_requires_a_structured_result_from_the_official_cli(self):
+        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
+                                 "repair_scope": "stop_and_report"})
+        command = "zsh -lc 'node scripts/relation/literary-context-cli.mjs chunk --chunk 005 --sense-ids s1,s2'"
+        event = {"type": "item.completed", "item": {"id": "call-1", "type": "command_execution",
+                 "command": command, "exit_code": 1, "aggregated_output": diagnostic}}
+        self.assertEqual(self.parse({"type": "thread.started", "thread_id": "t"}, event),
+                         [{"operation": "chunk", "diagnostic": "chunk_scope"}])
+        prose = {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
+                 "text": "The phrase stop_and_report is only being discussed."}}
+        self.assertEqual(self.parse(prose), [])
+
+    def test_claude_and_opencode_results_keep_the_official_cli_binding(self):
+        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "index_search",
+                                 "repair_scope": "stop_and_report"})
+        command = "node scripts/relation/literary-context-cli.mjs chunk --chunk 001"
+        claude = self.parse(claude_bash("tool-1", command),
+                            {"type": "user", "message": {"content": [
+                                {"type": "tool_result", "tool_use_id": "tool-1", "is_error": True,
+                                 "content": diagnostic}]}})
+        self.assertEqual(claude, [{"operation": "chunk", "diagnostic": "index_search"}])
+
+        opencode = {"type": "tool_use", "part": {"callID": "call-2", "state": {
+            "input": {"command": command}, "status": "completed", "metadata": {"exit": 1},
+            "output": diagnostic}}}
+        self.assertEqual(self.parse(opencode), [{"operation": "chunk", "diagnostic": "index_search"}])
+
+    def test_a_similar_message_from_another_command_is_not_an_official_stop(self):
+        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
+                                 "repair_scope": "stop_and_report"})
+        command = {"type": "item.completed", "item": {"id": "echo", "type": "command_execution",
+                   "command": "printf 'node scripts/relation/literary-context-cli.mjs chunk'",
+                   "exit_code": 1, "aggregated_output": diagnostic}}
+        self.assertEqual(self.parse(command), [])
+
+    def test_output_limit_and_failed_submit_file_write_are_execution_stops(self):
+        output_limit = json.dumps({"status": "OUTPUT_LIMIT", "max_chars": 28000, "actual_chars": 29000})
+        chunk = {"type": "item.completed", "item": {"id": "chunk", "type": "command_execution",
+                 "command": "node scripts/relation/literary-context-cli.mjs chunk --chunk 001",
+                 "exit_code": 1, "aggregated_output": output_limit}}
+        self.assertEqual(self.parse(chunk), [{"operation": "chunk", "diagnostic": "output_limit"}])
+
+        write = {"type": "item.completed", "item": {"id": "write", "type": "command_execution",
+                 "command": "zsh -lc 'cat > .warroom-scratch/c-chunk-001.submit.json <<JSON || { echo WRITE_FAILED >&2; exit 90; }'",
+                 "exit_code": 90, "aggregated_output": "WRITE_FAILED\n"}}
+        self.assertEqual(self.parse(write), [{"operation": "submit_write", "diagnostic": "write_failed"}])
 
 
 class Totals(unittest.TestCase):
