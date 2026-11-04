@@ -26,6 +26,8 @@
 - 초기 8개 뒤에 상한까지 확장할 때는 `--skip 8 --contexts 16`을 사용한다. 이는 같은 Sense의 9–16번째 문맥을 반환한다. 부분 결과를 이어 읽을 때 `--skip`에는 완전히 판독한 앞 문맥 수를 넣는다. `--skip 16`은 호출하지 않는다. `--skip 16 --contexts 16`의 usage 오류는 16개 상한에 도달했다는 뜻이므로, 더 큰 페이지를 요구하거나 검색 실패로 보고하지 않는다.
 - 추가 조회도 source sense의 VERIFIED 판정에 필요한 문맥까지만 읽는다. **초기 view와 추가 조회를 합쳐 Sense당 서로 다른 문맥 16개가 상한**이다. 상한까지 읽고도 VERIFIED가 없으면 앞의 빈 `verified`/`candidates` 제출 규칙으로 정상 완료한다. 이미 표시된 앞부분의 순서가 달라지거나 증거가 일치하지 않아 도구가 거부되면 이를 우회하지 말고 실제 오류를 보고한다.
 
+- `--sense-ids`에는 Supervisor note에 적힌 활성 청크 허용 ID를 문자열 그대로 복사한다. 표제어나 번호에서 ID를 만들거나 인접 ID를 추정하지 않는다.
+
 ## 발굴 (모든 VERIFIED 문맥)
 
 - **모든 VERIFIED 문맥**에서 일곱 관점 각각을 실제로 탐색한다: Image, Action, Emotion, Sensation, Scene/Situation, Causality, Metaphor/Contrast.

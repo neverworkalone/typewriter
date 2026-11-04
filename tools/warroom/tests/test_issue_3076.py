@@ -58,6 +58,10 @@ class ParallelC(Helpers, unittest.TestCase):
         self.assertEqual((b["state"], b["run_kind"], b["pid"]), ("PRODUCING", "c_parallel", None))
         self.assertEqual(w.store.get(f"c_mode_{b['id']}"), "parallel")
         self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "002", "003", "004"])
+        for launch, task in zip(w.adapter.launches, ("001", "002", "003", "004")):
+            ids = self.sense_ids(w, task)
+            self.assertIn("Supervisor가 배정한 조회 허용 ID(아래 문자열을 그대로 복사): " + ", ".join(ids), launch["prompt"])
+            self.assertIn("이번 실행의 미완료 제출 ID: " + ", ".join(ids), launch["prompt"])
         everything = [i for t in self.tasks(w) for i in self.sense_ids(w, t)]
         self.assertEqual(len(everything), len(set(everything)))          # no Sense is assigned twice
         self.assertEqual(sum(1 for c in w.runner.literary.calls if c[2] == "init"), 1)
