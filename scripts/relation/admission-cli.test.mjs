@@ -130,7 +130,7 @@ function crossShardCounterpart() {
   };
 }
 
-async function singleCandidateRepository(t, sourceRecordId, candidate) {
+async function singleCandidateRepository(t, candidates) {
   const { root } = await sixCandidateRepository(t);
   const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
   const records = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
@@ -142,7 +142,8 @@ async function singleCandidateRepository(t, sourceRecordId, candidate) {
     const candidatePath = path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`);
     const rows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map(JSON.parse);
     for (const row of rows) for (const sense of row.senses) {
-      sense.candidates = producer === 'a_codex' && row.record_id === sourceRecordId ? [candidate] : [];
+      sense.candidates = producer === 'a_codex'
+        ? candidates.filter((entry) => entry.recordId === row.record_id).map((entry) => entry.text) : [];
     }
     await writeFile(candidatePath, jsonl(rows));
   }
@@ -2136,32 +2137,43 @@ test('repair --check normalizes a deterministic omission and reports every local
 
 test('preflight and merge use explicit ver:1 forward and reverse candidate assignments', async (t) => {
   const scenarios = [
-    { name: 'an unassigned reverse form remains available for Drop', sourceRecordId: 'w2', candidate: '각석',
-      reverseForms: [], conflict: false },
-    { name: 'an explicitly assigned reverse form remains a conflict', sourceRecordId: 'w2', candidate: '각석',
-      reverseForms: ['각석'], conflict: true },
-    { name: 'an explicitly assigned forward form remains a conflict', sourceRecordId: 'w1', candidate: '각자',
-      reverseForms: [], conflict: true },
+    { name: 'an unassigned reverse form remains available for Drop',
+      candidates: [{ recordId: 'w1', text: '각자' }, { recordId: 'w2', text: '각석' }],
+      dropRecordId: 'w2', dropCandidate: '각석',
+      initialForwardForms: ['각자'], initialReverseForms: [], forwardForms: ['각자'], reverseForms: [], conflict: false },
+    { name: 'an explicitly assigned reverse form remains a conflict',
+      candidates: [{ recordId: 'w1', text: '각자' }, { recordId: 'w2', text: '각석' }],
+      dropRecordId: 'w2', dropCandidate: '각석',
+      initialForwardForms: ['각자'], initialReverseForms: [], forwardForms: ['각자'], reverseForms: ['각석'], conflict: true },
+    { name: 'an explicitly assigned forward form remains a conflict',
+      candidates: [{ recordId: 'w1', text: '각자' }],
+      dropRecordId: 'w1', dropCandidate: '각자',
+      initialForwardForms: [], initialReverseForms: [], forwardForms: ['각자'], reverseForms: [], conflict: true },
   ];
 
   for (const scenario of scenarios) {
-    const root = await singleCandidateRepository(t, scenario.sourceRecordId, scenario.candidate);
+    const root = await singleCandidateRepository(t, scenario.candidates);
     const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
-    const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
-    assert.deepEqual(texts(prepared), [scenario.candidate], scenario.name);
+    const existing = {
+      source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+      type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
+      candidate_assignment_version: 1, candidate_forms: scenario.initialForwardForms,
+      reverse_candidate_forms: scenario.initialReverseForms,
+    };
+    await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([existing]));
+    await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
 
     const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
-    const drop = { source_sense_id: chunk.items[0].sense_id, candidate: scenario.candidate, disposition: 'drop', reason: 'e' };
+    assert.deepEqual(texts(chunk), [scenario.dropCandidate], scenario.name);
+    const item = chunk.items.find((entry) => entry.sense_id === `${scenario.dropRecordId}-s1`);
+    const drop = { source_sense_id: item.sense_id, candidate: scenario.dropCandidate, disposition: 'drop', reason: 'e' };
     const input = '.warroom-scratch/one-candidate-drop.json';
     await writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: [drop] }));
     await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
     await completeOptionalForTest(root, checkpoint);
 
-    const existing = {
-      source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
-      type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
-      candidate_assignment_version: 1, candidate_forms: ['각자'], reverse_candidate_forms: scenario.reverseForms,
-    };
+    existing.candidate_forms = scenario.forwardForms;
+    existing.reverse_candidate_forms = scenario.reverseForms;
     await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([existing]));
     await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
 
