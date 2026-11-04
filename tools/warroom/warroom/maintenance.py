@@ -508,6 +508,9 @@ class Maintenance:
         for d in self.store.defects(("FIX_MERGED", "HELD")):
             if d["source"] == "verify":   # no production batch: the scope's exact verify on master releases it (stage2.choose)
                 continue
+            if (d["state"] == "HELD" and (d["source"] != "incident"
+                    or not (d["hold_reason"] or "").startswith("재개 증명 불가:") or not d["merge_sha"])):
+                continue   # only formerly unprovable incident releases are eligible for a new proof
             b = self.store.batch(d["batch_id"])
             if b is None:   # the batch no longer exists: this defect can never be applied, and must not block the others
                 self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="배치가 더 이상 존재하지 않음")
