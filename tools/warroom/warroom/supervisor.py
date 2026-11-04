@@ -21,7 +21,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, stage1ab,
+from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, s3parallel, stage1ab,
                stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        final_answer, opencode_free_quota)
@@ -109,6 +109,8 @@ class Supervisor:
         self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
         self.dp = dparallel.ParallelD(self)   # parallel D chunk tasks inside a new batch (#3074)
         self.cp = cparallel.ParallelC(self)   # parallel C chunk tasks inside a new batch (#3076)
+        self.s3p = s3parallel.ParallelStage3(self)   # parallel Stage 3 chunk tasks inside a new shard (#3149)
+        self.parallel_new_s3 = True   # False only lets a fixture exercise the serial Stage 3 path an already running shard keeps
         self.parallel_new_c = True   # False only lets a fixture exercise the serial path an already running batch keeps
         self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
 
@@ -197,6 +199,10 @@ class Supervisor:
             return self.s2p.poll(b)
         if plan == "closed" and b["run_kind"] == s2parallel.RUN_KIND and b["pid"] is None:
             return self.s2p.continue_after_close(b)
+        if s3parallel.is_parallel(self.store, b) and b["run_kind"] == s3parallel.RUN_KIND:
+            if s3parallel.plan_state(self.store, b) == "closed":
+                return self.s3p.continue_after_close(b)   # a restart after the plan closed re-enters finalize
+            return self.s3p.poll(b)
         if dparallel.is_parallel(self.store, b) and b["run_kind"] == dparallel.RUN_KIND:
             return self.dp.poll(b)
         if cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:
@@ -530,6 +536,8 @@ class Supervisor:
         """Clear the PID of a stop-requested run only once the process is really gone."""
         if s2parallel.is_parallel(self.store, b) and not self.s2p.stop_workers(b):
             return False   # parallel Stage 2: every task process must be confirmed gone
+        if s3parallel.is_parallel(self.store, b) and not self.s3p.stop_workers(b):
+            return False   # parallel Stage 3: the same for every chunk task process
         if dparallel.is_parallel(self.store, b) and not self.dp.stop_workers(b):
             return False   # parallel D: the same for every chunk task process
         if cparallel.is_parallel(self.store, b) and not self.cp.stop_workers(b):
@@ -901,6 +909,8 @@ class Supervisor:
         ad = self._adapter(b["producer"])
         if s2parallel.is_parallel(self.store, b):
             self.s2p.stop_workers(b)   # every task process; exits are confirmed by _reap_stopped
+        if s3parallel.is_parallel(self.store, b):
+            self.s3p.stop_workers(b, acknowledge=True)   # the operator's Stop
         if dparallel.is_parallel(self.store, b):
             self.dp.stop_workers(b, acknowledge=True)   # the operator's Stop
         if cparallel.is_parallel(self.store, b):
@@ -932,6 +942,8 @@ class Supervisor:
         ad = self._adapter(b["producer"])
         if s2parallel.is_parallel(self.store, b) and not self.s2p.stop_workers(b):
             return self.store.log(b["id"], "Clear: 병렬 Stage 2 task AI 프로세스 종료 요청, 종료 확인 대기")
+        if s3parallel.is_parallel(self.store, b) and not self.s3p.stop_workers(b):
+            return self.store.log(b["id"], "Clear: 병렬 Stage 3 task AI 프로세스 종료 요청, 종료 확인 대기")
         if dparallel.is_parallel(self.store, b) and not self.dp.stop_workers(b):
             return self.store.log(b["id"], "Clear: 병렬 D task AI 프로세스 종료 요청, 종료 확인 대기")
         if cparallel.is_parallel(self.store, b) and not self.cp.stop_workers(b):
@@ -1168,7 +1180,9 @@ class Supervisor:
             bid = self.store.create_batch(method=method, producer=model, shard=shard, batch="all", branch=branch,
                                           worktree=str(wt), model_tier=ln["model_tier"], from_run=True,
                                           shard_pin=shard if ln["mode"] == "single" else None,
-                                          run_kind="s3_chunk_new")
+                                          run_kind="s3_chunk_new",
+                                          kv={"s3_mode_{id}": stage3.PARALLEL}
+                                          if self.parallel_new_s3 else None)   # same transaction as the batch row
         except LineNotRunnable:
             return
         except LineBusy as error:
@@ -1400,6 +1414,10 @@ class Supervisor:
         return self._launch(b, "s2_links_new" if phase == "links" else "s2_chunk_new")
 
     def _launch_stage3_next(self, b) -> None:
+        if s3parallel.is_parallel(self.store, b):   # the mode was fixed with the batch row (#3149)
+            if s3parallel.plan_state(self.store, b) == "closed":
+                return self._guarded(b, "prelaunch", self.s3p.continue_after_close, entrypoint="launch_stage3_next")
+            return self._guarded(b, "prelaunch", self.s3p.begin, entrypoint="launch_stage3_next")
         self._guarded(b, "prelaunch", lambda current: self._launch(current, "s3_chunk_new"),
                       entrypoint="launch_stage3_next")
 
@@ -2195,6 +2213,9 @@ class Supervisor:
     def _relaunch_do(self, b) -> None:
         if self._retry_denied_success(b):
             return
+        if b["method"] == STAGE3_METHOD and not b["pr_number"] and s3parallel.is_parallel(self.store, b) \
+                and b["run_kind"] in ("s3_chunk_new", s3parallel.RUN_KIND):
+            return self._launch_stage3_next(b)   # a parallel shard never takes the serial chunk relaunch (#3149)
         if b["method"] == STAGE3_METHOD and not b["pr_number"]:
             if b["run_kind"] == "s3_finalize":
                 self.maint.adopt_released_baseline(b)
@@ -2599,6 +2620,8 @@ class Supervisor:
 
     def _task_report_files(self, b) -> list[str]:
         """Worktree-relative shared-defect report path of every task of a parallel batch (Stage 2 Part or D)."""
+        if b["method"] == STAGE3_METHOD:
+            return []   # answer-only chunks: no per-task shared-defect file (#3149)
         if b["method"] == dchunk.METHOD:
             return [dparallel.defect_path(b, row["task"]) for row in self.store.task_rows(b["id"])]
         if b["method"] == literary.METHOD:

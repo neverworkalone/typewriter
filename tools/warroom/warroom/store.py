@@ -150,7 +150,7 @@ BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge
                      "s2_repair_state_", "s2_repair_run_start_",
                      "s2_finalize_base_", "s2_commit_head_", "s2_fix_start_",
                      "s3_run_start_", "s3_wait_", "s3_apply_ready_", "s3_apply_result_", "s3_commit_head_",
-                     "s3_merge_wait_",
+                     "s3_merge_wait_", "s3_mode_", "s3_plan_", "s3_parallel_start_",
                      "c_retry_guard_",
                      "s2_mode_", "s2_plan_", "s2_defect_path_", "d_mode_", "c_mode_", "c_parallel_retry_epoch_",
                      "pending_", "pr_create_")
@@ -294,8 +294,8 @@ class Store:
             c.execute("DELETE FROM kv WHERE key=?", (key,))
 
     # --- batches ---
-    def create_batch(self, from_run: bool = False, **f) -> int:
-        """Insert a PREPARE batch. `from_run`: the Supervisor assigns it on behalf of a run reservation, so the
+    def create_batch(self, from_run: bool = False, kv: dict | None = None, **f) -> int:
+        """Insert a PREPARE batch (`kv`: key/value rows committed in the SAME transaction, e.g. a fixed execution mode). `from_run`: the Supervisor assigns it on behalf of a run reservation, so the
         Line's *current* controls (read under the same write lock) must still allow it: a Stop, Drain or
         Drain All that landed after the tick read the Line cannot be overtaken."""
         now = time.time()
@@ -345,6 +345,9 @@ class Store:
                 (f["method"], f["producer"], f["shard"], f["batch"], f["branch"],
                  f["worktree"], "PREPARE", f.get("model_tier", "free"),
                  f.get("records_total"), f.get("run_kind"), now, now))
+            for key, value in (kv or {}).items():   # committed with the batch: a crash can never split them
+                c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                          (key.format(id=cur.lastrowid), value))
             if f.get("shard_pin") is not None:   # the Single shard binding commits WITH the Part: a crash cannot split them
                 c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (f["producer"], f["method"], now))
                 c.execute("UPDATE lines SET shard_pin=?, blocked='', updated_at=? WHERE model=? AND method=?",

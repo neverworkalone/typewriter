@@ -229,7 +229,9 @@ def card_text(st: dict) -> str:
     lines = [title, records, bar, ops]
     tasks = (s2.get("tasks") if s2 else None) or st.get("tasks")
     if tasks:   # parallel Stage 2 primary: running / queued / saved task counts
-        lines.append(_fit(f"task 실행 {tasks['running']} · 대기 {tasks['queued']} · 저장 {tasks['saved']}/{tasks['total']}"
+        lines.append(_fit(f"task 실행 {tasks['running']} · 대기 {tasks['queued']}"
+                          + (f" · 응답 {tasks['responded']}" if tasks.get("responded") else "")
+                          + f" · 저장 {tasks['saved']}/{tasks['total']}"
                           + (f" · 실패 {tasks['failed']}" if tasks["failed"] else "")))
     if (is_stage2 or is_stage3) and st.get("wait"):
         lines.append(_fit("대기: " + st["wait"]))
