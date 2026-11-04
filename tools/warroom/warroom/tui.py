@@ -18,7 +18,7 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Rule, 
 import time
 
 from . import auth, control
-from .config import (Paths, role_view, adapter_label, adapters, load_config, methods, ordered_models, registry,
+from .config import (ROOT_ENV, Paths, RootError, check_runtime_root, role_view, adapter_label, adapters, load_config, methods, ordered_models, registry,
                      stage2_models, stage3_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
@@ -48,6 +48,15 @@ def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
     try:
         supervisor_lock = acquire_lock(paths.lock)
         if supervisor_lock is None:
+            # #3378: a live Supervisor started from another checkout (e.g. a removed Codex worktree) keeps loading that
+            # code and prompts. Never replace it here (its batches/AI processes stay); report how to restart safely.
+            try:
+                live_root = paths.runtime_root_file.read_text("utf-8").strip()
+            except OSError:
+                live_root = ""
+            if live_root and live_root != str(paths.repo_root):
+                return "failed", (f"실행 중인 Supervisor의 루트({live_root})가 운영 루트({paths.repo_root})와 다릅니다. "
+                                  "강제 종료하지 말고 README의 'Supervisor 코드 수정 후 재시작' 절차를 따르세요.")
             return "locked", None  # heartbeat can lag, but the existing process owns the lock
         supervisor_lock.close()
 
@@ -76,7 +85,7 @@ def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
 
         py = sys.executable
         wr = str(paths.repo_root / "tools" / "warroom")
-        supervisor_command = shlex.join(["env", f"PYTHONPATH={wr}", py, "-m", "warroom.supervisor"])
+        supervisor_command = shlex.join(["env", f"PYTHONPATH={wr}", f"{ROOT_ENV}={paths.repo_root}", py, "-m", "warroom.supervisor"])
         command = f"tmux set-window-option -t {shlex.quote(TMUX_SUP)} remain-on-exit failed && {supervisor_command}"
         r = run(["tmux", "new-session", "-d", "-s", TMUX_SUP, "-c", str(paths.repo_root), command], text=True)
         if r.returncode == 0:
@@ -1011,6 +1020,10 @@ class WarRoom(App):
 
 
 def main() -> None:
+    try:
+        check_runtime_root()
+    except RootError as e:
+        raise SystemExit(f"[war] 시작 거부: {e}")
     WarRoom().run()
 
 

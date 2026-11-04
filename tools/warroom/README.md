@@ -71,6 +71,8 @@ tmux kill-session -t warroom-supervisor 2>/dev/null || true
 tmux kill-session -t warroom 2>/dev/null || true
 ```
 
+**운영 루트(#3378):** 프롬프트·`.local` 상태·Supervisor 코드는 모두 운영 메인 checkout(예: `~/git/neverworkalone/typewriter`)에서만 읽는다. `./war`/`./dashboard`가 검증된 루트를 `TYPEWRITER_WARROOM_ROOT`로 TUI·Supervisor에 명시 전달하고, 코드가 그 루트에서 import되지 않았거나 기본 프롬프트가 없으면 임시 worktree로 fallback하지 않고 시작을 거부한다. 살아 있는 Supervisor/TUI가 다른 루트(예: 삭제 예정 Codex worktree)에서 시작됐다면 `./war`가 붙지 않고 불일치를 알린다(`supervisor_state/runtime-root`로 확인). 이 경우 코드 수정만으로는 고쳐지지 않으므로, 실행 중인 AI/task 프로세스와 배치 상태를 확인한 뒤(강제 kill·DB 복사·worktree 제거·Retry 금지) 위 두 `tmux kill-session`을 **운영 루트에서** 실행하고 운영 루트의 `./war`로 다시 시작한다.
+
 `./war` creates or reattaches the TUI and starts a fresh Supervisor if none holds its lock.
 The Supervisor recovers existing batches using the persisted state and running processes;
 do not delete `tools/warroom/.local/`, manually reset worktrees or press Retry just to reload code.

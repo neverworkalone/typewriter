@@ -3,7 +3,11 @@
 set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 WR="$ROOT/tools/warroom"
+# #3378: same operating-root check as ./war (main checkout = real .git directory, with the default prompt).
+if [ ! -d "$ROOT/.git" ] || [ ! -s "$WR/prompts/m.md" ]; then
+  echo "[dashboard] $ROOT 는 운영 메인 checkout이 아닙니다 (.git 디렉터리 또는 tools/warroom/prompts/m.md 없음). 시작하지 않습니다." >&2; exit 1
+fi
 PY="$WR/.local/venv/bin/python"
 [ -x "$PY" ] || PY="python3"
 cd "$ROOT"
-exec env PYTHONPATH="$WR" "$PY" -m warroom.web "$@"
+exec env TYPEWRITER_WARROOM_ROOT="$ROOT" PYTHONPATH="$WR" "$PY" -m warroom.web "$@"

@@ -10,7 +10,17 @@ import re
 import shlex
 from pathlib import Path
 
-PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"   # independent of the process cwd
+from .config import RootError, operating_root
+
+PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"   # the importing checkout: used only when no operating root is set
+
+
+def prompt_dir() -> Path:
+    """Default prompt directory: the operating root's `tools/warroom/prompts` (#3378), never cwd or a temporary worktree."""
+    try:
+        return operating_root() / "tools" / "warroom" / "prompts"
+    except RootError as e:
+        raise PromptError(str(e)) from e
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
 _PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
@@ -63,7 +73,7 @@ class PromptError(Exception):
 def render(name: str, values: dict, directory: Path | None = None) -> str:
     if name not in ALLOWED:
         raise PromptError(f"알 수 없는 프롬프트: {name!r}")
-    path = (directory or PROMPT_DIR) / f"{name}.md"
+    path = (directory or prompt_dir()) / f"{name}.md"
     try:
         text = path.read_text("utf-8")
     except OSError as e:

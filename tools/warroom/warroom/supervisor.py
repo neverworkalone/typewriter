@@ -8695,13 +8695,21 @@ def build(paths=None):
 
 
 def main() -> int:
-    from .config import Paths
-    paths = Paths()
+    import sys
+
+    from .config import Paths, RootError, check_runtime_root
+    try:
+        root = check_runtime_root()
+    except RootError as e:
+        print(f"[supervisor] 시작 거부: {e}", file=sys.stderr)
+        return 1
+    paths = Paths(repo_root=root)
     paths.ensure()
     lock = acquire_lock(paths.lock)
     if lock is None:
         print("War Room supervisor가 이미 실행 중입니다.")
         return 1
+    paths.runtime_root_file.write_text(str(root), "utf-8")   # lets a launcher spot a live Supervisor from another checkout
     sup = build(paths)
     sup.store.log(None, "supervisor 시작")
     sup.run_forever()
