@@ -213,26 +213,6 @@ When a creative path is plausible but weaker or context dependent, **and passes 
 such as 4 vs 5 is not a blocker. Do not require a universal perfect
 relative order, nor mechanically score or test subjective usefulness.
 
-## PR reviewer responsibilities and blocking threshold
+## PR review reference
 
-1. Verify dictionary-type semantic accuracy and ordinary structural,
-   source-bound, licensing, provenance and reference integrity.
-2. For **new Stage 2 authored** exploratory types, apply the writer-value gate above, then evaluate admitted relations' relevance relative to existing same-source/group peers. For historical/STDICT relations preserve their applicable original review boundary.
-   Do not demand interchangeable wording, identical glosses or a generic
-   no-hypernyms rule for all creative links.
-3. Suggest optional rank tweaks without blocking when disagreement is
-   marginal or subjective. A **clear, material relative-priority inversion**
-   that meaningfully distorts visible results can block if backed by
-   actual same-source peers and specific evidence, not abstract taste.
-4. A systemic relation defect requires **demonstrated shared behavior**
-   and a bounded affected population. One debatable creative link or
-   a one-band difference does not trigger a full near/association audit.
-   Fix genuine shared producer defects and test the applicable current
-   and future authoring paths, without mechanical synonym-or-creativity
-   validators.
-5. Reverse links: STDICT `direct` (including `→`, #834) keeps its projection (#797); other STDICT types remain unchanged. All persisted authored ID links use the source Type/Tier in both directions under #2446. **Equal reverse values are required; historical approval does not permit persisted asymmetry.** Legacy checkpoints follow the current Part-boundary transition rules. Text-only has no reverse. Preserve review history; no quotas.
-
-The focused Stage 1 PR reviewer applies the relevant principles with producer
-independence, exact-HEAD requirements and confirmed-error gates. Final PR Stage 2
-verifies the effective `+1`, current HEAD and required CI under `REVIEW.md`; it does
-not conduct technical or semantic review.
+PR review procedures, blocker thresholds, evidence and re-review duties are in the root [`REVIEW.md`](../REVIEW.md) and the applicable [review card](review/prompts/s2.md). This document remains the **product and editorial policy** for both producers and reviewers; the review card does not override its Type/Tier, Drop, source-Sense or ID-link contracts.
