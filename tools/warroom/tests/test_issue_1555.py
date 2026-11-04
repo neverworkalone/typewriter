@@ -1303,6 +1303,36 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertIn("재개 실행에 전달되지 않음", d["hold_reason"])
         self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
 
+    def test_parallel_d_retry_with_one_used_fix_predicts_and_launches_the_fix_prompt(self):
+        from unittest import mock
+        from warroom import prompts
+
+        w = self.w
+        b = make_batch(w, "d", run_kind="d_parallel")
+        task = "001"
+        w.store.add_tasks(b["id"], [(task, task)])
+        w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
+                            data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
+        w.store.set(dchunk.fix_key(b["id"], 1), "1")
+        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
+        rejection = {"errors": ["fixture rejection"]}
+        with mock.patch.object(dchunk, "read_active", return_value=active), \
+             mock.patch.object(dchunk, "read_rejection", return_value=rejection):
+            predicted = w.sup.resume_prompt_names(w.store.batch(b["id"]))
+            self.assertEqual(predicted, {"d_chunk_fix"})
+
+            round_ = dparallel._Round(w.sup.dp, w.store.batch(b["id"]))
+            w.sup.dp._reset_acknowledged_failures(w.store.batch(b["id"]), round_)
+            row = w.store.task_row(b["id"], task)
+            self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
+
+            w.adapter.plan.append({"code": 0, "session": "ses_1"})
+            self.assertTrue(w.sup.dp._launch(w.store.batch(b["id"]), row, round_))
+
+        launch = w.adapter.launches[-1]
+        self.assertEqual(launch["prompt"], prompts.d_chunk_fix(b, 1, "fixture rejection"))
+        self.assertEqual(w.store.runs(b["id"])[0]["kind"], "d_chunk_fix")
+
     def test_an_unmodelled_run_kind_cannot_prove_prompt_delivery(self):
         b, d = self.merged([self.PROMPT], run_kind="d_finalize", session_id="ses_1")
         d = self.settle(d)

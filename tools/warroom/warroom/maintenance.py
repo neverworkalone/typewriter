@@ -1200,8 +1200,10 @@ class Maintenance:
         if names is None:
             self._hold_unprovable(d, b, "재개될 launch의 prompt 집합을 정할 수 없어 수정 prompt의 전달을 증명할 수 없음")
             return True
-        if not changed <= names:
-            self._hold_unprovable(d, b, f"수정 prompt가 재개 실행에 전달되지 않음 (수정 {sorted(changed)} / 재개 {sorted(names)})")
+        delivered = changed & names
+        if not delivered:
+            self._hold_unprovable(d, b, f"수정 prompt가 재개 실행에 전달되지 않음 (재개 대상 task에 필요한 수정 prompt 없음; "
+                                     f"수정 {sorted(changed)} / 재개 {sorted(names)})")
             return True
         return False
 

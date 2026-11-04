@@ -220,11 +220,50 @@ class Supervisor:
                       literary.METHOD: ("c_chunk_resume", ("c_chunk", "contract_c"))}
 
     def resume_prompt_names(self, b) -> set[str] | None:
+        if b["method"] == dchunk.METHOD and b["run_kind"] == dparallel.RUN_KIND:
+            return None if b["pr_number"] else self._d_parallel_resume_prompt_names(b)
         spec = self._CHUNK_PROMPTS.get(b["method"])
         if (spec is None or b["pr_number"] or not isinstance(b["run_kind"], str) or not b["run_kind"].startswith(("d_chunk_", "c_chunk_"))
                 or b["run_kind"] in ("d_chunk_fix", "c_chunk_recovery")):
             return None
         return {spec[0]} if b["session_id"] else set(spec[1])
+
+    def _d_parallel_resume_prompt_names(self, b) -> set[str] | None:
+        """Prompt templates re-entered for D parallel tasks acknowledged by the current failure.
+
+        The batch row has one `run_kind`, but each D task owns its own session and active chunk. Predict only the
+        failed tasks' next launch, using the same active-chunk/session rule as ParallelD._reset_acknowledged_failures
+        and `_requeue`. Do not guess through an unacknowledged failure or damaged scratch.
+        """
+        rows = [r for r in self.store.task_rows(b["id"]) if r["state"] == "FAILED"]
+        if not rows:
+            return None
+        names: set[str] = set()
+        wt = Path(b["worktree"])
+        for row in rows:
+            try:
+                data = json.loads(row["data"] or "{}")
+                if not isinstance(data, dict) or not data.get("ack") or data.get("pause"):
+                    return None
+                task = int(row["task"])
+                chunk = dchunk.chunk_names(b, task)
+                folder = wt / chunk.directory
+                if any((folder / f"chunk-{task:03d}.jsonl{suffix}").exists() for suffix in ("", ".tmp")):
+                    return None  # a stored or partial output may be accepted before another prompt is launched
+                rec = dchunk.read_active(wt, b, task)
+                used = int(self.store.get(dchunk.fix_key(b["id"], task)) or 0)
+                diag = dchunk.read_rejection(wt, b, rec) if rec is not None else None
+            except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError):
+                return None
+
+            # Retry decrements the prior correction count before deciding whether an existing rejection needs a fix.
+            if rec is not None and diag is not None and row["session_id"] and used > 0:
+                names.add("d_chunk_fix")
+            elif rec is not None and row["session_id"]:
+                names.add("d_chunk_resume")
+            else:
+                names.update(("d_chunk", "contract_d"))
+        return names or None
 
     def prompt_checkout_clean(self, paths: list[str]) -> bool:
         """The main checkout (where prompts are re-read) has these files committed and unmodified."""
