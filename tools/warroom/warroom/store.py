@@ -450,8 +450,9 @@ class Store:
                           (now, b["producer"], b["method"]))
 
     def complete_diagnosis(self, batch_id: int, issue: int, reason: str) -> None:
-        """One transaction for a diagnosis-only Maintainer result (#3326): the Issue and its incident defects are HELD, the
-        original batch stays PAUSED with the reason, and the Maintainer batch completes (the slot returns). Idempotent."""
+        """One transaction for a proof-backed blocked handoff (#3409): the Issue and incident defects are HELD, the
+        original batch stays PAUSED with its blocker/next action, and the Maintainer execution completes to return its
+        slot. This does not mark production resolved or resume it. Idempotent."""
         now = time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")

@@ -2817,7 +2817,7 @@ class Supervisor:
                 info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
                 if info is None:
                     if b["method"] == MAINTENANCE_METHOD and self.maint.finish_diagnosis(b):
-                        return   # a documented diagnosis-only Maintainer result (#3326): HELD, slot returned
+                        return   # proof-backed blocked handoff (#3409): incident HELD/PAUSED, not production completion
                     refusal = self._adapter(b["producer"]).policy_refusal(Path(b["log_file"]))
                     if refusal:   # the local CLI policy stopped the PR step: keep everything, wait for the operator
                         return self._fail(b, "PAUSED", f"{refusal}. PR이 만들어지지 않았습니다. 로컬 설정을 확인한 뒤 "

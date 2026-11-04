@@ -839,7 +839,7 @@ class Maintenance:
     # sweep below is the single intake boundary: whatever wrote the ERROR (`_fail`, a direct write, a parallel task, a
     # restart) is received here, after the batch's process and task runs are confirmed gone.
     DIAGNOSIS_FILE = ".warroom-scratch/incident-diagnosis.json"
-    DIAGNOSIS_OUTCOMES = ("no_code_fix", "external", "undetermined", "recurrence")
+    DIAGNOSIS_OUTCOMES = ("undetermined",)
     INTAKE_METHODS = ("c", "d", "s2", "s3")
 
     def _intake_errors(self) -> None:
@@ -1097,11 +1097,11 @@ class Maintenance:
         return None
 
     def finish_diagnosis(self, b) -> bool:
-        """A Maintainer that exited 0 without a PR is accepted ONLY as a documented diagnosis-only result: valid
-        diagnosis file + marked Issue comment, no commit, no remote branch, clean worktree. The proof is persisted
-        BEFORE anything is removed (`m_diag_<id>`); `_complete_diagnosis` then removes the worktree without force and
-        completes everything in one transaction, and can be re-entered after a crash. False: a condition is missing ->
-        the caller keeps the existing ERROR."""
+        """Accept a PR-less exit only as a proof-backed blocked handoff, never as a diagnosis-only success.
+
+        The incident evidence must independently show why integrity/reproduction cannot be established. Persist that
+        proof before cleanup; otherwise return False so the caller keeps the Maintainer ERROR and worktree available.
+        """
         key = f"m_diag_{b['id']}"
         if self.store.get(key) is not None:
             return self._complete_diagnosis(b)
@@ -1109,46 +1109,76 @@ class Maintenance:
             n, wt, git = int(b["batch"]), Path(b["worktree"]), self.sup.git
             linked = [d for d in self.store.defects(("LINKED",)) if d["source"] == "incident" and d["issue_number"] == n]
             base = self.store.get(f"m_base_head_{b['id']}")
-            if not linked or not base or b["pr_number"]:
+            if len(linked) != 1 or not base or b["pr_number"]:
                 return False
             data = json.loads((wt / self.DIAGNOSIS_FILE).read_text("utf-8"))
             if (not isinstance(data, dict) or data.get("version") != 1 or data.get("issue") != n
                     or data.get("outcome") not in self.DIAGNOSIS_OUTCOMES
-                    or set(data) - {"version", "issue", "outcome", "summary", "recurrence_of", "evidence"}):
+                    or set(data) != {"version", "issue", "outcome", "summary", "blocker", "next_action"}):
                 return False
-            if data["outcome"] == "recurrence" and not self._recurrence_verified(linked[0], data.get("recurrence_of")):
-                data["outcome"] = "undetermined"   # an unverified recurrence claim is held like any undetermined cause
+            summary, next_action = data.get("summary"), data.get("next_action")
+            if not isinstance(summary, str) or not summary.strip() or len(summary) > 1000:
+                return False
+            if not isinstance(next_action, str) or not next_action.strip() or len(next_action) > 1000:
+                return False
+            blocker = self._diagnosis_handoff_blocker(linked)
+            if blocker is None or data.get("blocker") != blocker:
+                return False
             ev = f"incident-diagnosis-{n}-attempt-{b['id']}"
-            legacy_ev = f"incident-diagnosis-{n}"
-            if not any(
-                (defects.EVENT_MARK, ev) in defects.markers(c.get("body"))
-                or (b["shard"] == "issue" and (defects.EVENT_MARK, legacy_ev) in defects.markers(c.get("body")))
-                for c in self.sup.gh.issue_comments(n)
-            ):
+            if not any((defects.EVENT_MARK, ev) in defects.markers(c.get("body"))
+                       and summary.strip() in c.get("body", "")
+                       and blocker["reason"] in c.get("body", "")
+                       and next_action.strip() in c.get("body", "") for c in self.sup.gh.issue_comments(n)):
                 return False
             if (git.head(wt) != base or git.registered(wt) != b["branch"] or git.remote_head(b["branch"]) is not None
                     or git.dirty(wt).strip() or self.sup.gh.prs_for_branch(b["branch"])):
                 return False
-            self.store.set(key, json.dumps({"issue": n, "outcome": data["outcome"], "base": base, "branch": b["branch"],
-                                            "worktree": str(wt)}, sort_keys=True))
+            self.store.set(key, json.dumps({"version": 2, "issue": n, "outcome": data["outcome"],
+                                            "summary": defects.public(summary.strip()), "blocker": blocker,
+                                            "next_action": defects.public(next_action.strip()), "base": base,
+                                            "branch": b["branch"], "worktree": str(wt)}, sort_keys=True))
         except Exception:
             return False
         return self._complete_diagnosis(b)
 
-    def _recurrence_verified(self, d, claimed) -> bool:
-        """The Maintainer's `recurrence_of` must name a RELEASED incident of the SAME batch that the envelope listed."""
-        env = self._envelope_of(d)
-        if env is None or type(claimed) is not int:
-            return False
-        listed = {p.get("defect_id") for p in env["prior_incidents"]}
-        prior = self.store.defect(claimed)
-        return (claimed in listed and prior is not None and prior["state"] == "RELEASED" and prior["source"] == "incident"
-                and prior["batch_id"] == d["batch_id"])
+    def _diagnosis_handoff_blocker(self, linked: list[dict]) -> dict | None:
+        """Return only independently corroborated reasons that incident evidence can no longer be verified."""
+        for d in linked:
+            env = self._envelope_of(d)
+            if env is None:
+                return {"observation": "incident_envelope", "reason": "접수 incident envelope를 다시 검증할 수 없습니다"}
+            unknown = [name for name, observation in env["observed"].items() if observation["status"] == "unknown"]
+            if unknown:
+                if not set(unknown) <= {"runs", "checkpoint", "git", "error_evidence"}:
+                    return None
+                names = ",".join(sorted(unknown))
+                return {"observation": names,
+                        "reason": f"접수 시 필수 관측 `{names}`가 unknown이라 원본 증거 무결성을 검증할 수 없습니다"}
+            batch = self.store.batch(d["batch_id"])
+            if batch is None:
+                return {"observation": "batch", "reason": "접수된 원 배치 행이 없어 증거 소유권을 검증할 수 없습니다"}
+            try:
+                reason = self._preserved(batch, env["observed"], head_moves=False)
+            except GitTransient:
+                return None
+            if reason:
+                return {"observation": "preservation", "reason": reason}
+        return None
 
     def _complete_diagnosis(self, b) -> bool:
         """Idempotent second half: non-force worktree removal, then ONE transaction. True: handled (done or retried later)."""
         try:
             m = json.loads(self.store.get(f"m_diag_{b['id']}"))
+            if (not isinstance(m, dict) or set(m) != {"version", "issue", "outcome", "summary", "blocker",
+                                                        "next_action", "base", "branch", "worktree"}
+                    or type(m.get("issue")) is not int or m.get("version") != 2 or m.get("outcome") != "undetermined"
+                    or not isinstance(m.get("summary"), str) or not m["summary"].strip()
+                    or not isinstance(m.get("next_action"), str) or not m["next_action"].strip()
+                    or not isinstance(m.get("blocker"), dict)
+                    or set(m["blocker"]) != {"observation", "reason"}
+                    or not isinstance(m["blocker"].get("observation"), str) or not m["blocker"]["observation"].strip()
+                    or not isinstance(m["blocker"].get("reason"), str) or not m["blocker"]["reason"].strip()):
+                return False
             if m["branch"] != b["branch"] or m["worktree"] != b["worktree"] or m["issue"] != int(b["batch"]):
                 raise ValueError("진단 종료 표식이 이 Maintainer 실행과 다릅니다")
             self.sup.git.remove_diagnosis_worktree(Path(m["worktree"]), m["branch"], m["base"])
@@ -1156,7 +1186,12 @@ class Maintenance:
             if self._due(f"m_diag_retry_{b['id']}", 60):
                 self.store.log(b["id"], f"진단 종료 정리를 완료하지 못했습니다(소유 worktree 보존, 재시도 예정): {e}", "warn")
             return True
-        why = f"진단만 종료({m['outcome']}): 코드 수정 PR 없음 — 운영자 확인 필요, 자동 재개하지 않음"
+        blocker = m["blocker"]
+        why = defects.public(
+            f"증거 검증 차단으로 HELD 인계({m['outcome']}): {m['summary']} — "
+            f"차단 근거({blocker.get('observation')}): {blocker['reason']} — "
+            f"다음 조치: {m['next_action']}. 원 배치는 PAUSED로 보존되며 자동 재개되지 않습니다."
+        )
         self.store.complete_diagnosis(b["id"], m["issue"], why)
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"Issue #{m['issue']}: {why}; Maintainer worktree 정리·슬롯 반환")
