@@ -50,10 +50,15 @@ const corpusIdentity = new WeakMap();
 function getCorpusIdentity(database) {
   if (!corpusIdentity.has(database)) {
     const columns = database.prepare('PRAGMA table_info(index_metadata)').all().map((column) => column.name);
+    const legacyMetadata = database.prepare('SELECT * FROM index_metadata LIMIT 65').all();
     const metadata = columns.includes('key') && columns.includes('value')
       ? database.prepare('SELECT key, value FROM index_metadata ORDER BY key LIMIT 65').all()
-      : database.prepare('SELECT * FROM index_metadata LIMIT 65').all();
-    corpusIdentity.set(database, { metadata, maxRowid: database.prepare('SELECT max(paragraph_rowid) AS id FROM paragraphs').get().id ?? 0 });
+      : legacyMetadata;
+    corpusIdentity.set(database, {
+      metadata,
+      legacyMetadata,
+      maxRowid: database.prepare('SELECT max(paragraph_rowid) AS id FROM paragraphs').get().id ?? 0,
+    });
   }
   return corpusIdentity.get(database);
 }
@@ -61,12 +66,18 @@ function searchId(database, list, boundary) {
   const { metadata, maxRowid } = getCorpusIdentity(database);
   return createHash('sha256').update(JSON.stringify([list, boundary ?? null, metadata, maxRowid])).digest('hex').slice(0, 12);
 }
+// Accept an in-flight cursor from before key/value metadata ordering was stabilized, but only when its old
+// fingerprint still matches this index. New cursors always use searchId's deterministic metadata order.
+function legacySearchId(database, list, boundary) {
+  const { legacyMetadata, maxRowid } = getCorpusIdentity(database);
+  return createHash('sha256').update(JSON.stringify([list, boundary ?? null, legacyMetadata, maxRowid])).digest('hex').slice(0, 12);
+}
 const maxRowidOf = (database) => getCorpusIdentity(database).maxRowid;
 
 /** Corpus range used to bound one CLI search request to roughly one short-form pass. */
 export const corpusScanRows = (database) => Math.max(1, maxRowidOf(database));
 
-function decodeCursor(cursor, formsKey, formCount, maxRowid) {
+function decodeCursor(cursor, formsKey, legacyFormsKey, formCount, maxRowid) {
   if (typeof cursor !== 'string' || !/^[A-Za-z0-9_-]+$/u.test(cursor)) {
     throw invalidCursor('cursor is not a Base64URL token');
   }
@@ -76,7 +87,8 @@ function decodeCursor(cursor, formsKey, formCount, maxRowid) {
     const state = JSON.parse(json);
     if (state === null || typeof state !== 'object' || Array.isArray(state)
       || Object.keys(state).some((key) => !['id', 'form', 'after', 'p', 'seen'].includes(key))) throw new Error('invalid cursor fields');
-    if (state.id === formsKey && Number.isInteger(state.form) && state.form >= 0 && state.form < formCount
+    if ((state.id === formsKey || state.id === legacyFormsKey)
+      && Number.isInteger(state.form) && state.form >= 0 && state.form < formCount
       && Number.isInteger(state.after) && state.after >= 0 && state.after <= maxRowid) {
       // Cursors created before paragraph de-duplication have no `p`; they remain valid and resume safely.
       if (Object.hasOwn(state, 'p') && Object.hasOwn(state, 'seen')) throw new Error('ambiguous seen paragraph IDs');
@@ -102,7 +114,8 @@ export function validateSearchCursor(database, forms, { boundary, cursor }) {
   const list = normalizeForms(forms);
   if (list.length === 0) throw invalidCursor('a cursor requires at least one search form');
   const formsKey = searchId(database, list, boundary);
-  return decodeCursor(cursor, formsKey, list.length, maxRowidOf(database));
+  const legacyFormsKey = legacySearchId(database, list, boundary);
+  return decodeCursor(cursor, formsKey, legacyFormsKey, list.length, maxRowidOf(database));
 }
 
 /**
@@ -179,7 +192,7 @@ export function searchContexts(database, forms, {
     formsKey = searchId(database, list, boundary);
     state = cursor === null || cursor === undefined
       ? { id: formsKey, form: 0, after: 0 }
-      : decodeCursor(cursor, formsKey, list.length, maxRowidOf(database));
+      : decodeCursor(cursor, formsKey, legacySearchId(database, list, boundary), list.length, maxRowidOf(database));
   } catch (error) {
     if (error instanceof InvalidCursorError) throw error;
     return { status: 'SEARCH_FAILED', error: error.message, items, next_cursor: null, scanned_rows: scanned };
