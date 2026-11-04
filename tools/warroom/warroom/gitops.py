@@ -428,7 +428,7 @@ class Git:
             if tip not in (None, base_sha):
                 raise CleanupBlocked(f"local branch {branch} moved from the diagnosed base {base_sha}; preserved")
             if tip:
-                self._delete_owned_branch(branch, base_sha)
+                self._delete_branch_nonforce(branch)
             return
         if self.registered(path) != branch or not path.is_dir():
             raise CleanupBlocked(f"worktree is not registered to owned branch {branch} (preserved): {path}")
@@ -441,7 +441,14 @@ class Git:
             raise GitError(f"git worktree remove {path} (exit={res.code}; {res.err.strip() or res.out.strip()})")
         if self.registered(path) is not None:
             raise CleanupBlocked(f"Git did not remove the worktree registration (preserved): {path}")
-        self._delete_owned_branch(branch, base_sha)
+        self._delete_branch_nonforce(branch)
+
+    def _delete_branch_nonforce(self, branch: str) -> None:
+        """`git branch -d`: Git itself refuses a branch whose commits are not merged elsewhere (never `-D`)."""
+        res = self._git("branch", "-d", branch, check=False)
+        if not res.ok:
+            raise CleanupBlocked(f"Git refused to delete local branch {branch} without force (preserved): "
+                                 f"{res.err.strip() or res.out.strip()}")
 
     def _retry_registered_missing_checkout(self, path: Path, branch: str, pr_head_sha: str,
                                            proof: dict | None) -> None:

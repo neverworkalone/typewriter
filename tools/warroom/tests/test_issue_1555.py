@@ -1053,6 +1053,22 @@ class RealGitIntegration(unittest.TestCase):
         sh("git", "push", "-q", "origin", "HEAD:master", cwd=self.repo)
         return sh("git", "rev-parse", "HEAD", cwd=self.repo)
 
+    def test_diagnosis_cleanup_never_force_deletes_an_unmerged_branch(self):
+        from warroom.gitops import CleanupBlocked
+        sh("git", "checkout", "-q", "-b", "side", cwd=self.repo)
+        (self.repo / "side.txt").write_text("s\n")
+        sh("git", "add", ".", cwd=self.repo)
+        sh("git", "commit", "-qm", "side", cwd=self.repo)
+        base = sh("git", "rev-parse", "HEAD", cwd=self.repo)
+        sh("git", "checkout", "-q", "master", cwd=self.repo)
+        wt = self.wt.parent / "diag"
+        sh("git", "worktree", "add", "-q", "-b", "diag", str(wt), base, cwd=self.repo)
+        for _ in range(2):   # the second pass is the re-entry after the worktree is already gone
+            with self.assertRaises(CleanupBlocked):
+                self.git.remove_diagnosis_worktree(wt, "diag", base)
+        self.assertEqual(sh("git", "rev-parse", "--verify", "refs/heads/diag", cwd=self.repo), base)
+        self.assertFalse(wt.exists())
+
     def test_fix_is_merged_and_partial_output_and_commits_survive(self):
         (self.wt / "partial.jsonl").write_text('{"id":"C1"}\n' * 3)          # uncommitted partial batch output
         (self.wt / "mine.txt").write_text("commit")
