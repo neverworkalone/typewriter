@@ -845,9 +845,19 @@ class AutonomousIncident(unittest.TestCase):
         self.assertEqual(w.gh.created, [101, 102, 103])
         self.assertEqual(len({d["defect_class"] for d in incidents(w)}), 2)
 
-    def diagnose(self, valid=True, commit=False, outcome="no_code_fix", **extra):
+    def diagnose(self, valid=True, commit=False, outcome="undetermined", blocked=False,
+                 unknown_observation="checkpoint", **extra):
         w = self.w
         b, = self.released("deepseek")
+        blocker = {"observation": unknown_observation,
+                   "reason": f"접수 시 필수 관측 `{unknown_observation}`가 unknown이라 원본 증거 무결성을 검증할 수 없습니다"}
+        if blocked:
+            observe = w.sup.maint._observe
+            def observed_with_unknown(batch, evidence):
+                result = observe(batch, evidence)
+                result[unknown_observation] = {"status": "unknown", "value": "fixture read failure"}
+                return result
+            w.sup.maint._observe = observed_with_unknown
         w.sup._fail(b, "ERROR", self.rejected(b))
         w.tick(4)   # Issue 102 -> its Maintainer starts
         m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
@@ -858,28 +868,37 @@ class AutonomousIncident(unittest.TestCase):
         self.assertIn("events", data)
         self.assertEqual(data["envelope"]["error_seq"], 1)
         if valid:
-            (wt / ".warroom-scratch/incident-diagnosis.json").write_text(
-                json.dumps({"version": 1, "issue": 102, "outcome": outcome, **extra}))
-        w.gh.comment_issue(102, "진단\n\n" + defects.marker(defects.EVENT_MARK, "incident-diagnosis-102"))
+            summary = "접수 증거를 재검증하지 못했습니다"
+            next_action = "운영자가 원본 evidence 접근과 hash를 확인한 뒤 Maintainer를 다시 실행합니다"
+            payload = {"version": 1, "issue": 102, "outcome": outcome, "summary": summary,
+                       "blocker": blocker if blocked else None, "next_action": next_action, **extra}
+            (wt / ".warroom-scratch/incident-diagnosis.json").write_text(json.dumps(payload))
+        comment = "진단\n"
+        if valid:
+            comment += f"\n{summary}\n{blocker['reason'] if blocked else '차단 근거 미검증'}\n{next_action}\n"
+        w.gh.comment_issue(102, comment + "\n" + defects.marker(
+            defects.EVENT_MARK, f"incident-diagnosis-102-attempt-{data['maintainer_attempt']}"))
         if commit:
             w.git.local_head = "9" * 40
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick(3)
         return w, [x for x in w.store.all_batches() if x["method"] == "m"][-1]
 
-    def test_diagnosis_only_holds_returns_the_slot_and_keeps_the_batch_paused(self):
-        w, m = self.diagnose()
+    def test_proven_evidence_blocker_hands_off_but_does_not_resolve_production(self):
+        w, m = self.diagnose(blocked=True)
         self.assertEqual(m["state"], "COMPLETE")
         self.assertEqual(w.store.maintenance(102)["state"], "HELD")
         self.assertEqual([d["state"] for d in incidents(w)], ["HELD"])
         row = w.store.batch(incidents(w)[0]["batch_id"])
         self.assertEqual((row["state"], row["pause_reason"]), ("PAUSED", "shared_defect"))
+        self.assertIn("unknown이라 원본 증거", row["error"])
+        self.assertIn("다음 조치:", row["error"])
         self.assertFalse(w.store.maintenance_batch_open())
         w.tick(5)
         self.assertEqual(w.store.batch(row["id"])["state"], "PAUSED")   # never auto-resumed
 
     def test_undetermined_diagnosis_has_an_explicit_retry_that_only_relinks_the_paused_incident(self):
-        w, first = self.diagnose(outcome="undetermined")
+        w, first = self.diagnose(outcome="undetermined", blocked=True)
         d, = incidents(w)
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
         self.assertTrue(w.store.maintenance_retryable(102))
@@ -907,7 +926,7 @@ class AutonomousIncident(unittest.TestCase):
 
         self.tearDown()
         self.setUp()
-        w, _ = self.diagnose(outcome="undetermined")
+        w, _ = self.diagnose(outcome="undetermined", blocked=True)
         d, = incidents(w)
         w.store.update(d["batch_id"], state="ERROR")
         self.assertFalse(w.store.maintenance_retryable(102))
@@ -915,30 +934,60 @@ class AutonomousIncident(unittest.TestCase):
         self.assertEqual(w.store.defect(d["id"])["state"], "HELD")
 
     def test_retry_diagnosis_does_not_accept_a_previous_attempt_marker(self):
-        w, first = self.diagnose(outcome="undetermined")
+        w, first = self.diagnose(outcome="undetermined", blocked=True)
+        first_marker = f"incident-diagnosis-102-attempt-{first['id']}"
+        self.assertTrue(any(first_marker in c["body"] for c in w.gh.issue_comments_[102]))
         self.assertTrue(control.retry_maintainer(w.store, 102))
         w.tick(4)
         second = [b for b in w.store.all_batches() if b["method"] == "m"][-1]
         self.assertEqual(second["shard"], "issue-2")
         path = Path(second["worktree"]) / ".warroom-scratch/incident-diagnosis.json"
-        path.write_text(json.dumps({"version": 1, "issue": 102, "outcome": "undetermined"}))
-        # The only Issue marker is from the previous attempt; it cannot prove this result.
+        evidence_path, = (Path(second["worktree"]) / ".warroom-scratch/incident").glob("*.json")
+        evidence = json.loads(evidence_path.read_text())
+        self.assertEqual(evidence["maintainer_attempt"], second["id"])
+        unknown = sorted(k for k, v in evidence["envelope"]["observed"].items() if v["status"] == "unknown")
+        names = ",".join(unknown)
+        reason = f"접수 시 필수 관측 `{names}`가 unknown이라 원본 증거 무결성을 검증할 수 없습니다"
+        summary = "접수 증거를 재검증하지 못했습니다"
+        next_action = "운영자가 원본 evidence 접근과 hash를 확인한 뒤 Maintainer를 다시 실행합니다"
+        path.write_text(json.dumps({"version": 1, "issue": 102, "outcome": "undetermined", "summary": summary,
+                                    "blocker": {"observation": names, "reason": reason}, "next_action": next_action}))
+        # The existing Issue comment has only the prior attempt's marker.
+        current_marker = f"incident-diagnosis-102-attempt-{second['id']}"
+        self.assertFalse(any(current_marker in c["body"] for c in w.gh.issue_comments_[102]))
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick(3)
         self.assertEqual(w.store.batch(second["id"])["state"], "ERROR")
         self.assertIsNone(w.store.get(f"m_diag_{second['id']}"))
         self.assertEqual(w.store.maintenance(102)["batch_id"], second["id"])
 
-    def test_an_unverified_recurrence_diagnosis_is_held_like_an_undetermined_one(self):
-        w, m = self.diagnose(outcome="recurrence", recurrence_of=999, evidence="same cause")
-        self.assertEqual((m["state"], w.store.maintenance(102)["state"]), ("COMPLETE", "HELD"))
+    def test_classification_without_a_proven_blocker_keeps_the_maintainer_error(self):
+        for i, outcome in enumerate(("no_code_fix", "external", "undetermined", "recurrence")):
+            if i:
+                self.tearDown()
+                self.setUp()
+            w, m = self.diagnose(outcome=outcome)
+            self.assertEqual(m["state"], "ERROR", outcome)
+            self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE", outcome)
+            d, = incidents(w)
+            self.assertEqual(d["state"], "LINKED", outcome)
+            self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED", outcome)
+
+    def test_a_fabricated_blocker_does_not_release_the_slot(self):
+        w, m = self.diagnose(blocked=False, blocker={"observation": "checkpoint", "reason": "invented"})
+        self.assertEqual(m["state"], "ERROR")
+        self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE")
         d, = incidents(w)
-        self.assertEqual(d["state"], "HELD")
-        self.assertIn("undetermined", d["hold_reason"])
+        self.assertEqual(d["state"], "LINKED")
         self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED")
 
+    def test_noncritical_unknown_observation_does_not_prove_an_evidence_blocker(self):
+        w, m = self.diagnose(blocked=True, unknown_observation="events")
+        self.assertEqual(m["state"], "ERROR")
+        self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE")
+
     def test_diagnosis_missing_or_with_a_commit_keeps_the_existing_error(self):
-        for kwargs in ({"valid": False}, {"commit": True}):
+        for kwargs in ({"valid": False}, {"commit": True, "blocked": True}):
             with self.subTest(kwargs):
                 self.tearDown()
                 self.setUp()
@@ -1016,15 +1065,41 @@ class AutonomousIncidentReview(unittest.TestCase):
         m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
         self.assertEqual((m["state"], len(w.adapter.launches)), ("ERROR", launches))
 
-    def test_diagnosis_cleanup_survives_a_crash_before_the_state_transaction(self):
+    def test_legacy_diagnosis_marker_does_not_bypass_the_new_handoff_proof(self):
         t, w = self.t, self.w
         b, = t.released("deepseek")
         w.sup._fail(b, "ERROR", t.rejected(b))
         w.tick(4)
         m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
         wt = Path(m["worktree"])
-        (wt / ".warroom-scratch/incident-diagnosis.json").write_text(json.dumps({"version": 1, "issue": 102, "outcome": "external"}))
-        w.gh.comment_issue(102, "x\n\n" + defects.marker(defects.EVENT_MARK, "incident-diagnosis-102"))
+        w.store.set(f"m_diag_{m['id']}", json.dumps({"issue": 102, "outcome": "undetermined",
+                                                     "base": w.git.local_head, "branch": m["branch"],
+                                                     "worktree": m["worktree"]}))
+        self.assertFalse(w.sup.maint.finish_diagnosis(m))
+        self.assertTrue(wt.exists())
+        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
+
+    def test_diagnosis_cleanup_survives_a_crash_before_the_state_transaction(self):
+        t, w = self.t, self.w
+        b, = t.released("deepseek")
+        observe = w.sup.maint._observe
+        def observed_with_unknown(batch, evidence):
+            result = observe(batch, evidence)
+            result["checkpoint"] = {"status": "unknown", "value": "fixture read failure"}
+            return result
+        w.sup.maint._observe = observed_with_unknown
+        w.sup._fail(b, "ERROR", t.rejected(b))
+        w.tick(4)
+        m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
+        wt = Path(m["worktree"])
+        summary = "접수 증거를 재검증하지 못했습니다"
+        reason = "접수 시 필수 관측 `checkpoint`가 unknown이라 원본 증거 무결성을 검증할 수 없습니다"
+        next_action = "운영자가 원본 evidence 접근과 hash를 확인한 뒤 Maintainer를 다시 실행합니다"
+        data = {"version": 1, "issue": 102, "outcome": "undetermined", "summary": summary,
+                "blocker": {"observation": "checkpoint", "reason": reason}, "next_action": next_action}
+        (wt / ".warroom-scratch/incident-diagnosis.json").write_text(json.dumps(data))
+        w.gh.comment_issue(102, f"{summary}\n{reason}\n{next_action}\n\n"
+                              + defects.marker(defects.EVENT_MARK, f"incident-diagnosis-102-attempt-{m['id']}"))
         real = w.store.complete_diagnosis
         w.store.complete_diagnosis = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("crash"))
         w.adapter.finish(w.adapter.launches[-1]["pid"])
@@ -1033,7 +1108,9 @@ class AutonomousIncidentReview(unittest.TestCase):
         except RuntimeError:
             pass
         self.assertFalse(wt.exists())                                   # removed, state not yet saved
-        self.assertIsNotNone(w.store.get(f"m_diag_{m['id']}"))          # but the proof was persisted first
+        proof = json.loads(w.store.get(f"m_diag_{m['id']}"))
+        self.assertEqual(proof["version"], 2)                          # proof is persisted before cleanup
+        self.assertEqual(proof["outcome"], "undetermined")
         w.store.complete_diagnosis = real
         w.tick(2)                                                       # re-entry finishes the same diagnosis
         self.assertEqual(w.store.batch(m["id"])["state"], "COMPLETE")
@@ -1646,27 +1723,6 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertEqual(newest["event_key"], f"incident:{b['id']}:e3")
         env = defects.parse_incident(newest["report"].partition("\n")[0])
         self.assertEqual([p["defect_id"] for p in env["prior_incidents"]], [d["id"]])
-
-    def test_a_recurrence_diagnosis_is_verified_against_the_released_incidents_of_the_same_batch(self):
-        w = self.w
-        b = make_batch(w, "d", run_kind="d_chunk_resume", session_id="ses_1")
-        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
-        w.git.changed[MERGE] = [self.PROMPT]
-        w.tick(2)
-        d, = incidents(w)
-        self.merge_fix(b, d)
-        d = self.settle(d)
-        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="again")
-        w.sup.maint._intake_errors()
-        later = incidents(w)[-1]
-        m = w.sup.maint
-        self.assertTrue(m._recurrence_verified(later, d["id"]))
-        self.assertFalse(m._recurrence_verified(later, 999))
-        self.assertFalse(m._recurrence_verified(later, "x"))
-        self.assertFalse(m._recurrence_verified(later, later["id"]))      # not RELEASED
-        other = make_batch(w, "c", "sonnet", "007", "01", "c_chunk_new")
-        self.assertFalse(m._recurrence_verified({**dict(later), "batch_id": other["id"]}, d["id"]))   # another batch's defect
-
 
 class MaintainerConfig(unittest.TestCase):
     def test_config_table(self):
