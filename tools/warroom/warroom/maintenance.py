@@ -673,7 +673,14 @@ class Maintenance:
             if raw is None or (recorded == head if b["run_kind"] == "s3_finalize" else recorded.get("head") == head):
                 return
             for d in self.store.defects(("RELEASED",)):
-                if d["batch_id"] == b["id"] and d["integrated_sha"] == head and self.sup.git.contains(Path(b["worktree"]), d["merge_sha"]):
+                if d["batch_id"] != b["id"] or d["integrated_sha"] != head:
+                    continue
+                if b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":
+                    old_head = recorded.get("head") if isinstance(recorded, dict) else None
+                    proven = self._released_integration_proof(b, old_head, head, d)
+                else:
+                    proven = self.sup.git.contains(Path(b["worktree"]), d["merge_sha"])
+                if proven:
                     moved = self._retargeted_run_start(b, head)
                     if moved:
                         self.store.set(*moved)
@@ -682,6 +689,32 @@ class Maintenance:
             raise
         except Exception:
             return   # unreadable evidence: the unchanged baseline keeps failing closed
+
+    def _released_integration_proof(self, b, old_head: str, integrated_head: str, receipt=None) -> bool:
+        """Prove a same-batch RELEASED Maintainer merge is an ancestor of this owned worktree."""
+        if (not isinstance(old_head, str) or not re.fullmatch(r"[0-9a-f]{40}", old_head)
+                or not isinstance(integrated_head, str) or not re.fullmatch(r"[0-9a-f]{40}", integrated_head)
+                or old_head == integrated_head):
+            return False
+        wt = Path(b["worktree"])
+        try:
+            if (self.sup.git.registered(wt) != b["branch"]
+                    or not self.sup.git.is_ancestor(old_head, integrated_head, path=wt)
+                    or not self.sup.git.contains(wt, integrated_head)):
+                return False
+            receipts = [receipt] if receipt is not None else self.store.defects(("RELEASED",))
+            for item in receipts:
+                merge_sha = item["merge_sha"]
+                if (item["state"] == "RELEASED" and item["batch_id"] == b["id"]
+                        and item["integrated_sha"] == integrated_head
+                        and isinstance(merge_sha, str) and re.fullmatch(r"[0-9a-f]{40}", merge_sha)
+                        and self.sup.git.contains(wt, merge_sha)):
+                    return True
+        except GitTransient:
+            raise
+        except Exception:
+            return False
+        return False
 
     def _archive_report(self, d, b) -> bool:
         """Set the RESOLVED report aside so the resumed producer does not read it as an unresolved stop signal.
