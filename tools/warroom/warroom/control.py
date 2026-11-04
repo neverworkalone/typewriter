@@ -196,7 +196,8 @@ def _legacy_c_no_submission_retry_available(store: Store, b, guard: dict) -> boo
         return False
     codes = guard.get("reason_codes")
     if not isinstance(codes, list) or not any(code in codes for code in
-                                               ("diagnostic_unavailable_or_invalid", "no_submission")):
+                                               ("diagnostic_unavailable_or_invalid", "no_submission",
+                                                "producer_reported_stop")):
         return False
     baseline = guard.get("baseline")
     if (not isinstance(baseline, dict) or baseline.get("report_valid") is not True
@@ -223,9 +224,12 @@ def _legacy_c_no_submission_retry_available(store: Store, b, guard: dict) -> boo
                 or run_start.get("retry_state", {}).get("pending_sense_ids") != baseline["pending_sense_ids"]):
             return False
         log_file = run.get("log_file")
+        answer = final_answer(Path(log_file)) if log_file else None
+        if "producer_reported_stop" in codes and not literary.reported_stop(answer):
+            return False
         outcome = literary.no_submission_result(
             Path(b["worktree"]), b, rec, run, run_start, baseline["pending_sense_ids"],
-            final_answer=final_answer(Path(log_file)) if log_file else None,
+            final_answer=answer,
             submit_call_count=submit_attempts(Path(log_file)) if log_file else None,
         )
         return outcome.get("status") == "no_submission"

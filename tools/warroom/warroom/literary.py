@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import stage2
+from .usage import official_c_stop_diagnostics
 
 METHOD = "c"
 SCRATCH = ".warroom-scratch"
@@ -74,6 +75,7 @@ _REPORTED_STOP = re.compile(
 
 
 def reported_stop(final_answer: str | None) -> bool:
+    """Legacy guard fingerprint only; free-form assistant text is not authoritative stop evidence."""
     return isinstance(final_answer, str) and _REPORTED_STOP.search(final_answer) is not None
 
 
@@ -346,7 +348,8 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
     """Classify an ended C chunk without reading or storing candidate content.
 
     A recoverable no-submission result requires a successful, session-bound run; unchanged checkpoint and active
-    view; no submit/diagnostic artifacts; and a recognized adapter log proving zero official submit calls.
+    view; no submit/diagnostic artifacts; and a recognized adapter log proving zero official submit calls. Stop
+    decisions come from the CLI's structured result or the exact failed submit-file writer marker, never answer prose.
 
     A parallel task passes its own `task_session` and `own_state_now`: the run's session is compared with the task's,
     and "unchanged" means the task's own Senses (forms/shown/submission), never the whole checkpoint file that other
@@ -400,8 +403,11 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
         return {"status": "search_failed", "sense_count": len(failed)}
     if unsearchable:
         return {"status": "unsearchable", "sense_count": len(unsearchable)}
-    if reported_stop(final_answer):
-        return {"status": "producer_reported_stop"}
+    for diagnostic in official_c_stop_diagnostics(
+            run.get("log_file"), expected_cli_path=cli_path(), command_cwd=Path(worktree)):
+        status = (diagnostic["diagnostic"] if diagnostic["operation"] == "submit_write"
+                  else f"cli_{diagnostic['diagnostic']}")
+        return {"status": status, "operation": diagnostic["operation"]}
 
     baseline_pending = retry.get("pending_sense_ids")
     if not isinstance(baseline_pending, list) or not all(isinstance(sense_id, str) for sense_id in baseline_pending):

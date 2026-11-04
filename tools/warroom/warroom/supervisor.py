@@ -5997,19 +5997,21 @@ class Supervisor:
         parsed = None
         status = producer_outcome.get("status") if isinstance(producer_outcome, dict) else None
         if not submit.is_file():
-            codes.append({"no_submission": "no_submission", "submission_status_unknown": "submission_status_unknown",
-                          "submit_attempt_without_artifacts": "submit_attempt_without_artifacts",
-                          "search_failed": "search_failed", "unsearchable": "unsearchable",
-                          "producer_reported_stop": "producer_reported_stop",
-                          "producer_output_missing": "producer_output_missing",
-                          "checkpoint_progress": "checkpoint_progress",
-                          "checkpoint_changed_without_pending_progress": "checkpoint_changed_without_pending_progress",
-                          "checkpoint_or_chunk_mismatch": "checkpoint_or_chunk_mismatch",
-                          "session_mismatch": "session_or_run_mismatch",
-                          "run_not_successful": "run_not_successful",
-                          "submission_artifact_unavailable": "submission_artifact_unavailable",
-                          "not_applicable": "not_applicable"}
-                         .get(status, "submission_status_unknown"))
+            reason = {"no_submission": "no_submission", "submission_status_unknown": "submission_status_unknown",
+                      "submit_attempt_without_artifacts": "submit_attempt_without_artifacts",
+                      "search_failed": "search_failed", "unsearchable": "unsearchable",
+                      "producer_reported_stop": "producer_reported_stop",
+                      "producer_output_missing": "producer_output_missing",
+                      "checkpoint_progress": "checkpoint_progress",
+                      "checkpoint_changed_without_pending_progress": "checkpoint_changed_without_pending_progress",
+                      "checkpoint_or_chunk_mismatch": "checkpoint_or_chunk_mismatch",
+                      "session_mismatch": "session_or_run_mismatch",
+                      "run_not_successful": "run_not_successful",
+                      "submission_artifact_unavailable": "submission_artifact_unavailable",
+                      "not_applicable": "not_applicable"}.get(status)
+            if reason is None and isinstance(status, str) and (status.startswith("cli_") or status == "write_failed"):
+                reason = status
+            codes.append(reason or "submission_status_unknown")
         elif not diagnostic.is_file():
             submit_calls = (producer_outcome.get("submit_calls")
                             if isinstance(producer_outcome, dict) else None)

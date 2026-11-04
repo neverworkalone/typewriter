@@ -38,7 +38,7 @@ from .usage import submit_attempts
 RUN_KIND = "c_parallel"
 TRANSIENT = (GhTransient, GitTransient)
 PARALLEL = "parallel"
-NEW, FIX, RECOVERY = "c_chunk_new", "c_chunk_fix", "c_chunk_recovery"
+NEW, RESUME, FIX, RECOVERY = "c_chunk_new", "c_chunk_resume", "c_chunk_fix", "c_chunk_recovery"
 AUTO_FIX_LIMIT = 2   # automatic same-session corrections per task; an operator Retry adds one more chance per epoch
 EMPTY_RENDERS = 60   # ZERO_HITS-only views in a row before a selection is considered stuck
 _ERRORS = (literary.LiteraryError, OSError, ValueError, KeyError, TypeError)
@@ -94,8 +94,16 @@ def retry_block_reason(store, b) -> str | None:
                                              session_available=bool(row["session_id"])):
             return None
         codes.extend(guard.get("reason_codes") or [])
-    if len(failed) == 1 and _legacy_shown_only_retry_available(store, b, failed[0], _data(failed[0]).get("guard")):
-        return None   # one owner Retry recovers this exact pre-policy 16-context no-submit task
+    if len(failed) == 1:
+        row = failed[0]
+        guard = _data(row).get("guard")
+        legacy_stop = _legacy_reported_stop_retry_status(store, b, row, guard)
+        if legacy_stop == "retry_available":
+            return None   # one owner Retry may recover a legacy text-only stop classification
+        if legacy_stop is not None:
+            codes = [legacy_stop]  # replace the old generic code with current source-bound evidence
+        elif _legacy_shown_only_retry_available(store, b, row, guard):
+            return None   # one owner Retry recovers this exact pre-policy 16-context no-submit task
     return (f"[same_failure; {','.join(dict.fromkeys(codes)) or 'checkpoint_or_chunk_mismatch'}] 실패한 task의 Sense·제출·진단 "
             "evidence가 그대로여서 Retry를 막았습니다. 증거가 바뀐 뒤 재시도하세요.")
 
@@ -158,6 +166,62 @@ def _legacy_shown_only_retry_available(store, b, row, guard) -> bool:
         return literary.legacy_shown_only_sample(Path(b["worktree"]), b, rec, rec["sense_ids"])
     except (OSError, ValueError, KeyError, TypeError, literary.LiteraryError):
         return False
+
+
+def _legacy_reported_stop_retry_status(store, b, row, guard) -> str | None:
+    """Reclassify a pre-policy text stop from its original run before exposing one owner Retry."""
+    data = _data(row)
+    if not isinstance(guard, dict) or guard.get("reason_codes") != ["producer_reported_stop"]:
+        return None
+    if (data.get("recovery") or data.get("operator_grants", 0) != 0
+            or data.get("completed_fix_runs") or data.get("auto_fix_runs")):
+        return "legacy_retry_already_used"
+    baseline_state = guard.get("baseline")
+    start = data.get("run_start")
+    retry = start.get("retry_state") if isinstance(start, dict) else None
+    pending = baseline_state.get("pending_sense_ids") if isinstance(baseline_state, dict) else None
+    if not isinstance(pending, list) or not pending or not isinstance(retry, dict):
+        return "legacy_recheck_unavailable"
+    try:
+        wt = Path(b["worktree"])
+        rec = literary.read_active(wt, b, int(row["task"]))
+        if rec is None or not literary.task_retry_unchanged(wt, b, int(row["task"]), baseline_state,
+                                                             session_available=bool(row["session_id"])):
+            return "legacy_evidence_changed"
+        raw_run = store.run(row["run_id"]) if row["run_id"] is not None else None
+        run = dict(raw_run) if raw_run is not None else None
+        runtime = baseline(store, b)
+        if (run is None or run.get("task") != row["task"] or run.get("kind") not in (NEW, RESUME)
+                or str(run.get("exit_status")) != "0" or run.get("ended_at") is None
+                or run.get("session_id") != row["session_id"] or not row["session_id"]
+                or start.get("branch") != b["branch"] or Path(start.get("worktree", "")) != wt
+                or not isinstance(runtime, dict) or start.get("head") != runtime.get("head")
+                or start.get("remote_head") != runtime.get("remote_head")
+                or start.get("head") != rec.get("git_head") or start.get("chunk_no") != rec.get("chunk_no")
+                or retry.get("chunk_id") != rec.get("chunk_id") or retry.get("chunk_no") != rec.get("chunk_no")
+                or retry.get("view_sha256") != rec.get("view_sha256") or retry.get("repair") is not False
+                or not isinstance(retry.get("pending_sense_ids"), list)
+                or not retry.get("pending_sense_ids")
+                or retry.get("pending_sense_ids") != pending
+                or any(sense_id not in rec.get("sense_ids", []) for sense_id in pending)):
+            return "legacy_recheck_unavailable"
+        submit = wt / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json"
+        if submit.exists() or submit.with_name(submit.name + ".diag.json").exists():
+            return "submission_artifact_present"
+        from .adapters import final_answer
+        from .usage import submit_attempts
+        log = Path(run["log_file"]) if run.get("log_file") else None
+        answer = final_answer(log) if log else None
+        if (log is None or submit_attempts(log) != 0 or not answer or not literary.reported_stop(answer)):
+            return "legacy_recheck_unavailable"
+        outcome = literary.no_submission_result(
+            wt, b, rec, run, start, pending, final_answer=answer, submit_call_count=0,
+            task_session=row["session_id"], own_state_now=literary.own_state(wt, b, rec["sense_ids"]))
+        if outcome.get("status") in ("no_submission", "shown_only_progress"):
+            return "retry_available"
+        return str(outcome.get("status") or "legacy_recheck_unavailable")
+    except (OSError, ValueError, KeyError, TypeError, literary.LiteraryError):
+        return "legacy_recheck_unavailable"
 
 
 class _Round:
