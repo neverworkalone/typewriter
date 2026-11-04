@@ -332,6 +332,10 @@ def line_status(store: Store, model: str, method: str) -> dict:
                 count = lambda *states: sum(1 for t in tasks if t["state"] in states)
                 out["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING"), "responded": count("RESPONDED"),
                                 "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
+                # Each task becomes SAVED only after save-chunk is reflected in the checkpoint. The checkpoint
+                # snapshot can lag by one parallel poll when the last responses are saved and finalization begins.
+                out["progress_kind"], out["progress_done"], out["progress_total"] = (
+                    "chunks", out["tasks"]["saved"], out["tasks"]["total"])
         if method in ("c", "d"):   # parallel C/D chunks: the same running / queued / saved task counts
             tasks = store.task_rows(b["id"])
             if tasks:
