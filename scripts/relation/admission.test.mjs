@@ -138,7 +138,10 @@ test('new ID rows leave already decided reverse Candidate forms unclaimed', () =
     candidate_assignment_version: 1, candidate_forms: ['동철'], reverse_candidate_forms: ['표제 1'],
   };
   const drop = { source_record_id: target.id, source_sense_id: target.senses[0].id, candidate: '표제1', reason: 'z' };
-  const lookup = createReverseCandidateFormLookup({ relationRows: [alreadyClaimed], dropRows: [drop], index: reverseIndex });
+  const candidateMerge = { merged: new Map([[target.senses[0].id, {
+    candidates: new Map(['표제 1', '표제1', '표제-1'].map((candidate) => [candidate, []])),
+  }]]) };
+  const lookup = createReverseCandidateFormLookup({ relationRows: [alreadyClaimed], dropRows: [drop], index: reverseIndex, candidateMerge });
   assert.deepEqual(lookup.available(source, target.senses[0].id), ['표제-1'],
     'the existing reverse Relation and edit Drop each own only their decided orthographic spelling');
 
@@ -152,8 +155,31 @@ test('new ID rows leave already decided reverse Candidate forms unclaimed', () =
   assert.deepEqual(lookup.available(source, target.senses[0].id), [],
     'an earlier new Relation also blocks only its assigned form');
   assert.deepEqual(availableReverseCandidateForms(source, target.senses[0].id, {
-    relationRows: [], dropRows: [], index: reverseIndex,
+    relationRows: [], dropRows: [], index: reverseIndex, candidateMerge,
   }), ['표제 1', '표제1', '표제-1'], 'undecided orthographic spellings remain available');
+});
+
+test('reverse Candidate assignment intersects exact Stage 1 spellings separately for each target sense', () => {
+  const source = { id: 'w1', lemma: '출발 어', search_forms: ['출발 어', '출발어'], senses: [{ id: 'w1-s1', pos: 'noun', gloss: 'a' }] };
+  const targets = [
+    { id: 'w2', lemma: '표적', senses: [
+      { id: 'w2-s1', pos: 'noun', gloss: 'b' },
+      { id: 'w2-s2', pos: 'noun', gloss: 'c' },
+      { id: 'w2-s3', pos: 'noun', gloss: 'd' },
+    ] },
+  ];
+  const localIndex = buildCanonicalIndex([source, ...targets]);
+  const candidateMerge = { merged: new Map([
+    ['w2-s1', { candidates: new Map([['출발 어', []], ['출발어', []]]) }],
+    ['w2-s2', { candidates: new Map([['출발어', []]]) }],
+    ['w2-s3', { candidates: new Map() }],
+  ]) };
+  const lookup = createReverseCandidateFormLookup({ index: localIndex, candidateMerge });
+
+  assert.deepEqual(lookup.available(source, 'w2-s1'), ['출발 어', '출발어']);
+  assert.deepEqual(lookup.available(source, 'w2-s2'), ['출발어'], 'a polysemous target uses its own Stage 1 set');
+  assert.deepEqual(lookup.available(source, 'w2-s3'), [], 'an empty target Stage 1 set receives no reverse claim');
+  assert.deepEqual(lookup.available(source, 'w999-s1'), [], 'a target outside the loaded batch receives no inferred reverse claim');
 });
 
 test('data-diff reconciliation emits only locally owned orphan Stage 1 candidates', () => {

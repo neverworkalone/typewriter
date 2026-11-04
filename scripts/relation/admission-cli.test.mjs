@@ -587,6 +587,56 @@ test('an exact ID row owned by the other batch answers this batch\'s reverse can
   assert.equal(counts.reverse_covered, 1);
 });
 
+test('new reverse assignments leave target candidates outside the loaded batch for that batch to account', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-new-xbatch-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 1000 }, (_, i) => {
+    if (i === 0) return { id: 'w1', lemma: '출발어', search_forms: ['출발어', '출발 어'], senses: [{ id: 'w1-s1', pos: 'noun', gloss: '출발 의미' }] };
+    if (i === 500) return { id: 'w501', lemma: '표적어', senses: [{ id: 'w501-s1', pos: 'noun', gloss: '표적 의미' }] };
+    return { id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }] };
+  });
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, dir), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const batch of ['01', '02']) {
+    const batchRecords = records.slice((Number(batch) - 1) * 500, Number(batch) * 500);
+    for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+      await writeFile(path.join(root, `data/relation-candidates/001/001_${batch}_${producer}.jsonl`), jsonl(batchRecords.map((record) => ({
+        record_id: record.id,
+        senses: [{ sense_id: record.senses[0].id, candidates: producer !== 'a_codex' ? []
+          : record.id === 'w1' ? ['표적어'] : batch === '02' && record.id === 'w501' ? ['출발 어'] : [] }],
+      }))));
+    }
+  }
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual(texts(chunk), ['표적어']);
+  const decisionsPath = '.warroom-scratch/cross-batch-decision.json';
+  await writeFile(path.join(root, decisionsPath), JSON.stringify({
+    chunk_id: chunk.chunk_id,
+    decisions: [{ source_sense_id: 'w1-s1', candidate: '표적어', disposition: 'relation', type: 'near', relevance: 2,
+      target_resolution: 'exact', target_record_id: 'w501', target_sense_id: 'w501-s1' }],
+  }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsPath], { root }));
+  await completeOptionalForTest(root, checkpoint);
+  await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
+  const preflight = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  assert.equal(preflight.ok, true);
+  await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const [row] = await readRelationRows(relationPath);
+  assert.deepEqual(row.reverse_candidate_forms, [], 'batch 01 has no loaded Stage 1 evidence for the batch 02 target sense');
+  const firstBatch = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+  assert.equal(firstBatch.missing, 0);
+  await assert.rejects(() => quiet(() => run(['verify', '--shard', '001', '--batch', '02'], { root })), /has no relation, drop or existing/);
+  const laterBatch = await quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--allow-partial'], { root }));
+  assert.deepEqual(texts(laterBatch), ['출발 어'], 'the target batch retains its candidate for an explicit Stage 2 decision');
+});
+
 test('a batch with no candidates and no authored rows is complete once verify succeeds', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-empty-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -1154,7 +1204,8 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   const root = await mkdtemp(path.join(scratchDirectory, 'admission-orthographic-alias-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const records = Array.from({ length: 500 }, (_, index) => {
-    if (index === 0) return { id: 'w1', lemma: '생명 보험 회사', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '생명 보험을 판매하는 회사.' }] };
+    if (index === 0) return { id: 'w1', lemma: '생명 보험 회사', search_forms: ['생명 보험 회사', '생명보험회사'],
+      senses: [{ id: 'w1-s1', pos: 'noun', gloss: '생명 보험을 판매하는 회사.' }] };
     if (index === 1) return { id: 'w2', lemma: '화재 보장', search_forms: ['화재 보장', '화재보장'], senses: [{ id: 'w2-s1', pos: 'noun', gloss: '화재에 대비해 보장하는 보험.' }] };
     return { id: `w${index + 1}`, lemma: `표제${index + 1}`, senses: [{ id: `w${index + 1}-s1`, pos: 'noun', gloss: `뜻${index + 1}` }] };
   });
@@ -1165,7 +1216,8 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
     await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record, index) => ({
       record_id: record.id,
-      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' && index === 0 ? ['화재보장', '화재 보장'] : [] }],
+      senses: [{ sense_id: record.senses[0].id, candidates: producer !== 'a_codex' ? []
+        : index === 0 ? ['화재보장', '화재 보장'] : index === 1 ? ['생명 보험 회사'] : [] }],
     }))));
   }
 
@@ -1177,11 +1229,17 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   await writeFile(path.join(root, decisionsFile), JSON.stringify({
     chunk_id: chunk.chunk_id,
     decisions: [
-      { source_sense_id: 'w1-s1', candidate: '화재보장', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 7 },
+      { source_sense_id: 'w1-s1', candidate: '화재보장', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 2 },
       { source_sense_id: 'w1-s1', candidate: '화재 보장', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 2 },
+      { source_sense_id: 'w2-s1', candidate: '생명 보험 회사', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 2 },
     ],
   }));
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+  await completeOptionalForTest(root, checkpoint);
+  await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
+  const preflight = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  assert.equal(preflight.ok, true, 'preflight validates only reverse spellings present in the target Stage 1 sense');
 
   const merged = await mergeForTest(root, checkpoint);
   assert.equal(merged.relations_added, 1, 'one canonical ID row represents both candidate spellings');
@@ -1193,7 +1251,7 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
     type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
     candidate_assignment_version: 1, candidate_forms: ['화재보장', '화재 보장'], reverse_candidate_forms: ['생명 보험 회사'],
-  }], 'the canonical target headword spelling supplies the retained sense-pair judgment');
+  }], 'both directions retain the exact selected Stage 1 forms; the unselected no-space source alias is not assigned');
 
   const repeated = await mergeForTest(root, checkpoint);
   assert.equal(repeated.relations_added, 0, 're-merging the same checkpoint is idempotent');
@@ -1212,6 +1270,10 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   const conflictingDecision = conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '화재 보장').decision;
   conflictingDecision.type = 'scene';
   conflictingDecision.reverse_type = 'scene';
+  const reciprocalDecision = conflictingCheckpoint.items.find((item) => item.sense_id === 'w2-s1').candidates
+    .find((candidate) => candidate.text === '생명 보험 회사').decision;
+  reciprocalDecision.type = 'scene';
+  reciprocalDecision.reverse_type = 'scene';
   await writeFile(checkpointPath, `${JSON.stringify(conflictingCheckpoint)}\n`);
   await assert.rejects(
     () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
@@ -1272,7 +1334,7 @@ test('merge coalesces one sense pair reached by distinct candidates using the st
     source_record_id: 'w228756', source_sense_id: 'w228756-s1',
     target_record_id: 'w459957', target_sense_id: 'w459957-s1',
     type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
-    candidate_assignment_version: 1, candidate_forms: ['어수선', '어수선하다'], reverse_candidate_forms: ['엉벙'],
+    candidate_assignment_version: 1, candidate_forms: ['어수선', '어수선하다'], reverse_candidate_forms: [],
   }]);
   const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([verified.unique, verified.relation, verified.missing], [2, 1, 0]);
@@ -1733,7 +1795,7 @@ test('merge accounts an ID relation against only its selected candidate spelling
   const relations = await readRelationRows(relationPath);
   const idRelation = relations.find((row) => row.target_record_id === 'w462682');
   assert.deepEqual(idRelation.candidate_forms, ['온순'], 'the selected spelling is persisted with the ID row');
-  assert.deepEqual(idRelation.reverse_candidate_forms, ['완만히']);
+  assert.deepEqual(idRelation.reverse_candidate_forms, [], 'the target sense has no Stage 1 candidate for the source lemma');
   await rm(path.join(root, checkpoint));
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.missing], [2, 2, 0]);
@@ -1815,7 +1877,7 @@ test('merge coalesces distinct candidate forms that share one identical sense-pa
     source_record_id: 'w226347', source_sense_id: 'w226347-s1',
     target_record_id: 'w334626', target_sense_id: 'w334626-s1',
     type: 'action', relevance: 5, reverse_type: 'action', reverse_relevance: 5,
-    candidate_assignment_version: 1, candidate_forms: ['칭얼거리다', '칭얼'], reverse_candidate_forms: ['억지투정'],
+    candidate_assignment_version: 1, candidate_forms: ['칭얼거리다', '칭얼'], reverse_candidate_forms: [],
   }]);
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.missing], [2, 1, 0]);

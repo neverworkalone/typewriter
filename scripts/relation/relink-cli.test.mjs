@@ -94,7 +94,7 @@ const CASES = [
   { name: 'several corrections are recomputed together',
     input: input(toId(R1, 'w2', 'w2-s2'), toId(R6, 'w2', 'w2-s2'), textOnly(R3)),
     after: [{ ...R1, tsid: 'w2-s2', rfm: [] }, R2, { id: 'w1', sid: 'w1-s1', tt: '물빛 놀이', tp: 'association', rv: 3 },
-      { id: 'w1', sid: 'w1-s1', tt: '물빛놀이', tp: 'association', rv: 3 }, R4, R5, { ...R6, tsid: 'w2-s2', rfm: ['고요'] }, R7] },
+      { id: 'w1', sid: 'w1-s1', tt: '물빛놀이', tp: 'association', rv: 3 }, R4, R5, { ...R6, tsid: 'w2-s2', rfm: [] }, R7] },
   { name: 'stale expected row: tier', input: input(toId({ ...R1, rv: 4 }, 'w2', 'w2-s2')), reject: /does not match any persisted row/u },
   { name: 'stale expected row: rfm', input: input(toId({ ...R1, rfm: [] }, 'w2', 'w2-s2')), reject: /does not match any persisted row/u },
   { name: 'expected row is text-only', input: input(textOnly(R4)), reject: /complete persisted ID Relation row/u },

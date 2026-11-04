@@ -13,6 +13,8 @@ import {
   loadAllApprovedDrops,
   loadOptionalDropJsonl,
   loadShardCandidateFiles,
+  mergeCandidates,
+  normalizeCandidate,
   shardDropPath,
   shardRelationPath,
   validateRelationRows,
@@ -137,6 +139,9 @@ export async function relink({ shard, corrections }, { root = REPOSITORY_DIRECTO
   if (!sourceRows) fail(`Canonical shard ${shard} does not exist`);
   const { files: candidateFiles, inventory } = await loadShardCandidateFiles(shard, root);
   if (inventory.missing.length > 0) fail(`shard ${shard} Stage 1 inputs are incomplete: ${inventory.missing.join(', ')}`);
+  const candidateMerge = mergeCandidates(sourceRows, candidateFiles, {
+    canonicalLemmaForms: new Set([...index.byLemma.keys()].map(normalizeCandidate)),
+  });
 
   const relationFile = shardRelationPath(shard, root);
   const originalText = existsSync(relationFile) ? await readFile(relationFile, 'utf8') : '';
@@ -161,7 +166,8 @@ export async function relink({ shard, corrections }, { root = REPOSITORY_DIRECTO
 
   // 2. Reverse candidate availability is rebuilt without every row being replaced, then corrected rows are added in order.
   const survivors = ownRows.filter((row, position) => !targets.has(position));
-  const lookup = createReverseCandidateFormLookup({ relationRows: [...otherRelations, ...survivors], dropRows: allDrops, index });
+  const lookup = createReverseCandidateFormLookup({ relationRows: [...otherRelations, ...survivors], dropRows: allDrops, index,
+    candidateMerge });
   const replacement = new Map();
   const report = [];
   for (const [position, correction] of [...targets].sort((left, right) => left[0] - right[0])) {
@@ -208,7 +214,7 @@ export async function relink({ shard, corrections }, { root = REPOSITORY_DIRECTO
   try {
     validateRelationRows({ relationRows: afterRows, dropRows: ownDrops, index, shardSenseIds, otherRelationRows: otherRelations });
     verifyAccounting({ canonicalRows: sourceRows, candidateFiles, relationRows: afterRows, dropRows: allDrops,
-      otherRelationRows: otherRelations, index });
+      otherRelationRows: otherRelations, index, candidateMerge });
   } catch (error) {
     if (error instanceof AdmissionVerifyError) fail([`shard ${shard}: ${error.errors.slice(0, 20).join('\n  ')}`]);
     throw error;
