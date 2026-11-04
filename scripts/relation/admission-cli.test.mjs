@@ -130,7 +130,7 @@ function crossShardCounterpart() {
   };
 }
 
-async function singleCandidateRepository(sourceRecordId, candidate) {
+async function singleCandidateRepository(t, sourceRecordId, candidate) {
   const { root } = await sixCandidateRepository(t);
   const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
   const records = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
@@ -2145,7 +2145,7 @@ test('preflight and merge use explicit ver:1 forward and reverse candidate assig
   ];
 
   for (const scenario of scenarios) {
-    const root = await singleCandidateRepository(scenario.sourceRecordId, scenario.candidate);
+    const root = await singleCandidateRepository(t, scenario.sourceRecordId, scenario.candidate);
     const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
     const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
     assert.deepEqual(texts(prepared), [scenario.candidate], scenario.name);
