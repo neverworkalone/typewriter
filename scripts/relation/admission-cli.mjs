@@ -23,6 +23,7 @@ import {
   loadOptionalDropJsonl,
   loadOptionalRelationJsonl,
   loadShard,
+  mergeCandidates,
   normalizeCandidate,
   partScope,
   prepareShard,
@@ -2707,7 +2708,7 @@ async function readReadyPremerge(checkpoint, checkpointPath) {
   return { relations, drops, relation_diff: manifest.relation_diff ?? null };
 }
 
-async function materializePart(checkpoint, root, baseline) {
+async function materializePart(checkpoint, root, baseline, preparedCandidateMerge = null) {
   assertPrimaryComplete(checkpoint);
   assertOptionalComplete(checkpoint);
   validateCheckpointDecisions(checkpoint);
@@ -2718,12 +2719,17 @@ async function materializePart(checkpoint, root, baseline) {
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
+  const candidateMerge = preparedCandidateMerge ?? mergeCandidates(loaded.canonicalRows, scoped.files, {
+    canonicalLemmaForms: new Set([...loaded.index.byLemma.keys()].map(normalizeCandidate)),
+  });
   const { relations: newRelations, relationCandidates, drops: newDrops } = decisionRows(checkpoint);
   const allDrops = await loadAllApprovedDrops(root, { exceptShard: checkpoint.shard });
   const reverseCandidates = createReverseCandidateFormLookup({
     relationRows: [...others, ...existingRelations],
     dropRows: [...allDrops, ...existingDrops, ...newDrops],
     index: loaded.index,
+    candidateMerge,
   });
   for (const relation of newRelations) {
     if ('text' in relation) continue;
@@ -2733,7 +2739,6 @@ async function materializePart(checkpoint, root, baseline) {
   }
   const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops,
     loaded.index, others);
-  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
   const removedRelationRows = baseline.relation_diff
     ? deletedIdRelationRowsBetween(baseline.relation_diff.from, baseline.relation_diff.to, root) : [];
   const editDrops = orphanedCandidateDrops({
@@ -2744,12 +2749,13 @@ async function materializePart(checkpoint, root, baseline) {
     relationRows: [...others, ...merged.relations],
     dropRows: [...allDrops, ...merged.drops],
     index: loaded.index,
+    candidateMerge,
   });
   merged.drops.push(...editDrops);
   validateRelationRows({ relationRows: merged.relations, dropRows: merged.drops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
   verifyAccounting({ canonicalRows: loaded.canonicalRows, candidateFiles: scoped.files, relationRows: merged.relations,
-    dropRows: merged.drops, otherRelationRows: others, index: loaded.index, scopeRows: scoped.scopeRows });
+    dropRows: merged.drops, otherRelationRows: others, index: loaded.index, scopeRows: scoped.scopeRows, candidateMerge });
   const relations = sameRows(merged.relations, existingRelations)
     ? baseline.relations : serializedJsonlState(merged.relations, baseline.relations, 'Relation');
   const drops = sameRows(merged.drops, existingDrops)
@@ -2828,6 +2834,9 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
   const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
+  const candidateMerge = mergeCandidates(loaded.canonicalRows, scoped.files, {
+    canonicalLemmaForms: new Set([...loaded.index.byLemma.keys()].map(normalizeCandidate)),
+  });
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   try {
     validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
@@ -2841,6 +2850,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
     relationRows: [...others, ...existingRelations],
     dropRows: [...allDrops, ...existingDrops, ...generated.drops],
     index: loaded.index,
+    candidateMerge,
   });
   for (const relation of generated.relations) {
     if ('text' in relation) continue;
@@ -2945,7 +2955,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
   let materialization = collected.conflicts.length ? 'deferred-until-conflicts-are-fixed' : 'passed';
   if (collected.conflicts.length === 0) {
     try {
-      await materializePart(checkpoint, root, baseline);
+      await materializePart(checkpoint, root, baseline, candidateMerge);
       ok = glossProblems.length === 0 && unclassified.length === 0;
       repairable = !ok && unclassified.length === 0 && glossProblems.length > 0;
     } catch (error) {

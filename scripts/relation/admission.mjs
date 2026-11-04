@@ -263,8 +263,8 @@ export function legacyCandidateFormsForRecord(record, index) {
   return [...new Set([...candidateFormsForRecord(record, index), ...canonicalNonOrthographicSearchForms(record)])];
 }
 
-/** Build the decided-candidate index once, then reuse it while assigning multiple reverse Relation rows. */
-export function createReverseCandidateFormLookup({ relationRows = [], dropRows = [], index }) {
+/** Build decided and Stage 1 candidate indexes once, then reuse them for exact reverse assignments. */
+export function createReverseCandidateFormLookup({ relationRows = [], dropRows = [], index, candidateMerge = null }) {
   const decidedBySense = new Map();
   const decide = (senseId, candidate) => {
     let candidates = decidedBySense.get(senseId);
@@ -283,14 +283,20 @@ export function createReverseCandidateFormLookup({ relationRows = [], dropRows =
     addRelation,
     available(record, targetSenseId) {
       const decided = decidedBySense.get(targetSenseId);
-      return candidateFormsForRecord(record, index).filter((candidate) => !decided?.has(normalizeCandidate(candidate)));
+      // Canonical orthographic forms can only become reverse assignments when the target Sense submitted that exact form.
+      const stage1Candidates = candidateMerge?.merged.get(targetSenseId)?.candidates;
+      if (!stage1Candidates) return [];
+      return candidateFormsForRecord(record, index).filter((candidate) => {
+        const normalized = normalizeCandidate(candidate);
+        return stage1Candidates.has(normalized) && !decided?.has(normalized);
+      });
     },
   };
 }
 
 /** Reverse spellings that are not already decided for the target sense by any Relation, reverse Relation or Drop. */
-export function availableReverseCandidateForms(record, targetSenseId, { relationRows = [], dropRows = [], index }) {
-  return createReverseCandidateFormLookup({ relationRows, dropRows, index }).available(record, targetSenseId);
+export function availableReverseCandidateForms(record, targetSenseId, { relationRows = [], dropRows = [], index, candidateMerge = null }) {
+  return createReverseCandidateFormLookup({ relationRows, dropRows, index, candidateMerge }).available(record, targetSenseId);
 }
 
 /** Lemma, curated search-form, and id lookups over the full Canonical (all shards). */
@@ -557,9 +563,10 @@ function existingCandidateLinks(relationRows, index, merged = null) {
  * the ordinary row and accounting validators before persisting the result.
  */
 export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRows = canonicalRows, removedRelationRows = [],
-  relationRows = [], dropRows = [], index }) {
+  relationRows = [], dropRows = [], index, candidateMerge = null }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
-  const { merged } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
+  const candidates = candidateMerge ?? mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
+  const { merged } = candidates;
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const covered = existingCandidateLinks(relationRows, index, merged);
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
@@ -728,9 +735,11 @@ export function findGlossNamedDrops({ dropRows, scopeRows, index }) {
  * Account for every unique candidate: new Relation, real Drop or existing approved Relation (excluding this shard's own
  * rows, which are the result being checked). Throws on a missing, doubly-assigned or unknown candidate.
  */
-export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: allRelationRows, dropRows: allDropRows, otherRelationRows, index, scopeRows = canonicalRows }) {
+export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: allRelationRows, dropRows: allDropRows, otherRelationRows, index,
+  scopeRows = canonicalRows, candidateMerge = null }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
-  const { merged, rawCandidateCountBySense } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
+  const candidates = candidateMerge ?? mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
+  const { merged, rawCandidateCountBySense } = candidates;
   const rawCandidateCount = rawCandidateCountForScope(rawCandidateCountBySense, scopeRows);
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const relationRows = allRelationRows.filter((row) => scopeSenses.has(row.source_sense_id));

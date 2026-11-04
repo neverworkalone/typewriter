@@ -164,6 +164,9 @@ async function loadContext(shard, root, { relationText, dropText } = {}) {
     loadAllApprovedDrops(root),
   ]);
   const shardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  const candidateMerge = mergeCandidates(loaded.canonicalRows, loaded.candidateFiles, {
+    canonicalLemmaForms: new Set([...loaded.index.byLemma.keys()].map(normalizeCandidate)),
+  });
   const otherDrops = allDrops.filter((row) => !shardSenseIds.has(row.source_sense_id));
   // Callers may validate a Git baseline while the working tree already contains a prior apply result.
   // Keep the selected shard's drop set bound to that same baseline for repeatable apply calculations.
@@ -171,8 +174,8 @@ async function loadContext(shard, root, { relationText, dropText } = {}) {
   validateRelationRows({ relationRows: ownRelations, dropRows: ownDrops, index: loaded.index, shardSenseIds,
     otherRelationRows: otherRelations });
   verifyAccounting({ canonicalRows: loaded.canonicalRows, candidateFiles: loaded.candidateFiles,
-    relationRows: ownRelations, dropRows: ownDrops, otherRelationRows: otherRelations, index: loaded.index });
-  return { ...loaded, ownRelations, ownDrops, otherRelations, allDrops: scopedAllDrops, otherDrops, shardSenseIds };
+    relationRows: ownRelations, dropRows: ownDrops, otherRelationRows: otherRelations, index: loaded.index, candidateMerge });
+  return { ...loaded, candidateMerge, ownRelations, ownDrops, otherRelations, allDrops: scopedAllDrops, otherDrops, shardSenseIds };
 }
 
 /** Partition by complete source Sense groups, targeting 350–500 Relation rows. */
@@ -602,9 +605,10 @@ async function saveChunk(shard, inputPath, root = REPOSITORY_DIRECTORY, scope = 
     kept: view.relation_count - decisions.length };
 }
 
-function relationTextDrops({ removedRows, relationRows, dropRows, canonicalRows, candidateFiles, index }) {
+function relationTextDrops({ removedRows, relationRows, dropRows, canonicalRows, candidateFiles, index, candidateMerge = null }) {
   const candidateLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
-  const { merged } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms: candidateLemmaForms });
+  const candidates = candidateMerge ?? mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms: candidateLemmaForms });
+  const { merged } = candidates;
   const covered = existingCandidateKeys(relationRows, index);
   const decidedDrops = new Set(dropRows.map((row) => rowKey(row.source_sense_id, row.candidate)));
   const additions = new Map();
@@ -754,6 +758,7 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY, scope = null) {
   });
   const reverseLookup = createReverseCandidateFormLookup({
     relationRows: [...context.otherRelations, ...remainingOriginalRows], dropRows: context.allDrops, index: context.index,
+    candidateMerge: context.candidateMerge,
   });
   const repairedRows = new Map();
   for (const [index, original] of beforeRelations.entries()) {
@@ -803,10 +808,11 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY, scope = null) {
   const afterAllRelations = [...context.otherRelations, ...afterOwnRows];
   const idDrops = orphanedCandidateDrops({ canonicalRows: context.canonicalRows, candidateFiles: context.candidateFiles,
     scopeRows: context.canonicalRows, removedRelationRows: dropRows, relationRows: afterAllRelations,
-    dropRows: context.allDrops, index: context.index });
+    dropRows: context.allDrops, index: context.index, candidateMerge: context.candidateMerge });
   const afterAllDrops = [...context.allDrops, ...idDrops];
   const textDrops = relationTextDrops({ removedRows: dropRows, relationRows: afterAllRelations,
-    dropRows: afterAllDrops, canonicalRows: context.canonicalRows, candidateFiles: context.candidateFiles, index: context.index });
+    dropRows: afterAllDrops, canonicalRows: context.canonicalRows, candidateFiles: context.candidateFiles, index: context.index,
+    candidateMerge: context.candidateMerge });
   const newDropsByKey = new Map();
   for (const row of [...idDrops, ...textDrops]) newDropsByKey.set(rowKey(row.source_sense_id, row.candidate), row);
   const newDrops = [...newDropsByKey.values()];
@@ -814,7 +820,8 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY, scope = null) {
   validateRelationRows({ relationRows: afterOwnRows, dropRows: afterOwnDrops, index: context.index,
     shardSenseIds: context.shardSenseIds, otherRelationRows: context.otherRelations });
   verifyAccounting({ canonicalRows: context.canonicalRows, candidateFiles: context.candidateFiles,
-    relationRows: afterOwnRows, dropRows: afterOwnDrops, otherRelationRows: context.otherRelations, index: context.index });
+    relationRows: afterOwnRows, dropRows: afterOwnDrops, otherRelationRows: context.otherRelations, index: context.index,
+    candidateMerge: context.candidateMerge });
 
   const afterDropLines = [...dropLines, ...newDrops.map((row) => serializeDropJsonl([row]).trimEnd())];
   const relationNext = { exists: relationBase.exists || afterRelationLines.length > 0,
