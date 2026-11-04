@@ -22,7 +22,7 @@ from pathlib import Path
 from . import auth, dchunk, defects, literary, stage2, stage3
 from .config import maintainer_id, maintainer_problem
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
+from .store import MAINTENANCE_DIAGNOSIS_HOLD_PREFIX, MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
 
 _NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` regression files wherever they live (AGENTS.md)
 _PY_TEST = re.compile(r"tools/warroom/tests/test_[^/]+\.py")
@@ -1188,7 +1188,7 @@ class Maintenance:
             return True
         blocker = m["blocker"]
         why = defects.public(
-            f"증거 검증 차단으로 HELD 인계({m['outcome']}): {m['summary']} — "
+            f"{MAINTENANCE_DIAGNOSIS_HOLD_PREFIX}({m['outcome']}): {m['summary']} — "
             f"차단 근거({blocker.get('observation')}): {blocker['reason']} — "
             f"다음 조치: {m['next_action']}. 원 배치는 PAUSED로 보존되며 자동 재개되지 않습니다."
         )

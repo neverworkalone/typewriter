@@ -876,8 +876,9 @@ class AutonomousIncident(unittest.TestCase):
         comment = "진단\n"
         if valid:
             comment += f"\n{summary}\n{blocker['reason'] if blocked else '차단 근거 미검증'}\n{next_action}\n"
+        marker_attempt = data["maintainer_attempt"] - 1 if stale_marker else data["maintainer_attempt"]
         w.gh.comment_issue(102, comment + "\n" + defects.marker(
-            defects.EVENT_MARK, f"incident-diagnosis-102-attempt-{data['maintainer_attempt']}"))
+            defects.EVENT_MARK, f"incident-diagnosis-102-attempt-{marker_attempt}"))
         if commit:
             w.git.local_head = "9" * 40
         w.adapter.finish(w.adapter.launches[-1]["pid"])
@@ -918,11 +919,10 @@ class AutonomousIncident(unittest.TestCase):
         self.assertEqual(w.store.maintenance(102)["batch_id"], second["id"])
         self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED")
 
-    def test_undetermined_retry_refuses_other_diagnoses_and_changed_incident_state(self):
+    def test_diagnosis_retry_requires_undetermined_outcome_and_unchanged_incident_state(self):
         w, _ = self.diagnose(outcome="external")
         self.assertFalse(w.store.maintenance_retryable(102))
-        self.assertFalse(control.maintainer_status(w.store, w.cfg, "sonnet")["can_retry"])
-        self.assertFalse(control.retry_maintainer(w.store, 102))
+        self.assertFalse(w.store.requeue_maintenance(102))
 
         self.tearDown()
         self.setUp()
@@ -930,7 +930,7 @@ class AutonomousIncident(unittest.TestCase):
         d, = incidents(w)
         w.store.update(d["batch_id"], state="ERROR")
         self.assertFalse(w.store.maintenance_retryable(102))
-        self.assertFalse(control.retry_maintainer(w.store, 102))
+        self.assertFalse(w.store.requeue_maintenance(102))
         self.assertEqual(w.store.defect(d["id"])["state"], "HELD")
 
     def test_retry_diagnosis_does_not_accept_a_previous_attempt_marker(self):
