@@ -88,7 +88,7 @@ def submit_attempts(log_file) -> int | None:
     return len(attempts) if recognized else None
 
 
-def _c_cli_operation(command: object, *, expected_cli_path, command_cwd) -> str | None:
+def _c_cli_tokens(command: object, *, expected_cli_path, command_cwd) -> list[str] | None:
     if not isinstance(command, str):
         return None
     try:
@@ -99,7 +99,7 @@ def _c_cli_operation(command: object, *, expected_cli_path, command_cwd) -> str 
         return None
     if (len(tokens) == 3 and Path(tokens[0]).name in {"bash", "sh", "zsh"}
             and tokens[1] in ("-c", "-lc")):
-        return _c_cli_operation(tokens[2], expected_cli_path=expected_cli_path, command_cwd=command_cwd)
+        return _c_cli_tokens(tokens[2], expected_cli_path=expected_cli_path, command_cwd=command_cwd)
     if (len(tokens) < 3 or Path(tokens[0]).name != "node"
             or tokens[2] not in {"chunk", "add-form"}
             or any(token in {";", "&&", "||", "|", "&"} for token in tokens)):
@@ -112,7 +112,40 @@ def _c_cli_operation(command: object, *, expected_cli_path, command_cwd) -> str 
             return None
     except (OSError, RuntimeError, ValueError):
         return None
-    return tokens[2]
+    return tokens
+
+
+def _c_cli_operation(command: object, *, expected_cli_path, command_cwd) -> str | None:
+    tokens = _c_cli_tokens(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
+    return tokens[2] if tokens is not None else None
+
+
+def _c_chunk_scope_request(command: object, *, expected_cli_path, command_cwd) -> dict | None:
+    """Safe task-scope facts from one exact official C `chunk` invocation, if its args are unambiguous."""
+    tokens = _c_cli_tokens(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
+    if tokens is None or tokens[2] != "chunk":
+        return None
+
+    def option_value(name: str) -> str | None:
+        matches = []
+        for index, token in enumerate(tokens[3:], 3):
+            if token == name:
+                if index + 1 >= len(tokens):
+                    return None
+                matches.append(tokens[index + 1])
+            elif token.startswith(name + "="):
+                matches.append(token[len(name) + 1:])
+        return matches[0] if len(matches) == 1 and matches[0] else None
+
+    chunk = option_value("--chunk")
+    raw_ids = option_value("--sense-ids")
+    if chunk is None or not re.fullmatch(r"\d{1,6}", chunk) or int(chunk) < 1 or raw_ids is None:
+        return None
+    sense_ids = raw_ids.split(",")
+    if (not sense_ids or len(set(sense_ids)) != len(sense_ids)
+            or any(not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", sense_id) for sense_id in sense_ids)):
+        return None
+    return {"chunk_no": int(chunk), "sense_ids": sense_ids}
 
 
 def _c_cli_output_text(value: object) -> str:
@@ -141,7 +174,10 @@ def _c_stop_diagnostic(operation: str, output: object) -> dict | None:
             continue
         diagnostic = result.get("diagnostic")
         if isinstance(diagnostic, str) and _C_DIAGNOSTIC.fullmatch(diagnostic):
-            return {"operation": operation, "diagnostic": diagnostic}
+            safe = {"operation": operation, "diagnostic": diagnostic}
+            if diagnostic == "chunk_scope" and result.get("code") == "LITERARY_CHUNK_SCOPE":
+                safe["error_code"] = "LITERARY_CHUNK_SCOPE"
+            return safe
     return None
 
 
@@ -172,6 +208,7 @@ def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd
 
     diagnostics: list[dict] = []
     seen: set[tuple[str, str]] = set()
+    indexes: dict[tuple[str, str], int] = {}
     commands: dict[str, str] = {}
 
     def add(command: object, output: object, *, exit_code=None, tool_error=False) -> None:
@@ -182,9 +219,18 @@ def official_c_stop_diagnostics(log_file, *, expected_cli_path=None, command_cwd
         if result is None:
             return
         key = (result["operation"], result["diagnostic"])
-        if key not in seen:
-            seen.add(key)
-            diagnostics.append(result)
+        if key in seen:
+            if key == ("chunk", "chunk_scope"):
+                diagnostics[indexes[key]]["occurrences"] += 1
+            return
+        seen.add(key)
+        if key == ("chunk", "chunk_scope"):
+            result["occurrences"] = 1
+            request = _c_chunk_scope_request(command, expected_cli_path=expected_cli_path, command_cwd=command_cwd)
+            if request is not None:
+                result.update(request)
+        indexes[key] = len(diagnostics)
+        diagnostics.append(result)
 
     for line in lines:
         try:

@@ -194,13 +194,14 @@ class OfficialCStopParsing(unittest.TestCase):
             return official_c_stop_diagnostics(path, expected_cli_path=OFFICIAL_C_CLI, command_cwd=Path(d))
 
     def test_codex_stop_requires_a_structured_result_from_the_official_cli(self):
-        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
+        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
                                  "repair_scope": "stop_and_report"})
         command = f"zsh -lc 'node {OFFICIAL_C_CLI} chunk --chunk 005 --sense-ids s1,s2'"
         event = {"type": "item.completed", "item": {"id": "call-1", "type": "command_execution",
                  "command": command, "exit_code": 1, "aggregated_output": diagnostic}}
         self.assertEqual(self.parse({"type": "thread.started", "thread_id": "t"}, event),
-                         [{"operation": "chunk", "diagnostic": "chunk_scope"}])
+                         [{"operation": "chunk", "diagnostic": "chunk_scope", "error_code": "LITERARY_CHUNK_SCOPE",
+                           "occurrences": 1, "chunk_no": 5, "sense_ids": ["s1", "s2"]}])
         prose = {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
                  "text": "The phrase stop_and_report is only being discussed."}}
         self.assertEqual(self.parse(prose), [])
