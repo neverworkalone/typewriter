@@ -2,7 +2,7 @@
 
 War Room이 지정한 배치 {{batch}}의 **청크 하나**(청크 {{chunk_no}}, 아래 view)만 처리한다. 현재 worktree와 브랜치 `{{branch}}`, 준비된 HEAD를 그대로 사용한다. 배치·브랜치·HEAD를 바꾸지 않는다.
 {{session_note}}
-이 실행은 구현 작업이 아니라 청크 판독이다. 필요한 계약은 모두 이 카드에 있다. `AGENTS.md`(`CLAUDE.md`가 읽으라고 안내하더라도 읽지 않는다), `docs/`, #1156 본문, 스크립트 소스, MEMORY.md, 캐시 루트 탐색(`rg --files`·`find`), `gh`, Git, `jq`, 웹 검색, 다른 모델·CLI·서브에이전트를 사용하지 않는다. 다음 청크 진행, 조립, 검증, commit, push, PR 생성은 War Room이 한다. 하지 않는다. 다른 청크·다른 모델·A/B/C의 후보나 이전 배치 산출물은 열람하지 않는다.
+이 실행은 구현 작업이 아니라 청크 판독이다. 정상 판독에 필요한 계약은 모두 이 카드에 있다. **실제 공유 계층 결함을 재현했을 때만 아래의 공통 결함 보고 절에 명시한 문서 1회 열람을 예외로 허용한다.** `AGENTS.md`(`CLAUDE.md`가 읽으라고 안내하더라도 읽지 않는다), `docs/`, #1156 본문, 스크립트 소스, MEMORY.md, 캐시 루트 탐색(`rg --files`·`find`), `gh`, Git, `jq`, 웹 검색, 다른 모델·CLI·서브에이전트를 사용하지 않는다. 다음 청크 진행, 조립, 검증, commit, push, PR 생성은 War Room이 한다. 하지 않는다. 다른 청크·다른 모델·A/B/C의 후보나 이전 배치 산출물은 열람하지 않는다.
 Supervisor는 최신 D CLI 경로와 이 배치의 scratch/Canonical 루트를 `TYPEWRITER_D_CHUNK_CLI`, `TYPEWRITER_D_SCRATCH`, `TYPEWRITER_D_CANONICAL_ROOT`로 제공한다. 검색과 저장은 아래 명령 형식대로 이 값을 명시한다.
 
 ## 입력
@@ -77,21 +77,8 @@ node "$TYPEWRITER_D_CHUNK_CLI" save --chunk {{chunk_no}} --in "$TYPEWRITER_D_SCR
 - `V`는 내가 VERIFIED 문맥을 읽었다는 뜻이다. 저장 도구는 문맥의 source-sense 진위를 기계적으로 검증했다고 주장하지 않으며, `N`·`Z`의 의미적 타당성은 나와 독립 리뷰의 책임이다.
 - 셸 명령은 그 외에는 개별로 실행해 종료 코드와 출력을 확인한다.
 
-## 공통 결함 보고 (실제로 재현한 공유 계층 오류만)
+## 공통 결함 보고 (실제 재현 시에만)
 
-개별 Sense의 용례 불일치·후보 판단, 올바른 Sense/Record 결속, 정상적인 검색 결과 공유 또는 일시적인 CLI/인증/네트워크 오류는 **공통 결함 보고 대상이 아니다**. 공유 CLI·검증기·프롬프트 자체의 반복 가능한 오류를 실제 입력과 도구 결과로 확인했을 때만 이 청크 전용 보고 파일(상단 `session_note`의 `shared-defect-NNN.json` 경로)에 기록하고 즉시 중단한다. 보고 경로를 임의로 만들거나 다른 청크의 파일을 사용하지 않는다.
+제공된 현재 청크 view의 Sense·Record 결속과 CLI 응답까지 대조했는데도 **공유 계층(검색 CLI·검증기·생산 프롬프트 등)의 결함이 실제로 재현된 경우에만** `cat tools/warroom/prompts/shared-defect.md`로 **해당 문서 하나를 1회 읽고** 그 규약대로 보고한다. 정상적인 청크 작업에서는 이 문서를 열지 않는다. 단순한 예상 불일치, Sense/Record 결속 오판, 정상적인 검색 결과 공유, 근거 부족은 공통 결함으로 보고하지 않는다.
 
-아래의 **정확한 JSON 형식**을 쓴다. `version`은 1, `defect_class`는 소문자·숫자·하이픈으로 된 3~64자 slug, `failing_cases`는 실제 실패 사례를 담은 비어 있지 않은 문자열 배열이다. 필수 필드 이외에는 선택 필드 `root_cause`, `scope`, `proposed_fix`, `regression`만 허용한다. `batch`, `chunk`, `component`, `impact`, `issue`, `expected`, `observed`, `defect` 같은 임의 최상위 필드를 추가하지 않는다.
-
-```json
-{
-  "version": 1,
-  "defect_class": "shared-layer-failure",
-  "summary": "확인된 공통 결함 증상",
-  "failing_cases": ["실제로 실패한 Record/Sense와 관찰한 증거"],
-  "reproduction": "실패를 재현하는 명령 또는 절차",
-  "suspected_layer": "의심되는 공통 CLI/검증기/프롬프트"
-}
-```
-
-문자열 내부의 큰따옴표는 반드시 JSON 규칙대로 이스케이프하고, 쉼표·괄호가 올바른 **파싱 가능한 JSON**으로 작성한다. 근거가 불충분하면 오류를 꾸며서 보고서를 만들지 않는다. 잘못된 JSON이나 스키마 위반은 Issue를 만들지 못한 채 배치를 PAUSED로 멈추게 한다.
+보고 파일은 일반 기본 경로가 아닌 **상단 `session_note`가 지정한 이 청크 전용 경로**에 기록하고 즉시 작업을 멈춘다. 다른 파일이나 다른 청크의 보고 경로는 사용하지 않는다.
