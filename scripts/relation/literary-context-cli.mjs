@@ -15,6 +15,7 @@ import {
   inspectLiteraryIndex,
   loadLiteraryCheckpoint,
   MAX_RESPONSE_CHARS,
+  normalizeActiveChunkReadScope,
   readLiteraryChunk,
   renderChunkText,
   reportLiteraryCheckpointSenses,
@@ -256,14 +257,31 @@ async function main() {
         validateSenseIds(options['exclude-sense-ids']);
       }
       const chunkNo = chunkOption(options);
+      let senseIds = options['sense-ids'];
+      let scopeWarning = null;
       if (chunkNo !== undefined) {
         if (options['sense-ids'] === undefined) fail('--chunk requires --sense-ids');
-        await assertActiveChunkScope({ checkpointPath: options.checkpoint, chunkNo, senseIds: options['sense-ids'].split(','), scratchDirectory: SCRATCH_DIRECTORY });
+        const normalized = await normalizeActiveChunkReadScope({
+          checkpointPath: options.checkpoint,
+          chunkNo,
+          senseIds: options['sense-ids'].split(','),
+          scratchDirectory: SCRATCH_DIRECTORY,
+        });
+        senseIds = normalized.validSenseIds.join(',');
+        if (normalized.excludedSenseIds.length > 0) {
+          scopeWarning = {
+            status: 'WARNING',
+            warning: 'active_chunk_scope_ids_excluded',
+            chunk_no: chunkNo,
+            applied_sense_ids: normalized.validSenseIds,
+            excluded_sense_ids: normalized.excludedSenseIds,
+          };
+        }
       }
       result = await readLiteraryChunk({
         databasePath: options.db,
         checkpointPath: options.checkpoint,
-        senseIds: options['sense-ids'],
+        senseIds,
         excludeSenseIds: options['exclude-sense-ids'],
         limit,
         contexts,
@@ -281,9 +299,11 @@ async function main() {
           process.exitCode = 1;
           return;
         }
+        if (scopeWarning) process.stderr.write(`${JSON.stringify(scopeWarning)}\n`);
         process.stdout.write(text);
         return;
       }
+      if (scopeWarning) process.stderr.write(`${JSON.stringify(scopeWarning)}\n`);
       break;
     }
     case 'submit': {

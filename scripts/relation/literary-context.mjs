@@ -1922,27 +1922,69 @@ export function reportLiteraryCheckpointSenses(checkpoint, senseIdList) {
   };
 }
 
-/**
- * Worker-side `--chunk NNN` scope: the request must stay inside the Senses of `c-active-NNN.json`, which is bound to this
- * checkpoint's batch and model. Without `--chunk` nothing is checked (serial cards, manual use, singleton repair).
- */
-export async function assertActiveChunkScope({ checkpointPath, chunkNo, senseIds, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+async function activeChunkScope({ checkpointPath, chunkNo, scratchDirectory }) {
   const scopeError = (message) => codedError('LITERARY_CHUNK_SCOPE', message);
   if (!Number.isSafeInteger(chunkNo) || chunkNo < 1) throw scopeError('invalid chunk number');
-  const { checkpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
+  const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
   let active;
+  let view;
   try {
-    active = JSON.parse(await readFile(path.join(scratchDirectory, `c-active-${String(chunkNo).padStart(3, '0')}.json`), 'utf8'));
+    const stem = `c-active-${String(chunkNo).padStart(3, '0')}`;
+    active = JSON.parse(await readFile(path.join(scratchDirectory, `${stem}.json`), 'utf8'));
+    view = await readFile(path.join(scratchDirectory, `${stem}.txt`));
   } catch {
     throw scopeError('active chunk record is unavailable');
   }
   const { shard, batch, model } = checkpoint.batch;
-  if (active?.shard !== shard || active?.batch !== batch || active?.model !== model || active?.chunk_no !== chunkNo
-    || !Array.isArray(active.sense_ids)) {
+  const expectedCheckpoint = path.resolve(scratchDirectory, `${shard}_${batch}_c_${model}.checkpoint.json`);
+  const expectedChunkId = `${shard}-${batch}-${String(chunkNo).padStart(3, '0')}`;
+  const known = new Set(checkpoint.records.flatMap((record) => record.senses.map((sense) => sense.sense_id)));
+  const ids = active?.sense_ids;
+  const viewText = view.toString('utf8');
+  const viewBody = viewText.slice(viewText.indexOf('\n\n') + 2);
+  const viewIds = viewBody.split(/\n\n(?=## )/u).flatMap((block) => {
+    const match = /^## ([A-Za-z0-9][A-Za-z0-9._:-]{0,127}) — /u.exec(block);
+    return match ? [match[1]] : [];
+  });
+  if (resolvedCheckpoint !== expectedCheckpoint || active?.shard !== shard || active?.batch !== batch
+    || active?.model !== model || active?.chunk_no !== chunkNo
+    || active?.chunk_id !== expectedChunkId || !/^[a-f0-9]{40}$/u.test(active?.git_head ?? '')
+    || !/^[a-f0-9]{64}$/u.test(active?.view_sha256 ?? '') || active?.view_bytes !== view.byteLength
+    || sha256(view) !== active.view_sha256 || !viewText.startsWith(`batch=${shard}_${batch} `)
+    || !Array.isArray(ids) || ids.length === 0 || ids.some((id) => typeof id !== 'string' || !known.has(id))
+    || new Set(ids).size !== ids.length || JSON.stringify(viewIds) !== JSON.stringify(ids)) {
     throw scopeError('active chunk record is not bound to this batch');
   }
-  const allowed = new Set(active.sense_ids);
-  if (senseIds.length === 0 || senseIds.some((id) => !allowed.has(id))) throw scopeError('sense is outside the active chunk');
+  return new Set(ids);
+}
+
+/**
+ * Worker-side `--chunk NNN` scope for mutations: every requested Sense must belong to the validated active view.
+ * Without `--chunk` nothing is checked (serial cards, manual use, singleton repair).
+ */
+export async function assertActiveChunkScope({ checkpointPath, chunkNo, senseIds, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+  const scopeError = (message) => codedError('LITERARY_CHUNK_SCOPE', message);
+  const allowed = await activeChunkScope({ checkpointPath, chunkNo, scratchDirectory });
+  if (!Array.isArray(senseIds) || senseIds.length === 0 || senseIds.some((id) => !allowed.has(id))) {
+    throw scopeError('sense is outside the active chunk');
+  }
+}
+
+/**
+ * Normalize a read-only `chunk --chunk NNN --sense-ids ...` query after validating the checkpoint and exact saved
+ * active view. One or two accidental out-of-scope IDs may be removed only when at least one requested ID remains.
+ */
+export async function normalizeActiveChunkReadScope({ checkpointPath, chunkNo, senseIds,
+  scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+  const scopeError = (message) => codedError('LITERARY_CHUNK_SCOPE', message);
+  const allowed = await activeChunkScope({ checkpointPath, chunkNo, scratchDirectory });
+  if (!Array.isArray(senseIds) || senseIds.length === 0) throw scopeError('sense is outside the active chunk');
+  const validSenseIds = senseIds.filter((id) => allowed.has(id));
+  const excludedSenseIds = senseIds.filter((id) => !allowed.has(id));
+  if (validSenseIds.length === 0 || excludedSenseIds.length > 2) {
+    throw scopeError('sense is outside the active chunk');
+  }
+  return { validSenseIds, excludedSenseIds };
 }
 
 /** Text view of the returned `chunk` items in the documented one-call `jq` format. */

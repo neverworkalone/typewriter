@@ -2018,19 +2018,28 @@ test('chunk --exclude-sense-ids selects around reserved Senses and reports exclu
 test('--chunk keeps chunk/add-form/submit inside the active chunk record; omitting it keeps the old behavior', async () => {
   const fixture = await makeFixture({ unitCount: 6, firstSenseGlosses: THREE_SENSES });
   try {
-    const items = (await chunk(fixture, { contexts: 4 })).items;
+    const rendered = await chunk(fixture, { contexts: 4 });
+    const activeIds = ['sense-000001', 'sense-000001-2'];
+    const viewText = renderChunkText({ ...rendered, items: rendered.items.filter((item) => activeIds.includes(item.sense_id)) });
+    const viewBytes = Buffer.from(viewText);
+    await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.txt'), viewBytes);
     await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.json'), JSON.stringify({
-      chunk_id: '001-01-001', chunk_no: 1, sense_ids: ['sense-000001'], shard: '001', batch: '01', model: 'codex',
+      chunk_id: '001-01-001', chunk_no: 1, sense_ids: activeIds, shard: '001', batch: '01', model: 'codex',
+      git_head: 'a'.repeat(40), view_sha256: createHash('sha256').update(viewBytes).digest('hex'),
+      view_bytes: viewBytes.byteLength,
     }));
+    const activePath = path.join(fixture.scratchDirectory, 'c-active-001.json');
+    const activeBefore = await readFile(activePath, 'utf8');
     const before = await readFile(fixture.checkpointPath, 'utf8');
     const diagnostic = (result) => JSON.parse(result.stderr);
-    const outside = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001-2', '--chunk', '1']));
+    const outside = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001-3', '--chunk', '1']));
     assert.equal(outside.status, 1);
     assert.equal(diagnostic(outside).diagnostic, 'chunk_scope');
-    const outsideForm = runCli(fixture, ['add-form', '--checkpoint', fixture.checkpointPath, '--sense-id', 'sense-000001-2',
+    const outsideForm = runCli(fixture, ['add-form', '--checkpoint', fixture.checkpointPath, '--sense-id', 'sense-000001-3',
       '--form', '가나다라', '--basis', 'test', '--chunk', '1']);
     assert.equal(diagnostic(outsideForm).diagnostic, 'chunk_scope');
-    const outsideSubmit = await submitCliWithChunk(fixture, [{ sense_id: 'sense-000001-2', verified: [items[1].contexts[0].k], candidates: ['눈'] }], 1);
+    const outsideItem = rendered.items.find((item) => item.sense_id === 'sense-000001-3');
+    const outsideSubmit = await submitCliWithChunk(fixture, [{ sense_id: 'sense-000001-3', verified: [outsideItem.contexts[0].k], candidates: ['눈'] }], 1);
     assert.equal(diagnostic(outsideSubmit).diagnostic, 'chunk_scope');
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
     for (const malformed of [[], [{ verified: [], candidates: [] }]]) {
@@ -2042,9 +2051,56 @@ test('--chunk keeps chunk/add-form/submit inside the active chunk record; omitti
     }
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
 
+    const mixed = runCli(fixture, cliChunkArgs(fixture, [
+      '--sense-ids', 'sense-000001,sense-000001-3,sense-000001-2', '--chunk', '1', '--format', 'text',
+    ]));
+    assert.equal(mixed.status, 0, mixed.stderr);
+    assert.match(mixed.stdout, /^batch=001_01 /u);
+    assert.deepEqual(diagnostic(mixed), {
+      status: 'WARNING', warning: 'active_chunk_scope_ids_excluded', chunk_no: 1,
+      applied_sense_ids: activeIds, excluded_sense_ids: ['sense-000001-3'],
+    });
+    assert.deepEqual([...mixed.stdout.matchAll(/^## ([^ ]+)/gmu)].map((match) => match[1]), activeIds);
+    const afterMixed = await load(fixture);
+    const afterMixedSenses = Object.fromEntries(afterMixed.records.flatMap((record) => record.senses.map((sense) => [sense.sense_id, sense])));
+    assert.ok(afterMixedSenses[activeIds[0]].shown);
+    assert.ok(afterMixedSenses[activeIds[1]].shown);
+    assert.equal(afterMixedSenses['sense-000001-3'].shown, null);
+
+    const mixedCheckpoint = await readFile(fixture.checkpointPath, 'utf8');
+    const tooMany = runCli(fixture, cliChunkArgs(fixture, [
+      '--sense-ids', 'sense-000001,sense-000001-2,sense-000001-3,sense-000001-4,sense-000001-5', '--chunk', '1',
+    ]));
+    assert.equal(tooMany.status, 1);
+    assert.equal(diagnostic(tooMany).diagnostic, 'chunk_scope');
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), mixedCheckpoint);
+
+    await writeFile(activePath, JSON.stringify({ ...JSON.parse(activeBefore), sense_ids: ['sense-000001-3'] }));
+    const forged = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001-3', '--chunk', '1']));
+    assert.equal(forged.status, 1);
+    assert.equal(diagnostic(forged).diagnostic, 'chunk_scope');
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), mixedCheckpoint);
+    await writeFile(activePath, activeBefore);
+
+    const wrongChunk = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--chunk', '2']));
+    assert.equal(wrongChunk.status, 1);
+    assert.equal(diagnostic(wrongChunk).diagnostic, 'chunk_scope');
+    await writeFile(activePath, JSON.stringify({ ...JSON.parse(activeBefore), batch: '02' }));
+    const wrongBatch = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--chunk', '1']));
+    assert.equal(wrongBatch.status, 1);
+    assert.equal(diagnostic(wrongBatch).diagnostic, 'chunk_scope');
+    await writeFile(activePath, activeBefore);
+    const otherCheckpoint = path.join(fixture.scratchDirectory, 'other.checkpoint.json');
+    await writeFile(otherCheckpoint, before);
+    const wrongCheckpoint = runCli(fixture, ['chunk', '--db', fixture.databasePath, '--checkpoint', otherCheckpoint,
+      '--sense-ids', 'sense-000001', '--chunk', '1']);
+    assert.equal(wrongCheckpoint.status, 1);
+    assert.equal(diagnostic(wrongCheckpoint).diagnostic, 'chunk_scope');
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), mixedCheckpoint);
+
     const inside = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--chunk', '1']));
     assert.equal(inside.status, 0, inside.stderr);
-    const insideSubmit = await submitCliWithChunk(fixture, [{ sense_id: 'sense-000001', verified: [items[0].contexts[0].k], candidates: ['서리'] }], 1);
+    const insideSubmit = await submitCliWithChunk(fixture, [{ sense_id: 'sense-000001', verified: [rendered.items[0].contexts[0].k], candidates: ['서리'] }], 1);
     assert.equal(insideSubmit.status, 0, insideSubmit.stderr);
     const unscoped = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001-2']));
     assert.equal(unscoped.status, 0, unscoped.stderr);
