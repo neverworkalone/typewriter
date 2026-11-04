@@ -202,6 +202,8 @@ test('CLI entrypoint prepares a Part without an injected repository root', async
   for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs', 'persisted-jsonl.mjs']) {
     await copyFile(path.join(REPOSITORY_DIRECTORY, 'scripts/relation', file), path.join(relationScriptDirectory, file));
   }
+  await mkdir(path.join(root, 'config'), { recursive: true });
+  await copyFile(path.join(REPOSITORY_DIRECTORY, 'config/stage2-part-layout.json'), path.join(root, 'config/stage2-part-layout.json'));
   await copyFile(
     path.join(REPOSITORY_DIRECTORY, 'scripts/build/gloss-arrow-reference.mjs'),
     path.join(buildScriptDirectory, 'gloss-arrow-reference.mjs'),
@@ -577,8 +579,97 @@ test('--part requires a batch, rejects out-of-range parts, and allows the final 
   assert.deepEqual(finalPart.items.map((item) => item.record_id), ['w583']);
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--part', '02'], { root })), /batch 02 has no records for part 02/);
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--part', '01'], { root })), /--part requires --batch/);
-  await assert.rejects(() => quiet(() => run(['verify', '--shard', '001', '--batch', '02', '--part', '06'], { root })), /--part must be 01, 02, 03, 04 or 05/);
+  await assert.rejects(() => quiet(() => run(['verify', '--shard', '001', '--batch', '02', '--part', '06'], { root })), /part must be 01, 02, 03, 04, 05 for shard 001 \(Part size 100\)/);
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--part', '01', '--out', 'part.json'], { root })), /use --checkpoint instead of --out/);
+});
+
+test('Stage 2 Part layout: shards after the legacy boundary use 250-record Parts and checkpoints enforce it', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-layout-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const layout = JSON.parse(await readFile(path.join(REPOSITORY_DIRECTORY, 'config/stage2-part-layout.json'), 'utf8'));
+  assert.deepEqual(layout, { version: 1, legacy_through_shard: '005', legacy_part_size: 100, part_size: 250 });
+  const makeShard = async (shard, count) => {
+    const file = String(Number(shard)).padStart(4, '0');
+    const records = Array.from({ length: count }, (_, i) => ({
+      id: `s${shard}w${i + 1}`, lemma: `표제${shard}${i + 1}`, senses: [{ id: `s${shard}w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }],
+    }));
+    for (const dir of ['data/canonical', `data/relation-candidates/${shard}`]) await mkdir(path.join(root, dir), { recursive: true });
+    await writeFile(path.join(root, `data/canonical/stdict-${file}.jsonl`), jsonl(records));
+    for (const batch of ['01', '02']) {
+      const batchRecords = records.slice((Number(batch) - 1) * 500, Number(batch) * 500);
+      if (batchRecords.length === 0) continue;
+      for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+        await writeFile(path.join(root, `data/relation-candidates/${shard}/${shard}_${batch}_${producer}.jsonl`), jsonl(batchRecords.map((record) => ({
+          record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' ? [`후보${record.id}`] : [] }] }))));
+      }
+    }
+    return records;
+  };
+  const prepared = async (shard, batch, part) => quiet(() => run(['prepare', '--shard', shard, '--batch', batch, '--part', part], { root }));
+
+  // New layout (shard >= 006): two 250-record Parts per Batch; together they cover the Batch exactly once.
+  const records = await makeShard('006', 1000);
+  const seen = [];
+  for (const batch of ['01', '02']) {
+    for (const [part, first] of [['01', 0], ['02', 250]]) {
+      const checkpoint = await prepared('006', batch, part);
+      assert.equal(checkpoint.part_size, 250);
+      const offset = (Number(batch) - 1) * 500 + first;
+      assert.deepEqual(checkpoint.items.map((item) => item.record_id), records.slice(offset, offset + 250).map((record) => record.id));
+      seen.push(...checkpoint.items.map((item) => item.record_id));
+    }
+    for (const part of ['03', '04', '05']) {
+      await assert.rejects(() => prepared('006', batch, part), /part must be 01, 02 for shard 006 \(Part size 250\)/);
+    }
+  }
+  assert.deepEqual(seen, records.map((record) => record.id));
+  await assert.rejects(() => quiet(() => run(['verify', '--shard', '006', '--batch', '01', '--part', '03'], { root })), /part must be 01, 02/);
+
+  // Legacy layout (shard <= 005) keeps five 100-record Parts and records part_size 100.
+  const legacy = await makeShard('005', 1000);
+  const legacyPart = await prepared('005', '01', '05');
+  assert.equal(legacyPart.part_size, 100);
+  assert.deepEqual(legacyPart.items.map((item) => item.record_id), legacy.slice(400, 500).map((record) => record.id));
+  await assert.rejects(() => prepared('005', '01', '06'), /part must be 01, 02, 03, 04, 05 for shard 005/);
+
+  // Partial final Batch (83 records) in the new layout has only Part 01.
+  await makeShard('007', 583);
+  assert.equal((await prepared('007', '02', '01')).items.length, 83);
+  await assert.rejects(() => prepared('007', '02', '02'), /no records for part 02/);
+
+  // The checkpoint gate: every checkpoint-reading command refuses a layout mismatch, regardless of partScope use.
+  const readable = '.warroom-scratch/relation-admission-006-01-01.json';
+  const stored = JSON.parse(await readFile(path.join(root, readable), 'utf8'));
+  const forge = async (name, mutate) => {
+    const file = `.warroom-scratch/${name}.json`;
+    const copy = structuredClone(stored);
+    mutate(copy);
+    await writeFile(path.join(root, file), JSON.stringify(copy));
+    return file;
+  };
+  const refused = [
+    await forge('forged-part-03', (c) => { c.part = '03'; }),
+    await forge('forged-no-part-size', (c) => { delete c.part_size; }),
+    await forge('forged-part-size-100', (c) => { c.part_size = 100; }),
+  ];
+  const inputPath = '.warroom-scratch/forged-input.txt';
+  await writeFile(path.join(root, inputPath), 'x\n');
+  for (const file of refused) {
+    for (const command of [['inspect', '--source-sense-id', 's006w1-s1'], ['read-chunk'], ['plan-chunks', '--out', '.warroom-scratch/forged-plan.json'], ['save-chunk', '--in', inputPath], ['merge'], ['preflight', '--json']]) {
+      await assert.rejects(() => quiet(() => run([command[0], '--checkpoint', file, ...command.slice(1)], { root })), /part_size must be 250|part must be 01, 02/, `${command[0]} ${file}`);
+    }
+  }
+  // A legacy checkpoint written before part_size existed (no key) still passes; the same omission is rejected for a new shard.
+  const legacyStored = JSON.parse(await readFile(path.join(root, '.warroom-scratch/relation-admission-005-01-05.json'), 'utf8'));
+  delete legacyStored.part_size;
+  await writeFile(path.join(root, '.warroom-scratch/legacy-no-part-size.json'), JSON.stringify(legacyStored));
+  const legacyView = await quiet(() => run(['inspect', '--checkpoint', '.warroom-scratch/legacy-no-part-size.json', '--source-sense-id', 's005w401-s1'], { root }));
+  assert.ok(legacyView);
+  const forgedLegacy = await forge('forged-legacy-250', () => {});
+  const wrongLegacy = JSON.parse(await readFile(path.join(root, '.warroom-scratch/relation-admission-005-01-05.json'), 'utf8'));
+  wrongLegacy.part_size = 250;
+  await writeFile(path.join(root, forgedLegacy), JSON.stringify(wrongLegacy));
+  await assert.rejects(() => quiet(() => run(['inspect', '--checkpoint', forgedLegacy, '--source-sense-id', 's005w401-s1'], { root })), /part_size must be 100/);
 });
 
 test('an exact ID row owned by the other batch answers this batch\'s reverse candidate despite homographs', async (t) => {
@@ -2364,7 +2455,7 @@ async function spawnedVerifyRepository(t, { candidates = () => [], relations = [
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const [from, to] of [
     ['scripts/relation/admission-cli.mjs'], ['scripts/relation/admission.mjs'], ['scripts/relation/candidate-contract.mjs'], ['scripts/relation/persisted-jsonl.mjs'],
-    ['scripts/build/gloss-arrow-reference.mjs'], ['src/runtime/dictionary-contract.js'],
+    ['scripts/build/gloss-arrow-reference.mjs'], ['src/runtime/dictionary-contract.js'], ['config/stage2-part-layout.json'],
   ]) {
     await mkdir(path.dirname(path.join(root, from)), { recursive: true });
     await copyFile(path.join(REPOSITORY_DIRECTORY, from), path.join(root, to ?? from));

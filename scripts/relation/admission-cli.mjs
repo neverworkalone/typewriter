@@ -26,6 +26,8 @@ import {
   mergeCandidates,
   normalizeCandidate,
   partScope,
+  assertStage2Part,
+  stage2PartSize,
   prepareShard,
   relationCandidateKeys,
   sameSpellingTargets,
@@ -263,8 +265,14 @@ function validateCheckpoint(checkpoint, identity = {}) {
   if (checkpoint.type_tier_policy !== undefined && checkpoint.type_tier_policy !== SOURCE_MIRROR_TYPE_TIER_POLICY) {
     throw new Error('checkpoint has an unsupported Type/Tier direction policy');
   }
-  if (!/^\d{3}$/u.test(checkpoint.shard ?? '') || !['01', '02'].includes(checkpoint.batch) || !['01', '02', '03', '04', '05'].includes(checkpoint.part)) {
+  if (!/^\d{3}$/u.test(checkpoint.shard ?? '') || !['01', '02'].includes(checkpoint.batch) || typeof checkpoint.part !== 'string') {
     throw new Error('checkpoint must identify one shard, batch and Part');
+  }
+  // #3385: every checkpoint-reading command passes here, so the Shard's Part layout is enforced for all of them.
+  assertStage2Part(checkpoint.shard, checkpoint.batch, checkpoint.part);
+  const expectedPartSize = stage2PartSize(checkpoint.shard);
+  if (checkpoint.part_size === undefined ? expectedPartSize !== 100 : checkpoint.part_size !== expectedPartSize) {
+    throw new Error(`checkpoint part_size must be ${expectedPartSize} for shard ${checkpoint.shard}; re-prepare this Part`);
   }
   if (checkpoint.base_revision !== undefined && checkpoint.base_revision !== null
       && (typeof checkpoint.base_revision !== 'string' || !/^[a-f0-9]{40}$/u.test(checkpoint.base_revision))) {
@@ -938,7 +946,10 @@ function parseArgs(argv) {
   if (!['prepare', 'plan-chunks', 'close-plan', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify', 'reconcile'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
-  if (options.part !== null && !['01', '02', '03', '04', '05'].includes(options.part)) throw new Error(`--part must be 01, 02, 03, 04 or 05\n${USAGE}`);
+  if (options.part !== null) {
+    if (options.shard === null) throw new Error(`--part requires --shard\n${USAGE}`);
+    try { assertStage2Part(options.shard, options.batch ?? '01', options.part); } catch (error) { throw new Error(`${error.message}\n${USAGE}`); }
+  }
   if (options.part !== null && options.batch === null) throw new Error(`--part requires --batch\n${USAGE}`);
   if (options.part !== null && !['prepare', 'verify', 'reconcile'].includes(command)) throw new Error(`--part is only valid for prepare/verify/reconcile\n${USAGE}`);
   if (!Number.isInteger(options.maxCandidates) || options.maxCandidates < 1) throw new Error(`--max-candidates must be a positive integer\n${USAGE}`);
@@ -1149,7 +1160,7 @@ export async function run(argv, { root } = {}) {
   }
   // --batch selects and fully validates one 500-record Stage 1 input set; --part narrows only Stage 2 editing/accounting.
   const scoped = options.part
-    ? partScope(canonicalRows, loaded.candidateFiles, options.batch, options.part)
+    ? partScope(canonicalRows, loaded.candidateFiles, options.batch, options.part, options.shard)
     : options.batch
       ? batchScope(canonicalRows, loaded.candidateFiles, options.batch)
       : { scopeRows: canonicalRows, files: loaded.candidateFiles };
@@ -1179,6 +1190,7 @@ export async function run(argv, { root } = {}) {
         shard: options.shard,
         batch: options.batch,
         part: options.part,
+        part_size: stage2PartSize(options.shard),
         base_revision: currentGitHead(repositoryRoot),
         complete: inventory.missing.length === 0,
         stats: result.stats,
@@ -2719,7 +2731,7 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
-  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
+  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part, checkpoint.shard);
   const candidateMerge = preparedCandidateMerge ?? mergeCandidates(loaded.canonicalRows, scoped.files, {
     canonicalLemmaForms: new Set([...loaded.index.byLemma.keys()].map(normalizeCandidate)),
   });
@@ -2765,7 +2777,7 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
 
 async function reconcileScope({ shard, batch = null, part = null, diffFrom, diffTo, dryRun = false, root }) {
   const loaded = await loadShard(shard, root, { batch });
-  const scope = part ? partScope(loaded.canonicalRows, loaded.candidateFiles, batch, part)
+  const scope = part ? partScope(loaded.canonicalRows, loaded.candidateFiles, batch, part, shard)
     : batch ? batchScope(loaded.canonicalRows, loaded.candidateFiles, batch)
       : { scopeRows: loaded.canonicalRows, files: loaded.candidateFiles };
   const inventory = batch ? candidateInventory(scope.files.map((file) => file.name), { batches: [batch] }) : loaded.inventory;
@@ -2833,7 +2845,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
   const existingDrops = parseJsonlState(baseline.drops, 'Drop');
   const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
-  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
+  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part, checkpoint.shard);
   const candidateMerge = mergeCandidates(loaded.canonicalRows, scoped.files, {
     canonicalLemmaForms: new Set([...loaded.index.byLemma.keys()].map(normalizeCandidate)),
   });

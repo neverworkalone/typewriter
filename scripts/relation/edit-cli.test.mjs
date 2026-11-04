@@ -457,6 +457,12 @@ test('scoped Link Repair uses the exact Stage 2 Part, checks homographs, and lea
   assert.deepEqual(parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')), relations);
 });
 
+test('scoped Link Repair rejects a Part outside the Shard layout (new-layout shards have only Parts 01-02)', async (t) => {
+  const root = await repositoryForScopedRepair(t);
+  await assert.rejects(quiet(() => run(['prepare', '--shard', '006', '--batch', '01', '--part', '03'], { root })), /part must be 01, 02 for shard 006 \(Part size 250\)/u);
+  await assert.rejects(quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '06'], { root })), /part must be 01, 02, 03, 04, 05 for shard 001/u);
+});
+
 test('scoped Link Repair failure preserves its checkpoint and Relation baseline', async (t) => {
   const root = await repositoryForScopedRepair(t);
   const scope = ['--shard', '001', '--batch', '02', '--part', '02'];

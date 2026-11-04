@@ -295,6 +295,11 @@ class Store:
             return c.execute("SELECT key, value FROM kv WHERE substr(key, 1, ?)=? ORDER BY key",
                              (len(prefix), prefix)).fetchall()
 
+    def stage2_shards(self) -> set[str]:
+        """Shards with any Stage 2 batch row, whatever its state (a trace of earlier Stage 2 work)."""
+        with self._conn() as c:
+            return {r["shard"] for r in c.execute("SELECT DISTINCT shard FROM batches WHERE method=?", (STAGE2_METHOD,))}
+
     def delete_prefix(self, prefix: str) -> None:
         with self._conn() as c:
             c.execute("DELETE FROM kv WHERE substr(key, 1, ?)=?", (len(prefix), prefix))

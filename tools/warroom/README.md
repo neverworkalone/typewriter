@@ -36,7 +36,13 @@ sqlite3 -noheader tools/warroom/.local/warroom.db \
 
 ### Stage 2 Part로 조회 — 001 / Batch 01 / Part 03
 
-Stage 2는 `batches.method='s2'`, `batches.batch='BB-PP'`로 저장한다.
+Stage 2는 `batches.method='s2'`, `batches.batch='BB-PP'`로 저장한다. Part 크기(#3385)는 `config/stage2-part-layout.json`이 정한다: Shard 001–005는 100 records(Part 01–05), 006부터는 250 records(Part 01–02). 이 예시의 `01-03`은 legacy Shard에만 존재한다.
+
+**Part 크기 전환(#3385) 배포 절차 — 코드 머지만으로는 전환되지 않는다.**
+1. Stage 2 신규 Part 시작을 일시 차단한다(Drain/Stop; 실행 중 작업은 강제 종료하지 않는다).
+2. 경계 다음 Shard(현재 006)에 Part 01·02를 포함한 어떤 흔적도 없는지 확인한다: 운영 DB의 `s2` 행과 `s2_ok*`/`s2_layout_*` KV, `.warroom-scratch/relation-admission-006-*` checkpoint, `git branch -a`·`git worktree list`, 열린/닫힌 PR, master의 `relation-006`/`drop-006`.
+3. 전무하면 경계 `legacy_through_shard`=`005`를 확정한다. 그 사이 006이 시작됐다면 경계를 올리는 커밋 후 2를 반복한다.
+4. 새 코드를 배포(Supervisor 재시작)하고 Stage 2를 재개한다. Python은 움직이는 ref가 아니라 확정된 master SHA의 `git show <sha>:config/stage2-part-layout.json`을 읽고, 신규 Shard의 첫 Part를 시작할 때 KV `s2_layout_<SSS>=250`을 기록한다. 이 표식 없이 위 흔적이 하나라도 있으면 War Room은 자동 전환하지 않고 Stop한다.
 
 ```sh
 sqlite3 -noheader tools/warroom/.local/warroom.db \

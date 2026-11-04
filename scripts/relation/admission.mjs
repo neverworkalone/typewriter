@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,8 +21,57 @@ export const ADMISSION_TYPES = Object.freeze(['near', 'mood', 'scene', 'sensory'
 /** Required Stage 1 producers per batch: A/B by Codex and Claude, C and D by one owner-assigned model each. */
 export const REQUIRED_PRODUCERS = Object.freeze(['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c', 'd']);
 export const BATCHES = Object.freeze(['01', '02']);
-export const STAGE2_PART_SIZE = 100;
-export const PARTS = Object.freeze(['01', '02', '03', '04', '05']);
+
+/**
+ * Stage 2 Part layout contract (#3385): `config/stage2-part-layout.json` is the single source for Node and the Python
+ * War Room. Shards through `legacy_through_shard` keep 100-record Parts (five per Batch); later Shards use `part_size`
+ * (250 records, two per Batch). The boundary is fixed at deployment and never reinterprets already-started Shards.
+ */
+export const STAGE2_PART_LAYOUT_PATH = path.join(REPOSITORY_DIRECTORY, 'config', 'stage2-part-layout.json');
+const isPositiveInteger = (value) => Number.isInteger(value) && value > 0;
+
+export function loadStage2PartLayout(file = STAGE2_PART_LAYOUT_PATH) {
+  let layout;
+  try {
+    layout = JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new Error(`cannot read Stage 2 Part layout ${file}: ${error.message}`);
+  }
+  if (layout === null || typeof layout !== 'object' || Array.isArray(layout)
+      || Object.keys(layout).sort().join(',') !== 'legacy_part_size,legacy_through_shard,part_size,version'
+      || layout.version !== 1 || !/^\d{3}$/u.test(layout.legacy_through_shard ?? '')
+      || !isPositiveInteger(layout.legacy_part_size) || !isPositiveInteger(layout.part_size)
+      || CANDIDATE_BATCH_SIZE % layout.legacy_part_size !== 0 || CANDIDATE_BATCH_SIZE % layout.part_size !== 0) {
+    throw new Error(`malformed Stage 2 Part layout ${file}`);
+  }
+  return Object.freeze({ ...layout });
+}
+
+const STAGE2_PART_LAYOUT = loadStage2PartLayout();
+
+/** Records per Stage 2 Part for a Shard: legacy (started) Shards keep 100, later Shards use the new size. */
+export function stage2PartSize(shard) {
+  if (!/^\d{3}$/u.test(shard ?? '')) throw new Error('shard must be three digits');
+  return shard <= STAGE2_PART_LAYOUT.legacy_through_shard ? STAGE2_PART_LAYOUT.legacy_part_size : STAGE2_PART_LAYOUT.part_size;
+}
+
+export function stage2PartNames(shard) {
+  const count = CANDIDATE_BATCH_SIZE / stage2PartSize(shard);
+  return Array.from({ length: count }, (_, index) => String(index + 1).padStart(2, '0'));
+}
+
+/**
+ * Reject a Shard/Batch/Part that is outside the Shard's layout. `batchRecords` (when known) also rejects an empty Part,
+ * e.g. Part 02 of an 83-record Batch in the new layout.
+ */
+export function assertStage2Part(shard, batch, part, batchRecords = null) {
+  if (!BATCHES.includes(batch)) throw new Error('batch must be 01 or 02');
+  const names = stage2PartNames(shard);
+  if (!names.includes(part)) throw new Error(`part must be ${names.join(', ')} for shard ${shard} (Part size ${stage2PartSize(shard)})`);
+  if (batchRecords !== null && (Number(part) - 1) * stage2PartSize(shard) >= batchRecords) {
+    throw new Error(`shard ${shard} batch ${batch} has no records for part ${part}`);
+  }
+}
 
 const LEGACY_ID_ROW_KEYS = 'relevance,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
 const ASSIGNED_ID_ROW_KEYS = 'candidate_assignment_version,candidate_forms,relevance,reverse_candidate_forms,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
@@ -112,12 +161,13 @@ export function batchScope(canonicalRows, candidateFiles, batch) {
   return { scopeRows, files: candidateFiles.filter((file) => producerOf(path.basename(file.name)).batch === batch) };
 }
 
-/** Restrict Stage 2 editing within one complete Stage 1 batch to a 100-record part. */
-export function partScope(canonicalRows, candidateFiles, batch, part) {
-  if (!PARTS.includes(part)) throw new Error('part must be 01, 02, 03, 04 or 05');
+/** Restrict Stage 2 editing within one complete Stage 1 batch to a Part of the Shard's layout (100 legacy, 250 new). */
+export function partScope(canonicalRows, candidateFiles, batch, part, shard) {
   const batchResult = batchScope(canonicalRows, candidateFiles, batch);
-  const offset = (Number(part) - 1) * STAGE2_PART_SIZE;
-  const scopeRows = batchResult.scopeRows.slice(offset, offset + STAGE2_PART_SIZE);
+  assertStage2Part(shard, batch, part, batchResult.scopeRows.length);
+  const size = stage2PartSize(shard);
+  const offset = (Number(part) - 1) * size;
+  const scopeRows = batchResult.scopeRows.slice(offset, offset + size);
   if (scopeRows.length === 0) throw new Error(`shard batch ${batch} has no records for part ${part}`);
   return { scopeRows, files: batchResult.files };
 }

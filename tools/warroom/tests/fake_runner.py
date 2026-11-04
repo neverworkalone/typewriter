@@ -22,6 +22,9 @@ class ScriptedRunner(Runner):
         self.api_ok = True
         self.canon: dict[int, int] = {}
         self.done: dict[str, int] = {}
+        self.layout_text: str | None = json.dumps({"version": 1, "legacy_through_shard": "005", "legacy_part_size": 100, "part_size": 250})
+        self.layout_refs: list[str] = []          # every `<sha>:config/stage2-part-layout.json` the code asked for
+        self.master_stage2_files: list[str] = []  # data/relations|relation-drops files present on the fixed master SHA
         self.models = ["p/free-x-free", "p/go"]
         self.models_ok = True
         self.variant_rejected: set[str] = set()   # model#variant the fake OpenCode refuses before the provider call
@@ -84,7 +87,12 @@ class ScriptedRunner(Runner):
             if self.probe_answer == "garbage":
                 return Result(0, "not json at all\n")
             return Result(0, json.dumps({"type": "text", "part": {"text": "OK"}}) + "\n")
+        if argv[:2] == ["git", "show"] and argv[2].endswith(":config/stage2-part-layout.json"):
+            self.layout_refs.append(argv[2])
+            return Result(0, self.layout_text) if self.layout_text is not None else Result(128, "", "missing")
         if argv[:2] == ["git", "ls-tree"]:
+            if "data/relations" in argv:
+                return Result(0, "".join(f"{p}\n" for p in self.master_stage2_files))
             return Result(0, "".join(f"{p}\n" for p in self.done))      # existence, including 0-byte files
         if argv[:2] == ["git", "grep"]:
             ref = argv[4]

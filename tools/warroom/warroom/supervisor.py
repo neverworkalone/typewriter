@@ -1333,7 +1333,8 @@ class Supervisor:
         try:
             bid = self.store.create_batch(method=method, producer=model, shard=part.shard, batch=part.key,
                                           branch=branch, worktree=str(wt), model_tier=ln["model_tier"], from_run=True,
-                                          shard_pin=part.shard if ln["mode"] == "single" else "")
+                                          shard_pin=part.shard if ln["mode"] == "single" else "",
+                                          kv={stage2.layout_key(part.shard): part.layout_marker} if part.layout_marker else None)
         except LineNotRunnable:
             return
         except LineBusy as e:   # another model already holds the one Stage 2 occupancy

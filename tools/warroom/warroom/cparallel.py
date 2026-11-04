@@ -72,6 +72,21 @@ def _data(row) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _command_failed(fact: dict) -> bool | None:
+    """Resolve exact exit codes or adapter error flags; contradictory or absent evidence stays unknown."""
+    code = fact.get("exit_code")
+    tool_error = fact.get("tool_error")
+    exact_code = type(code) is int
+    exact_flag = type(tool_error) is bool
+    if exact_code and exact_flag and tool_error != (code != 0):
+        return None
+    if exact_code:
+        return code != 0
+    if exact_flag:
+        return tool_error
+    return None
+
+
 def baseline(store, b) -> dict | None:
     """The batch's current approved runtime baseline (`c_run_start_<id>`), or None when absent or damaged."""
     try:
@@ -261,32 +276,36 @@ def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcom
                 or pending != rec.get("sense_ids") or retry.get("pending_sense_ids") != pending
                 or not isinstance(retry.get("own_state"), dict)):
             return False
+        view_ids, failed, unsearchable = literary.view_ids(literary.read_view(worktree, rec, chunk_no))
+        own_state = literary.own_state(worktree, b, rec["sense_ids"])
+        run_start_state = retry.get("own_state")
+        state_unchanged = own_state == run_start_state
+        shown_progress = literary.shown_only_progress(run_start_state, own_state)
+        if (view_ids != rec["sense_ids"] or failed or unsearchable
+                or not state_unchanged and shown_progress is None):
+            return False
         if row["state"] == "FAILED":
             guard = data.get("guard")
             if (not isinstance(guard, dict) or guard.get("reason_codes") not in (["cli_chunk_scope"], ["producer_reported_stop"])
                     or not isinstance(guard.get("baseline"), dict)
                     or guard["baseline"].get("pending_sense_ids") != pending
-                    or guard["baseline"].get("own_state") != retry.get("own_state")
+                    or guard["baseline"].get("own_state") != own_state
                     or not literary.task_retry_unchanged(worktree, b, chunk_no, guard["baseline"],
                                                          session_available=True)):
                 return False
-
-        view_ids, failed, unsearchable = literary.view_ids(literary.read_view(worktree, rec, chunk_no))
-        own_state = literary.own_state(worktree, b, rec["sense_ids"])
-        if view_ids != rec["sense_ids"] or failed or unsearchable or own_state != retry.get("own_state"):
-            return False
         if outcome.get("status") != "cli_chunk_scope" or outcome.get("operation") != "chunk":
             return False
         diagnostics = outcome.get("stop_diagnostics")
         commands = outcome.get("checkpoint_commands")
-        if not isinstance(diagnostics, list) or len(diagnostics) != 1 or not isinstance(commands, list) or len(commands) != 1:
+        if not isinstance(diagnostics, list) or len(diagnostics) != 1 or not isinstance(commands, list) or not commands:
             return False
-        diagnostic, command = diagnostics[0], commands[0]
+        diagnostic, command = diagnostics[0], commands[-1]
         if (not isinstance(diagnostic, dict) or diagnostic.get("operation") != "chunk"
                 or diagnostic.get("diagnostic") != "chunk_scope" or diagnostic.get("error_code") != "LITERARY_CHUNK_SCOPE"
                 or diagnostic.get("occurrences") != 1 or diagnostic.get("chunk_no") != chunk_no
                 or not isinstance(command, dict) or command.get("operation") != "chunk"
-                or command.get("checkpoint_matches") is not True or command.get("chunk_no") != chunk_no):
+                or command.get("checkpoint_matches") is not True or command.get("chunk_no") != chunk_no
+                or _command_failed(command) is not True):
             return False
         requested = diagnostic.get("sense_ids")
         if (not isinstance(requested, list) or not requested or len(set(requested)) != len(requested)
@@ -294,9 +313,25 @@ def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcom
             return False
         allowed = set(rec["sense_ids"])
         invalid = [sense_id for sense_id in requested if sense_id not in allowed]
-        valid = [sense_id for sense_id in requested if sense_id in allowed]
-        if not 1 <= len(invalid) <= 2 or not valid:
+        if not 1 <= len(invalid) <= 2:
             return False
+
+        # Earlier same-task chunk reads may extend shown-context evidence. Require every prior call to be a
+        # successful read against this exact checkpoint/chunk, with at least one assigned ID and no more than the
+        # CLI's two-ID read-filter allowance. The final scope failure may contain only unassigned IDs; its one-time
+        # same-session resume is still bounded to the active pending IDs in the generated prompt.
+        for fact in commands[:-1]:
+            if (not isinstance(fact, dict) or fact.get("operation") != "chunk"
+                    or fact.get("checkpoint_matches") is not True or fact.get("chunk_no") != chunk_no
+                    or _command_failed(fact) is not False):
+                return False
+            read_ids = fact.get("sense_ids")
+            if not isinstance(read_ids, list) or not read_ids or len(set(read_ids)) != len(read_ids):
+                return False
+            read_valid = [sense_id for sense_id in read_ids if sense_id in allowed]
+            read_invalid = [sense_id for sense_id in read_ids if sense_id not in allowed]
+            if not read_valid or len(read_invalid) > 2:
+                return False
 
         log = Path(run["log_file"]) if run.get("log_file") else None
         submit = worktree / f"{literary.names(b).submit_prefix}{chunk_no:03d}.submit.json"
