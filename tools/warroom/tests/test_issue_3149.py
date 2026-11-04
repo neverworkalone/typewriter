@@ -104,7 +104,7 @@ class Scheduling(Helpers, unittest.TestCase):
 
 class MissingAnswers(Helpers, unittest.TestCase):
     def test_no_header_or_header_only_is_not_none(self):
-        for text in ("그냥 잡담", "chunk 001"):
+        for text in ("그냥 잡담", "chunk 001", "chunk 001\nI reviewed the relations.", "chunk 001\nD 999"):
             with self.subTest(text=text):
                 w = self.world(1)
                 self.respond(w, "001", text)
@@ -241,6 +241,42 @@ class Restart(Helpers, unittest.TestCase):
         w.tick()
         self.assertEqual(w.store.task_row(b["id"], "001")["run_id"], row["run_id"])
         self.assertEqual(len(w.adapter.launches), 2)
+
+    def test_restart_before_pid_is_known_keeps_the_slot_and_starts_nothing_again(self):
+        w = self.world(2)
+        b = self.batch(w)
+        launched = len(w.adapter.launches)
+        run_id = w.store.task_row(b["id"], "001")["run_id"]
+        w.store.set_run_pid(run_id, None)   # crash between the detached start and the PID write
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), launched)
+        self.assertEqual(self.states(w)["001"], "FAILED")
+        self.assertIn(run_id, [r["id"] for r in taskruns.open_runs(w.store, b["id"])])   # slot held until Stop
+
+    def test_failed_start_releases_the_recorded_run(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.cfg["producers"] = json.loads(json.dumps(PRODUCERS))
+        w.parallel_s3 = True
+        w.sup.parallel_new_s3 = True
+        w.runner.edit.chunks = 1
+        w.store.set(stage2.ok_key("001", None), w.git.base_sha)
+        w.adapter.start = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("spawn failed"))
+        self.assertTrue(control.start(w.store, "claude", S3, "single", cfg=w.cfg)[0])
+        w.tick(2)
+        b = self.batch(w) or w.store.latest_batch("claude", S3)
+        self.assertEqual(b["state"], "ERROR")
+        self.assertEqual(taskruns.open_runs(w.store, b["id"]), [])
+
+    def test_zero_chunk_shard_resumes_from_a_restart_before_the_plan_write(self):
+        w = self.world(0)
+        b = self.batch(w)
+        w.store.set(stage3.plan_key(b["id"]), "")   # crash after the batch update, before the plan write
+        w.store.update(b["id"], state="PRODUCING", run_kind="s3_parallel", pid=None)
+        calls = []
+        w.sup._stage3_finalize = lambda bb: calls.append(w.store.get(stage3.plan_key(bb["id"])))
+        w.tick()
+        self.assertEqual(calls, ["closed"])
 
     def test_begin_is_idempotent_and_modeless_batches_stay_serial(self):
         w = self.world(3)

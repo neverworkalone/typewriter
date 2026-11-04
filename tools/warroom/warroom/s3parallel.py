@@ -196,6 +196,9 @@ class ParallelStage3:
             return self.sup._fail(b, "ERROR", f"{error}. worktree를 보존합니다.")
         if state is None:
             return self.begin(b)
+        if state["chunk_total"] == 0:   # a restart between the batch update and the plan write of a zero-chunk shard
+            self.store.set(stage3.plan_key(b["id"]), "closed")
+            return self.continue_after_close(b)
         self.store.add_tasks(b["id"], [(f"{n:03d}", f"{n:03d}") for n in range(1, state["chunk_total"] + 1)])
         round_ = _Round(self, b)
         self._restore_saved(b, state)
@@ -350,6 +353,11 @@ class ParallelStage3:
         if run is None:
             return self._task_failed(b, row, data, f"[{task}] task 실행 기록(run)이 없습니다", "ownership")
         log = Path(run["log_file"])
+        if run["pid"] is None and run["ended_at"] is None and ad.exit_code(Path(run["exit_file"])) is None:
+            # the Supervisor stopped between recording the run and learning the worker's PID: the worker may still be
+            # running and cannot be identified. Its slot stays held and nothing is started again; Stop closes it.
+            return self._task_failed(b, row, data, f"[{task}] 시작 직후 중단돼 AI 프로세스를 확인할 수 없습니다. "
+                                     "중복 실행을 막기 위해 보존합니다 — 프로세스를 확인한 뒤 Stop하세요.", "ownership")
         seen = taskruns.observe_run(self.store, ad, run, row["session_id"])
         if seen[0] == "wait":
             if seen[1] and seen[1] != row["session_id"]:
@@ -400,11 +408,7 @@ class ParallelStage3:
         task, ad = row["task"], self._adapter(b)
         final = ad.final_answer(Path(run["log_file"]))
         if complete_response(final, task) is None:   # no answer / no header / header only: never an implicit `none`
-            if data.get("fresh_retries", 0) < 1:
-                data["fresh_retries"] = 1
-                self._set(b, task, data, state="PENDING", run_id=None, session_id=None)
-                return self.store.log(b["id"], f"[{task}] 응답 누락 — 이 task만 새 세션으로 1회 재실행합니다", "warn")
-            return self._task_failed(b, row, data, f"[{task}] 현재 청크 헤더와 판정 본문이 있는 응답이 없습니다. 기록을 보존합니다.", "no_response")
+            return self._missing_answer(b, row, data, "현재 청크 헤더와 판정 본문이 있는 응답이 없습니다.")
         try:
             view, _prompt, sha, _completed = stage3.read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task)
             if sha != row["view_sha256"]:
@@ -412,6 +416,9 @@ class ParallelStage3:
             normalized, warnings = stage3.normalize_decisions(final, task, stage3.decision_context(view, task))
         except Stage3Error as error:
             return self._task_failed(b, row, data, f"[{task}] 응답을 정규화하지 못했습니다: {error}", "no_response")
+        body = [line.strip() for line in final.strip().splitlines() if line.strip()][1:]
+        if normalized == f"chunk {task}\nnone\n" and body != ["none"]:   # prose or only-invalid proposals: not an explicit Keep-all
+            return self._missing_answer(b, row, data, "유효한 D/L 제안이나 명시적 `none`이 없는 응답입니다.")
         if warnings:
             self.store.log(b["id"], f"[{task}] 판정 정규화: {'; '.join(warnings)}", "warn")
         path = self._decisions(b, task)
@@ -424,6 +431,14 @@ class ParallelStage3:
                             "view_sha256": sha}
         data.pop("failure_kind", None)
         self._set(b, task, data, state="RESPONDED")
+
+    def _missing_answer(self, b, row, data, why: str) -> None:
+        task = row["task"]
+        if data.get("fresh_retries", 0) < 1:
+            data["fresh_retries"] = 1
+            self._set(b, task, data, state="PENDING", run_id=None, session_id=None)
+            return self.store.log(b["id"], f"[{task}] 응답 누락 — 이 task만 새 세션으로 1회 재실행합니다 ({why})", "warn")
+        self._task_failed(b, row, data, f"[{task}] {why} 기록을 보존합니다.", "no_response")
 
     # ---- saving ---------------------------------------------------------------------------------------------------------------
     def _save_task(self, b, row, round_: _Round) -> None:
@@ -516,9 +531,19 @@ class ParallelStage3:
                 old.replace(old.with_name(f"previous-{hashlib.sha256(old.read_bytes()).hexdigest()[:12]}.txt"))
             for key in ("response", "save_failures", "failure_kind", "error"):
                 data.pop(key, None)
-            # The view digest is recorded BEFORE the process exists, so a crash right after start can re-attach the run.
-            self._set(b, task, data, view_sha256=sha)
-            handle = ad.start(prompt, wt, env, run, f"Stage 3 {b['shard']} chunk {task}", log, ex, **extra)
+            # The run and the view digest are recorded BEFORE the process exists (pid unknown until it starts), so a
+            # crash right after the detached worker starts leaves a visible open run instead of an untracked process.
+            run_id = self.store.add_run(b["id"], RUN_RECORD_KIND, None, None, log, ex, model=run.model,
+                                        effort=run.effort, permission_profile=run.permission_profile, task=task)
+            self._set(b, task, data, state="RUNNING", run_id=run_id, session_id=None, view_sha256=sha,
+                      attempts=row["attempts"] + 1)
+            try:
+                handle = ad.start(prompt, wt, env, run, f"Stage 3 {b['shard']} chunk {task}", log, ex, **extra)
+            except BaseException:
+                self.store.finish_run(run_id, "stopped")   # nothing was started: release the slot and the task
+                self._set(b, task, data, state="PENDING", run_id=None, session_id=None)
+                raise
+            self.store.set_run_pid(run_id, handle.pid)
         except prompts.PromptError as error:
             sup._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {error}")
             return False
@@ -527,11 +552,8 @@ class ParallelStage3:
         except Exception as error:
             sup._fail(b, "ERROR", f"AI 실행 시작 실패 [{task}]: {error}")
             return False
-        run_id = self.store.add_run(b["id"], RUN_RECORD_KIND, None, handle.pid, log, ex, model=run.model,
-                                    effort=run.effort, permission_profile=run.permission_profile, task=task)
         data.pop("retry_after", None)
-        self._set(b, task, data, state="RUNNING", run_id=run_id, session_id=None, view_sha256=sha,
-                  attempts=row["attempts"] + 1)
+        self._set(b, task, data)
         self.store.log(b["id"], f"[{task}] 시작 (model={run.model}, effort={run.effort}, {view.get('relation_count')} Relation)")
         return True
 

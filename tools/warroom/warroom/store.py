@@ -849,6 +849,10 @@ class Store:
                              (batch_id, kind, session_id, pid, str(log_file), str(exit_file), time.time(),
                               model, effort, permission_profile, task)).lastrowid
 
+    def set_run_pid(self, run_id: int, pid: int) -> None:
+        with self._conn() as c:
+            c.execute("UPDATE runs SET pid=? WHERE id=?", (pid, run_id))
+
     def set_run_session_by_id(self, run_id: int, session_id: str) -> None:
         with self._conn() as c:
             c.execute("UPDATE runs SET session_id=? WHERE id=?", (session_id, run_id))
