@@ -159,7 +159,7 @@
 {"id":"w4206","sid":"w4206-s1","tid":"w297045","tsid":"w297045-s1","tp":"near","rv":5,"ver":1,"fm":["정서"],"rfm":[]}
 {"id":"w4206","sid":"w4206-s1","tid":"w292324","tsid":"w292324-s1","tp":"near","rv":5,"ver":1,"fm":["정북"],"rfm":[]}
 {"id":"w4207","sid":"w4207-s1","tt":"구멍장이버섯","tp":"association","rv":2}
-{"id":"w4207","sid":"w4207-s1","tid":"w318435","tsid":"w318435-s1","tp":"near","rv":1,"ver":1,"fm":["참나무"],"rfm":[]}
+{"id":"w4207","sid":"w4207-s1","tid":"w318435","tsid":"w318435-s1","tp":"association","rv":2,"ver":1,"fm":["참나무"],"rfm":[]}
 {"id":"w4207","sid":"w4207-s1","tid":"w136335","tsid":"w136335-s2","tp":"association","rv":2,"ver":1,"fm":["밤나무"],"rfm":[]}
 {"id":"w4207","sid":"w4207-s1","tid":"w9471","tsid":"w9471-s2","tp":"association","rv":4,"ver":1,"fm":["갓"],"rfm":[]}
 {"id":"w4207","sid":"w4207-s1","tt":"부채","tp":"association","rv":5}
@@ -188,7 +188,7 @@
 {"id":"w4208","sid":"w4208-s1","tid":"w492474","tsid":"w492474-s1","tp":"scene","rv":5,"ver":1,"fm":["통나무"],"rfm":[]}
 {"id":"w4208","sid":"w4208-s1","tid":"w445797","tsid":"w445797-s1","tp":"scene","rv":4,"ver":1,"fm":["산림"],"rfm":[]}
 {"id":"w4208","sid":"w4208-s1","tid":"w505199","tsid":"w505199-s1","tp":"sensory","rv":5,"ver":1,"fm":["햇빛"],"rfm":[]}
-{"id":"w4208","sid":"w4208-s1","tid":"w390255","tsid":"w390255-s1","tp":"near","rv":1,"ver":1,"fm":["간격"],"rfm":[]}
+{"id":"w4208","sid":"w4208-s1","tid":"w390255","tsid":"w390255-s1","tp":"association","rv":3,"ver":1,"fm":["간격"],"rfm":[]}
 {"id":"w4208","sid":"w4208-s1","tt":"잘린 나무","tp":"scene","rv":4}
 {"id":"w4208","sid":"w4208-s1","tid":"w496046","tsid":"w496046-s1","tp":"association","rv":5,"ver":1,"fm":["톱밥"],"rfm":[]}
 {"id":"w4208","sid":"w4208-s1","tt":"솎음","tp":"near","rv":2}
@@ -210,8 +210,8 @@
 {"id":"w4209","sid":"w4209-s1","tid":"w203830","tsid":"w203830-s1","tp":"association","rv":2,"ver":1,"fm":["신라"],"rfm":[]}
 {"id":"w4209","sid":"w4209-s1","tid":"w32603","tsid":"w32603-s1","tp":"near","rv":2,"ver":1,"fm":["관등"],"rfm":[]}
 {"id":"w4209","sid":"w4209-s1","tid":"w310225","tsid":"w310225-s1","tp":"association","rv":4,"ver":1,"fm":["진골"],"rfm":[]}
-{"id":"w4209","sid":"w4209-s1","tid":"w273871","tsid":"w273871-s1","tp":"near","rv":1,"ver":1,"fm":["자색"],"rfm":[]}
-{"id":"w4209","sid":"w4209-s1","tid":"w471958","tsid":"w471958-s1","tp":"near","rv":2,"ver":1,"fm":["자줏빛"],"rfm":[]}
+{"id":"w4209","sid":"w4209-s1","tid":"w273871","tsid":"w273871-s1","tp":"sensory","rv":3,"ver":1,"fm":["자색"],"rfm":[]}
+{"id":"w4209","sid":"w4209-s1","tid":"w471958","tsid":"w471958-s1","tp":"sensory","rv":3,"ver":1,"fm":["자줏빛"],"rfm":[]}
 {"id":"w4209","sid":"w4209-s1","tid":"w30884","tsid":"w30884-s2","tp":"association","rv":2,"ver":1,"fm":["관복"],"rfm":[]}
 {"id":"w4209","sid":"w4209-s1","tid":"w261259","tsid":"w261259-s1","tp":"near","rv":1,"ver":1,"fm":["이벌찬"],"rfm":[]}
 {"id":"w4209","sid":"w4209-s1","tid":"w4129","tsid":"w4129-s1","tp":"near","rv":1,"ver":1,"fm":["각간"],"rfm":[]}
@@ -1210,6 +1210,7 @@
 {"id":"w4254","sid":"w4254-s1","tid":"w137624","tsid":"w137624-s1","tp":"sensory","rv":4,"ver":1,"fm":["배고픔"],"rfm":[]}
 {"id":"w4254","sid":"w4254-s1","tid":"w352213","tsid":"w352213-s1","tp":"scene","rv":5,"ver":1,"fm":["품팔이"],"rfm":[]}
 {"id":"w4254","sid":"w4254-s1","tid":"w437869","tsid":"w437869-s1","tp":"association","rv":4,"ver":1,"fm":["빚"],"rfm":[]}
+{"id":"w4254","sid":"w4254-s1","tt":"삯바느질","tp":"scene","rv":5}
 {"id":"w4254","sid":"w4254-s1","tt":"빈 지갑","tp":"association","rv":4}
 {"id":"w4254","sid":"w4254-s1","tid":"w154412","tsid":"w154412-s1","tp":"sensory","rv":5,"ver":1,"fm":["부황"],"rfm":[]}
 {"id":"w4254","sid":"w4254-s1","tid":"w386684","tsid":"w386684-s2","tp":"near","rv":2,"ver":1,"fm":["힘들다"],"rfm":[]}
@@ -1838,9 +1839,9 @@
 {"id":"w4283","sid":"w4283-s1","tid":"w487785","tsid":"w487785-s3","tp":"association","rv":6,"ver":1,"fm":["책임"],"rfm":[]}
 {"id":"w4283","sid":"w4283-s1","tid":"w483754","tsid":"w483754-s1","tp":"near","rv":6,"ver":1,"fm":["차이"],"rfm":[]}
 {"id":"w4285","sid":"w4285-s1","tid":"w13390","tsid":"w13390-s1","tp":"near","rv":1,"ver":1,"fm":["건견기"],"rfm":[]}
-{"id":"w4285","sid":"w4285-s1","tid":"w259858","tsid":"w259858-s1","tp":"near","rv":1,"ver":1,"fm":["원말"],"rfm":[]}
+{"id":"w4285","sid":"w4285-s1","tid":"w259858","tsid":"w259858-s1","tp":"association","rv":4,"ver":1,"fm":["원말"],"rfm":[]}
 {"id":"w4285","sid":"w4285-s1","tid":"w297126","tsid":"w297126-s1","tp":"association","rv":4,"ver":1,"fm":["준말"],"rfm":[]}
-{"id":"w4285","sid":"w4285-s1","tid":"w149164","tsid":"w149164-s1","tp":"near","rv":1,"ver":1,"fm":["본말"],"rfm":[]}
+{"id":"w4285","sid":"w4285-s1","tt":"본말","tp":"association","rv":4}
 {"id":"w4285","sid":"w4285-s1","tid":"w225373","tsid":"w225373-s1","tp":"association","rv":4,"ver":1,"fm":["어원"],"rfm":[]}
 {"id":"w4285","sid":"w4285-s1","tid":"w424538","tsid":"w424538-s2","tp":"association","rv":6,"ver":1,"fm":["문헌"],"rfm":[]}
 {"id":"w4285","sid":"w4285-s1","tt":"옛말","tp":"association","rv":5}
