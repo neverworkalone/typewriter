@@ -4534,16 +4534,283 @@ class Supervisor:
                 pass
             return self._fail(b, "ERROR", f"Stage 2 repair 저장/재개 실패: {error}. response, checkpoint와 receipts를 보존합니다.")
 
-    def _stage2_preflight_repair(self, b, checkpoint: dict) -> bool:
+    @staticmethod
+    def _stage2_relation_projects_candidate(relation: dict, source_sense_id: str, candidate: str) -> bool:
+        """Whether one approved ID row already exposes this exact candidate from the requested Sense."""
+        source = relation.get("source") if isinstance(relation, dict) else None
+        target = relation.get("target") if isinstance(relation, dict) else None
+        if not isinstance(source, dict) or not isinstance(target, dict):
+            return False
+        if relation.get("source_sense_id") == source_sense_id:
+            forms = relation.get("candidate_forms")
+            return candidate == target.get("lemma") or isinstance(forms, list) and candidate in forms
+        if relation.get("target_sense_id") == source_sense_id:
+            forms = relation.get("reverse_candidate_forms")
+            return candidate == source.get("lemma") or isinstance(forms, list) and candidate in forms
+        return False
+
+    @staticmethod
+    def _stage2_repair_exact_pair(decision: dict, source_sense_id: str, target_record_id: str,
+                                  target_sense_id: str) -> bool:
+        return isinstance(decision, dict) and decision.get("disposition") == "relation" \
+            and decision.get("target_resolution") == "exact" \
+            and decision.get("source_sense_id") == source_sense_id \
+            and decision.get("target_record_id") == target_record_id \
+            and decision.get("target_sense_id") == target_sense_id
+
+    @classmethod
+    def _stage2_duplicate_pair_fallback_plan(cls, report: dict) -> dict | None:
+        """Build only source-bound e/optional-link removals proven redundant by an existing ID pair."""
+        if not isinstance(report, dict) or report.get("ok") is not False or report.get("repairable") is not True \
+                or report.get("unclassified") or not isinstance(report.get("problems"), list) or not report["problems"]:
+            return None
+        fingerprint = report.get("fingerprint")
+        if not isinstance(fingerprint, str) or not re.fullmatch(r"[a-f0-9]{64}", fingerprint):
+            return None
+
+        candidates: dict[str, dict] = {}
+        for group in report["problems"]:
+            if not isinstance(group, dict) or group.get("drop_gloss") or not isinstance(group.get("candidates"), list):
+                return None
+            for candidate in group["candidates"]:
+                if not isinstance(candidate, dict) or not isinstance(candidate.get("source_sense_id"), str) \
+                        or not isinstance(candidate.get("candidate"), str):
+                    return None
+                key = f"{candidate['source_sense_id']}\u0000{candidate['candidate']}"
+                if key in candidates:
+                    return None
+                candidates[key] = candidate
+
+        actions: dict[str, dict] = {}
+        covered_pairs: set[tuple[str, str, str]] = set()
+        for group in report["problems"]:
+            conflicts = group.get("conflicts")
+            if not isinstance(conflicts, list) or not conflicts:
+                return None
+            group_keys = set(group.get("candidate_keys", []))
+            if any(key not in candidates for key in group_keys):
+                return None
+            for conflict in conflicts:
+                if not isinstance(conflict, dict) or conflict.get("code") != "id-pair-conflict":
+                    return None
+                rows = conflict.get("relations")
+                conflict_keys = conflict.get("candidate_keys")
+                if not isinstance(rows, list) or len(rows) != 2 or not isinstance(conflict_keys, list) or not conflict_keys:
+                    return None
+                # collectMergeConflicts returns the already-approved row first and the proposed Part row second.
+                existing, proposed = rows
+                source_sense_id = proposed.get("source_sense_id") if isinstance(proposed, dict) else None
+                target_sense_id = proposed.get("target_sense_id") if isinstance(proposed, dict) else None
+                target_record_id = proposed.get("target_record_id") if isinstance(proposed, dict) else None
+                existing_pair = (existing.get("source_sense_id"), existing.get("target_sense_id")) \
+                    if isinstance(existing, dict) else (None, None)
+                proposed_pair = (source_sense_id, target_sense_id)
+                if not isinstance(source_sense_id, str) or not isinstance(target_sense_id, str) \
+                        or not isinstance(target_record_id, str) or source_sense_id == target_sense_id \
+                        or set(existing_pair) != set(proposed_pair):
+                    return None
+                proposed_forms = proposed.get("candidate_forms")
+                if not isinstance(proposed_forms, list) or any(not isinstance(form, str) for form in proposed_forms):
+                    return None
+                matched = 0
+                for key in conflict_keys:
+                    candidate = candidates.get(key)
+                    if candidate is None:
+                        return None
+                    if key not in group_keys:
+                        return None
+                    if candidate["source_sense_id"] != source_sense_id or candidate["candidate"] not in proposed_forms:
+                        continue
+                    if candidate.get("already_accounted") is True:
+                        optional = candidate.get("additional_relations")
+                        if not isinstance(optional, list):
+                            continue
+                        if not any(cls._stage2_repair_exact_pair(link, source_sense_id, target_record_id, target_sense_id)
+                                   for link in optional):
+                            continue
+                        action = "remove-optional-pair"
+                    elif candidate.get("already_accounted") is False:
+                        if not cls._stage2_repair_exact_pair(candidate.get("decision"), source_sense_id,
+                                                             target_record_id, target_sense_id):
+                            continue
+                        action = "drop-redundant-candidate"
+                    else:
+                        return None
+                    if not cls._stage2_relation_projects_candidate(existing, source_sense_id, candidate["candidate"]):
+                        return None
+                    prior = actions.get(key)
+                    if prior is not None and prior["action"] != action:
+                        return None
+                    if prior is None:
+                        prior = {"candidate": candidate, "action": action, "target_pairs": set()}
+                        actions[key] = prior
+                    prior["target_pairs"].add((target_record_id, target_sense_id))
+                    covered_pairs.add((source_sense_id, target_record_id, target_sense_id))
+                    matched += 1
+                if matched == 0:
+                    return None
+
+        if not actions:
+            return None
+        decisions = []
+        changes = []
+        for key, action in sorted(actions.items()):
+            candidate = action["candidate"]
+            source_sense_id, candidate_text = candidate["source_sense_id"], candidate["candidate"]
+            if action["action"] == "drop-redundant-candidate":
+                decisions.append({
+                    "source_sense_id": source_sense_id, "candidate": candidate_text,
+                    "expected_decision": candidate.get("decision"),
+                    "expected_additional_relations": candidate.get("additional_relations"),
+                    "decision": {"source_sense_id": source_sense_id, "candidate": candidate_text,
+                                 "disposition": "drop", "reason": "e"},
+                    "additional_relations": None,
+                })
+            else:
+                optional = candidate.get("additional_relations")
+                if not isinstance(optional, list):
+                    return None
+                remaining = [link for link in optional
+                             if (link.get("target_record_id"), link.get("target_sense_id")) not in action["target_pairs"]]
+                if len(remaining) == len(optional):
+                    return None
+                decisions.append({
+                    "source_sense_id": source_sense_id, "candidate": candidate_text,
+                    "expected_decision": candidate.get("decision"),
+                    "expected_additional_relations": optional,
+                    "decision": None, "additional_relations": remaining,
+                })
+            changes.append({"candidate_key": key, "action": action["action"],
+                            "target_sense_ids": sorted(sense_id for _record_id, sense_id in action["target_pairs"])})
+        candidate_keys = sorted(actions)
+        return {
+            "repair_input": {"version": 1, "fingerprint": fingerprint, "decisions": decisions},
+            "candidate_keys": candidate_keys,
+            "covered_pairs": [list(pair) for pair in sorted(covered_pairs)],
+            "changes": changes,
+        }
+
+    def _stage2_duplicate_pair_fallback_context(self, b, state: dict):
+        wt = Path(b["worktree"])
+        if self.git.registered(wt) != b["branch"]:
+            raise ValueError("deterministic duplicate-pair fallback no longer owns the Part worktree")
+        self.git.worktree_gitdir(wt)
+        if self.git.dirty(wt).strip():
+            raise ValueError("deterministic duplicate-pair fallback found tracked worktree changes")
+        identity = state.get("identity", {})
+        head = self.git.head(wt)
+        remote_head = self.git.remote_head(b["branch"])
+        if identity.get("base_head") != head or identity.get("remote_head") != remote_head:
+            raise ValueError("deterministic duplicate-pair fallback Part identity changed")
+        checkpoint = self._stage2_repair_checkpoint_path(b)
+        return checkpoint, hashlib.sha256(checkpoint.read_bytes()).hexdigest(), head, remote_head
+
+    def _stage2_duplicate_pair_fallback_has_receipt(self, b, fallback: dict) -> bool:
+        checkpoint = self._stage2_repair_checkpoint_path(b)
+        data = json.loads(checkpoint.read_text("utf-8"))
+        if not isinstance(data, dict):
+            return False
+        receipts = data.get("repair_receipts", [])
+        return isinstance(receipts, list) and any(
+            isinstance(receipt, dict)
+            and receipt.get("request_id") == fallback.get("request_id")
+            and receipt.get("fingerprint") == fallback.get("fingerprint")
+            and receipt.get("supervisor_nonce") == fallback.get("supervisor_nonce")
+            and receipt.get("candidate_keys") == fallback.get("candidate_keys")
+            for receipt in receipts)
+
+    def _stage2_apply_duplicate_pair_fallback(self, b, state: dict, plan: dict) -> None:
+        """Apply only an exact reverse-covered ID-pair cleanup through Admission CLI, with replay proof."""
+        current = state["current"]
+        repair_input = plan["repair_input"]
+        candidate_keys = plan["candidate_keys"]
+        input_sha256 = hashlib.sha256(json.dumps(repair_input, ensure_ascii=False, sort_keys=True,
+                                                  separators=(",", ":")).encode("utf-8")).hexdigest()
+        fallback = current.get("duplicate_pair_fallback")
+        initial_check = None
+        if fallback is None:
+            checkpoint, checkpoint_sha256, head, remote_head = self._stage2_duplicate_pair_fallback_context(b, state)
+            initial_check = self.git.stage2_repair(Path(b["worktree"]), b["shard"],
+                *stage2.split_key(b["batch"]), repair_input, check=True)
+            if not isinstance(initial_check, dict) or initial_check.get("ok") is not True \
+                    or initial_check.get("invalid_candidates") != [] \
+                    or not re.fullmatch(r"[a-f0-9]{64}", initial_check.get("request_id", "")) \
+                    or initial_check.get("candidate_keys") != candidate_keys:
+                raise ValueError("official Admission CLI did not accept the deterministic duplicate-pair fallback")
+            fallback = {
+                "version": 1, "kind": "reverse-covered-id-pair", "status": "prepared",
+                "fingerprint": repair_input["fingerprint"], "candidate_keys": candidate_keys,
+                "repair_input": repair_input, "repair_input_sha256": input_sha256,
+                "request_id": initial_check["request_id"], "supervisor_nonce": secrets.token_hex(32),
+                "checkpoint_sha256": checkpoint_sha256, "head": head, "remote_head": remote_head,
+                "covered_pairs": plan["covered_pairs"], "changes": plan["changes"],
+            }
+            current["duplicate_pair_fallback"] = fallback
+            self._save_stage2_repair_state(b, state)
+        elif not isinstance(fallback, dict) or fallback.get("version") != 1 \
+                or fallback.get("kind") != "reverse-covered-id-pair" \
+                or fallback.get("fingerprint") != repair_input.get("fingerprint") \
+                or fallback.get("candidate_keys") != candidate_keys \
+                or fallback.get("repair_input") != repair_input \
+                or fallback.get("repair_input_sha256") != input_sha256 \
+                or fallback.get("covered_pairs") != plan["covered_pairs"] \
+                or fallback.get("changes") != plan["changes"] \
+                or not re.fullmatch(r"[a-f0-9]{64}", fallback.get("request_id", "")) \
+                or not re.fullmatch(r"[a-f0-9]{64}", fallback.get("supervisor_nonce", "")):
+            raise ValueError("persisted deterministic duplicate-pair fallback does not match the active conflict")
+
+        if self._stage2_duplicate_pair_fallback_has_receipt(b, fallback):
+            fallback["status"] = "applied"
+            fallback["checkpoint_sha256_after"] = hashlib.sha256(
+                self._stage2_repair_checkpoint_path(b).read_bytes()).hexdigest()
+            self._save_stage2_repair_state(b, state)
+            return
+        if fallback.get("status") not in ("prepared", "applying"):
+            raise ValueError("deterministic duplicate-pair fallback was already applied without its receipt")
+
+        checkpoint, checkpoint_sha256, head, remote_head = self._stage2_duplicate_pair_fallback_context(b, state)
+        if checkpoint_sha256 != fallback.get("checkpoint_sha256") \
+                or head != fallback.get("head") or remote_head != fallback.get("remote_head"):
+            raise ValueError("checkpoint or Part identity changed before deterministic duplicate-pair fallback")
+        if initial_check is None:
+            check = self.git.stage2_repair(Path(b["worktree"]), b["shard"],
+                *stage2.split_key(b["batch"]), repair_input, check=True)
+        else:
+            check = initial_check
+        if not isinstance(check, dict) or check.get("ok") is not True \
+                or check.get("request_id") != fallback.get("request_id") \
+                or check.get("candidate_keys") != candidate_keys or check.get("invalid_candidates") != []:
+            raise ValueError("deterministic duplicate-pair fallback check changed before apply")
+
+        fallback["status"] = "applying"
+        self._save_stage2_repair_state(b, state)
+        apply_input = {**repair_input, "supervisor_nonce": fallback["supervisor_nonce"]}
+        receipt = self.git.stage2_repair(Path(b["worktree"]), b["shard"],
+            *stage2.split_key(b["batch"]), apply_input)
+        if not isinstance(receipt, dict) or receipt.get("ok") is not True \
+                or receipt.get("request_id") != fallback.get("request_id") \
+                or receipt.get("supervisor_nonce") != fallback.get("supervisor_nonce") \
+                or receipt.get("candidate_keys") != candidate_keys \
+                or not self._stage2_duplicate_pair_fallback_has_receipt(b, fallback):
+            raise ValueError("official Admission CLI did not persist the deterministic duplicate-pair receipt")
+        fallback["status"] = "applied"
+        fallback["checkpoint_sha256_after"] = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+        self._save_stage2_repair_state(b, state)
+        self.store.log(b["id"], f"Stage 2 exact reverse-covered ID-pair conflict fallback saved {len(candidate_keys)} decision(s) through admission-cli", "warn")
+
+    def _stage2_preflight_repair(self, b, checkpoint: dict, report_override: dict | None = None) -> bool:
         """Run the read-only complete preflight; return True once it has launched or stopped a repair action."""
-        try:
-            bb, pp = stage2.split_key(b["batch"])
-            report = self.git.stage2_preflight(Path(b["worktree"]), b["shard"], bb, pp)
-        except TRANSIENT:
-            raise
-        except Exception as error:
-            self._fail(b, "ERROR", f"Stage 2 read-only preflight failed: {error}. Worktree is preserved.")
-            return True
+        if report_override is None:
+            try:
+                bb, pp = stage2.split_key(b["batch"])
+                report = self.git.stage2_preflight(Path(b["worktree"]), b["shard"], bb, pp)
+            except TRANSIENT:
+                raise
+            except Exception as error:
+                self._fail(b, "ERROR", f"Stage 2 read-only preflight failed: {error}. Worktree is preserved.")
+                return True
+        else:
+            report = report_override
         bb, pp = stage2.split_key(b["batch"])
         if not isinstance(report, dict) or (report.get("shard"), report.get("batch"), report.get("part")) != \
                 (b["shard"], bb, pp):
@@ -4554,6 +4821,36 @@ class Supervisor:
             self._fail(b, "ERROR", "Stage 2 preflight returned an invalid conflict fingerprint")
             return True
         state = self._stage2_repair_state(b)
+        fallback = state.get("current", {}).get("duplicate_pair_fallback") if state else None
+        if fallback is not None:
+            try:
+                has_receipt = self._stage2_duplicate_pair_fallback_has_receipt(b, fallback)
+            except (OSError, ValueError, TypeError) as error:
+                self._fail(b, "ERROR", f"Stage 2 duplicate-pair fallback receipt could not be verified: {error}")
+                return True
+            if has_receipt:
+                if fallback.get("status") not in ("applying", "applied", "verified", "applied_unresolved"):
+                    self._fail(b, "ERROR", "Stage 2 duplicate-pair fallback has an unbound Admission CLI receipt")
+                    return True
+                fallback["status"] = "verified"
+                fallback["postflight_fingerprint"] = fingerprint
+                if state.get("history"):
+                    state["history"][-1]["duplicate_pair_fallback"] = {
+                        "kind": fallback.get("kind"), "request_id": fallback.get("request_id"),
+                        "candidate_keys": fallback.get("candidate_keys"),
+                        "covered_pairs": fallback.get("covered_pairs"), "changes": fallback.get("changes"),
+                        "postflight_fingerprint": fingerprint,
+                    }
+                self._save_stage2_repair_state(b, state)
+                if fingerprint == fallback.get("fingerprint"):
+                    fallback["status"] = "applied_unresolved"
+                    self._save_stage2_repair_state(b, state)
+                    self._fail(b, "ERROR", "Stage 2 deterministic duplicate-pair fallback was applied but the exact preflight conflict remains; evidence is preserved")
+                    return True
+            elif report.get("ok") is True or fingerprint != fallback.get("fingerprint") \
+                    or fallback.get("status") not in ("prepared", "applying"):
+                self._fail(b, "ERROR", "Stage 2 preflight changed without a matching deterministic duplicate-pair receipt; preserving the checkpoint")
+                return True
         if report.get("ok") is True:
             if state:
                 identity = state.get("identity", {})
@@ -4588,8 +4885,26 @@ class Supervisor:
                     return True
         seen = {entry.get("fingerprint") for entry in state["history"] if isinstance(entry, dict)}
         if fingerprint in seen:
-            self._fail(b, "ERROR", f"Stage 2 repair made no preflight progress (repeated fingerprint {fingerprint[:12]}); evidence is preserved")
-            return True
+            plan = self._stage2_duplicate_pair_fallback_plan(report)
+            if plan is None:
+                self._fail(b, "ERROR", f"Stage 2 repair made no preflight progress (repeated fingerprint {fingerprint[:12]}); evidence is preserved")
+                return True
+            try:
+                self._stage2_apply_duplicate_pair_fallback(b, state, plan)
+                after = self.git.stage2_preflight(Path(b["worktree"]), b["shard"], bb, pp)
+            except TRANSIENT:
+                raise
+            except Exception as error:
+                self._fail(b, "ERROR", f"Stage 2 deterministic duplicate-pair fallback failed; checkpoint and prior repairs are preserved: {error}")
+                return True
+            if isinstance(after, dict) and after.get("fingerprint") == fingerprint and after.get("ok") is not True:
+                fallback = state["current"].get("duplicate_pair_fallback", {})
+                fallback["status"] = "applied_unresolved"
+                fallback["postflight_fingerprint"] = fingerprint
+                self._save_stage2_repair_state(b, state)
+                self._fail(b, "ERROR", "Stage 2 deterministic duplicate-pair fallback was applied but the exact preflight conflict remains; evidence is preserved")
+                return True
+            return self._stage2_preflight_repair(b, checkpoint, after)
         if state.get("rounds_used", 0) >= stage2.MAX_REPAIR_ROUNDS:
             self._fail(b, "ERROR", f"Stage 2 automatic repair round limit ({stage2.MAX_REPAIR_ROUNDS}) reached; checkpoint and successful earlier repairs are preserved")
             return True
