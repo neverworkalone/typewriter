@@ -20,10 +20,11 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class RunSpec:
-    """The model and reasoning effort one run is pinned to; passed explicitly on every launch."""
+    """The model, reasoning effort, and optional Codex settings one run is pinned to."""
     model: str
     effort: str
     permission_profile: str = ""   # Codex only: named `[permissions.<name>]` profile; empty = leave the CLI default
+    fast: bool | None = None       # Codex only; None = inherit the CLI setting
 
 
 @dataclass
@@ -737,7 +738,7 @@ def _command_denial(item: dict) -> str | None:
 
 
 class CodexCLIAdapter(ProcessAdapter):
-    """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`). Model and effort pinned on every launch."""
+    """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`), with optional per-launch Fast pins."""
     name = "codex"
     capabilities = {"resume": True, "stop": True}
     requires_session_for_pr = True
@@ -754,6 +755,10 @@ class CodexCLIAdapter(ProcessAdapter):
         pins = ["--json", "-m", run.model, "-c", f"model_reasoning_effort={run.effort}"]
         if run.permission_profile:
             pins += ["-c", f"default_permissions={run.permission_profile}"]
+        if run.fast is True:
+            pins += ["-c", "service_tier=fast", "-c", "features.fast_mode=true"]
+        elif run.fast is False:
+            pins += ["-c", "service_tier=default", "-c", "features.fast_mode=false"]
         return pins
 
     @staticmethod
@@ -1065,6 +1070,49 @@ def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
     if re.search(r"econnreset|etimedout|enotfound|network|socket hang up|connection (refused|reset)", low):
         return "network"
     return "unknown"
+
+
+def classify_codex_failure(log_text: str, quota_patterns: list[str]) -> str:
+    """Recognize explicit Codex Fast-setting rejection without guessing from model/auth failures."""
+    diagnostics = []
+    for line in log_text.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            diagnostics.append(line)
+            continue
+        if not isinstance(event, dict):
+            continue
+        # Ignore assistant/tool content; only top-level CLI failure events count as a confirmed diagnosis.
+        if event.get("type") not in ("turn.failed", "error", "provider.quota") \
+                and not ("error" in event and "item" not in event):
+            continue
+        error = event.get("error")
+        if isinstance(error, dict):
+            diagnostics.extend(str(error[key]) for key in ("type", "code", "status", "message")
+                               if isinstance(error.get(key), (str, int)) and not isinstance(error.get(key), bool))
+        elif isinstance(error, str):
+            diagnostics.append(error)
+        message = event.get("message")
+        if isinstance(message, str):
+            diagnostics.append(message)
+    diagnostic = "\n".join(diagnostics)
+    low = diagnostic.lower()
+    common = classify_failure(diagnostic, quota_patterns)
+    if common in ("free_quota", "usage_limit", "rate_limit", "auth", "network", "session_missing"):
+        return common
+    if re.search(r"\b(?:401|403)\b|unauthori[sz]ed|invalid api key|authentication|not logged in", low):
+        return "auth"
+    fast_key = r"(?:service_tier|features\.fast_mode)"
+    config_rejection = (
+        re.search(rf"(?:unknown|unrecognized|unsupported|invalid)[^\n]{{0,100}}{fast_key}", low)
+        or re.search(rf"{fast_key}[^\n]{{0,100}}(?:unknown|unrecognized|unsupported|invalid|not supported)", low)
+    )
+    fast_unavailable = (re.search(r"\bfast mode\b[^\n]{0,100}\b(?:not available|unavailable|unsupported|not supported)\b", low)
+                        or re.search(r"\bservice_tier\b[^\n]{0,80}\bfast\b[^\n]{0,80}\b(?:not available|unavailable|unsupported|not supported)\b", low))
+    if config_rejection or fast_unavailable:
+        return "fast_unavailable"
+    return common
 
 
 def classify_claude_failure(log_file: str | Path, fallback_text: str, quota_patterns: list[str]) -> str:

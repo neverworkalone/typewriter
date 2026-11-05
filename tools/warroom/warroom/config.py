@@ -56,7 +56,7 @@ DEFAULTS = {
     # Model registry: logical model id (= Candidate filename producer suffix) ->
     # {"label", "adapter", "models": {"free", "go"}}. No count limit.
     "producers": {},
-    # Issues #1867/#2538: reusable run settings (adapter/model/effort/permission_profile) and each stage's profile.
+    # Issues #1867/#2538/#3583: reusable run settings and each stage's profile.
     # `assignments.stage1|stage2|stage3` map a logical producer ID to a profile ID; `maintainer` may also be a profile ID.
     "model_profiles": {},
     "assignments": {},
@@ -194,11 +194,12 @@ def registry(cfg: dict) -> dict[str, dict]:
                          or _assigned(cfg, STAGE3, pid) or "")
         governed = bool(_assigned_profiles(cfg, pid))
         if prof:   # a governed producer has no pin of its own (config_problem): board/settings show its first assigned profile
-            p = {**p, "model": prof["model"], "effort": prof["effort"], "permission_profile": prof["permission_profile"]}
+            p = {**p, "model": prof["model"], "effort": prof["effort"], "permission_profile": prof["permission_profile"],
+                 "fast": prof["fast"]}
         out[pid] = {"label": p.get("label") or KNOWN_LABELS.get(pid, pid), "adapter": adapter,
                     "model": p.get("model") or "",
                     "effort": p["effort"] if "effort" in p else LEGACY_EFFORT.get(adapter, ""),
-                    "permission_profile": p.get("permission_profile") or "", "governed": governed,
+                    "permission_profile": p.get("permission_profile") or "", "fast": p.get("fast"), "governed": governed,
                     "models": {"free": "", "go": "", **(p.get("models") or {})}}
     return out
 
@@ -213,11 +214,17 @@ def role_of(method: str) -> str:
 
 
 def _profiles(cfg: dict) -> dict[str, dict]:
-    """Profile ID -> {adapter, model, effort, permission_profile} (every field a string; unset = '')."""
+    """Profile ID -> run pins; string pins default to '', optional Codex fast defaults to None."""
     raw = cfg.get("model_profiles")
     raw = raw if isinstance(raw, dict) else {}
-    return {pid: {k: (p.get(k) if isinstance(p, dict) and isinstance(p.get(k), str) else "")
-                  for k in ("adapter", "model", "effort", "permission_profile")} for pid, p in raw.items()}
+    return {
+        pid: {
+            **{k: (p.get(k) if isinstance(p, dict) and isinstance(p.get(k), str) else "")
+               for k in ("adapter", "model", "effort", "permission_profile")},
+            "fast": p.get("fast") if isinstance(p, dict) else None,
+        }
+        for pid, p in raw.items()
+    }
 
 
 def _assigned(cfg: dict, role: str, producer: str) -> str | None:
@@ -259,7 +266,7 @@ def maintainer_target(cfg: dict) -> tuple[str | None, str | None, str | None]:
 
 
 def role_entry(cfg: dict, producer: str, role: str) -> dict:
-    """The registry entry of `producer` with the pin (model/effort/permission_profile) its `role` runs on.
+    """The registry entry of `producer` with the run pins selected for its `role`.
 
     Stage 1/2/3: the assigned profile, else the producer's own pin. Maintainer: the configured profile when `maintainer`
     names one (it must resolve to this producer), else the producer's own pin. Raises ValueError on a mismatch.
@@ -285,7 +292,7 @@ def role_entry(cfg: dict, producer: str, role: str) -> dict:
     prof = _profiles(cfg).get(pid)
     if prof is None or prof["adapter"] != p["adapter"]:
         raise ValueError(f"{producer}: {role} 프로필 {pid!r}가 없거나 adapter가 모델과 다릅니다.")
-    return {**p, **{k: prof[k] for k in ("model", "effort", "permission_profile")}}
+    return {**p, **{k: prof[k] for k in ("model", "effort", "permission_profile", "fast")}}
 
 
 def role_view(cfg: dict, producer: str, method: str) -> dict:
@@ -438,6 +445,8 @@ def config_problem(cfg: dict) -> str | None:
         for pid, p in cfg["producers"].items():
             if isinstance(p, dict):
                 bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort", "permission_profile"))
+                if p.get("adapter", "opencode") == "codex" and "fast" in p and not isinstance(p["fast"], bool):
+                    bad.append(f"producers.{pid}.fast는 Codex에서 true/false Boolean이어야 합니다")
     bad += pricing_problems(cfg.get("pricing"))
     bad += _maintainer_config_problems(cfg)
     if not bad:
@@ -456,6 +465,8 @@ def _profile_config_problems(cfg: dict) -> list[str]:
         return ["assignments는 {stage1|stage2|stage3: {모델 ID: 프로필 ID}} 형태여야 합니다"]
     for pid, p in profiles.items():
         bad += _entry_problems(f"model_profiles.{pid}", p, ("adapter", "model", "effort", "permission_profile"))
+        if p.get("adapter") == "codex" and "fast" in p and not isinstance(p["fast"], bool):
+            bad.append(f"model_profiles.{pid}.fast는 Codex에서 true/false Boolean이어야 합니다")
     if bad:
         return bad
     for pid, p in _profiles(cfg).items():
@@ -477,8 +488,9 @@ def _profile_config_problems(cfg: dict) -> list[str]:
                 bad.append(f"assignments.{role}.{producer}: 프로필 {pid!r}가 없습니다")
             elif profiles[pid].get("adapter") != prod.get("adapter", "opencode"):
                 bad.append(f"assignments.{role}.{producer}: 프로필 {pid!r}의 adapter가 모델 ID의 adapter와 다릅니다")
-            elif any(k in prod for k in ("model", "effort", "permission_profile")):
-                bad.append(f"producers.{producer}: model/effort/permission_profile과 assignments를 함께 쓸 수 없습니다 — 프로필로만 지정하세요")
+            elif any(k in prod for k in ("model", "effort", "permission_profile")) \
+                    or (prod.get("adapter", "opencode") == "codex" and "fast" in prod):
+                bad.append(f"producers.{producer}: 직접 실행 핀과 assignments를 함께 쓸 수 없습니다 — 프로필로만 지정하세요")
     return list(dict.fromkeys(bad))
 
 
@@ -620,7 +632,7 @@ def effort_problem(adapter: str, effort: str) -> str | None:
 
 
 def run_spec(cfg: dict, producer: str, tier: str = "free", role: str = STAGE1) -> RunSpec:
-    """The exact model and effort one run of `producer` in `role` is pinned to. Raises ValueError if either is unset.
+    """The exact run settings selected for `producer` in `role`. Raises ValueError if model or effort is unset.
 
     Tiered (OpenCode): the model of `tier`; a Go switch changes only the model, never the effort.
     Single-model CLIs: their one `model`; `tier` is ignored (they have no Free/Go tiers).
@@ -632,7 +644,8 @@ def run_spec(cfg: dict, producer: str, tier: str = "free", role: str = STAGE1) -
     problem = effort_problem(p["adapter"], p["effort"])
     if problem:
         raise ValueError(f"{producer}: {problem}")
-    return RunSpec(model=model, effort=p["effort"], permission_profile=p["permission_profile"])
+    return RunSpec(model=model, effort=p["effort"], permission_profile=p["permission_profile"],
+                   fast=p.get("fast") if p["adapter"] == "codex" else None)
 
 
 def pin_summary(p: dict) -> str:

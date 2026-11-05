@@ -530,7 +530,8 @@ class ParallelStage3:
             # crash right after the detached worker starts leaves a visible open run instead of an untracked process.
             self._set(b, task, data, view_sha256=sha)   # makes a crash right after add_run re-attachable by `_adopt`
             run_id = self.store.add_run(b["id"], RUN_RECORD_KIND, None, None, log, ex, model=run.model,
-                                        effort=run.effort, permission_profile=run.permission_profile, task=task)
+                                        effort=run.effort, permission_profile=run.permission_profile, task=task,
+                                        fast_mode=run.fast)
             self._set(b, task, data, state="RUNNING", run_id=run_id, session_id=None, view_sha256=sha,
                       attempts=row["attempts"] + 1)
             try:

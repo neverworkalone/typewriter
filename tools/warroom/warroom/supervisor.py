@@ -25,7 +25,7 @@ from pathlib import Path
 from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, s3parallel, stage1ab,
                stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
-                       final_answer, opencode_free_quota)
+                       classify_codex_failure, final_answer, opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
@@ -1910,9 +1910,10 @@ class Supervisor:
         return run_spec(self.cfg, b["producer"], b["model_tier"], role_of(b["method"]))
 
     def _recorded_run(self, b) -> RunSpec | None:
-        """The model and effort the batch's current run was launched with (the store is the source of truth)."""
+        """The settings the batch's current run was launched with (the store is the source of truth)."""
         r = next((r for r in self.store.runs(b["id"]) if r["model"]), None)
-        return RunSpec(r["model"], r["effort"], r["permission_profile"] or "") if r else None
+        return RunSpec(r["model"], r["effort"], r["permission_profile"] or "",
+                       fast=None if r["fast_mode"] is None else bool(r["fast_mode"])) if r else None
 
     def _agent_env(self) -> dict:
         """Worker CLIs run with the normal environment (and normal Git). The Git binaries on PATH are only recorded so
@@ -1947,16 +1948,16 @@ class Supervisor:
         if b["method"] == STAGE3_METHOD and kind.endswith("_resume"):
             recorded = self._recorded_run(b)
             if recorded is None:
-                return self._fail(b, "ERROR", "Stage 3 기존 세션의 model/effort/permission_profile 기록이 없어 재개하지 않습니다. "
+                return self._fail(b, "ERROR", "Stage 3 기존 세션의 model/effort/permission_profile/fast 기록이 없어 재개하지 않습니다. "
                                   "worktree와 세션을 보존합니다.")
             if recorded != run:
                 return self._fail(
                     b, "ERROR",
                     "Stage 3 프로필이 기존 실행 후 바뀌어 그 세션을 새 설정으로 재개하지 않습니다 "
                     f"(기존 model={recorded.model}, effort={recorded.effort}, "
-                    f"permission_profile={recorded.permission_profile or '(기본)'}; "
+                    f"permission_profile={recorded.permission_profile or '(기본)'}, fast={recorded.fast}; "
                     f"현재 model={run.model}, effort={run.effort}, "
-                    f"permission_profile={run.permission_profile or '(기본)'}). "
+                    f"permission_profile={run.permission_profile or '(기본)'}, fast={run.fast}). "
                     "worktree와 세션을 보존합니다.",
                 )
         if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and not events:
@@ -2245,7 +2246,8 @@ class Supervisor:
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
         run_id = self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
-                                    model=run.model, effort=run.effort, permission_profile=run.permission_profile)
+                                    model=run.model, effort=run.effort, permission_profile=run.permission_profile,
+                                    fast_mode=run.fast)
         if c_recovery_marker_key is not None:
             self._c_record_recovery_launch(c_recovery_marker_key, log, run_id)
         if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
@@ -8221,13 +8223,15 @@ class Supervisor:
 
     def _classify_run(self, producer: str, log_file) -> str:
         """Failure class of ONE run's log. For the tiered CLI (OpenCode) only a structured provider Free-quota
-        error event is `free_quota`; text patterns never are. Other CLIs keep the configured text patterns."""
+        error event is `free_quota`; Codex Fast rejection needs an explicit CLI diagnostic."""
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")[-30000:]
         except OSError:
             text = ""
         if getattr(self._adapter(producer), "name", None) == "claude":
             return classify_claude_failure(log_file, text, self.cfg["quota_patterns"])
+        if getattr(self._adapter(producer), "name", None) == "codex":
+            return classify_codex_failure(text, self.cfg["quota_patterns"])
         if self._tiered(producer):
             if opencode_free_quota(log_file):
                 return "free_quota"
@@ -8235,7 +8239,12 @@ class Supervisor:
         return classify_failure(text, self.cfg["quota_patterns"])
 
     def _saved_output_failure(self, b, cls: str) -> bool:
-        """Keep known authentication, quota, and run-pin failures blocking even when a chunk file exists."""
+        """Keep known authentication, quota, Fast, and run-pin failures blocking even when a chunk file exists."""
+        if cls == "fast_unavailable":
+            self._fail(b, "ERROR", "Codex가 Fast 설정을 지원하지 않는다고 명시했습니다. Fast로 실행하지 않았고 자동 Standard 재시도도 하지 않습니다. "
+                       "모델·로그인 방식·CLI 지원을 확인한 뒤 프로필을 조정하고 Retry하세요. "
+                       f"로그: {b['log_file']}")
+            return True
         if cls == "effort":
             self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
                        f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
@@ -8255,7 +8264,7 @@ class Supervisor:
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
         # A stored chunk can outlive an ordinary non-zero exit, but it never converts a known authentication,
         # quota, or run-pin failure into success.
-        safe_to_accept_stored = cls not in ("effort", "auth", "usage_limit", "free_quota")
+        safe_to_accept_stored = cls not in ("effort", "auth", "usage_limit", "free_quota", "fast_unavailable")
         if safe_to_accept_stored and self._stage3_chunk_run(b) and b["state"] == "PRODUCING":
             saved = self._stage3_chunk_saved(b)
             answer = self._stage3_answer_only(b)
@@ -8334,6 +8343,10 @@ class Supervisor:
         if cls == "effort":
             return self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
                               f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
+        if cls == "fast_unavailable":
+            return self._fail(b, "ERROR", "Codex가 Fast 설정을 지원하지 않는다고 명시했습니다. Fast로 실행하지 않았고 자동 Standard 재시도도 하지 않습니다. "
+                              "모델·로그인 방식·CLI 지원을 확인한 뒤 프로필을 조정하고 Retry하세요. "
+                              f"로그: {b['log_file']}")
         if cls == "session_missing":
             if self._ab_chunk_run(b) and b["state"] == "PRODUCING":
                 try:

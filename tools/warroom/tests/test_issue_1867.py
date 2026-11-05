@@ -12,9 +12,9 @@ from warroom.config import (DEFAULTS, MAINTAINER, STAGE1, STAGE2, config_problem
 from tests.test_reload import reload, write
 
 PROFILES = {
-    "luna-high": {"adapter": "codex", "model": "gpt-6-luna", "effort": "high", "permission_profile": "worktree"},
-    "luna-xhigh": {"adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh", "permission_profile": "worktree"},
-    "sonnet-medium": {"adapter": "claude", "model": "claude-sonnet-5-5", "effort": "medium"},
+    "luna-high": {"adapter": "codex", "model": "gpt-6-luna", "effort": "high", "permission_profile": "worktree", "fast": True},
+    "luna-xhigh": {"adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh", "permission_profile": "worktree", "fast": False},
+    "sonnet-medium": {"adapter": "claude", "model": "claude-sonnet-5-5", "effort": "medium", "fast": "ignored"},
 }
 PRODUCERS = {
     "claude": {"label": "Sonnet", "adapter": "claude"},
@@ -50,6 +50,9 @@ class Resolution(unittest.TestCase):
         self.assertEqual(pin(c, "codex", STAGE2), ("gpt-6-luna", "xhigh", "worktree"))
         self.assertEqual(pin(c, "codex", MAINTAINER), ("gpt-6-luna", "xhigh", "worktree"))
         self.assertEqual(pin(c, "claude", STAGE1), ("claude-sonnet-5-5", "medium", ""))
+        self.assertIs(run_spec(c, "codex", role=STAGE1).fast, True)
+        self.assertIs(run_spec(c, "codex", role=STAGE2).fast, False)
+        self.assertIsNone(run_spec(c, "claude", role=STAGE1).fast)
 
     def test_deepseek_tiers_and_effort_are_untouched(self):
         c = cfg()
@@ -73,12 +76,20 @@ class Resolution(unittest.TestCase):
     def test_legacy_config_is_unchanged(self):
         c = json.loads(json.dumps(DEFAULTS))
         c["producers"] = {"claude": {"adapter": "claude", "model": "sonnet", "effort": "medium"},
-                          "codex": {"adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}}
+                          "codex": {"adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh", "fast": False}}
         c["maintainer"] = "codex"
         self.assertIsNone(config_problem(c))
         self.assertIsNone(maintainer_problem(c))
         for role in (STAGE1, STAGE2, MAINTAINER):
             self.assertEqual(pin(c, "codex", role), ("gpt-6-luna", "xhigh", ""))
+            self.assertIs(run_spec(c, "codex", role=role).fast, False)
+        c["producers"]["codex"]["fast"] = "true"
+        self.assertIn("fast", config_problem(c))
+
+    def test_non_codex_fast_is_ignored_even_when_its_value_is_not_boolean(self):
+        c = cfg()
+        self.assertIsNone(config_problem(c))
+        self.assertIsNone(run_spec(c, "claude", role=STAGE1).fast)
 
     def test_invalid_and_ambiguous_configs_fail_closed(self):
         def mut(f):
@@ -98,6 +109,7 @@ class Resolution(unittest.TestCase):
             ("bad adapter", mut(lambda c: c["model_profiles"]["luna-high"].update(adapter="gemini"))),
             ("opencode profile", mut(lambda c: c["model_profiles"].update(ds={"adapter": "opencode", "model": "x", "effort": "high"}))),
             ("permission on claude", mut(lambda c: c["model_profiles"]["sonnet-medium"].update(permission_profile="worktree"))),
+            ("non-boolean codex fast", mut(lambda c: c["model_profiles"]["luna-high"].update(fast="true"))),
             ("non-string effort", mut(lambda c: c["model_profiles"]["luna-high"].update(effort=3))),
             ("profiles not object", mut(lambda c: c.update(model_profiles=[]))),
             ("assignments not object", mut(lambda c: c.update(assignments=[]))),
@@ -147,6 +159,7 @@ class ReloadAndRuns(unittest.TestCase):
         w.tick(4)
         launched = {(l["model"], l["effort"]) for l in w.adapter.launches}
         self.assertEqual(launched, {("gpt-6-luna", "high")})
+        self.assertEqual({l["fast"] for l in w.adapter.launches}, {True})
         self.assertEqual({w.row("codex", m)["producer"] for m in "abcd"}, {"codex"})   # producer identity, not a profile ID
         # a producer whose profile is only assigned to stage 2 cannot start Stage 1
         write(w, PRODUCERS, model_profiles=PROFILES, assignments={"stage2": ASSIGN["stage2"]})
@@ -164,6 +177,7 @@ class ReloadAndRuns(unittest.TestCase):
         first = w.store.runs(bid)[0]
         self.assertEqual((first["model"], first["effort"], first["permission_profile"]),
                          ("gpt-6-luna", "high", "worktree"))
+        self.assertEqual(first["fast_mode"], 1)
         write(w, PRODUCERS, model_profiles=PROFILES,
               assignments={**ASSIGN, "stage1": {**ASSIGN["stage1"], "codex": "luna-xhigh"}})
         self.assertTrue(reload(w)[0])
@@ -177,11 +191,13 @@ class ReloadAndRuns(unittest.TestCase):
                           w.adapter.launches[-1]["effort"], w.adapter.launches[-1]["permission_profile"],
                           w.adapter.launches[-1]["session"]),
                          ("resume", "gpt-6-luna", "xhigh", "worktree", "session-first"))
+        self.assertIs(w.adapter.launches[-1]["fast"], False)
         runs = w.store.runs(bid)
         self.assertEqual((runs[0]["model"], runs[0]["effort"], runs[0]["permission_profile"]),
                          ("gpt-6-luna", "xhigh", "worktree"))
         self.assertEqual((runs[1]["model"], runs[1]["effort"], runs[1]["permission_profile"]),
                          ("gpt-6-luna", "high", "worktree"))
+        self.assertEqual((runs[0]["fast_mode"], runs[1]["fast_mode"]), (0, 1))
         self.assertEqual((runs[0]["session_id"], runs[1]["session_id"]),
                          ("session-first", "session-first"))
         # A different Line also starts from the currently loaded assignment.
@@ -223,6 +239,7 @@ class ReloadAndRuns(unittest.TestCase):
                 w.tick()
                 launch = w.adapter.launches[-1]
                 self.assertEqual((launch["model"], launch["effort"]), (model, effort))
+                self.assertEqual(launch["fast"], False if profile == "luna-xhigh" else None)
                 m = next(b for b in w.store.all_batches() if b["method"] == "m")
                 self.assertEqual(m["producer"], maintainer_id(w.cfg))
 
@@ -235,6 +252,7 @@ class ReloadAndRuns(unittest.TestCase):
         w.tick()
         self.assertEqual(w.store.active_batch("codex", "s2")["producer"], "codex")
         self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("gpt-6-luna", "xhigh"))
+        self.assertIs(w.adapter.launches[-1]["fast"], False)
 
 
 if __name__ == "__main__":

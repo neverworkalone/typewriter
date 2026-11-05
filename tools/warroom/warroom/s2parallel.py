@@ -487,7 +487,7 @@ class ParallelStage2:
             return sup._fail(b, "ERROR", f"AI 실행 시작 실패 [{task}]: {error}")
         run_kind = {"new": TASK_NEW, "fix": TASK_FIX, "format_fix": TASK_FORMAT_FIX}[kind]
         run_id = self.store.add_run(b["id"], run_kind, sid, handle.pid, log, ex, model=run.model, effort=run.effort,
-                                    permission_profile=run.permission_profile, task=task)
+                                    permission_profile=run.permission_profile, task=task, fast_mode=run.fast)
         data.pop("retry_after", None)
         self._set(b, task, data, state="RUNNING", run_id=run_id, session_id=sid, view_sha256=sha,
                   attempts=row["attempts"] + 1)

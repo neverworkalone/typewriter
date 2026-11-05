@@ -13,7 +13,8 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import ClaudeCodeAdapter, CodexCLIAdapter, Handle, RunSpec, classify_failure
+from warroom.adapters import (ClaudeCodeAdapter, CodexCLIAdapter, Handle, OpenCodeAdapter, RunSpec,
+                              classify_codex_failure, classify_failure)
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
@@ -95,6 +96,44 @@ class Argv(unittest.TestCase):
             joined = " ".join(argv)
             for bad in NEVER_PASSED:
                 self.assertNotIn(bad, joined)
+
+    def test_fast_is_explicit_per_launch_and_unset_preserves_inheritance(self):
+        expected = {
+            None: [],
+            True: ["service_tier=fast", "features.fast_mode=true"],
+            False: ["service_tier=default", "features.fast_mode=false"],
+        }
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            for fast, pins in expected.items():
+                with self.subTest(fast=fast):
+                    a = Recording("codex")
+                    run = RunSpec("gpt-6-luna", "xhigh", "worktree", fast=fast)
+                    a.start("p", d, {}, run, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
+                    start = list(a.cmd)
+                    a.resume(THREAD, "p", d, {}, run, d / "l.log", d / "l.exit", git_dir=GIT_DIR)
+                    resume = list(a.cmd)
+                    for argv in (start, resume):
+                        got = [value for value in argv if value.startswith(("service_tier=", "features.fast_mode="))]
+                        self.assertEqual(got, pins)
+
+    def test_non_codex_adapters_ignore_a_fast_run_spec(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            run = RunSpec("sonnet", "medium", fast=True)
+            commands = []
+            claude = ClaudeCodeAdapter("claude")
+            with mock.patch.object(claude, "_spawn", side_effect=lambda cmd, *args: (
+                    commands.append(cmd) or Handle(0, d / "c.exit", d / "c.log"))):
+                claude.start("p", d, {}, run, "t", d / "c.log", d / "c.exit")
+                claude.resume(THREAD, "p", d, {}, run, d / "c.log", d / "c.exit")
+            opencode = OpenCodeAdapter("opencode")
+            with mock.patch.object(opencode, "_spawn", side_effect=lambda cmd, *args: (
+                    commands.append(cmd) or Handle(0, d / "o.exit", d / "o.log"))):
+                opencode.start("p", d, {}, run, "t", d / "o.log", d / "o.exit")
+                opencode.resume(THREAD, "p", d, {}, run, d / "o.log", d / "o.exit")
+        for argv in commands:
+            self.assertFalse(any("fast" in value.lower() or "service_tier" in value for value in argv))
 
     def test_permission_profile_is_exactly_the_configured_name_or_absent(self):
         with tempfile.TemporaryDirectory() as d:
@@ -355,6 +394,35 @@ class Classification(unittest.TestCase):
         for text, want in cases:
             with self.subTest(text=text):
                 self.assertEqual(classify_failure(text, QUOTA), want)
+
+    def test_fast_is_classified_only_from_explicit_codex_diagnostics(self):
+        cases = [
+            ("Error: unknown config key `service_tier`", "fast_unavailable"),
+            ("Invalid config override features.fast_mode=true", "fast_unavailable"),
+            ("Fast mode is not available for this model", "fast_unavailable"),
+            ("Error: 403 Forbidden", "auth"),
+            ("Unsupported model gpt-9", "unknown"),
+            (lines({"type": "item.completed", "item": {"type": "agent_message", "text": "Fast mode is unavailable"}}), "unknown"),
+        ]
+        for text, want in cases:
+            with self.subTest(text=text):
+                self.assertEqual(classify_codex_failure(text, QUOTA), want)
+
+    def test_explicit_fast_rejection_errors_once_without_standard_retry(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna",
+                                         "effort": "xhigh", "fast": True}}
+        w.adapter.name = "codex"
+        w.adapter.plan.append({"code": 1, "text": "Error: unknown config key `service_tier`"})
+        w.start("single", "codex", "a")
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        row = w.row("codex", "a")
+        self.assertEqual(row["state"], "ERROR")
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertIn("자동 Standard 재시도도 하지 않습니다", row["error"])
 
 
 class PolicyRefusal(unittest.TestCase):

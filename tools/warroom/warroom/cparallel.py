@@ -1079,7 +1079,7 @@ class ParallelC:
             sup._fail(b, "ERROR", f"AI 실행 시작 실패 [{task}]: {error}")
             return False
         run_id = self.store.add_run(b["id"], kind, sid, handle.pid, log, ex, model=run.model, effort=run.effort,
-                                    permission_profile=run.permission_profile, task=task)
+                                    permission_profile=run.permission_profile, task=task, fast_mode=run.fast)
         data.pop("retry_after", None)
         if kind == FIX:   # corrections within the bounded budget are automatic; further ones need an operator grant
             data.setdefault("fix_launch", {})[str(run_id)] = \

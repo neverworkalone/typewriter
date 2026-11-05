@@ -13,9 +13,10 @@ PID_GRACE = 60   # seconds a freshly recorded run may still be waiting for its w
 
 
 def recorded_spec(run_row):
-    """The model/effort/permission pins a run was launched with, or None for a run without a recorded model."""
+    """The settings a run was launched with, or None for a run without a recorded model."""
     from .adapters import RunSpec
-    return RunSpec(run_row["model"], run_row["effort"], run_row["permission_profile"] or "") \
+    return RunSpec(run_row["model"], run_row["effort"], run_row["permission_profile"] or "",
+                   fast=None if run_row["fast_mode"] is None else bool(run_row["fast_mode"])) \
         if run_row is not None and run_row["model"] else None
 
 
