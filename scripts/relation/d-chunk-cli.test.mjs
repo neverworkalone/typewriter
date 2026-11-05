@@ -1026,6 +1026,65 @@ withWorld('mixed zero-hit V, hit-bearing LIMITED Z, and zero-hit V are locally r
   assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), true);
 });
 
+withWorld('latest search state supersedes a ZERO_HITS prepare view and resumes its exact LIMITED condition', async (world) => {
+  const database = new DatabaseSync(world.options.databasePath);
+  const start = database.prepare('SELECT COALESCE(MAX(paragraph_rowid), 0) AS max_id FROM paragraphs').get().max_id;
+  for (let index = 1; index <= 5; index += 1) {
+    const rowid = start + index;
+    const form = `달려서 생긴 추가 문맥 ${index}.`;
+    database.prepare('INSERT INTO paragraphs VALUES (?, 1, ?, ?, ?)').run(rowid, `variant-${index}`, index, form);
+    database.prepare('INSERT INTO paragraph_fts(rowid, form) VALUES (?, ?)').run(rowid, form);
+  }
+  database.close();
+
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const active = await meta(world);
+  const target = active.senses.find((sense) => sense.record_id === 'w003');
+  assert.match(await view(world), /## w003 달리다[\s\S]*?ZERO_HITS shown=0/u,
+    'the immutable prepare view contains a complete zero-hit search for the Canonical form');
+
+  const first = await searchBatchActive({
+    requests: [{ sense: target.ref, forms: ['달려서'], contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(first.results[0].status, 'LIMITED');
+  assert.equal(first.results[0].hits, 4);
+  assert.deepEqual(first.requests[0].decision_state, {
+    state: 'V_N_ALLOWED', searches: 2, recorded_hits: 4, all_complete: false,
+  });
+
+  const entriesPath = chunkPath(world, 'searches');
+  const entries = (await readFile(entriesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const decisions = active.senses.filter((sense) => !sense.auto).map((sense) => {
+    if (sense.ref === target.ref) return `${sense.ref} Z`;
+    const evidence = recordEvidence(entries, sense.record_id);
+    return `${sense.ref} ${evidence.hits > 0 ? 'V' : 'Z'}`;
+  });
+  await writeFile(chunkPath(world, 'decisions'), `${decisions.join('\n')}\n`);
+  await assert.rejects(saveActive({ inputPath: chunkPath(world, 'decisions'), root: world.root }), (error) => {
+    assert.match(error.message, new RegExp(`${target.ref}: Z needs every recorded search`));
+    assert.match(error.message, /decision_state=V_N_ALLOWED searches=2 recorded_hits=4 all_complete=false/u);
+    return true;
+  });
+
+  const beforeRetry = await readFile(entriesPath, 'utf8');
+  await assert.rejects(searchBatchActive({
+    requests: [{ sense: target.ref, forms: ['달려서'], contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  }), /INVALID_CURSOR: s4: a recorded LIMITED search/u);
+  assert.equal(await readFile(entriesPath, 'utf8'), beforeRetry, 'cursorless retry records no search evidence');
+
+  const next = await searchBatchActive({
+    requests: [{ sense: target.ref, forms: ['달려서'], cursor: 'next', contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(next.results[0].status, 'COMPLETE');
+  assert.equal(next.requests[0].decision_state.state, 'V_N_ALLOWED');
+  assert.equal(next.requests[0].decision_state.recorded_hits, 5);
+  assert.equal(next.requests[0].decision_state.all_complete, true,
+    'both the separate Canonical ZERO_HITS search and the completed variant search remain in record evidence');
+});
+
 withWorld('search-batch reuses prepare completion for same-record senses without returning stale contexts', async (world) => {
   await prepareChunk({ ...world.options, chunkNumber: 1 });
   const active = await meta(world);
