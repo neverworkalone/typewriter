@@ -263,7 +263,12 @@ class Supervisor:
             return self.store.set_line(model, MAINTENANCE_METHOD, run=0)
 
         if current:
-            self._tick_batch(current[0])
+            pending_diagnosis = (current[0]["method"] == MAINTENANCE_METHOD
+                                 and current[0]["state"] == "PRODUCING"
+                                 and current[0]["pid"] is None
+                                 and self.store.get(f"m_diag_{current[0]['id']}") is not None)
+            if not pending_diagnosis:
+                self._tick_batch(current[0])
 
         # Review/merge/cleanup work does not use the Maintainer AI slot. Keep every owned PR attached and progressing.
         for b in self.store.maintenance_batches():

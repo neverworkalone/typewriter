@@ -1254,7 +1254,7 @@ class Maintenance:
             source = self.store.batch(d["batch_id"])
             if source is None:
                 return False
-            evidence_path = Path(source["worktree"]) / ".warroom-scratch" / "incident" / f"{d['id']}.json"
+            evidence_path = Path(b["worktree"]) / ".warroom-scratch" / "incident" / f"{d['id']}.json"
             raw_evidence = evidence_path.read_bytes()
             evidence_hash = hashlib.sha256(raw_evidence).hexdigest()
             evidence = json.loads(raw_evidence)
