@@ -684,6 +684,7 @@ export async function runLevel(requestedCategory, {
 export async function runPrLevel({
   baseSha,
   headSha,
+  validationHeadSha = headSha,
   classify = classifyDeepGateDiff,
   getCurrentHead = () => execFileSync('git', ['rev-parse', 'HEAD'], {
     cwd: REPOSITORY_DIRECTORY,
@@ -693,11 +694,15 @@ export async function runPrLevel({
   categories = CI_CATEGORIES,
   levels = CI_LEVEL_CATEGORY_ORDER,
   createSession = createCanonicalSession,
+  executeLevel = runLevel,
   execute,
   log,
 } = {}) {
-  if (getCurrentHead() !== headSha) {
-    throw new Error('ci:pr checkout HEAD does not match the requested exact PR HEAD.');
+  if (!/^[0-9a-f]{40}$/u.test(validationHeadSha ?? '')) {
+    throw new Error('ci:pr requires a full lowercase 40-character validation HEAD SHA.');
+  }
+  if (getCurrentHead() !== validationHeadSha) {
+    throw new Error('ci:pr checkout HEAD does not match the requested validation HEAD.');
   }
   const classification = routePrDeepGate(classify(baseSha, headSha));
   if (classification.deepMode !== 'selective'
@@ -714,18 +719,29 @@ export async function runPrLevel({
   if (classification.selectedDeepChecks.some((id) => !registeredDeepCheckIds.has(id))) {
     throw new Error('ci:pr received a selected Deep check that is not registered in this runner.');
   }
-  return runLevel('pr', {
-    categories,
-    levels,
-    createSession,
-    executionPolicy: {
-      ...CI_LEVEL_EXECUTION_POLICY.pr,
-      selectedDeepCheckIds: classification.selectedDeepChecks,
-    },
-    changedPaths: classification.changedPaths,
-    execute,
-    log,
-  });
+  const previousBaseSha = process.env.BASE_SHA;
+  const previousHeadSha = process.env.HEAD_SHA;
+  process.env.BASE_SHA = baseSha;
+  process.env.HEAD_SHA = headSha;
+  try {
+    return await executeLevel('pr', {
+      categories,
+      levels,
+      createSession,
+      executionPolicy: {
+        ...CI_LEVEL_EXECUTION_POLICY.pr,
+        selectedDeepCheckIds: classification.selectedDeepChecks,
+      },
+      changedPaths: classification.changedPaths,
+      execute,
+      log,
+    });
+  } finally {
+    if (previousBaseSha === undefined) delete process.env.BASE_SHA;
+    else process.env.BASE_SHA = previousBaseSha;
+    if (previousHeadSha === undefined) delete process.env.HEAD_SHA;
+    else process.env.HEAD_SHA = previousHeadSha;
+  }
 }
 
 export async function runCli(argv, options = {}) {
@@ -756,18 +772,22 @@ export async function runCli(argv, options = {}) {
     for (let index = 0; index < args.length; index += 1) {
       const key = args[index];
       const value = args[index + 1];
-      if (!['--base', '--head'].includes(key) || !value || values.has(key)) {
-        throw new Error('ci:pr accepts exactly --base <sha> and --head <sha>.');
+      if (!['--base', '--head', '--validation-head'].includes(key) || !value || values.has(key)) {
+        throw new Error('ci:pr accepts --base <sha>, --head <sha>, and optional --validation-head <sha>.');
       }
       values.set(key, value);
       index += 1;
     }
     const baseSha = values.get('--base');
     const headSha = values.get('--head');
+    const validationHeadSha = values.get('--validation-head') ?? headSha;
     if (!/^[0-9a-f]{40}$/u.test(baseSha ?? '') || !/^[0-9a-f]{40}$/u.test(headSha ?? '')) {
       throw new Error('ci:pr requires full lowercase 40-character base and head SHAs.');
     }
-    await runPrLevel({ baseSha, headSha, ...options });
+    if (!/^[0-9a-f]{40}$/u.test(validationHeadSha ?? '')) {
+      throw new Error('ci:pr requires a full lowercase 40-character validation HEAD SHA.');
+    }
+    await runPrLevel({ ...options, baseSha, headSha, validationHeadSha });
     return;
   }
 

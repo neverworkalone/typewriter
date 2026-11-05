@@ -59,6 +59,7 @@ function readGit(args, runGit) {
 // only safe response is the complete current-system Deep suite.
 const FULL_DEEP_PATHS = Object.freeze([
   '.github/workflows/',
+  'scripts/ci/changed-files.mjs',
   'scripts/ci/deep-gate.mjs',
   'scripts/ci/registry.mjs',
   'scripts/ci/legacy-check-identities.json',
@@ -645,8 +646,9 @@ function main() {
   const summary = [
     '## PR CI change coverage',
     '',
-    `- Base: \`${baseSha ?? 'missing'}\``,
-    `- Exact HEAD: \`${headSha ?? 'missing'}\``,
+    `- Path-selection base: \`${baseSha ?? 'missing'}\``,
+    `- Path-selection head: \`${headSha ?? 'missing'}\``,
+    `- Integration validation checkout: \`${process.env.TYPEWRITER_CI_VALIDATION_HEAD ?? 'current checkout'}\``,
     `- Change class: \`${result.changeClass ?? 'unclassifiable'}\``,
     `- Base PR gate: \`${baseGate}\``,
     `- Classification: \`${result.deepMode}\` (${result.reason})`,
@@ -659,7 +661,12 @@ function main() {
     `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : runLevel === 'warroom' ? 'node tools/warroom/run-tests.mjs' : runLevel === 'none' ? 'docs-only skip' : 'ci:normal'}\``,
   ].join('\n') + '\n';
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary, 'utf8');
-  process.stdout.write(`${JSON.stringify({ ...result, base_sha: baseSha ?? null, head_sha: headSha ?? null })}\n`);
+  process.stdout.write(`${JSON.stringify({
+    ...result,
+    path_base_sha: baseSha ?? null,
+    path_head_sha: headSha ?? null,
+    validation_head_sha: process.env.TYPEWRITER_CI_VALIDATION_HEAD ?? null,
+  })}\n`);
 }
 
 function validRepositoryPath(pathValue) {

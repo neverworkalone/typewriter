@@ -19,8 +19,11 @@ jobs:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
     runs-on: ubuntu-24.04
     env:
-      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-      HEAD_SHA: ${{ github.sha }}
+      EVENT_NAME: ${{ github.event_name }}
+      INTEGRATION_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      INTEGRATION_HEAD_SHA: ${{ github.sha }}
+      PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
     steps:
       - name: Check out repository
@@ -35,105 +38,34 @@ jobs:
           # Dependency cache is configured below, only when dependencies install.
           package-manager-cache: false
 
+      - name: Resolve exact changed-path range
+        id: revisions
+        run: node scripts/ci/changed-files.mjs resolve
+
       - name: Validate changed Relation shards on the integration candidate
-        run: node scripts/ci/relation-merge-check.mjs "$BASE_SHA" "$HEAD_SHA"
+        run: node scripts/ci/relation-merge-check.mjs "$INTEGRATION_BASE_SHA" "$INTEGRATION_HEAD_SHA"
 
       - name: Classify exact SQL schema diff
         id: schema
         shell: bash
-        run: node scripts/ci/sqlite-schema-change.mjs "$BASE_SHA" "$HEAD_SHA"
+        env:
+          CHANGE_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
+          CHANGE_HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
+        run: node scripts/ci/sqlite-schema-change.mjs "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA"
 
       - name: Classify changed files
         id: changes
         continue-on-error: true
         shell: bash
+        env:
+          CHANGE_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
+          CHANGE_HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
         run: |
           set -euo pipefail
-          paths_file="$(mktemp)"
-          renames_file="$(mktemp)"
-          trap 'rm -f "$paths_file" "$renames_file"' EXIT
-
-          # Use the PR merge base, not the checked-out synthetic merge commit.
-          # Keep both sides visible for path classification, then separately detect cross-scope renames.
-          git diff --no-renames --name-status -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
-          git diff --find-renames --name-status -z "${BASE_SHA}...${HEAD_SHA}" > "$renames_file"
-          # Read NUL-delimited paths (including whitespace safely); Bash 3.2 compatible.
-          docs_only=true
-          warroom_only=true
-          saw_file=false
-          run_warroom_tests=false
-          run_ui_build=false
-          run_web_build=false
-          # -z --name-status yields NUL-delimited status/path pairs.
-          # Only explicit add/modify/delete statuses can qualify for the War Room-only path.
-          while IFS= read -r -d '' status && IFS= read -r -d '' file; do
-            saw_file=true
-            case "$status" in A|M|D) ;; *) docs_only=false; warroom_only=false ;; esac
-            case "$file" in
-              src/*) run_ui_build=true ;;
-            esac
-            case "$file" in
-              site/*) run_web_build=true ;;
-            esac
-            case "$file" in
-              docs/*|README.md|REVIEW.md|tools/warroom/prompts/*) ;;
-              tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard)
-                docs_only=false
-                run_warroom_tests=true
-                ;;
-              *)
-                docs_only=false
-                warroom_only=false
-                ;;
-            esac
-          done < "$paths_file"
-
-          # Renames between War Room runtime/test paths and any other path fail closed.
-          # The no-renames pass above still classifies all added/deleted paths individually.
-          while IFS= read -r -d '' status; do
-            case "$status" in
-              R*)
-                IFS= read -r -d '' old_file
-                IFS= read -r -d '' new_file
-                old_is_warroom=false
-                new_is_warroom=false
-                case "$old_file" in
-                  tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard) old_is_warroom=true ;;
-                esac
-                case "$new_file" in
-                  tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard) new_is_warroom=true ;;
-                esac
-                if [[ "$old_is_warroom" != "$new_is_warroom" ]]; then
-                  warroom_only=false
-                fi
-                ;;
-              *) IFS= read -r -d '' _file ;;
-            esac
-          done < "$renames_file"
-
-          # Only strictly scoped War Room-only PRs can skip product Normal.
-          # Empty/unclassified diffs, product changes and CI changes run Normal.
-          if [[ "$saw_file" != true ]]; then
-            run_level=normal
-          elif [[ "$docs_only" == true ]]; then
-            run_level=none
-          elif [[ "$warroom_only" == true && "$run_warroom_tests" == true ]]; then
-            run_level=warroom
-          else
-            run_level=normal
-          fi
-
-          echo "run_level=$run_level" >> "$GITHUB_OUTPUT"
-          echo "run_warroom_tests=$run_warroom_tests" >> "$GITHUB_OUTPUT"
-          echo "run_ui_build=$run_ui_build" >> "$GITHUB_OUTPUT"
-          echo "run_web_build=$run_web_build" >> "$GITHUB_OUTPUT"
-          echo "changed_paths_complete=$saw_file" >> "$GITHUB_OUTPUT"
-          echo "Changed-path classification: $run_level." >> "$GITHUB_STEP_SUMMARY"
-          echo "War Room Python tests selected: $run_warroom_tests." >> "$GITHUB_STEP_SUMMARY"
-          echo "Extension UI build selected: $run_ui_build." >> "$GITHUB_STEP_SUMMARY"
-          echo "Web build and Pages validation selected: $run_web_build." >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ci/changed-files.mjs classify "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA"
+          run_level="$(sed -n 's/^run_level=//p' "$GITHUB_OUTPUT" | tail -n 1)"
           # Deep impact and exact-check selection stay inside this PR check.
-          if ! TYPEWRITER_CI_RUN_LEVEL="$run_level" node scripts/ci/deep-gate.mjs "$BASE_SHA" "$HEAD_SHA"; then
+          if ! TYPEWRITER_CI_RUN_LEVEL="$run_level" TYPEWRITER_CI_VALIDATION_HEAD="$INTEGRATION_HEAD_SHA" node scripts/ci/deep-gate.mjs "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA"; then
             echo "Deep path classification failed; running ci:normal fallback." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
@@ -182,12 +114,18 @@ jobs:
       - name: Normal validation (fast checkpoint + continuation)
         id: normal
         if: ${{ steps.changes.outcome != 'success' || (steps.changes.outputs.run_level == 'normal' && steps.changes.outputs.deep_mode != 'selective') }}
+        env:
+          BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
+          HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
         run: pnpm run ci:normal
 
       - name: Selective Deep validation (Normal + affected current Deep)
         id: selective
         if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.deep_mode == 'selective' }}
-        run: pnpm run ci:pr -- --base "$BASE_SHA" --head "$HEAD_SHA"
+        env:
+          CHANGE_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
+          CHANGE_HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
+        run: pnpm run ci:pr -- --base "$CHANGE_BASE_SHA" --head "$CHANGE_HEAD_SHA" --validation-head "$INTEGRATION_HEAD_SHA"
 
       - name: SQL schema-only Full/Lite build and validation
         id: schema-build
@@ -254,10 +192,15 @@ jobs:
           WEB_BUILD_SELECTED: ${{ steps.changes.outputs.run_web_build }}
           WEB_BUILD_OUTCOME: ${{ steps.web-build.outcome }}
           FINAL_GATE: ${{ job.status }}
+          PATH_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
+          PATH_HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
+          INTEGRATION_HEAD_SHA: ${{ github.sha }}
         shell: bash
         run: |
           {
             echo "## Executed PR CI gate"
+            echo "- Path-selection range: ${PATH_BASE_SHA:-unavailable}...${PATH_HEAD_SHA:-unavailable}"
+            echo "- Integration validation checkout: ${INTEGRATION_HEAD_SHA:-unavailable}"
             echo "- Classifier: ${CLASSIFIER_OUTCOME:-unknown}"
             echo "- Base gate class: ${RUN_LEVEL:-unknown}"
             echo "- Deep selection mode: ${DEEP_MODE:-Normal fallback}"
