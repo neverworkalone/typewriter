@@ -314,6 +314,21 @@ class Supervisor:
                       literary.METHOD: ("c_chunk_resume", ("c_chunk", "contract_c"))}
 
     def resume_prompt_names(self, b) -> set[str] | None:
+        if (b["method"] == STAGE2_METHOD and b["run_kind"] == "s2_repair_new"
+                and b["paused_from"] == "PRODUCING" and not b["pr_number"]):
+            try:
+                state = self._stage2_repair_state(b, required=True)
+                current = state.get("current")
+                attempts = current.get("attempt_log") if isinstance(current, dict) else None
+                if (isinstance(current, dict) and current.get("pending_answer") is None
+                        and current.get("apply_intent") is None and isinstance(attempts, list) and attempts
+                        and isinstance(attempts[-1], dict) and attempts[-1].get("status") == "rejected"):
+                    # The retry either fails its existing guards or launches a fresh repair page; it cannot apply
+                    # an old answer in this state. The page launch renders the operating checkout's s2_repair.
+                    return {"s2_repair"}
+            except (ValueError, TypeError, KeyError):
+                pass
+            return None
         if (b["method"] == STAGE2_METHOD and b["run_kind"] == "s2_deterministic_finalize"
                 and b["paused_from"] == "PRODUCING" and not b["pr_number"]):
             # Finalization can finish without AI. If it needs AI, its only launch is a new repair page, which

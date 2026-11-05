@@ -1456,6 +1456,29 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertEqual(d["state"], "HELD")
         self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
 
+    def test_stage2_repair_rejected_answer_can_render_repair_prompt(self):
+        from unittest import mock
+        w = self.w
+        b, d = self.merged([self.PY, "tools/warroom/prompts/s2_repair.md"],
+                           method="s2", run_kind="s2_repair_new")
+        current = {"pending_answer": None, "apply_intent": None, "attempt_log": [{"status": "rejected"}]}
+        with mock.patch.object(w.sup, "_stage2_repair_state", return_value={"current": current}):
+            self.assertEqual(w.sup.resume_prompt_names(b), {"s2_repair"})
+            d = self.settle(d)
+        self.assertEqual(d["state"], "RELEASED")
+        self.assertEqual(w.store.batch(b["id"])["state"], "PRODUCING")
+
+    def test_stage2_repair_pending_answer_is_not_claimed_as_new_prompt(self):
+        from unittest import mock
+        w = self.w
+        b, d = self.merged(["tools/warroom/prompts/s2_repair.md"], method="s2", run_kind="s2_repair_new")
+        current = {"pending_answer": {"decisions": []}, "attempt_log": [{"status": "rejected"}]}
+        with mock.patch.object(w.sup, "_stage2_repair_state", return_value={"current": current}):
+            self.assertIsNone(w.sup.resume_prompt_names(b))
+            d = self.settle(d)
+        self.assertEqual(d["state"], "HELD")
+        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
+
     def test_parallel_d_retry_with_one_used_fix_predicts_and_launches_the_fix_prompt(self):
         from unittest import mock
         from warroom import prompts
