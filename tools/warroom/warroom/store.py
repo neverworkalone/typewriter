@@ -458,7 +458,7 @@ class Store:
                           "WHERE model=? AND method=? AND (mode!='continuous' OR drain!=0)",
                           (now, b["producer"], b["method"]))
 
-    def complete_diagnosis(self, batch_id: int, issue: int, reason: str) -> None:
+    def complete_diagnosis(self, batch_id: int, issue: int, reason: str, *, expected_defect_id: int) -> bool:
         """One transaction for a proof-backed blocked handoff (#3409): the Issue and incident defects are HELD, the
         original batch stays PAUSED with its blocker/next action, and the Maintainer execution completes to return its
         slot. This does not mark production resolved or resume it. Idempotent."""
@@ -467,7 +467,23 @@ class Store:
             c.execute("BEGIN IMMEDIATE")
             m = c.execute("SELECT producer, method, state FROM batches WHERE id=?", (batch_id,)).fetchone()
             if m is None or m["state"] == "COMPLETE":
-                return
+                return False
+            linked = c.execute("SELECT d.id AS linked_defect_id, b.* FROM defects d JOIN batches b ON b.id=d.batch_id "
+                               "WHERE d.issue_number=? AND d.state='LINKED'", (issue,)).fetchall()
+            if len(linked) != 1 or linked[0]["linked_defect_id"] != expected_defect_id:
+                return False
+            source = linked[0]
+            line = c.execute("SELECT force_stop,retry_batch FROM lines WHERE model=? AND method=?",
+                             (source["producer"], source["method"])).fetchone()
+            if (source["state"] != "PAUSED" or source["pause_reason"] != "shared_defect"
+                    or source["defect_id"] != expected_defect_id
+                    or (line is not None and (line["force_stop"] or line["retry_batch"] == source["id"]))
+                    or c.execute("SELECT 1 FROM clear_requests WHERE batch_id=?", (source["id"],)).fetchone()
+                    or c.execute("SELECT 1 FROM kv WHERE key=?",
+                                 (f"stop_pin_{source['producer']}_{source['method']}",)).fetchone()
+                    or c.execute("SELECT 1 FROM kv WHERE key=? AND value!=''",
+                                 (f"defect_hold_{source['id']}",)).fetchone()):
+                return False
             c.execute("UPDATE maintenance SET state='HELD', hold_reason=?, updated_at=? WHERE issue_number=?", (reason, now, issue))
             for d in c.execute("SELECT id, batch_id FROM defects WHERE issue_number=? AND state='LINKED'",
                                (issue,)).fetchall():
@@ -476,6 +492,7 @@ class Store:
                           (f"장애 진단 완료 — {reason} (Issue #{issue})", now, d["batch_id"], d["id"]))
             c.execute("UPDATE batches SET state='COMPLETE', error=NULL, updated_at=? WHERE id=?", (now, batch_id))
             c.execute("UPDATE lines SET run=0, updated_at=? WHERE model=? AND method=?", (now, m["producer"], m["method"]))
+            return True
 
     def approve_no_code_resume(self, maintainer_batch_id: int, issue: int, defect_id: int,
                                approval: dict) -> bool:
@@ -1850,7 +1867,7 @@ class Store:
         with self._conn() as c:
             return self._undetermined_diagnosis_retry(c, issue_number) is not None
 
-    def requeue_maintenance(self, issue_number: int) -> bool:
+    def requeue_maintenance(self, issue_number: int, *, expected_defect_id: int | None = None) -> bool:
         """Explicit operator Retry of a cleared Issue or a blocked diagnosis with no live execution.
 
         A diagnosis retry relinks only its still-paused source defects and keeps their production batches PAUSED.
@@ -1859,14 +1876,17 @@ class Store:
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             now = time.time()
-            cur = c.execute("UPDATE maintenance SET state='QUEUED', hold_reason=NULL, updated_at=? "
-                            "WHERE issue_number=? AND state='HELD' AND batch_id IS NULL", (now, issue_number))
-            if cur.rowcount == 1:
-                return True
+            if expected_defect_id is None:
+                cur = c.execute("UPDATE maintenance SET state='QUEUED', hold_reason=NULL, updated_at=? "
+                                "WHERE issue_number=? AND state='HELD' AND batch_id IS NULL", (now, issue_number))
+                if cur.rowcount == 1:
+                    return True
             retry = self._undetermined_diagnosis_retry(c, issue_number)
             if retry is None:
                 return False
             attempt, incidents = retry
+            if expected_defect_id is not None and (len(incidents) != 1 or incidents[0]["id"] != expected_defect_id):
+                return False
             cur = c.execute("UPDATE maintenance SET state='QUEUED', batch_id=NULL, hold_reason=NULL, updated_at=? "
                             "WHERE issue_number=? AND state='HELD' AND batch_id=?",
                             (now, issue_number, attempt["id"]))
