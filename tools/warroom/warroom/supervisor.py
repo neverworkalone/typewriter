@@ -4671,18 +4671,31 @@ class Supervisor:
             return self._fail(b, "ERROR", f"Stage 2 repair 저장/재개 실패: {error}. response, checkpoint와 receipts를 보존합니다.")
 
     @staticmethod
-    def _stage2_relation_projects_candidate(relation: dict, source_sense_id: str, candidate: str) -> bool:
+    def _stage2_relation_projects_candidate(relation: dict, source_sense_id: str, candidate: str,
+                                            target_senses: list | None = None) -> bool:
         """Whether one approved ID row already exposes this exact candidate from the requested Sense."""
         source = relation.get("source") if isinstance(relation, dict) else None
         target = relation.get("target") if isinstance(relation, dict) else None
         if not isinstance(source, dict) or not isinstance(target, dict):
             return False
+        def orthographic_target(endpoint, record_id, sense_id):
+            lemma = endpoint.get("lemma")
+            if not isinstance(lemma, str) or not isinstance(target_senses, list):
+                return False
+            fold = lambda value: re.sub(r"[\s-]", "", value)
+            return bool(fold(candidate)) and fold(candidate) == fold(lemma) and any(
+                isinstance(row, dict) and row.get("record_id") == record_id
+                and row.get("sense_id") == sense_id and row.get("lemma") == lemma
+                for row in target_senses)
+
         if relation.get("source_sense_id") == source_sense_id:
             forms = relation.get("candidate_forms")
-            return candidate == target.get("lemma") or isinstance(forms, list) and candidate in forms
+            return (candidate == target.get("lemma") or isinstance(forms, list) and candidate in forms
+                    or orthographic_target(target, relation.get("target_record_id"), relation.get("target_sense_id")))
         if relation.get("target_sense_id") == source_sense_id:
             forms = relation.get("reverse_candidate_forms")
-            return candidate == source.get("lemma") or isinstance(forms, list) and candidate in forms
+            return (candidate == source.get("lemma") or isinstance(forms, list) and candidate in forms
+                    or orthographic_target(source, relation.get("source_record_id"), relation.get("source_sense_id")))
         return False
 
     @staticmethod
@@ -4776,7 +4789,8 @@ class Supervisor:
                         action = "drop-redundant-candidate"
                     else:
                         return None
-                    if not cls._stage2_relation_projects_candidate(existing, source_sense_id, candidate["candidate"]):
+                    if not cls._stage2_relation_projects_candidate(existing, source_sense_id, candidate["candidate"],
+                                                                   candidate.get("target_senses")):
                         return None
                     prior = actions.get(key)
                     if prior is not None and prior["action"] != action:
