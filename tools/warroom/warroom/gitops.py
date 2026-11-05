@@ -1457,7 +1457,17 @@ class Git:
         res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "verify", *args, "--json"],
                          cwd=worktree, env=self.env, timeout=timeout)
         if not res.ok:
-            return False, " ".join((res.err or res.out).split())[-300:], None
+            # Accounting/row failures carry their actionable details in stdout JSON;
+            # the timing-only stderr must not mask that existing diagnostic.
+            detail = res.err or res.out
+            if res.code == 2:
+                try:
+                    failure = json.loads(res.out.strip().splitlines()[-1])
+                    if isinstance(failure, dict) and failure.get("ok") is False:
+                        detail = res.out
+                except (ValueError, IndexError):
+                    pass
+            return False, " ".join(detail.split())[-300:], None
         try:
             payload = json.loads(res.out.strip().splitlines()[-1])
         except (ValueError, IndexError):
@@ -1465,7 +1475,8 @@ class Git:
         if not isinstance(payload, dict) or payload.get("ok") is not True:
             return False, "verify exited 0 without {ok:true}", None
         counts = payload.get("counts")
-        return True, "", counts if isinstance(counts, dict) else None
+        timing = next((line for line in (res.err or "").splitlines() if line.startswith("verify_timing ")), "")
+        return True, timing if checkpoint else "", counts if isinstance(counts, dict) else None
 
     def verify_stage2_local(self, worktree: Path, shard: str, batch: str, part: str,
                             *, checkpoint: bool, timeout: int = 900) -> tuple[bool, str]:

@@ -284,7 +284,17 @@ test('Stage 2 accepts only x/e and reserves z for deterministic orphan reconcili
   const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   assert.ok(saved.items.flatMap((item) => item.candidates).every((candidate) => candidate.decision.reason === 'e'));
   await mergeForTest(root, checkpoint);
-  const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+  const previousError = console.error;
+  let diagnostic;
+  console.error = (line) => { diagnostic = line; };
+  let verified;
+  try { verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root })); }
+  finally { console.error = previousError; }
+  const timing = JSON.parse(diagnostic.replace(/^verify_timing /u, ''));
+  assert.equal(timing.checkpoint, true);
+  for (const stage of ['checkpoint_load', 'materialize_part', 'shard_reload', 'reverse_lookup', 'orphan_drops', 'final_accounting', 'output_compare', 'total']) {
+    assert.equal(timing.stages.find((entry) => entry.stage === stage)?.status, 'success', stage);
+  }
   assert.equal(verified.drop, 6);
   assert.ok((await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'))).every((row) => row.reason === 'e'));
 });
@@ -2476,7 +2486,9 @@ test('verify --json: accounting failure is one JSON line with the complete error
   const root = await spawnedVerifyRepository(t, { count: 60, candidates: (i) => [`후보${i + 1}`] });
   const json = spawnVerify(root, '--json');
   assert.equal(json.status, 2, json.stderr);
-  assert.equal(json.stderr, '');
+  const timing = JSON.parse(json.stderr.trim().replace(/^verify_timing /u, ''));
+  assert.equal(timing.stages.at(-1).status, 'failed');
+  assert.equal(timing.stages.find((stage) => stage.stage === 'accounting').status, 'failed');
   assert.equal(json.stdout.trim().split('\n').length, 1);
   const out = JSON.parse(json.stdout);
   assert.deepEqual([out.version, out.ok, out.family, out.total, out.errors.length], [1, false, 'accounting', 60, 60]);
@@ -2498,6 +2510,10 @@ test('verify --json: invalid relation rows are family rows (exit 2); success is 
   assert.equal(ok.status, 0, ok.stderr);
   const out = JSON.parse(ok.stdout);
   assert.deepEqual([out.version, out.ok, out.counts.missing], [1, true, 0]);
+  const timing = JSON.parse(ok.stderr.trim().replace(/^verify_timing /u, ''));
+  assert.equal(timing.checkpoint, false);
+  assert.equal(timing.stages.at(-1).status, 'success');
+  assert.ok(!timing.stages.some((stage) => stage.stage === 'materialize_part'));
   assert.equal(JSON.parse(spawnVerify(good, '--json').stdout).ok, true);
   assert.match(spawnVerify(good).stdout, /^Relation Admission accounting valid for shard 001 batch 01:/u);
 });

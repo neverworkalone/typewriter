@@ -1,5 +1,10 @@
 """Issue #1832 regression: Stage 2 decisions with denied tools still use deterministic finalization."""
 import unittest
+from unittest import mock
+from pathlib import Path
+
+from warroom.gitops import Git
+from warroom.shell import Result
 
 from tests.fakes import FakeAdapter, World
 from tests.test_issue_1684 import S2, s2_world as base_s2_world
@@ -55,6 +60,30 @@ class DeterministicStage2Completion(unittest.TestCase):
         # The PR-owned gate reuses the verification from this successful finalization.
         self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")])
 
+
+    def test_successful_verify_timing_reaches_finalization_log(self):
+        w = self.w
+        timing = 'verify_timing {"stages":[{"stage":"total","elapsed_ms":12,"status":"success"}]}'
+        runner = mock.Mock()
+        runner.run.return_value = Result(0, '{"ok":true,"counts":{"missing":0}}\n', timing + "\n")
+        git = Git(runner, Path("."), {}, Path("."))
+        with mock.patch.object(w.git, "verify_stage2_local", side_effect=git.verify_stage2_local), \
+             mock.patch.object(w.store, "log", wraps=w.store.log) as log:
+            w.adapter.finish(w.adapter.launches[-1]["pid"])
+            w.tick()
+        self.assertTrue(any(timing in str(call) for call in log.call_args_list))
+
+    def test_verify_failure_preserves_stdout_diagnostic_in_finalization(self):
+        w = self.w
+        runner = mock.Mock()
+        runner.run.return_value = Result(2, '{"ok":false,"family":"accounting","errors":["missing candidate"]}\n',
+                                         'verify_timing {"stages":[{"stage":"accounting","status":"failed"}]}\n')
+        git = Git(runner, Path("."), {}, Path("."))
+        with mock.patch.object(w.git, "verify_stage2_local", side_effect=git.verify_stage2_local):
+            w.adapter.finish(w.adapter.launches[-1]["pid"])
+            w.tick()
+        b = w.store.active_batch("claude", S2)
+        self.assertIn("missing candidate", b["error"])
 
     def test_non_stage2_denial_still_requires_a_clean_owned_pr_at_local_head(self):
         w = base_s2_world(self)

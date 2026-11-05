@@ -1018,6 +1018,41 @@ function requireComplete(inventory, allowPartial) {
 
 export async function run(argv, { root } = {}) {
   const options = parseArgs(argv);
+  const timing = options.command === 'verify' ? createVerifyTiming(options) : null;
+  try {
+    const result = await runCommand(options, root, timing);
+    timing?.finish('success');
+    return result;
+  } catch (error) {
+    timing?.finish('failed');
+    throw error;
+  }
+}
+
+function createVerifyTiming(options) {
+  const started = performance.now();
+  const stages = [];
+  const active = [];
+  return {
+    checkpoint() { options.timingCheckpoint = true; },
+    start(stage) { active.push({ stage, started: performance.now() }); },
+    end() {
+      const entry = active.pop();
+      stages.push({ stage: entry.stage, elapsed_ms: Math.round(performance.now() - entry.started), status: 'success' });
+    },
+    finish(status) {
+      while (active.length) {
+        const entry = active.pop();
+        stages.push({ stage: entry.stage, elapsed_ms: Math.round(performance.now() - entry.started), status: 'failed' });
+      }
+      stages.push({ stage: 'total', elapsed_ms: Math.round(performance.now() - started), status });
+      console.error(`verify_timing ${JSON.stringify({ shard: options.shard, batch: options.batch, part: options.part,
+        checkpoint: Boolean(options.timingCheckpoint), stages })}`);
+    },
+  };
+}
+
+async function runCommand(options, root, timing) {
   const repositoryRoot = root ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   if (options.command === 'affected-shards') {
     const payload = { version: 1, ok: true, from: options.from, to: options.to,
@@ -1121,6 +1156,8 @@ export async function run(argv, { root } = {}) {
   }
   let verifiedCheckpoint = null;
   if (options.command === 'verify' && options.part && existsSync(checkpointPath)) {
+    timing?.checkpoint();
+    timing?.start('checkpoint_load');
     verifiedCheckpoint = await readCheckpoint(checkpointPath, { shard: options.shard, batch: options.batch, part: options.part });
     if (!verifiedCheckpoint.merged || verifiedCheckpoint.pending_chunk || verifiedCheckpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) {
       throw new Error(`Part checkpoint is incomplete or not merged: ${checkpointProgress(verifiedCheckpoint)}`);
@@ -1143,7 +1180,10 @@ export async function run(argv, { root } = {}) {
     }
   }
 
+  if (verifiedCheckpoint) timing?.end();
+  timing?.start('load_shard');
   const loaded = await loadShard(options.shard, repositoryRoot, { batch: options.batch });
+  timing?.end();
   const { canonicalRows, index } = loaded;
   if (options.relationsOnly) {
     const [relationRows, dropRows, otherRelationRows] = await Promise.all([
@@ -1168,7 +1208,9 @@ export async function run(argv, { root } = {}) {
   const candidateFiles = scoped.files;
   const inventory = options.batch ? candidateInventory(candidateFiles.map((file) => file.name), { batches: [options.batch] }) : loaded.inventory;
   requireComplete(inventory, options.allowPartial);
+  timing?.start('load_approved_relations');
   const others = await loadApprovedRelations(repositoryRoot, { exceptShard: options.shard });
+  timing?.end();
 
   if (options.command === 'prepare') {
     // A re-run must not re-offer what is already decided: this shard's own approved rows and real Drops count too.
@@ -1240,16 +1282,27 @@ export async function run(argv, { root } = {}) {
     return payload;
   }
 
+  timing?.start('relation_validation');
   const relationRows = await loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot));
   const dropRows = await loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot));
   const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows: others });
+  timing?.end();
+  timing?.start('accounting');
   const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows });
+  timing?.end();
   if (verifiedCheckpoint) {
+    timing?.start('checkpoint_merged');
     assertCheckpointMerged(verifiedCheckpoint, relationRows, dropRows);
+    timing?.end();
     if (verifiedCheckpoint.premerge) {
+      timing?.start('premerge_read');
       const baseline = await readReadyPremerge(verifiedCheckpoint, checkpointPath);
-      const expected = await materializePart(verifiedCheckpoint, repositoryRoot, baseline);
+      timing?.end();
+      timing?.start('materialize_part');
+      const expected = await materializePart(verifiedCheckpoint, repositoryRoot, baseline, null, timing);
+      timing?.end();
+      timing?.start('output_compare');
       const [actualRelations, actualDrops] = await Promise.all([
         readFileState(shardRelationPath(options.shard, repositoryRoot)),
         readFileState(shardDropPath(options.shard, repositoryRoot)),
@@ -1257,6 +1310,7 @@ export async function run(argv, { root } = {}) {
       if (!sameFileState(actualRelations, expected.relations) || !sameFileState(actualDrops, expected.drops)) {
         throw new Error('merged Part outputs do not match byte-for-byte materialize(premerge, checkpoint)');
       }
+      timing?.end();
     }
   }
   if (options.json) {
@@ -2720,23 +2774,36 @@ async function readReadyPremerge(checkpoint, checkpointPath) {
   return { relations, drops, relation_diff: manifest.relation_diff ?? null };
 }
 
-async function materializePart(checkpoint, root, baseline, preparedCandidateMerge = null) {
+async function materializePart(checkpoint, root, baseline, preparedCandidateMerge = null, timing = null) {
+  timing?.start('baseline_parse');
   assertPrimaryComplete(checkpoint);
   assertOptionalComplete(checkpoint);
   validateCheckpointDecisions(checkpoint);
   const existingRelations = parseJsonlState(baseline.relations, 'Relation');
   const existingDrops = parseJsonlState(baseline.drops, 'Drop');
+  timing?.end();
+  timing?.start('other_relations_load');
   const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
+  timing?.end();
+  timing?.start('shard_reload');
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
+  timing?.end();
+  timing?.start('baseline_validate');
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+  timing?.end();
+  timing?.start('candidate_merge');
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part, checkpoint.shard);
   const candidateMerge = preparedCandidateMerge ?? mergeCandidates(loaded.canonicalRows, scoped.files, {
     canonicalLemmaForms: new Set([...loaded.index.byLemma.keys()].map(normalizeCandidate)),
   });
   const { relations: newRelations, relationCandidates, drops: newDrops } = decisionRows(checkpoint);
+  timing?.end();
+  timing?.start('all_drops_load');
   const allDrops = await loadAllApprovedDrops(root, { exceptShard: checkpoint.shard });
+  timing?.end();
+  timing?.start('reverse_lookup');
   const reverseCandidates = createReverseCandidateFormLookup({
     relationRows: [...others, ...existingRelations],
     dropRows: [...allDrops, ...existingDrops, ...newDrops],
@@ -2749,8 +2816,12 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
     if (source) relation.reverse_candidate_forms = reverseCandidates.available(source, relation.target_sense_id);
     reverseCandidates.addRelation(relation);
   }
+  timing?.end();
+  timing?.start('merge_conflicts');
   const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops,
     loaded.index, others);
+  timing?.end();
+  timing?.start('orphan_drops');
   const removedRelationRows = baseline.relation_diff
     ? deletedIdRelationRowsBetween(baseline.relation_diff.from, baseline.relation_diff.to, root) : [];
   const editDrops = orphanedCandidateDrops({
@@ -2764,14 +2835,21 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
     candidateMerge,
   });
   merged.drops.push(...editDrops);
+  timing?.end();
+  timing?.start('final_validation');
   validateRelationRows({ relationRows: merged.relations, dropRows: merged.drops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+  timing?.end();
+  timing?.start('final_accounting');
   verifyAccounting({ canonicalRows: loaded.canonicalRows, candidateFiles: scoped.files, relationRows: merged.relations,
     dropRows: merged.drops, otherRelationRows: others, index: loaded.index, scopeRows: scoped.scopeRows, candidateMerge });
+  timing?.end();
+  timing?.start('serialization');
   const relations = sameRows(merged.relations, existingRelations)
     ? baseline.relations : serializedJsonlState(merged.relations, baseline.relations, 'Relation');
   const drops = sameRows(merged.drops, existingDrops)
     ? baseline.drops : serializedJsonlState(merged.drops, baseline.drops, 'Drop');
+  timing?.end();
   return { relations, drops, merged, existingRelations, existingDrops };
 }
 
