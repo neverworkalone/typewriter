@@ -22,9 +22,9 @@ class MaintainerActionsEvidence(unittest.TestCase):
         from warroom.github import GhClient
         client = GhClient(None, {}, "owner/repo")
         run = {"id": 42, "event": "pull_request", "path": ".github/workflows/ci.yml",
-               "head_sha": HEAD1, "head_branch": "maint-101", "status": "completed", "conclusion": "failure",
+               "head_sha": "b" * 40, "head_branch": "maint-101", "status": "completed", "conclusion": "failure",
                "run_attempt": 1, "pull_requests": [{"number": 50, "head": {"sha": HEAD1}}]}
-        job = {"id": 99, "name": "Validate and test Typewriter", "head_sha": HEAD1,
+        job = {"id": 99, "name": "Validate and test Typewriter", "head_sha": "b" * 40,
                "status": "completed", "conclusion": "failure", "steps": [{"name": "Tests", "conclusion": "failure"}]}
         def lookup(path):
             if "/workflows/" in path:
@@ -35,12 +35,15 @@ class MaintainerActionsEvidence(unittest.TestCase):
         with mock.patch.object(client, "_api", side_effect=lookup):
             self.assertEqual(client.maintainer_ci_failure(50, HEAD1, "maint-101")["key"], "ci:42:1")
             for field, value in [("status", "in_progress"), ("conclusion", "success"),
-                                 ("conclusion", "skipped"), ("head_sha", "b" * 40),
+                                 ("conclusion", "skipped"), ("head_sha", "c" * 40),
                                  ("pull_requests", [{"number": 51, "head": {"sha": HEAD1}}])]:
                 old = run[field]
                 run[field] = value
                 self.assertIsNone(client.maintainer_ci_failure(50, HEAD1, "maint-101"), field)
                 run[field] = old
+            run["pull_requests"][0]["head"]["sha"] = "c" * 40
+            self.assertIsNone(client.maintainer_ci_failure(50, HEAD1, "maint-101"))
+            run["pull_requests"][0]["head"]["sha"] = HEAD1
             job["conclusion"] = "skipped"
             self.assertIsNone(client.maintainer_ci_failure(50, HEAD1, "maint-101"))
 
