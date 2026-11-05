@@ -1,128 +1,49 @@
 # War Room — 운영 가이드
 
-이 README는 **오너가 War Room 운영 중 찾아 쓰는 명령과 장애 대응 정보**를 정리한 문서다. 내부 아키텍처, 개발 이력, 구현 설계는 다루지 않는다. 모든 셸 명령은 별도 표시가 없으면 **Typewriter 저장소 루트**에서 실행한다.
+오너가 사용하는 실행·설정·로그 조회·장애 대응 명령만 정리합니다. 별도 표시가 없으면 모든 명령은 **Typewriter 저장소 루트**에서 실행합니다.
 
-## 생산 로그 찾기 (전체 실행 기록)
+## 실행 로그 조회
 
-아래 명령은 **최초 생산과 중단·복구 뒤의 모든 `produce%` 실행**에 대한 `runs.log_file` 경로를 시작 시간순으로 출력하고 macOS 클립보드에 복사한다. **마지막 실행 하나만 담는 `batches.log_file`과 다르다.**
+`runs.log_file`은 최초 생산, 재개, 리뷰 수정 등 **각 run의 로그**를 가리킵니다. `batches.log_file`은 마지막 로그 하나만 나타낼 수 있습니다. 다음 명령은 시간순 경로를 macOS 클립보드에 복사하며, 마지막 `| paste -sd ' ' - | pbcopy`를 제거하면 터미널에 출력합니다.
 
-### PR 번호로 조회
-
-```sh
-sqlite3 -noheader tools/warroom/.local/warroom.db \
-  "SELECT r.log_file
-   FROM runs r
-   JOIN batches b ON b.id = r.batch_id
-   WHERE b.pr_number = 2046
-   ORDER BY r.started_at;" | paste -sd ' ' - | pbcopy
-```
-
-### 배치명으로 조회 — A / 046_01 / Codex
+**PR 번호 기준** (`2046`을 대상 번호로 변경):
 
 ```sh
-sqlite3 -noheader tools/warroom/.local/warroom.db \
-  "SELECT r.log_file
-   FROM runs r
-   JOIN batches b ON b.id = r.batch_id
-   WHERE b.method = 'c'
-     AND b.shard = '001'
-     AND b.batch = '01'
-     AND b.producer='codex'
-     AND r.log_file IS NOT NULL
+sqlite3 -readonly -noheader tools/warroom/.local/warroom.db \
+  "SELECT r.log_file FROM runs r JOIN batches b ON b.id=r.batch_id
+   WHERE b.pr_number=2046 AND r.log_file IS NOT NULL
    ORDER BY r.started_at, r.id;" | paste -sd ' ' - | pbcopy
 ```
 
-`method`는 `a`·`b`·`c`·`d`, `producer`는 설정의 논리 모델 ID(`codex`, `claude`, `deepseek` 등)다. **A/B는 모델별 독립 큐**이므로 모델을 지정해 보는 것이 편하다. **C/D는 방식별 공유 큐**라 모델 조건을 빼도 된다. 같은 배치명으로 과거 여러 실행 기록이 있으면 일치하는 경로가 모두 나온다.
-
-### Stage 2 Part로 조회 — 001 / Batch 01 / Part 03
-
-Stage 2는 `batches.method='s2'`, `batches.batch='BB-PP'`로 저장한다. Part 크기(#3385)는 `config/stage2-part-layout.json`이 정한다: Shard 001–005는 100 records(Part 01–05), 006부터는 250 records(Part 01–02). 이 예시의 `01-03`은 legacy Shard에만 존재한다.
-
-**Part 크기 전환(#3385) 배포 절차 — 코드 머지만으로는 전환되지 않는다.**
-1. Stage 2 신규 Part 시작을 일시 차단한다(Drain/Stop; 실행 중 작업은 강제 종료하지 않는다).
-2. 경계 다음 Shard(현재 006)에 Part 01·02를 포함한 어떤 흔적도 없는지 확인한다: 운영 DB의 `s2` 행과 `s2_ok*`/`s2_layout_*` KV, `.warroom-scratch/relation-admission-006-*` checkpoint, `git branch -a`·`git worktree list`, 열린/닫힌 PR, master의 `relation-006`/`drop-006`.
-3. 전무하면 경계 `legacy_through_shard`=`005`를 확정한다. 그 사이 006이 시작됐다면 경계를 올리는 커밋 후 2를 반복한다.
-4. 새 코드를 배포(Supervisor 재시작)하고 Stage 2를 재개한다. Python은 움직이는 ref가 아니라 확정된 master SHA의 `git show <sha>:config/stage2-part-layout.json`을 읽고, 신규 Shard의 첫 Part를 시작할 때 KV `s2_layout_<SSS>=250`을 기록한다. 이 표식 없이 위 흔적이 하나라도 있으면 War Room은 자동 전환하지 않고 Stop한다.
+**방식/배치 기준** (예: Method C, shard `001`, batch `01`, Codex):
 
 ```sh
-sqlite3 -noheader tools/warroom/.local/warroom.db \
-  "SELECT r.log_file
-   FROM runs r
-   JOIN batches b ON b.id = r.batch_id
-   WHERE b.method = 's2'
-     AND b.shard = '001'
-     AND b.batch = '01-03'
-     AND r.log_file IS NOT NULL
+sqlite3 -readonly -noheader tools/warroom/.local/warroom.db \
+  "SELECT r.log_file FROM runs r JOIN batches b ON b.id=r.batch_id
+   WHERE b.method='c' AND b.shard='001' AND b.batch='01'
+     AND b.producer='codex' AND r.log_file IS NOT NULL
    ORDER BY r.started_at, r.id;" | paste -sd ' ' - | pbcopy
 ```
 
-**리뷰 후 수정 로그까지 함께** 보려면 위 명령의 `AND r.kind LIKE 'produce%'` 조건을 삭제한다. `runs.kind`도 같이 확인하려면 `SELECT r.kind, r.log_file`로 바꾼다. `pbcopy`를 빼면 터미널에 경로가 표시된다. `less <로그경로>` 또는 `tail -f <로그경로>`로 원본 로그를 읽을 수 있다.
+S2도 같은 쿼리를 사용합니다. `b.method='s2'`, `b.batch='BB-PP'`(예: `'02-02'`)로 바꾸면 Part 단위로 조회합니다. `SELECT r.kind, r.log_file`로 바꾸면 실행 종류도 확인할 수 있습니다. 로그 내용은 `less <로그경로>` 또는 `tail -f <로그경로>`로 읽습니다.
 
-## 사용량 계측과 선택적 단가 (Issue #2033)
-
-run이 끝나면 그 run 자신의 로그만 읽어 `runs` 테이블에 `input_tokens`(cached·cache write 포함), `cached_input_tokens`,
-`cache_write_tokens`, `output_tokens`(reasoning 포함), `reasoning_output_tokens`(output의 부분집합), `tool_calls`,
-`submit_failures`를 기록합니다. resume은 새 run·새 로그이므로 중복 집계되지 않습니다. 로그에 없는 값(과거 run, OpenCode,
-usage 누락)은 NULL이며 0으로 채우지 않습니다. 비용은 `config.json`의 선택적 `pricing`(USD / 1M tokens)이 있을 때만 계산합니다.
-실제 단가를 직접 채우세요 (없으면 `unknown`):
-
-```json
-"pricing": {"<model id>": {"input": 0, "cached_input": 0, "cache_write": 0, "output": 0}}
-```
-
-## Supervisor 코드 수정 후 재시작
-
-Supervisor Python 코드가 바뀐 수정은 loaded code SHA가 새 commit을 포함하지 않으면 자동 재개하지 않는다. Supervisor와 별도인 restart controller는 `.git/typewriter-supervisor/restart-requests/`에 저장된 요청을 읽고, 운영 루트·Supervisor PID/tmux pane·worktree 소유권·모든 worker 종료·Stop/Drain/Clear/defect hold 상태를 확인한다. 모든 조건이 맞으면 `warroom-supervisor` tmux 세션만 종료하고 운영 루트에서 다시 시작한다. 성공은 새 runtime root와 loaded code SHA가 증명되어도 아직 완료가 아니며, 원 task의 공식 SAVED 진행이 확인된 뒤 기록한다.
-
-Supervisor가 이미 종료된 경우 모든 worker의 종료가 확인되면 대기 중인 Stop 플래그를 유지한 채 Supervisor를 시작한다. Supervisor가 기존 Stop을 처리하며, 살아 있는 Supervisor의 교체에는 기존 Stop 제한을 그대로 적용한다.
-
-같은 조건에서 기존 Clear 요청도 보존한 채 Supervisor를 시작해 일반 Clear 경로가 소유권과 작업물을 확인하도록 한다. 실행 중인 Supervisor 교체 시에는 Clear가 계속 재시작을 막는다.
-
-코드를 배포한 뒤 운영 루트에서 `./war`를 실행한다. 이 launcher는 기존 TUI가 이미 열려 있어도 별도 controller를 먼저 실행하므로 새 controller가 처음 배포된 경우에도 persisted restart request를 처리할 수 있다. 진행 중 AI/task, operator Stop/Drain/Clear/hold, root/HEAD/ownership 불일치가 있으면 아무 프로세스도 종료하지 않고 요청을 대기 상태로 보존한다. TUI의 Supervisor 상태와 Audit Log에서 blocker를 확인하고 조건이 해소되면 controller가 다시 검사한다.
-
-incident에 직접 연결되지 않은 머지된 Supervisor 수정은 운영 루트에서 `TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" tools/warroom/.local/venv/bin/python -m warroom.restart_controller --request-code-sha <FULL_SHA>`로 명시적으로 요청한다. 이 요청은 사건 해결을 주장하지 않으며 동일한 작업 종료·소유권·운영자 제어 검사를 거친다.
-
-**운영 루트(#3378):** 프롬프트·`.local` 상태·Supervisor 코드는 모두 운영 메인 checkout(예: `~/git/neverworkalone/typewriter`)에서만 읽는다. `./war`/`./dashboard`가 검증된 루트를 `TYPEWRITER_WARROOM_ROOT`로 TUI·Supervisor에 명시 전달하고, 코드가 그 루트에서 import되지 않았거나 기본 프롬프트가 없으면 임시 worktree로 fallback하지 않고 시작을 거부한다. 살아 있는 Supervisor/TUI가 다른 루트에서 시작됐다면 controller는 이를 교체하지 않고 요청을 대기 상태로 둔다.
-
-`./war` creates or reattaches the TUI and starts a fresh Supervisor if none holds its lock. The Supervisor recovers existing batches using persisted state and running processes. Do not delete `tools/warroom/.local/`, manually reset worktrees, force-kill processes, or press Retry just to reload code.
-
-## Web UI (`./dashboard`)
-
-Mac 브라우저와 iPhone/iPad Safari용 **두 번째 View**다. 새 Controller·Supervisor가 아니며, 기존 `./war`·Supervisor를 바꾸지 않는다.
+## 실행 및 Supervisor 재시작
 
 ```sh
-./dashboard              # http://localhost:8000
-./dashboard --port 8123  # 포트 변경
+./war                 # TUI 열기/재연결, Supervisor가 없으면 시작
+./dashboard           # 기존 Supervisor를 공유하는 보조 Web View (http://localhost:8000)
+./dashboard --port 8123
 ```
-## 계정·설정 경로
 
-**설정만 바꿨다면:** `tools/warroom/.local/config.json`을 수정하고 보드에서 `r`을 누른다. 거부 사유는 화면/Audit Log에서 확인한다. Supervisor Python 코드 교체는 위 재시작 절차를 따른다.
+설정 변경: `tools/warroom/.local/config.json` 수정 후 TUI에서 `r`을 눌러 리로드합니다. 실행 중인 AI run의 프로필·세션은 바뀌지 않습니다. **Python 코드 수정은 설정 리로드만으로 적용되지 않습니다.**
+
+Supervisor 수정 코드를 배포했다면 운영 메인 checkout에서 `./war`를 실행합니다. 별도 restart controller가 보존된 요청(`.git/typewriter-supervisor/restart-requests/`)을 확인하고, **worker 종료·운영 루트 및 worktree 소유권·Stop/Drain/Clear/hold** 등의 조건이 안전할 때만 Supervisor를 교체합니다. 불확실하면 기존 작업을 중단하지 않고 대기합니다. 코드가 실제로 로드된 SHA와 원 생산 task의 공식 저장 진전은 별개로 확인합니다.
+
+incident와 무관한 코드 수정의 명시적 재시작 요청:
 
 ```sh
-# War Room 전용 GitHub 계정 확인 (개인 gh 로그인과 분리)
-GH_CONFIG_DIR=tools/warroom/.local/gh gh auth status
-
-# 최초 설정이 필요한 경우에만
-GH_CONFIG_DIR=tools/warroom/.local/gh gh auth login
-
-# Claude / Codex 계정 상태
-claude auth status
-codex login status
+TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" \
+  tools/warroom/.local/venv/bin/python -m warroom.restart_controller --request-code-sha <FULL_SHA>
 ```
 
-- War Room GitHub 기대 계정: `neverworkalone-agent`. GitHub 인증은 `.local/gh`로 분리되며, Claude/Codex 로그인은 각 CLI의 로컬 계정을 사용한다.
-- 작업 설정: `tools/warroom/.local/config.json` (`tools/warroom/config.example.json` 참고).
-- Method C 승인 문학 SQLite: 설정의 `literary_index_path`에 승인 인덱스의 읽기 가능한 절대 경로를 지정한다. Supervisor는 경로가 없거나 읽을 수 없으면 C 실행을 막고, 유효한 경로를 `TYPEWRITER_APPROVED_LITERARY_DB`로 C 생산 및 리뷰 수정 실행에 전달한다. 경로를 찾기 위해 캐시 전체를 검색하지 않는다.
-- Method D 승인 문어 SQLite(paragraph corpus): 설정의 `corpus_index_path`에 읽기 가능한 절대 경로를 지정한다(C의 `literary_index_path`와 별개). D는 25-record 청크마다 새 AI 세션으로 실행되고 Supervisor가 `scripts/relation/d-chunk-cli.mjs prepare`로 청크 view를 준비해 초기 프롬프트에 직접 싣는다(너무 크면 page 폴백). 경로는 D 청크 세션과 prepare에만 `TYPEWRITER_APPROVED_CORPUS_DB`로 전달되며, 조립·Candidate v1 검증 1회·commit·push·PR은 Supervisor가 한다. 최종 검증 실패는 ERROR로 보존·보고하며 자동 재작성 세션은 없다.
-- 모델 배정(#1867, #2538, #3607): 실행 설정은 `model_profiles`(adapter·model·effort·permission_profile 및 Codex 전용 `fast`), producer별 사용은 `assignments`와 `maintainer`(프로필 ID)가 정한다. Stage 1은 A/B=`stage1-ab`, C=`stage1-c`, D=`stage1-d`를 먼저 확인하고, 해당 producer의 전용 배정이 없으면 `stage1`을 사용한다. 따라서 기존 `stage1`만 있는 설정은 A/B/C/D 모두 그대로 동작하며, C만 xHigh로 바꾸려면 예를 들어 `stage1-c.codex`만 덮어쓴다. 전용 역할은 서로 대체하지 않으며, Stage 1 전용·공통 배정이 모두 없는 producer가 다른 역할에서 프로필로 관리되면 시작/preflight를 차단한다. 선택한 프로필은 `model`, `effort`, `permission_profile`, Codex `fast`를 한꺼번에 적용한다. Stage 2와 Stage 3는 각각 독립된 `stage2`와 `stage3` 배정을 사용하고 서로 또는 Stage 1 프로필을 대신 쓰지 않는다. 프로필 기반 설정은 실행할 Stage 3 모델마다 Claude/Codex 모델 ID와 프로필 ID를 `stage3`에 지정해야 한다. 모델 ID(`codex`/`claude`/`deepseek`)는 Candidate 파일 접미사·큐·로그 소유권의 논리 producer이며 바뀌지 않는다. Maintainer를 Claude로 바꾸려면 `"maintainer": "sonnet-medium"`처럼 프로필 ID만 교체한다(프로필 adapter의 모델 ID가 둘 이상이면 assignments에 그 프로필을 배정해 하나로 정한다). DeepSeek는 계속 `producers.deepseek`의 `models.free/go`·`effort`로 설정한다. 프로필 배정이 있는 producer에는 model/effort/permission_profile 등 직접 실행 핀을 함께 쓸 수 없다. 배정이 없는 기존 `producers` 설정과 `"maintainer": "<모델 ID>"`는 그대로 동작한다. 설정을 `r`로 다시 읽으면 다음 새 run에서 실효 프로필을 선택하고 이미 시작한 run의 실행 설정·session·usage 기록은 보존한다. 새 C 배치에는 설정 적용 후 시작해야 한다. 기존 adapter 교체 제한과 논리 producer/worktree 소유권은 유지된다.
-
-- Codex Fast (#3583): Codex 프로필 또는 배정 없는 `producers.codex`에서 선택적 Boolean `fast`를 쓸 수 있다. `true`는 해당 start/resume에만 Fast 서비스 티어를 요청하고, `false`는 Standard를 명시한다. 생략하면 기존 CLI 상속 동작을 유지한다. 각 실행에 `-c`로만 전달하므로 `~/.codex/config.toml`은 읽기 전용으로 두며 변경하지 않는다. Stage별 프로필에서 값이 분리된다. Claude·OpenCode/DeepSeek의 `fast` 값은 값이 무엇이든 검증 오류나 argv 없이 무시한다. Fast는 로그인 방식과 모델에 따라 제공되지 않을 수 있고 더 많은 사용량을 쓸 수 있다. Codex가 Fast 설정을 명시적으로 거부하면 자동 전환/재시도하지 않고 해당 실행을 오류로 보존한다. 자세한 내용은 [Fast mode 안내](https://learn.chatgpt.com/docs/agent-configuration/speed)를 참고한다.
-- Stage 2 병렬 primary(#3047): 배포 후 새로 시작하는 Part는 `admission-cli plan-chunks`의 고정 task 계획(목표 `stage2_chunk_candidates`=250후보/task)으로 primary 판정을 나누어 최대 `stage2_max_parallel`(기본 16)개 세션을 동시에 실행한다. 빈 슬롯은 즉시 채우고 큰 Sense의 후속 조각은 선행 task 저장 후에만 시작하며, 저장은 Supervisor가 완료 순서로 하나씩 `save-chunk --task`로 수행한다. 두 값은 `r` 리로드 후 **다음 새 Part의 계획 / 다음 배정**부터 적용되며 실행 중 세션을 강제로 줄이지 않는다. 상한 1은 같은 계획을 순차 실행한다. 진행 중이던 기존 Part는 직렬 경로로 끝난다. Stop/Clear는 모든 task 프로세스의 종료를 확인하고, Retry는 저장되지 않은 task만 보존된 응답·수정 예산·세션으로 이어간다. Board의 Stage 2 카드에 task 실행/대기/저장 수가 표시된다.
-- Stage 3 병렬 청크(#3149): 배포 후 **새로 시작하는 샤드**는 `edit-cli prepare`가 만든 청크를 최대 `stage3_max_parallel`(기본 16)개 answer-only 세션으로 동시에 판정한다. 슬롯은 run의 **종료가 확인된 뒤에만** 비며(`taskruns.slots_used`), 재시도 대기 청크가 미시작 청크보다 먼저 배정된다. 저장은 Supervisor만 완료 순서로 하나씩 `save-chunk --chunk NNN --expect-view-sha256`로 수행하므로 결과 파일은 순서와 무관하다. 응답 없음·헤더 없음·헤더만 있음은 `none`이 아니라 새 세션 1회 뒤 FAILED이고, 명시적 `chunk NNN`+`none`만 Keep-all이다. 저장 거부는 해당 청크만 FAILED로 두고 AI를 다시 부르지 않으며(Retry는 증거가 모두 일치할 때 보존된 응답을 1회만 다시 저장), FAILED가 있으면 그 tick부터 새 세션을 시작하지 않는다. Maintainer 통합으로 미완료 청크의 view가 바뀌면 이전 응답은 `superseded-<view>.txt`로 보존하고 그 청크만 새 세션으로 다시 판정한다. 모드는 배치 행과 같은 트랜잭션에 기록되며(`s3_mode_<id>`), 모드가 없는 진행 중 샤드는 직렬로 끝난다. worker는 다른 AI/CLI를 띄울 수 없다. 값 변경은 `r` 리로드 후 다음 배정부터 적용된다.
-- 자동 장애 접수·복구(#3349, #3326, #3409, #3614): C·D·Stage 2·Stage 3 배치가 비-ERROR에서 ERROR로 전이하면 사건마다 urgent Issue를 연결하고, Maintainer가 issue/event/attempt/task/chunk/evidence SHA에 결속된 구조화 결과를 남긴다. Supervisor는 원본 snapshot과 현재 HEAD·task·session·operator controls를 다시 확인한다. PR 없는 제출 실패는 성공으로 처리하지 않는다. 확인된 no-code result는 기존 method-specific task resume을 한 번만 인가하고, external prerequisite는 supervisor가 허용된 상태를 주기적으로 확인해 같은 Issue의 재조사를 큐에 넣는다. investigation incomplete는 같은 Issue/session에서 제한 횟수 이어진다. no-code, external, HELD handoff 모두 원 production batch를 해결된 것으로 표시하지 않는다. no-code/merged-fix recovery는 원래 실패 task가 공식 SAVED 되거나 검증된 후속 생산 단계에 진입한 경우에만 해결 처리된다. Maintainer AI slot은 active execution/fix만 점유한다. PR review/merge/cleanup은 issue별 branch·worktree·HEAD로 계속 감시되며, 리뷰 수정은 하나의 공유 AI slot에서 직렬 실행한다.
-- D 청크 병렬(#3074): 오너가 승인한 War Room Supervisor가 D 배치의 25-record 청크를 배치 내부에서 최대 8개(`dchunk.MAX_PARALLEL`, 설정 없음)까지 동시에 실행한다. 새 코드로 Supervisor를 재시작하면 이미 병렬 실행 중인 D 배치도 다음 슬롯 보충부터 8개 상한을 적용하며, 실행 중인 세션은 종료하지 않는다. 청크마다 task(`s2_tasks`, ID `001`…)와 run(`runs.task`)이 있고, 슬롯은 SAVED 여부가 아니라 종료가 확인되지 않은 run 수로 센다. 배치당 Candidate 파일·PR 하나, 공유 cursor·claim·worktree·branch는 그대로이며 모드 키(`d_mode_<id>`)가 없는 진행 중 배치는 직렬로 끝낸다. 수정·resume·technical-skip·Retry 기회는 청크별이다. worker가 다른 AI·CLI·서브에이전트를 실행할 권한은 없다.
-- C 청크 병렬(#3076): 오너가 승인한 War Room Supervisor가 C 배치의 12-Sense 청크를 배치 내부에서 최대 8개(`literary.MAX_PARALLEL`, 설정 없음)까지 동시에 실행한다. 새 코드로 Supervisor를 재시작하면 이미 병렬 실행 중인 C 배치도 다음 슬롯 보충부터 8개 상한을 적용하며, 실행 중인 세션은 종료하지 않는다. 청크 번호가 task ID(`s2_tasks`)이며 task 수는 렌더링에 따라 늘어난다. 각 task는 활성 청크(`c-active-NNN.json`)의 Sense만 소유하고, 이미 예약된 Sense는 `--exclude-sense-ids`로 제외한다(남은 Sense가 모두 예약된 빈 view는 정상 대기). 슬롯은 종료가 확인되지 않은 run 수로 센다. 수정(자동 2회 + 운영자 Retry당 1회)·무제출 복구·technical-skip 권한은 task별이며, 운영자 Retry는 `c_parallel_retry_epoch_<id>`로 한 번만 부여된다. 배치당 checkpoint·Candidate 파일·PR 하나, 공유 cursor·claim은 그대로이고 현재 승인 runtime baseline은 `c_run_start_<id>` 하나다. 모드 키(`c_mode_<id>`)가 없는 진행 중 배치는 직렬로 끝낸다. worker가 다른 AI·CLI·서브에이전트를 실행할 권한은 없다.
-- 상태 DB: `tools/warroom/.local/warroom.db`. 로그·worktree: `tools/warroom/.local/` 아래. Supervisor 단일 실행 lock과 일시적 Stage 2 fallback 권한 증거는 worker가 쓰지 못하도록 공유 Git 관리 디렉터리의 `typewriter-supervisor/`에 둔다. `.local`은 Git에서 제외되므로 인증·로그를 커밋하지 않는다.
-- Codex 권한 문제가 나면 `~/.codex/config.toml`의 지정 `permission_profile`을, Claude 권한 문제가 나면 `~/.claude/settings.json` 등 로컬 권한 설정을 확인한다. War Room이 임의로 권한을 넓히지는 않는다.
-
-추가 생산·검증 절차의 정본은 [Relation Factory](../../docs/relation-factory.md) 및 [Stage 2 Issue #927](https://github.com/neverworkalone/typewriter/issues/927)이다. 이 README는 개발 설계서가 아니라 **오너용 운영 명령 모음**으로 유지한다.
+프롬프트·설정·Supervisor는 검증된 **운영 메인 checkout**에서만 읽습니다. 임시 worktree로 대체하지 않습니다. **`.local/` 삭제, DB 수동 초기화, 강제 프로세스 종료, 코드 리로드 목적의 Retry는 금지합니다.** 장애나 재시작 지연 사유는 TUI의 Supervisor 상태·Audit Log에서 확인합니다.
