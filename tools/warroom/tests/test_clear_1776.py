@@ -567,6 +567,24 @@ class ClearRealGit(unittest.TestCase):
         self.assertIsNone(w.store.batch(bid))
         self.assertIsNone(w.store.clear_request("deepseek", "a"))
 
+    def test_discard_missing_worktree_never_deletes_ref_created_after_check(self):
+        self.git.fetch_base("master")
+        wt = self.wts / "w1"
+        self.git.create_worktree(wt, "b1", "master")
+        self.git.discard_owned(wt, "b1")
+        git_call = self.git._git
+        def recreate_after_check(*args, **kwargs):
+            result = git_call(*args, **kwargs)
+            if args[:2] == ("show-ref", "--verify"):
+                git_call("branch", "b1", "master")
+            return result
+        with mock.patch.object(self.git, "_git", side_effect=recreate_after_check):
+            self.git.discard_owned(wt, "b1")
+        self.assertTrue(git_call("show-ref", "--verify", "--quiet", "refs/heads/b1", check=False).ok)
+        from warroom.gitops import CleanupBlocked
+        with self.assertRaises(CleanupBlocked):
+            self.git.discard_owned(wt, "b1")
+
     def test_foreign_paths_and_branches_are_refused(self):
         from warroom.gitops import CleanupBlocked
         self.git.fetch_base("master")

@@ -746,8 +746,9 @@ class Git:
 
     def discard_owned(self, path: Path, branch: str) -> None:
         """Remove the verified worktree (tracked-dirty and untracked files included) and its local branch; only these."""
-        if self.verify_owned(path, branch):
-            self._git("worktree", "remove", "--force", str(path))
+        if not self.verify_owned(path, branch):
+            return
+        self._git("worktree", "remove", "--force", str(path))
         if self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}", check=False).ok:
             self._git("branch", "-D", branch)
 
