@@ -938,26 +938,27 @@ class ParallelC:
         due = lambda r: _data(r).get("retry_after", 0) <= now and r["task"] not in busy
         ordered = sorted(rows.values(), key=lambda r: r["task"])
         queue = [r for r in ordered if r["state"] == "FIXQ" and due(r)] + [r for r in ordered if r["state"] == "PENDING" and due(r)]
-        with self.sup.launch_gate.permit():   # rendering a new chunk writes before its launch (#3786)
-            self._start_queued(b, round_, queue, free)
+        self._start_queued(b, round_, queue, free)
 
     def _start_queued(self, b, round_: _Round, queue, free) -> None:
         for row in queue:
             if free <= 0 or self.store.batch(b["id"])["state"] != "PRODUCING":
                 return
-            row = self.store.task_row(b["id"], row["task"])
-            if row["state"] == "SAVED":
-                continue
-            outcome = self._start(b, row, round_)
+            with self.sup.launch_gate.unit():   # one task per admission: a closed gate stops before the next one
+                row = self.store.task_row(b["id"], row["task"])
+                if row["state"] == "SAVED":
+                    continue
+                outcome = self._start(b, row, round_)
             if outcome == "stop":
                 return
             if outcome == "started":
                 free -= 1
         while free > 0 and self.store.batch(b["id"])["state"] == "PRODUCING":
-            row = self._render_new(b, round_)
-            if row is None:
-                return
-            outcome = self._start(b, row, round_)
+            with self.sup.launch_gate.unit():   # rendering a new chunk writes: it is admitted together with its launch
+                row = self._render_new(b, round_)
+                if row is None:
+                    return
+                outcome = self._start(b, row, round_)
             if outcome != "started":
                 return
             free -= 1

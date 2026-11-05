@@ -426,22 +426,31 @@ class ParallelStage2:
         queue += [t for t in stage2.ready_tasks(plan, rows) if self._data(rows[t["id"]]).get("retry_after", 0) <= now]
         if not queue:
             return
-        with self.sup.launch_gate.permit():   # boundary adoption and slot preparation are launch writes (#3786)
-            self._start_queued(b, rows, round_, queue, free)
+        self._start_queued(b, rows, round_, queue, free)
 
-    def _start_queued(self, b, rows, round_: _Round, queue, free) -> None:
+    def _start_allowed(self, b, round_: _Round) -> bool:
+        """Boundary adoption and the pin proof, once per fill, inside the first task's launch unit."""
         if self._halted_by_boundary(b, round_):
-            return
+            return False
         problem = round_.preflight()
         if problem:
             from .adapters import PREFLIGHT_PENDING
-            if problem.startswith(PREFLIGHT_PENDING):
-                return   # still proving the pin in the background; the next tick retries
-            return self.sup._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+            if not problem.startswith(PREFLIGHT_PENDING):   # else still proving the pin; the next tick retries
+                self.sup._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+            return False
+        return True
+
+    def _start_queued(self, b, rows, round_: _Round, queue, free) -> None:
+        checked = False
         for task in queue[:free]:
             if self.store.batch(b["id"])["state"] != "PRODUCING":
                 return
-            self._launch_task(b, task, rows[task["id"]], round_)
+            with self.sup.launch_gate.unit():   # one task per admission: a closed gate stops before the next one
+                if not checked:
+                    if not self._start_allowed(b, round_):
+                        return
+                    checked = True
+                self._launch_task(b, task, rows[task["id"]], round_)
 
     @task_launch_scope
     def _launch_task(self, b, planned, row, round_: _Round) -> None:

@@ -24,14 +24,20 @@ class LaunchGate:
     def held(self):
         return bool(getattr(self._local, 'depth', 0))
 
+    def unit(self):
+        """One launch unit (a single task): the gate is re-checked even when this thread already holds a permit."""
+        return self.permit(recheck=True)
+
     @contextmanager
-    def permit(self):
+    def permit(self, recheck=False):
         with self._condition:
             depth = getattr(self._local, 'depth', 0)
             if not depth:
                 if not self._open:
                     raise LaunchDenied()
                 self._active += 1
+            elif recheck and not self._open:
+                raise LaunchDenied()
             self._local.depth = depth + 1
         try:
             yield
@@ -67,9 +73,9 @@ class LaunchGate:
 
 
 def task_launch_scope(fn):
-    """Hold one permit from a parallel task launcher's first durable write through its PID/run evidence."""
+    """Hold one launch unit from a parallel task launcher's first durable write through its PID/run evidence."""
     @wraps(fn)
     def wrapped(self, *args, **kwargs):
-        with self.sup.launch_gate.permit():
+        with self.sup.launch_gate.unit():
             return fn(self, *args, **kwargs)
     return wrapped

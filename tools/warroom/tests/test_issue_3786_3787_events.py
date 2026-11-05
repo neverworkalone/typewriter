@@ -1,5 +1,5 @@
-"""Event-based proof: closing the gate just before a parallel launcher's slot fill leaves DB and files byte-identical,
-and a fresh instance (gate reopened, lane unfrozen) launches each task exactly once."""
+"""Event-based proof: closing the gate just before a parallel launcher's slot fill leaves DB and files byte-identical.
+Restart behaviour is covered by test_issue_3786_3787_units."""
 import json
 import sqlite3
 import threading
@@ -100,14 +100,6 @@ class DenialIsWriteFree(unittest.TestCase):
         w.tick(2)   # a frozen lane stays frozen while the gate is closed
         self.assertEqual(snapshot(w)[1], seen["before"][1])
         self.assertEqual(len(w.adapter.launches), seen["launches"])
-        # a fresh instance: reopen and unfreeze; no task is started twice
-        gate.open()
-        par._fill_slots = original
-        w.sup._frozen_lanes.clear()
-        w.tick(3)
-        ids = [(r["batch_id"], r["task"]) for batch in w.store.all_batches() for r in w.store.runs(batch["id"]) if r["task"]]
-        self.assertTrue(ids)
-        self.assertEqual(len(ids), len(set(ids)))
 
     def test_s2(self):
         self.check(build_s2)
