@@ -949,7 +949,7 @@ class WarRoom(App):
         if has_maint_card:
             mc = root.query_one("#card-maintainer", MaintainerCard)
             mc.update(Text(maintainer_card_text(maint)))   # hold reasons may hold [brackets]: text, never markup
-            mc.set_classes("card " + {"IDLE": "empty", "WORKING": "PRODUCING", "ERROR": "ERROR"}[maint["state"]])
+            mc.set_classes("card " + {"IDLE": "empty", "WORKING": "PRODUCING", "COMING": "WAITING_REVIEW", "ERROR": "ERROR"}[maint["state"]])
         root.query_one("#board-footer", Static).update(tier_footer(control.tier_state(store, self.cfg, self.methods)))
         drain_schedule = store.drain_schedule("all")
         schedule_select = root.query_one("#drain-all-time", Select)

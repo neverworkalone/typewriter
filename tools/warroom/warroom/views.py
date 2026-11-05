@@ -252,7 +252,7 @@ def maintainer_card_text(card: dict) -> str:
     """Status-only Maintainer card (Issue #1555 progress moved off the top area): 4 fixed lines, neutral when idle."""
     if card["state"] == "IDLE":
         return "\n".join([_fit("Maintainer"), _fit("—  진행 중인 작업 없음")] + [""] * (CARD_LINES - 2))
-    title = _two_sided("Maintainer", "ERROR  ✖" if card["state"] == "ERROR" else "WORKING  ▶")
+    title = _two_sided("Maintainer", {"ERROR": "ERROR  ✖", "COMING": "COMING", "WORKING": "WORKING  ▶"}[card["state"]])
     if card.get("issue"):   # as the Stage 2 card: identity, a blank line, then PR / elapsed time on the last line
         bottom = card["pr"] or card["detail"]
         elapsed = f"경과 {fmt_elapsed(card['elapsed'])}" if card.get("elapsed") is not None else ""
