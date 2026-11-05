@@ -5269,7 +5269,9 @@ class Supervisor:
                 active_stage, stage_started = None, None
 
         try:
+            begin_stage("recovery_pr_initial")
             info = self._find_recovery_pr(b)
+            end_stage()
             if info is not None:
                 if problem := self._stage2_final_pr_problem(b, info):
                     return self._fail(b, "ERROR", problem)
@@ -5410,7 +5412,9 @@ class Supervisor:
             if remote != head:
                 return self._fail(b, "ERROR", f"push 뒤 원격 HEAD가 로컬 HEAD와 다릅니다 ({remote} / {head})")
             end_stage()
+            begin_stage("recovery_pr_after_push")
             info = self._find_recovery_pr(b)
+            end_stage()
             if info is not None:
                 if problem := self._stage2_final_pr_problem(b, info):
                     return self._fail(b, "ERROR", problem)
