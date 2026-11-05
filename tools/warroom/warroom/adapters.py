@@ -1101,6 +1101,10 @@ def classify_codex_failure(log_text: str, quota_patterns: list[str]) -> str:
     common = classify_failure(diagnostic, quota_patterns)
     if common in ("free_quota", "usage_limit", "rate_limit", "auth", "network", "session_missing"):
         return common
+    # Codex reports temporary provider capacity without an HTTP 429. Use the
+    # existing bounded transient retry path, but only for CLI diagnostics.
+    if re.search(r"\bselected model is at capacity\b", low):
+        return "rate_limit"
     if re.search(r"\b(?:401|403)\b|unauthori[sz]ed|invalid api key|authentication|not logged in", low):
         return "auth"
     fast_key = r"(?:service_tier|features\.fast_mode)"

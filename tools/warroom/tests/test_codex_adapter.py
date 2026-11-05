@@ -402,6 +402,8 @@ class Classification(unittest.TestCase):
             ("Fast mode is not available for this model", "fast_unavailable"),
             ("Error: 403 Forbidden", "auth"),
             ("Unsupported model gpt-9", "unknown"),
+            (lines({"type": "error", "message": "Selected model is at capacity. Please try a different model."}), "rate_limit"),
+            (lines({"type": "item.completed", "item": {"type": "agent_message", "text": "Selected model is at capacity."}}), "unknown"),
             (lines({"type": "item.completed", "item": {"type": "agent_message", "text": "Fast mode is unavailable"}}), "unknown"),
         ]
         for text, want in cases:

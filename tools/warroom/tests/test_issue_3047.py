@@ -306,6 +306,19 @@ class ParallelStage2Recovery(Helpers, unittest.TestCase):
         w.tick()
         self.assertEqual(len(w.adapter.launches), 2)
 
+    def test_codex_capacity_error_retries_only_failed_task(self):
+        w = self.world([("s", 3)])
+        self.launch(w, 2)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        w.sup._classify_run = lambda _producer, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
+        self.finish_code(w, task, 1, '{"type":"turn.failed","error":{"message":"Selected model is at capacity. Please try a different model."}}\n')
+        w.tick()
+        self.assertNotEqual(self.tasks(w)[task]["state"], "FAILED")
+        w.now += 1000
+        w.tick()
+        self.assertEqual(len(w.adapter.launches), 2)
+
     def test_restart_after_technical_drop_save_resaves_with_persisted_evidence(self):
         w = self.world([("s", 3)])
         self.launch(w, 1)
