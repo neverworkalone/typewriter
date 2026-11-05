@@ -87,6 +87,7 @@ DEFAULTS = {
     "rate_limit_retries": 3,
     "rate_limit_backoff_seconds": 120,
     "stage2_chunk_candidates": 250,   # #3047: target candidates per parallel Stage 2 primary task (applies to the next new Part's plan)
+    "supervisor_workers": 1,          # parallel coordinator remains isolated until #3774
     "stage3_max_parallel": 16,        # #3149: concurrent Stage 3 chunk sessions of a NEW shard (applies to the next assignment after reload)
     "stage2_max_parallel": 16,        # #3047: concurrent primary task sessions (applies to the next assignment after reload)
 }
@@ -428,6 +429,9 @@ def config_problem(cfg: dict) -> str | None:
     for key in ("stage2_chunk_candidates", "stage2_max_parallel", "stage3_max_parallel"):
         if not isinstance(cfg.get(key), int) or isinstance(cfg[key], bool) or cfg[key] < 1:
             bad.append(f"{key}는 1 이상의 정수여야 합니다")
+    workers = cfg.get("supervisor_workers")
+    if type(workers) is not int or not 1 <= workers <= 16:
+        bad.append("supervisor_workers는 1~16 범위의 정수여야 합니다")
     r = cfg.get("rate_limit_retries")
     if not isinstance(r, int) or isinstance(r, bool) or r < 0:
         bad.append("rate_limit_retries는 0 이상의 정수여야 합니다")

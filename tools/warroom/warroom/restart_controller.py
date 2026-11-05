@@ -89,10 +89,11 @@ def update_restart_request(paths: Paths, defect_id: int, state: str, **fields) -
     return True
 
 
-def record_runtime(paths: Paths, code_sha: str | None) -> None:
+def record_runtime(paths: Paths, code_sha: str | None, *, configured_workers: int = 1) -> None:
     _atomic_json(paths.runtime_record_file, {
         "version": 1, "runtime_root": str(paths.repo_root.resolve()), "loaded_code_sha": code_sha,
-        "pid": os.getpid(), "started_at": time.time(),
+        "pid": os.getpid(), "started_at": time.time(), "supervisor_workers": 1,
+        "configured_supervisor_workers": configured_workers,
     })
 
 

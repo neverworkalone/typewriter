@@ -20,6 +20,8 @@ import secrets
 import subprocess
 import time
 import traceback
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, s3parallel, stage1ab,
@@ -105,7 +107,7 @@ class Supervisor:
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
         self.lanes = Lanes()
-        self._worker_git_executables = []
+        self._maintenance_lane = threading.Lock()
         self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
         # The Supervisor code this process loaded (#3326): a merged fix to tools/warroom/warroom/ is applied only after it is in this HEAD.
@@ -1559,7 +1561,12 @@ class Supervisor:
                 (b["method"] == literary.METHOD and isinstance(kind, str) and kind.startswith("c_chunk_")) or \
                 (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:
             env["WARROOM_STAGE2_CHUNK"] = "1"
-            env["WARROOM_GIT_EXECUTABLES"] = json.dumps(self._worker_git_executables)
+            git_executables = set()
+            for entry in env.get("PATH", os.defpath).split(os.pathsep):
+                candidate = Path(entry or os.curdir).expanduser() / "git"
+                if candidate.is_file() and os.access(candidate, os.X_OK):
+                    git_executables.update((str(candidate.absolute()), str(candidate.resolve())))
+            env["WARROOM_GIT_EXECUTABLES"] = json.dumps(sorted(git_executables))
             env["WARROOM_PROTECTED_PATHS"] = json.dumps([
                 str(self.paths.git_admin_dir.resolve()), str((Path(b["worktree"]) / ".git").resolve()),
             ])
@@ -2046,13 +2053,6 @@ class Supervisor:
         a Stage 2 chunk can have them blocked; with none found, only that chunk fails closed (`stage2_git_executables`)."""
         env = {k: v for k, v in self.env.items() if k not in ("WARROOM_GIT_SHIM", "WARROOM_GIT_SHIM_EXEC_PID",
                                                                "WARROOM_REAL_GIT")}   # leftovers of the removed shim
-        git_executables = set()
-        for entry in env.get("PATH", os.defpath).split(os.pathsep):
-            candidate = Path(entry or os.curdir).expanduser() / "git"
-            if candidate.is_file() and os.access(candidate, os.X_OK):
-                git_executables.add(str(candidate.absolute()))
-                git_executables.add(str(candidate.resolve()))
-        self._worker_git_executables = sorted(git_executables)
         return env
 
     def _launch(self, b, kind: str, events=None) -> None:
@@ -9322,6 +9322,65 @@ class Supervisor:
         self.store.log(b["id"], f"최신 master {sha[:10]}에서 Stage 3 샤드 {b['shard']} verify 통과")
         return True
 
+    def _parallel_maintenance(self) -> None:
+        # The Maintainer owns a distinct lane; it may non-blockingly acquire a production L1.
+        with self._maintenance_lane:
+            try:
+                self._tick_maintenance()
+            except Exception:
+                self.store.log(None, "Maintainer 실행/PR 감시 예외:\n" + traceback.format_exc()[-800:],
+                               "error", line="maintainer")
+            self.maint.step()
+
+    def _parallel_cycle(self, pool, pending: dict, cursor: int, workers: int) -> int:
+        """Coordinate one fixed-interval turn; no worker job is queued beyond available slots."""
+        self.store.set("heartbeat", str(self.clock()))
+        self._handle_reload()
+        self.store.fire_due_drain_schedules(self.clock(), control.board_line_keys(self.store, self.cfg))
+        for b in self.store.incomplete_batches():
+            self.store.line(b["producer"], b["method"])
+        for key, future in list(pending.items()):
+            if not future.done():
+                continue
+            del pending[key]
+            try:
+                future.result()
+            except Exception:
+                label = "Maintainer" if key is None else f"{key[0]}/{key[1]}"
+                self.store.log(None, f"{label} worker 예외:\n" + traceback.format_exc()[-800:], "error", line=label)
+        keys = [(ln["model"], ln["method"]) for ln in self.store.lines() if ln["method"] != MAINTENANCE_METHOD]
+        keys.append(None)
+        offset = cursor % len(keys)
+        for key in keys[offset:] + keys[:offset]:
+            if len(pending) >= workers:
+                break
+            if key in pending:
+                continue
+            pending[key] = (pool.submit(self._parallel_maintenance) if key is None
+                            else pool.submit(self._tick_line, *key))
+        return (offset + 1) % len(keys)
+
+    def run_parallel(self, interval: float = 5.0, *, stop_event, _isolated_test: bool = False) -> None:
+        """Isolated test entry point; production stays on run_forever until the launch/restart gates exist."""
+        if not _isolated_test:
+            raise RuntimeError("parallel coordinator is disabled until the launch and restart gates are available")
+        workers = self.cfg.get("supervisor_workers", 1)
+        if type(workers) is not int or not 1 <= workers <= 16 or interval <= 0:
+            raise ValueError("invalid parallel coordinator configuration")
+        pending = {}
+        cursor, deadline = 0, time.monotonic()
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="warroom-line") as pool:
+            while not stop_event.is_set():
+                try:
+                    cursor = self._parallel_cycle(pool, pending, cursor, workers)
+                except Exception:
+                    self.store.log(None, "parallel coordinator 예외:\n" + traceback.format_exc()[-800:], "error")
+                deadline += interval
+                now = time.monotonic()
+                if deadline < now:
+                    deadline = now + interval
+                stop_event.wait(max(0, deadline - now))
+
     # ---- daemon --------------------------------------------------------
     def run_forever(self, interval: float = 5.0) -> None:
         while True:
@@ -9375,7 +9434,7 @@ def main() -> int:
     paths.runtime_root_file.write_text(str(root), "utf-8")   # lets a launcher spot a live Supervisor from another checkout
     sup = build(paths)
     from .restart_controller import record_runtime
-    record_runtime(paths, sup.code_sha)
+    record_runtime(paths, sup.code_sha, configured_workers=sup.cfg["supervisor_workers"])
     sup.store.log(None, "supervisor 시작")
     sup.run_forever()
     return 0
