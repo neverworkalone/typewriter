@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -121,15 +122,22 @@ class NoCodeRecovery(unittest.TestCase):
         run_log.write_text("official save-chunk rejected task 002", "utf-8")
         if serial:
             source = w.store.batch(batch_id)
-            active = dchunk.chunk_names(source, 2)
+            active = dchunk.chunk_names(source, 1)
             active_path = source_wt / active.active
             active_path.parent.mkdir(parents=True, exist_ok=True)
-            (source_wt / active.view).write_text("bound D view", "utf-8")
+            view = "bound D view"
+            (source_wt / active.view).write_text(view, "utf-8")
             active_path.write_text(json.dumps({
-                "shard": "081", "batch": "01", "model": "deepseek", "chunk_no": 2,
-                "view_sha256": "a" * 64, "git_head": HEAD1, "senses": [{"sense_id": "w0001-s1"}],
+                "shard": "081", "batch": "01", "model": "deepseek", "chunk_no": 1,
+                "view_sha256": hashlib.sha256(view.encode()).hexdigest(),
+                "git_head": HEAD1, "senses": [{"sense_id": "w0001-s1"}],
             }), "utf-8")
             w.store.update(batch_id, run_kind="d_chunk_new", session_id="d-session-002")
+            w.store.set(f"d_base_head_{batch_id}", HEAD1)
+            w.store.set(dchunk.run_start_key(batch_id), json.dumps({
+                "branch": branch, "worktree": str(source_wt), "head": HEAD1,
+                "remote_head": None, "chunk_no": 1,
+            }, sort_keys=True))
             run_id = w.store.add_run(batch_id, "d_chunk_new", "d-session-002", None,
                                      run_log, run_log.with_suffix(".exit"))
             w.store.finish_run(run_id, 0)
@@ -198,11 +206,11 @@ class NoCodeRecovery(unittest.TestCase):
     def test_legacy_serial_no_code_resume_keeps_the_exact_active_chunk_and_session(self):
         w = self.w
         batch_id, defect_id, maintainer, request = self.prepare_failed_d_task(serial=True)
-        scope = {"task": None, "chunk": "002"}
-        summary = "D의 활성 002 청크 저장 경계에서 공통 코드 결함 없이 멈춘 것을 확인했다."
+        scope = {"task": None, "chunk": "001"}
+        summary = "D의 활성 001 청크 저장 경계에서 공통 코드 결함 없이 멈춘 것을 확인했다."
         cause = "공식 active chunk와 종료된 원 세션이 같은 청크를 가리킨다."
-        action = "D의 기존 세션에서 활성 002 청크를 재개한다."
-        next_action = "동일 002 청크의 공식 저장 진전만 확인한다."
+        action = "D의 기존 세션에서 활성 001 청크를 재개한다."
+        next_action = "동일 001 청크의 공식 저장 진전만 확인한다."
         result = {
             "version": 2, "issue": 101, "attempt": maintainer["id"], "round": request["round"],
             "defect_id": defect_id, "event_key": request["event_key"], "batch_id": batch_id,
@@ -227,14 +235,14 @@ class NoCodeRecovery(unittest.TestCase):
         approval = json.loads(w.store.get(f"no_code_approval_{defect_id}"))
         self.assertEqual((approval["status"], approval["task"], approval["chunk"],
                           approval["recovery_type"]),
-                         ("APPROVED", None, "002", "resume_same_session"))
+                         ("APPROVED", None, "001", "resume_same_session"))
         self.assertEqual(w.store.defect(defect_id)["state"], "RECOVERING")
         self.assertEqual(w.store.maintenance(101)["state"], "RECOVERING")
 
         with mock.patch.object(dchunk, "verified_chunks", return_value=(set(), 3)):
             w.tick()
         self.assertEqual(w.store.maintenance(101)["state"], "RECOVERING")
-        with mock.patch.object(dchunk, "verified_chunks", return_value=({2}, 3)):
+        with mock.patch.object(dchunk, "verified_chunks", return_value=({1}, 3)):
             w.tick()
         self.assertEqual(w.store.defect(defect_id)["state"], "RELEASED")
         self.assertEqual(w.store.maintenance(101)["state"], "DONE")
