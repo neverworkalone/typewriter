@@ -483,7 +483,7 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search, 
     } else if (evidence.hits > 0) {
       lines.push(`증거 상태: 누적 hit=${evidence.hits} — V/N 형식 허용; 출발 Sense의 VERIFIED 판독은 AI가 한다.`);
     } else lines.push('증거 상태: 미완료 — Z 형식 불가; 필요한 검색을 계속한다.');
-    for (const item of refs) lines.push(`${item.ref} ${item.sense_id} [${item.pos}] ${item.gloss}`);
+    for (const item of refs) lines.push(`${item.ref} [record=${item.record_id}] ${item.sense_id} [${item.pos}] ${item.gloss}`);
     return lines.join('\n');
   });
   return { view: `${[head, ...body].join('\n\n')}\n`, senses, entries, failed, autoZ };
