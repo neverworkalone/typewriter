@@ -1,5 +1,6 @@
 """Atomic admission and explicit resumption of AI launches."""
 from contextlib import contextmanager
+from functools import wraps
 import threading
 
 
@@ -24,13 +25,29 @@ class LaunchGate:
         return bool(getattr(self._local, 'depth', 0))
 
     @contextmanager
-    def permit(self):
+    def unit(self):
+        """One launch unit (a single task). Entering it from outside any unit re-checks the gate even when this thread
+        already holds a wider permit; code running inside an admitted unit (the task's own launcher) inherits it, so an
+        admitted task is never cut off between its preparation and its PID record."""
+        with self._condition:
+            inside = getattr(self._local, 'unit', 0)
+        with self.permit(recheck=not inside):
+            self._local.unit = inside + 1
+            try:
+                yield
+            finally:
+                self._local.unit = inside
+
+    @contextmanager
+    def permit(self, recheck=False):
         with self._condition:
             depth = getattr(self._local, 'depth', 0)
             if not depth:
                 if not self._open:
                     raise LaunchDenied()
                 self._active += 1
+            elif recheck and not self._open:
+                raise LaunchDenied()
             self._local.depth = depth + 1
         try:
             yield
@@ -63,3 +80,12 @@ class LaunchGate:
             self._open = True
             self._condition.notify_all()
 
+
+
+def task_launch_scope(fn):
+    """Hold one launch unit from a parallel task launcher's first durable write through its PID/run evidence."""
+    @wraps(fn)
+    def wrapped(self, *args, **kwargs):
+        with self.sup.launch_gate.unit():
+            return fn(self, *args, **kwargs)
+    return wrapped

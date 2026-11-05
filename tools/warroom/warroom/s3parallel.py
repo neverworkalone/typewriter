@@ -24,6 +24,7 @@ from pathlib import Path
 
 from . import prompts, stage3, taskruns
 from .gitops import GitError, GitTransient
+from .launch_gate import LaunchDenied, task_launch_scope
 from .github import GhTransient
 from .stage3 import Stage3Error
 from .store import STAGE3_METHOD
@@ -487,22 +488,35 @@ class ParallelStage3:
         queue = [r for r in due if retried(r)] + [r for r in due if not retried(r)]
         if not queue:
             return
+        self._start_queued(b, round_, queue, free)
+
+    def _start_allowed(self, b, round_: _Round) -> bool:
         if round_.boundary is None:   # proved once per round, only when something is about to start
             round_.boundary = not self._halted_by_boundary(b, round_)
         if not round_.boundary:
-            return
+            return False
         problem = round_.preflight()
         if problem:
             from .adapters import PREFLIGHT_PENDING
-            if problem.startswith(PREFLIGHT_PENDING):
-                return   # still proving the pin in the background; the next tick retries
-            return self.sup._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+            if not problem.startswith(PREFLIGHT_PENDING):   # else still proving the pin; the next tick retries
+                self.sup._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+            return False
+        return True
+
+    def _start_queued(self, b, round_: _Round, queue, free) -> None:
+        checked = False
         for row in queue[:free]:
             if self.store.batch(b["id"])["state"] != "PRODUCING":
                 return
-            if not self._launch_task(b, self.store.task_row(b["id"], row["task"])):
-                return
+            with self.sup.launch_gate.unit():   # one task per admission (#3787)
+                if not checked:
+                    if not self._start_allowed(b, round_):
+                        return
+                    checked = True
+                if not self._launch_task(b, self.store.task_row(b["id"], row["task"])):
+                    return
 
+    @task_launch_scope
     def _launch_task(self, b, row) -> bool:
         task, data, sup = row["task"], _data(row), self.sup
         wt, ad = self._wt(b), self._adapter(b)
@@ -538,6 +552,8 @@ class ParallelStage3:
                       attempts=row["attempts"] + 1)
             try:
                 handle = ad.start(prompt, wt, env, run, f"Stage 3 {b['shard']} chunk {task}", log, ex, **extra)
+            except LaunchDenied:
+                raise   # denial happens before the first write (the permit is held), never through this rollback
             except BaseException:
                 self.store.finish_run(run_id, "stopped")   # nothing was started: release the slot and the task
                 self._set(b, task, data, state="PENDING", run_id=None, session_id=None)

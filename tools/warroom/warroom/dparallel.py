@@ -27,6 +27,7 @@ from pathlib import Path
 
 from . import dchunk, defects, prompts, taskruns
 from .gitops import GitError, GitTransient
+from .launch_gate import task_launch_scope
 from .github import GhTransient
 
 RUN_KIND = "d_parallel"
@@ -452,31 +453,40 @@ class ParallelD:
         due = lambda r: self._data(r).get("retry_after", 0) <= now and r["task"] not in busy
         queue = [r for r in sorted(rows.values(), key=lambda r: r["task"]) if r["state"] == "FIXQ" and due(r)]
         queue += [r for r in sorted(rows.values(), key=lambda r: r["task"]) if r["state"] == "PENDING" and due(r)]
-        if not queue or self._halted_by_boundary(b, round_):
+        if not queue:
             return
+        self._start_queued(b, round_, queue, free)
+
+    def _start_queued(self, b, round_: _Round, queue, free) -> None:
+        checked = False
         for row in queue:
             if free <= 0 or self.store.batch(b["id"])["state"] != "PRODUCING":
                 return
-            row = self.store.task_row(b["id"], row["task"])
-            if row["state"] == "SAVED":
-                continue
-            if row["state"] == "PENDING":
-                outcome = self._prepare(b, row, round_)
-                if outcome == "auto":
-                    continue   # needs no AI and no slot
-                if outcome != "ready":
-                    return
+            with self.sup.launch_gate.unit():   # chunk activation through PID persistence: one task per admission
                 row = self.store.task_row(b["id"], row["task"])
-            problem = round_.preflight()
-            if problem:
-                from .adapters import PREFLIGHT_PENDING
-                if problem.startswith(PREFLIGHT_PENDING):
-                    return   # still proving the pin in the background; the next tick retries
-                return self.sup._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
-            if self._launch(b, row, round_):
-                free -= 1
-            else:
-                return
+                if row["state"] == "SAVED":
+                    continue
+                if not checked:
+                    if self._halted_by_boundary(b, round_):
+                        return
+                    checked = True
+                if row["state"] == "PENDING":
+                    outcome = self._prepare(b, row, round_)
+                    if outcome == "auto":
+                        continue   # needs no AI and no slot
+                    if outcome != "ready":
+                        return
+                    row = self.store.task_row(b["id"], row["task"])
+                problem = round_.preflight()
+                if problem:
+                    from .adapters import PREFLIGHT_PENDING
+                    if problem.startswith(PREFLIGHT_PENDING):
+                        return   # still proving the pin in the background; the next tick retries
+                    return self.sup._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+                if self._launch(b, row, round_):
+                    free -= 1
+                else:
+                    return
 
     def _prepare(self, b, row, round_: _Round) -> str:
         """"ready" (an active chunk exists), "auto" (stored with no AI) or "stop" (task failed/batch halted)."""
@@ -511,6 +521,7 @@ class ParallelD:
             return "stop"
         return "ready"
 
+    @task_launch_scope
     def _launch(self, b, row, round_: _Round) -> bool:
         """Start (or resume) this task's AI. False: the batch was failed/halted and nothing started."""
         task, n, data = row["task"], int(row["task"]), self._data(row)
