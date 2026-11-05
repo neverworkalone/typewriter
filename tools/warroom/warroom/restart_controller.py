@@ -216,6 +216,12 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         store.log_once(None, f"Supervisor 자동 재시작 대기: {blocker}", "warn", line="maintainer")
         return "starting", None
 
+    tui_root = _tmux(["show-environment", "-t", "warroom", ROOT_ENV], timeout=2)
+    if tui_root.returncode == 0:
+        observed = tui_root.stdout.strip().partition("=")[2]
+        if observed != str(root):
+            return _set_waiting(paths, pending[0][1], "live TUI runtime root does not match the operating checkout")
+
     if _lock_held(paths.lock):
         # The supervisor is live; it may only be replaced after the exact shared tmux session and operating root pass.
         try:
@@ -228,11 +234,6 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         if (runtime is None or runtime.get("runtime_root") != str(root)
                 or not _pid_alive(runtime.get("pid"))):
             return _set_waiting(paths, pending[0][1], "live Supervisor process identity cannot be verified")
-        tui_root = _tmux(["show-environment", "-t", "warroom", ROOT_ENV], timeout=2)
-        if tui_root.returncode == 0:
-            observed = tui_root.stdout.strip().partition("=")[2]
-            if observed != str(root):
-                return _set_waiting(paths, pending[0][1], "live TUI runtime root does not match the operating checkout")
         has = _tmux(["has-session", "-t", TMUX_SUP])
         if has.returncode:
             return _set_waiting(paths, pending[0][1], "Supervisor lock is live but its owned tmux session is unavailable")
@@ -240,7 +241,12 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         if pane.returncode or pane.stdout.strip() != "0":
             return _set_waiting(paths, pending[0][1], "owned Supervisor tmux pane is not live")
         pane_pid = _tmux(["display-message", "-p", "-t", TMUX_SUP, "#{pane_pid}"], timeout=2)
-        if pane_pid.returncode or pane_pid.stdout.strip() != str(runtime["pid"]):
+        try:
+            same_pane = (pane_pid.returncode == 0
+                         and os.getpgid(int(pane_pid.stdout.strip())) == os.getpgid(runtime["pid"]))
+        except (OSError, TypeError, ValueError):
+            same_pane = False
+        if not same_pane:
             return _set_waiting(paths, pending[0][1], "Supervisor lock owner differs from the owned tmux pane")
 
     for path, request in pending:

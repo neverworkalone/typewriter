@@ -9,7 +9,8 @@ from tests.fakes import HEAD1
 from tests.test_issue_1555 import maintainer_row, produce_and_report, world
 from tests.test_supervisor import review
 from warroom import defects
-from warroom.restart_controller import _live_work_or_controls
+from warroom.restart_controller import (_live_work_or_controls, has_pending_restart, record_runtime,
+                                        update_restart_request, write_restart_request)
 
 
 class MaintainerQueue(unittest.TestCase):
@@ -185,6 +186,24 @@ class NoCodeRecovery(unittest.TestCase):
         w.store.set_line("deepseek", "a", drain=0)
         w.store.set_line("deepseek", "a", force_stop=1)
         self.assertIn("Stop/Drain", _live_work_or_controls(w.store))
+
+
+class RestartHandoff(unittest.TestCase):
+    def setUp(self):
+        self.w = world()
+        self.addCleanup(self.w.tmp.cleanup)
+
+    def test_restart_request_and_loaded_sha_survive_process_boundaries(self):
+        w = self.w
+        defect = {"id": 91, "issue_number": 92, "batch_id": 93, "merge_sha": HEAD1}
+        path = write_restart_request(w.paths, defect, "b" * 40)
+        self.assertTrue(path.is_file())
+        self.assertTrue(has_pending_restart(w.paths))
+
+        record_runtime(w.paths, HEAD1)
+        self.assertTrue(update_restart_request(w.paths, 91, "loaded", loaded_code_sha=HEAD1))
+        self.assertFalse(has_pending_restart(w.paths))
+        self.assertFalse(_live_work_or_controls(w.store))
 
 if __name__ == "__main__":
     unittest.main()
