@@ -17,6 +17,7 @@ import json
 import hashlib
 import os
 import re
+from contextlib import contextmanager
 from pathlib import Path
 
 from . import auth, cparallel, dchunk, defects, dparallel, literary, progress, stage2, stage3
@@ -45,6 +46,19 @@ class Maintenance:
     @property
     def cfg(self):
         return self.sup.cfg
+
+    @contextmanager
+    def _source_lane(self, batch_id):
+        """Hold one production lane; never acquire a Maintainer lane or use a stale owner."""
+        snapshot = self.store.batch(batch_id) if batch_id is not None else None
+        if snapshot is None or snapshot["method"] == MAINTENANCE_METHOD:
+            yield None
+            return
+        with self.sup.lanes.try_hold(snapshot["producer"], snapshot["method"]) as held:
+            current = self.store.batch(batch_id) if held else None
+            if current is not None and (current["producer"], current["method"]) != (snapshot["producer"], snapshot["method"]):
+                current = None
+            yield current
 
     def _due(self, key: str, every: float | None = None) -> bool:
         """Rate limit for GitHub/auth calls that failed or wait on something external."""
@@ -623,12 +637,24 @@ class Maintenance:
                 if (not isinstance(proof, dict) or proof.get("version") != 3 or proof.get("outcome") != "external"
                         or proof.get("issue") != m["issue_number"] or proof.get("attempt") != m["batch_id"]):
                     continue
-                if self._external_dependency_ready(proof):
-                    if self.store.requeue_maintenance(m["issue_number"]):
-                        self.store.log(m["batch_id"], f"Issue #{m['issue_number']}: external prerequisite "
-                                       f"{proof['recovery']['dependency']} is available; same Issue queued for a fresh diagnosis")
+                with self._source_lane(proof.get("batch_id")) as source:
+                    if source is None or type(proof.get("defect_id")) is not int:
+                        continue
+                    defect = self.store.defect(proof["defect_id"])
+                    current = self.store.maintenance(m["issue_number"])
+                    if (defect is None or defect["batch_id"] != source["id"]
+                            or defect["issue_number"] != m["issue_number"] or defect["state"] != "HELD"
+                            or current is None or current["state"] != "HELD" or current["batch_id"] != m["batch_id"]
+                            or json.loads(self.store.get(f"m_diag_{m['batch_id']}") or "null") != proof):
+                        continue
+                    self._requeue_external_handoff(current, proof)
             except Exception as e:
                 self.store.log(m["batch_id"], f"external prerequisite 재확인 실패(미해결 handoff 유지): {e}", "warn")
+
+    def _requeue_external_handoff(self, m, proof):
+        if self._external_dependency_ready(proof) and self.store.requeue_maintenance(m["issue_number"], expected_defect_id=proof.get("defect_id")):
+            self.store.log(m["batch_id"], f"Issue #{m['issue_number']}: external prerequisite "
+                           f"{proof['recovery']['dependency']} is available; same Issue queued for a fresh diagnosis")
 
     def _external_dependency_ready(self, proof: dict) -> bool:
         dependency = proof.get("recovery", {}).get("dependency")
@@ -1281,6 +1307,39 @@ class Maintenance:
         return None
 
     def finish_diagnosis(self, b) -> bool:
+        """Defer the whole source-bound diagnosis while its production lane is busy."""
+        try:
+            issue = int(b["batch"])
+        except (TypeError, ValueError):
+            return False
+        linked = [d for d in self.store.defects(("LINKED",)) if d["issue_number"] == issue]
+        if not linked:
+            return False
+        if len(linked) != 1:
+            return True  # defer rather than changing multiple production lanes together
+        with self._source_lane(linked[0]["batch_id"]) as source:
+            if source is None:
+                return True  # busy or removed: preserve the Maintainer execution for a later tick
+            current = self.store.batch(b["id"])
+            defect = self.store.defect(linked[0]["id"])
+            if (current is None or current["method"] != MAINTENANCE_METHOD or current["state"] != "PRODUCING"
+                    or defect is None or defect["state"] != "LINKED" or defect["batch_id"] != source["id"]
+                    or defect["issue_number"] != issue):
+                return True
+            line = self.store.peek_line(source["producer"], source["method"])
+            if (source["state"] != "PAUSED" or source["pause_reason"] != "shared_defect"
+                    or source["defect_id"] != defect["id"] or line["force_stop"]
+                    or line["retry_batch"] == source["id"]
+                    or self.store.clear_request(source["producer"], source["method"])
+                    or self.store.get(f"stop_pin_{source['producer']}_{source['method']}")
+                    or self.store.get(f"defect_hold_{source['id']}")):
+                return True
+            linked_now = [d for d in self.store.defects(("LINKED",)) if d["issue_number"] == issue]
+            if len(linked_now) != 1 or linked_now[0]["id"] != defect["id"]:
+                return True
+            return self._finish_diagnosis_locked(current, defect["id"])
+
+    def _finish_diagnosis_locked(self, b, expected_defect_id) -> bool:
         """Accept only a source-bound structured result when no Maintainer PR exists."""
         key = f"m_diag_{b['id']}"
         if self.store.get(key) is not None:
@@ -1288,16 +1347,18 @@ class Maintenance:
                 proof = json.loads(self.store.get(key))
             except (TypeError, ValueError):
                 return False
+            if isinstance(proof, dict) and proof.get("version") == 3 and proof.get("defect_id") != expected_defect_id:
+                return True
             if isinstance(proof, dict) and proof.get("version") == 3 and proof.get("outcome") == "no_code_resume":
                 return self._complete_no_code_diagnosis(b, proof)
             if isinstance(proof, dict) and proof.get("version") == 3:
                 return self._complete_structured_handoff(b, proof)
-            return self._complete_diagnosis(b)
+            return self._complete_diagnosis(b, expected_defect_id)
         try:
             n, wt, git = int(b["batch"]), Path(b["worktree"]), self.sup.git
             linked = [d for d in self.store.defects(("LINKED",)) if d["issue_number"] == n]
             base = self.store.get(f"m_base_head_{b['id']}")
-            if len(linked) != 1 or not base or b["pr_number"]:
+            if len(linked) != 1 or linked[0]["id"] != expected_defect_id or not base or b["pr_number"]:
                 return False
             data = json.loads((wt / self.DIAGNOSIS_FILE).read_text("utf-8"))
             if isinstance(data, dict) and data.get("version") == 2:
@@ -1330,7 +1391,7 @@ class Maintenance:
                                             "branch": b["branch"], "worktree": str(wt)}, sort_keys=True))
         except Exception:
             return False
-        return self._complete_diagnosis(b)
+        return self._complete_diagnosis(b, expected_defect_id)
 
     @staticmethod
     def _text(value, limit=1000) -> bool:
@@ -1684,7 +1745,9 @@ class Maintenance:
         reason = (f"{MAINTENANCE_DIAGNOSIS_HOLD_PREFIX}({proof['outcome']}): {proof['summary']} — "
                   f"원인: {proof['cause']} — 다음 조치: {proof['next_action']}. 원 배치는 PAUSED로 보존되며 해결로 처리하지 않습니다.")
         try:
-            self.store.complete_diagnosis(b["id"], proof["issue"], defects.public(reason))
+            if not self.store.complete_diagnosis(b["id"], proof["issue"], defects.public(reason),
+                                                 expected_defect_id=proof["defect_id"]):
+                return True
         except Exception as e:
             if self._due(f"m_handoff_commit_{b['id']}", 60):
                 self.store.log(b["id"], f"미해결 handoff 트랜잭션이 끝나지 않아 저장된 증거로 재진입합니다: {e}", "warn")
@@ -1717,7 +1780,7 @@ class Maintenance:
                 return {"observation": "preservation", "reason": reason}
         return None
 
-    def _complete_diagnosis(self, b) -> bool:
+    def _complete_diagnosis(self, b, expected_defect_id) -> bool:
         """Idempotent second half: non-force worktree removal, then ONE transaction. True: handled (done or retried later)."""
         try:
             m = json.loads(self.store.get(f"m_diag_{b['id']}"))
@@ -1745,7 +1808,9 @@ class Maintenance:
             f"다음 조치: {m['next_action']}. 원 배치는 PAUSED로 보존되며 자동 재개되지 않습니다."
         )
         try:
-            self.store.complete_diagnosis(b["id"], m["issue"], why)
+            if not self.store.complete_diagnosis(
+                    b["id"], m["issue"], why, expected_defect_id=expected_defect_id):
+                return True
         except Exception as e:
             if self._due(f"m_diag_commit_{b['id']}", 60):
                 self.store.log(b["id"], f"진단 인계 상태 저장이 끝나지 않아 persisted proof로 재진입합니다: {e}", "warn")
@@ -1763,56 +1828,67 @@ class Maintenance:
             raw = self.store.get(f"m_diag_{m['batch_id']}")
             if b is None or b["state"] != "PRODUCING" or raw is None:
                 continue
-            try:
-                proof = json.loads(raw)
-            except ValueError:
-                continue
-            if isinstance(proof, dict) and proof.get("version") == 3:
-                if proof.get("outcome") == "no_code_resume":
-                    self._complete_no_code_diagnosis(b, proof)
-                else:
-                    self._complete_structured_handoff(b, proof)
-            else:
-                self._complete_diagnosis(b)
+            self.finish_diagnosis(b)
 
     def _verify_no_code_recoveries(self) -> None:
-        """Resolve diagnoses only after the original failed task reaches SAVED or its downstream stage."""
+        """Resolve each source under its lane, without blocking unrelated recoveries."""
         for m in self.store.maintenance_rows():
             if m["state"] != "RECOVERING" or m["batch_id"] is None:
                 continue
             try:
                 proof = json.loads(self.store.get(f"m_diag_{m['batch_id']}") or "null")
-                if not isinstance(proof, dict) or proof.get("version") != 3 or proof.get("outcome") != "no_code_resume":
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(proof, dict):
+                continue
+            with self._source_lane(proof.get("batch_id")) as source:
+                if source is None:
                     continue
-                task = proof.get("task")
-                serial_progress = self._serial_recovery_progress(proof) if task is None else False
-                if self.store.finish_no_code_recovery(m["issue_number"], proof["defect_id"],
-                                                       proof["batch_id"], task,
-                                                       serial_progress=serial_progress):
-                    ev = f"incident-outcome-{proof['defect_id']}-no-code-resumed"
-                    scope = (f"task {task}/{proof['chunk']}" if task is not None
-                             else f"serial chunk {proof['chunk']}")
-                    body = (f"확인된 무코드 원인({proof['cause']})에 대해 원래 {scope}의 "
-                            "공식 저장 진전을 확인했습니다. 동일 세션의 기존 복구 경로를 사용했습니다.\n\n"
-                            + defects.marker(defects.EVENT_MARK, ev))
-                    self._comment_once(m["issue_number"], ev, body)
+                current = self.store.maintenance(m["issue_number"])
+                if current is None or current["state"] != "RECOVERING" or current["batch_id"] != m["batch_id"]:
                     continue
-                batch = self.store.batch(proof["batch_id"])
-                task_row = self.store.task_row(proof["batch_id"], task) if task is not None else None
-                task_failed = (task is None or (task_row is not None and task_row["state"] == "FAILED"))
-                if (batch is not None and batch["state"] == "ERROR" and task_failed
-                        and batch["error_seq"] > proof["source_error_seq"]):
-                    scope = (f"task {proof['task']}/{proof['chunk']}" if task is not None
-                             else f"serial chunk {proof['chunk']}")
-                    reason = f"원 {scope}가 재개 후 다시 실패했습니다 (e{batch['error_seq']}): {batch['error'] or '오류 증거 보존'}"
-                    if self.store.hold_no_code_recurrence(m["issue_number"], proof["defect_id"],
-                                                          proof["batch_id"], reason):
-                        self.store.set(f"no_code_approval_{proof['defect_id']}",
-                                       json.dumps({"status": "RECURRENCE", **proof, "recurrence_error_seq": batch["error_seq"]},
-                                                  sort_keys=True, separators=(",", ":")))
-            except Exception as e:
-                if self._due(f"no_code_progress_{m['issue_number']}"):
-                    self.store.log(m["batch_id"], f"원 task의 저장 진전을 검증하지 못해 미해결 상태를 유지합니다: {e}", "warn")
+                self._verify_no_code_recovery_locked(current, source["id"])
+
+    def _verify_no_code_recovery_locked(self, m, source_id) -> None:
+        try:
+            proof = json.loads(self.store.get(f"m_diag_{m['batch_id']}") or "null")
+            if (not isinstance(proof, dict) or proof.get("batch_id") != source_id
+                    or proof.get("version") != 3 or proof.get("outcome") != "no_code_resume"):
+                return
+            defect = self.store.defect(proof.get("defect_id"))
+            if (defect is None or defect["batch_id"] != source_id or defect["issue_number"] != m["issue_number"]
+                    or defect["state"] != "RECOVERING"):
+                return
+            task = proof.get("task")
+            serial_progress = self._serial_recovery_progress(proof) if task is None else False
+            if self.store.finish_no_code_recovery(m["issue_number"], proof["defect_id"],
+                                                   proof["batch_id"], task,
+                                                   serial_progress=serial_progress):
+                ev = f"incident-outcome-{proof['defect_id']}-no-code-resumed"
+                scope = (f"task {task}/{proof['chunk']}" if task is not None
+                         else f"serial chunk {proof['chunk']}")
+                body = (f"확인된 무코드 원인({proof['cause']})에 대해 원래 {scope}의 "
+                        "공식 저장 진전을 확인했습니다. 동일 세션의 기존 복구 경로를 사용했습니다.\n\n"
+                        + defects.marker(defects.EVENT_MARK, ev))
+                self._comment_once(m["issue_number"], ev, body)
+                return
+            batch = self.store.batch(proof["batch_id"])
+            task_row = self.store.task_row(proof["batch_id"], task) if task is not None else None
+            task_failed = (task is None or (task_row is not None and task_row["state"] == "FAILED"))
+            if (batch is not None and batch["state"] == "ERROR" and task_failed
+                    and batch["error_seq"] > proof["source_error_seq"]):
+                scope = (f"task {proof['task']}/{proof['chunk']}" if task is not None
+                         else f"serial chunk {proof['chunk']}")
+                reason = f"원 {scope}가 재개 후 다시 실패했습니다 (e{batch['error_seq']}): {batch['error'] or '오류 증거 보존'}"
+                if self.store.hold_no_code_recurrence(m["issue_number"], proof["defect_id"],
+                                                      proof["batch_id"], reason):
+                    self.store.set(f"no_code_approval_{proof['defect_id']}",
+                                   json.dumps({"status": "RECURRENCE", **proof, "recurrence_error_seq": batch["error_seq"]},
+                                              sort_keys=True, separators=(",", ":")))
+        except Exception as e:
+            if self._due(f"no_code_progress_{m['issue_number']}"):
+                self.store.log(m["batch_id"], f"원 task의 저장 진전을 검증하지 못해 미해결 상태를 유지합니다: {e}", "warn")
+
 
     def _serial_recovery_progress(self, proof: dict) -> bool:
         """Confirm the exact serial chunk or saved-progress advancement on its original batch."""
@@ -1839,39 +1915,50 @@ class Maintenance:
             return False
 
     def _verify_recovery_progress(self) -> None:
-        """Resolve merged fixes only after their captured task is SAVED or the source enters its PR stage."""
-        for d in self.store.defects(("RELEASED",)):
-            if d["fix_kind"] not in ("runtime", "worktree") or d["issue_number"] is None:
+        """Recheck and resolve one merged-fix recovery under its source lane."""
+        for candidate in self.store.defects(("RELEASED",)):
+            if candidate["fix_kind"] not in ("runtime", "worktree") or candidate["issue_number"] is None:
                 continue
-            try:
-                raw = self.store.get(f"defect_recovery_{d['id']}")
-                proof = json.loads(raw or "null")
-                if not isinstance(proof, dict) or proof.get("version") != 1 or proof.get("status") == "VERIFIED":
+            with self._source_lane(candidate["batch_id"]) as source:
+                if source is None:
                     continue
-                if self.store.finish_recovery_progress(d["id"], d["batch_id"]):
-                    ev = f"incident-outcome-{d['id']}-progress-verified"
+                d = self.store.defect(candidate["id"])
+                if (d is None or d["batch_id"] != source["id"] or d["state"] != "RELEASED"
+                        or d["fix_kind"] not in ("runtime", "worktree") or d["issue_number"] is None):
+                    continue
+                self._verify_recovery_progress_locked(d)
+
+    def _verify_recovery_progress_locked(self, d) -> None:
+        try:
+            raw = self.store.get(f"defect_recovery_{d['id']}")
+            proof = json.loads(raw or "null")
+            if not isinstance(proof, dict) or proof.get("version") != 1 or proof.get("status") == "VERIFIED":
+                return
+            if self.store.finish_recovery_progress(d["id"], d["batch_id"]):
+                ev = f"incident-outcome-{d['id']}-progress-verified"
+                from .restart_controller import update_restart_request
+                update_restart_request(self.sup.paths, d["id"], "progress_verified",
+                                       progress_batch_id=d["batch_id"],
+                                       progress_tasks=(proof.get("failed_tasks") or []))
+                if proof.get("failed_tasks"):
+                    tasks = ", ".join(f"{x['task']}/{x['chunk']}" for x in proof["failed_tasks"])
+                    detail = f"원래 실패 task {tasks}의 공식 저장을 확인했습니다."
+                else:
+                    detail = "원 배치가 검증된 후속 PR 단계에 진입했습니다."
+                self._comment_once(d["issue_number"], ev, detail + "\n\n" + defects.marker(defects.EVENT_MARK, ev))
+                return
+            batch = self.store.batch(d["batch_id"])
+            if (batch is not None and batch["state"] == "ERROR"
+                    and batch["error_seq"] > proof.get("source_error_seq", -1)):
+                reason = f"수정 반영 뒤 원 배치에서 새 ERROR e{batch['error_seq']}가 발생해 원 task 진전을 확인하지 못했습니다: {batch['error'] or '오류 증거 보존'}"
+                if self.store.hold_recovery_recurrence(d["id"], d["batch_id"], reason):
                     from .restart_controller import update_restart_request
-                    update_restart_request(self.sup.paths, d["id"], "progress_verified",
-                                           progress_batch_id=d["batch_id"],
-                                           progress_tasks=(proof.get("failed_tasks") or []))
-                    if proof.get("failed_tasks"):
-                        tasks = ", ".join(f"{x['task']}/{x['chunk']}" for x in proof["failed_tasks"])
-                        detail = f"원래 실패 task {tasks}의 공식 저장을 확인했습니다."
-                    else:
-                        detail = "원 배치가 검증된 후속 PR 단계에 진입했습니다."
-                    self._comment_once(d["issue_number"], ev, detail + "\n\n" + defects.marker(defects.EVENT_MARK, ev))
-                    continue
-                batch = self.store.batch(d["batch_id"])
-                if (batch is not None and batch["state"] == "ERROR"
-                        and batch["error_seq"] > proof.get("source_error_seq", -1)):
-                    reason = f"수정 반영 뒤 원 배치에서 새 ERROR e{batch['error_seq']}가 발생해 원 task 진전을 확인하지 못했습니다: {batch['error'] or '오류 증거 보존'}"
-                    if self.store.hold_recovery_recurrence(d["id"], d["batch_id"], reason):
-                        from .restart_controller import update_restart_request
-                        update_restart_request(self.sup.paths, d["id"], "recovery_blocked",
-                                               recurrence_error_seq=batch["error_seq"], blocker=reason)
-            except Exception as e:
-                if self._due(f"defect_progress_{d['id']}"):
-                    self.store.log(d["batch_id"], f"수정 반영 후 원 task 진전을 검증하지 못해 미해결 상태를 유지합니다: {e}", "warn")
+                    update_restart_request(self.sup.paths, d["id"], "recovery_blocked",
+                                           recurrence_error_seq=batch["error_seq"], blocker=reason)
+        except Exception as e:
+            if self._due(f"defect_progress_{d['id']}"):
+                self.store.log(d["batch_id"], f"수정 반영 후 원 task 진전을 검증하지 못해 미해결 상태를 유지합니다: {e}", "warn")
+
 
     # ---- applying a merged incident fix (Issue #3349) -------------------------------------------------------------
     # Two proofs, never mixed: RUNTIME-ONLY (the fix lives in War Room's own code/prompts: the worktree is not touched,
