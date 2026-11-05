@@ -56,8 +56,8 @@ class ParallelC(Helpers, unittest.TestCase):
     def test_fast_unavailable_blocks_a_completed_chunk_after_abnormal_exit(self):
         w = self.world(senses=12)
         w.adapter.plan.clear()
-        w.ai(code=1)
-        w.adapter.plan[-1]["text"] = "Fast mode is not available for this model\nCandidate chunk saved"
+        w.adapter.plan.append({"code": 1, "session": "ses_fast", "text": "Fast mode is not available for this model\nCandidate chunk saved",
+                               "effect": lambda: self.save(w, "001")})
         w.start("single", "deepseek", "c")
         w.tick()
         w.sup._classify_run = lambda _producer, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
