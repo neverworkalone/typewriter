@@ -174,10 +174,11 @@ For War Room-assigned C batches the Supervisor, not a long AI session, drives th
    Candidate file, pushes without force, re-checks the common C claim, and opens the one `[C/<Model>] SSS_BB`
    PR, re-deriving each step from file, Git and GitHub facts so an interruption never repeats work.
 
-**Eight parallel chunks (#3076).** A *new* War Room C batch (mode key `c_mode_<id>`, persisted before the checkpoint
-exists) runs its chunks as up to eight concurrent tasks inside the one batch, as approved by the owner. The
-checkpoint format is unchanged and every change is applied to the latest checkpoint under its lock (see the CLI
-notes above). A task owns exactly the Senses of its `c-active-NNN.json`; each new chunk is rendered with
+**Eight parallel chunks (#3076).** A War Room C batch (mode key `c_mode_<id>`, persisted before the checkpoint
+exists) runs its chunks as up to eight concurrent tasks inside the one batch, as approved by the owner. After a
+Supervisor restart with the new code, an already active parallel C batch also uses the eight-run ceiling on its next
+slot refill; existing sessions are not terminated. The checkpoint format is unchanged and every change is applied
+to the latest checkpoint under its lock (see the CLI notes above). A task owns exactly the Senses of its `c-active-NNN.json`; each new chunk is rendered with
 `--exclude-sense-ids` for every Sense an active chunk already reserves, and an empty view whose header reports
 `excluded_pending > 0` is a normal wait, not an error. Workers pass `--chunk NNN` to `chunk --sense-ids`, `add-form`
 and `submit`, so a request outside the task's Senses is rejected. A slot is returned only after the run's process is
