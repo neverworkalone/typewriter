@@ -12,6 +12,7 @@ from tests.test_claude_adapter import init, result, stream
 from tests.test_issue_1832 import Reporting
 from warroom import control, progress, stage2
 from warroom.gitops import GitError
+from warroom.github import GhError, GhTransient
 
 
 def s2_world(test):
@@ -117,9 +118,68 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 2, "finalization does not resume or start an AI session")
         self.assertEqual(b["branch"], w.git.created[0][1])
         self.assertEqual((b["pr_number"], len(w.gh.created_prs)), (100, 1))
-        self.assertEqual(w.git.local_verify_calls, [("001", "01", "01", True), ("001", "01", "01", True)])
-        self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")] * 2)
+        self.assertEqual(w.git.local_verify_calls, [("001", "01", "01", True)])
+        self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")])
+        self.assertTrue(any("mode=reused checkpoint_verify=0 exact_head_verify=0" in e["msg"]
+                            for e in w.store.recent_events()))
         self.assertEqual([r["kind"] for r in w.store.runs(b["id"])], ["s2_chunk_new", "s2_chunk_new"])
+
+    def _finish_chunks(self):
+        w = self.w
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        return w.store.active_batch("claude", S2)
+
+    def test_uncertain_creation_reverifies_and_does_not_create_twice(self):
+        for error in (GhTransient("lost"), GhError("already exists")):
+            with self.subTest(error=error):
+                if error is not None and getattr(self, "_ran_uncertain", False):
+                    self.setUp()
+                self._ran_uncertain = True
+                w = self.w
+                w.gh.create_pr_error = error
+                w.gh.create_pr_lost = True
+                b = self._finish_chunks()
+                self.assertEqual(b["state"], "WAITING_REVIEW")
+                self.assertEqual(len(w.gh.created_prs), 1)
+                self.assertEqual(len(w.git.local_verify_calls), 2)
+                self.assertEqual(len(w.git.exact_verify_calls), 2)
+                self.assertTrue(any("mode=full checkpoint_verify=1 exact_head_verify=1" in e["msg"]
+                                    for e in w.store.recent_events()))
+
+    def test_checkpoint_change_after_creation_requires_full_verify(self):
+        w = self.w
+        original = w.gh.create_pr
+        def create(*args):
+            original(*args)
+            b = w.store.active_batch("claude", S2)
+            path = Path(b["worktree"]) / ".warroom-scratch" / "relation-admission-001-01-01.json"
+            path.write_text(path.read_text() + " ")
+            w.git.local_verify_ok = False
+        w.gh.create_pr = create
+        b = self._finish_chunks()
+        self.assertEqual(b["state"], "ERROR")
+        self.assertEqual(len(w.git.local_verify_calls), 2)
+        self.assertTrue(any("mode=full checkpoint_verify=1 exact_head_verify=0" in e["msg"]
+                            for e in w.store.recent_events()))
+
+    def test_bad_proofs_fall_back_and_head_mismatch_blocks(self):
+        w = self.w
+        b = self._finish_chunks()
+        info = w.gh.prs[b["pr_number"]]
+        path = (Path(b["worktree"]) / ".warroom-scratch" / "relation-admission-001-01-01.json").resolve()
+        st = path.stat()
+        proof = {"head": info["head_sha"], "batch_id": b["id"], "checkpoint_path": str(path),
+                 "checkpoint_stat": (st.st_ino, st.st_size, st.st_mtime_ns)}
+        for bad in (None, {}, proof | {"batch_id": -1}, proof | {"checkpoint_path": "/other"},
+                    proof | {"head": "a" * 40}, proof | {"checkpoint_stat": "bad"}):
+            with self.subTest(proof=bad):
+                before = len(w.git.local_verify_calls)
+                self.assertIsNone(w.sup._stage2_final_pr_problem(b, info, verified=bad))
+                self.assertEqual(len(w.git.local_verify_calls), before + 1)
+        self.assertIn("HEAD", w.sup._stage2_final_pr_problem(b, info | {"head_sha": "a" * 40}, verified=proof))
 
     def test_zero_exit_without_checkpoint_advance_retries_once_then_stops(self):
         w = self.w
