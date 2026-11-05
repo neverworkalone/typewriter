@@ -119,6 +119,9 @@ class Supervisor:
         self.clock = clock
         self.lanes = Lanes()
         self.launch_gate = LaunchGate()
+        for ad in (adapter.values() if isinstance(adapter, dict) else [adapter]):
+            if hasattr(ad, 'required_launch_gate'):   # every AI spawn must run inside a permit (#3787)
+                ad.required_launch_gate = self.launch_gate
         self._frozen_lanes = set()
         self._frozen_lock = threading.Lock()
         self._maintenance_lane = threading.Lock()

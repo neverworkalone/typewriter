@@ -27,6 +27,7 @@ from pathlib import Path
 
 from . import dchunk, defects, prompts, taskruns
 from .gitops import GitError, GitTransient
+from .launch_gate import task_launch_scope
 from .github import GhTransient
 
 RUN_KIND = "d_parallel"
@@ -511,6 +512,7 @@ class ParallelD:
             return "stop"
         return "ready"
 
+    @task_launch_scope
     def _launch(self, b, row, round_: _Round) -> bool:
         """Start (or resume) this task's AI. False: the batch was failed/halted and nothing started."""
         task, n, data = row["task"], int(row["task"]), self._data(row)

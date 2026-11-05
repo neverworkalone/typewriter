@@ -1,5 +1,6 @@
 """Atomic admission and explicit resumption of AI launches."""
 from contextlib import contextmanager
+from functools import wraps
 import threading
 
 
@@ -63,3 +64,12 @@ class LaunchGate:
             self._open = True
             self._condition.notify_all()
 
+
+
+def task_launch_scope(fn):
+    """Hold one permit from a parallel task launcher's first durable write through its PID/run evidence."""
+    @wraps(fn)
+    def wrapped(self, *args, **kwargs):
+        with self.sup.launch_gate.permit():
+            return fn(self, *args, **kwargs)
+    return wrapped

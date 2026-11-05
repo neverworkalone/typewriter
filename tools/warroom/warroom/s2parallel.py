@@ -25,6 +25,7 @@ from pathlib import Path
 
 from . import prompts, stage2, taskruns
 from .gitops import GitError, GitTransient
+from .launch_gate import task_launch_scope
 from .github import GhTransient
 from .store import STAGE2_METHOD
 
@@ -438,6 +439,7 @@ class ParallelStage2:
                 return
             self._launch_task(b, task, rows[task["id"]], round_)
 
+    @task_launch_scope
     def _launch_task(self, b, planned, row, round_: _Round) -> None:
         task, data = row["task"], self._data(row)
         kind = data.get("kind", "new")

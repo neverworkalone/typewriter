@@ -24,6 +24,7 @@ from pathlib import Path
 
 from . import prompts, stage3, taskruns
 from .gitops import GitError, GitTransient
+from .launch_gate import LaunchDenied, task_launch_scope
 from .github import GhTransient
 from .stage3 import Stage3Error
 from .store import STAGE3_METHOD
@@ -503,6 +504,7 @@ class ParallelStage3:
             if not self._launch_task(b, self.store.task_row(b["id"], row["task"])):
                 return
 
+    @task_launch_scope
     def _launch_task(self, b, row) -> bool:
         task, data, sup = row["task"], _data(row), self.sup
         wt, ad = self._wt(b), self._adapter(b)
@@ -538,6 +540,8 @@ class ParallelStage3:
                       attempts=row["attempts"] + 1)
             try:
                 handle = ad.start(prompt, wt, env, run, f"Stage 3 {b['shard']} chunk {task}", log, ex, **extra)
+            except LaunchDenied:
+                raise   # denial happens before the first write (the permit is held), never through this rollback
             except BaseException:
                 self.store.finish_run(run_id, "stopped")   # nothing was started: release the slot and the task
                 self._set(b, task, data, state="PENDING", run_id=None, session_id=None)

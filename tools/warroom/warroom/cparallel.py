@@ -32,6 +32,7 @@ from pathlib import Path
 
 from . import literary, prompts, taskruns
 from .gitops import GitError, GitTransient
+from .launch_gate import task_launch_scope
 from .github import GhTransient
 from .usage import official_c_stop_diagnostics, submit_attempts
 
@@ -1026,6 +1027,7 @@ class ParallelC:
         numbers += list(literary.active_chunks(self._wt(b), b))
         return max(numbers, default=0) + 1
 
+    @task_launch_scope
     def _launch(self, b, row, round_: _Round) -> bool:
         """Start this task's AI (new, same-session correction, or fresh-session recovery). False: batch failed/halted."""
         task, n, data = row["task"], int(row["task"]), _data(row)
