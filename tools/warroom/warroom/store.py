@@ -523,22 +523,57 @@ class Store:
             row = (c.execute("SELECT * FROM s2_tasks WHERE batch_id=? AND task=?", (b["id"], task)).fetchone()
                    if task is not None else None)
             if task is not None:
-                if (approval.get("recovery_type") != "resume_failed_task"
-                        or not isinstance(task, str) or not task or row is None or row["state"] != "FAILED"
-                        or row["chunk_id"] != approval.get("chunk") or row["run_id"] is None
-                        or row["run_id"] != approval.get("run_id")
-                        or row["session_id"] != approval.get("session_id")):
-                    return False
-                try:
-                    task_data = json.loads(row["data"] or "{}")
-                except (TypeError, ValueError):
-                    return False
-                if not isinstance(task_data, dict) or not task_data.get("ack"):
-                    return False
-                run = c.execute("SELECT * FROM runs WHERE id=? AND batch_id=? AND task=?",
-                                (row["run_id"], b["id"], task)).fetchone()
-                if (run is None or run["ended_at"] is None or run["session_id"] != row["session_id"]):
-                    return False
+                if approval.get("recovery_type") == "resume_report_task":
+                    owner = approval.get("task_report")
+                    expected_kind = {"c": "c_parallel", "d": "d_parallel", "s2": "s2_parallel"}.get(b["method"])
+                    task_kinds = {"c": {"c_chunk_new", "c_chunk_resume", "c_chunk_recovery",
+                                         "c_chunk_scope_recovery"},
+                                  "d": {"d_chunk_new", "d_chunk_resume", "d_chunk_fix"},
+                                  "s2": {"s2_chunk_new", "s2_chunk_resume", "s2_chunk_fix",
+                                         "s2_chunk_format_fix"}}.get(b["method"], set())
+                    if (not isinstance(owner, dict) or b["run_kind"] != expected_kind
+                            or not isinstance(task, str) or not task or row is None
+                            or row["state"] not in ("RUNNING", "FIXQ", "FAILED")
+                            or row["state"] != approval.get("baseline_task_state")
+                            or row["state"] != owner.get("row_state")
+                            or row["chunk_id"] != approval.get("chunk") or row["chunk_id"] != owner.get("chunk")
+                            or row["run_id"] != approval.get("baseline_task_run_id")
+                            or row["run_id"] != owner.get("task_run_id")
+                            or row["session_id"] != approval.get("session_id")
+                            or row["session_id"] != owner.get("session_id")
+                            or owner.get("task") != task or owner.get("path") != approval.get("task_report_path")
+                            or owner.get("run_id") != approval.get("run_id")
+                            or owner.get("run_kind") not in task_kinds):
+                        return False
+                    if row["state"] == "FAILED":
+                        try:
+                            task_data = json.loads(row["data"] or "{}")
+                        except (TypeError, ValueError):
+                            return False
+                        if not isinstance(task_data, dict) or not task_data.get("ack"):
+                            return False
+                    run = c.execute("SELECT * FROM runs WHERE id=? AND batch_id=? AND task=?",
+                                    (owner["run_id"], b["id"], task)).fetchone()
+                    if (run is None or run["ended_at"] is None or run["kind"] != owner["run_kind"]
+                            or run["session_id"] != row["session_id"]):
+                        return False
+                else:
+                    if (approval.get("recovery_type") != "resume_failed_task"
+                            or not isinstance(task, str) or not task or row is None or row["state"] != "FAILED"
+                            or row["chunk_id"] != approval.get("chunk") or row["run_id"] is None
+                            or row["run_id"] != approval.get("run_id")
+                            or row["session_id"] != approval.get("session_id")):
+                        return False
+                    try:
+                        task_data = json.loads(row["data"] or "{}")
+                    except (TypeError, ValueError):
+                        return False
+                    if not isinstance(task_data, dict) or not task_data.get("ack"):
+                        return False
+                    run = c.execute("SELECT * FROM runs WHERE id=? AND batch_id=? AND task=?",
+                                    (row["run_id"], b["id"], task)).fetchone()
+                    if (run is None or run["ended_at"] is None or run["session_id"] != row["session_id"]):
+                        return False
             else:
                 if (approval.get("recovery_type") != "resume_same_session"
                         or not isinstance(approval.get("chunk"), str) or not approval["chunk"]
@@ -552,7 +587,7 @@ class Store:
                 if (run is None or run["ended_at"] is None or run["id"] != approval.get("run_id")
                         or run["session_id"] != approval["session_id"]):
                     return False
-            if b["method"] == "c" and task is not None:
+            if b["method"] == "c" and task is not None and approval.get("recovery_type") == "resume_failed_task":
                 epoch_key = f"c_parallel_retry_epoch_{b['id']}"
                 old = c.execute("SELECT value FROM kv WHERE key=?", (epoch_key,)).fetchone()
                 try:

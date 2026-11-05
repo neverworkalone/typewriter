@@ -8,9 +8,10 @@ from unittest import mock
 from pathlib import Path
 
 from tests.fakes import HEAD1
-from tests.test_issue_1555 import maintainer_row, produce_and_report, world
+from tests.test_issue_1555 import maintainer_row, produce_and_report, report as shared_report, world
+from tests.test_issue_2034_d import DWorld
 from tests.test_supervisor import review
-from warroom import defects, dchunk
+from warroom import defects, dchunk, dparallel
 from warroom.restart_controller import (_live_work_or_controls, has_pending_restart, record_runtime,
                                         update_restart_request, write_restart_request)
 
@@ -253,6 +254,86 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertEqual(w.store.defect(defect_id)["state"], "RELEASED")
         self.assertEqual(w.store.maintenance(101)["state"], "DONE")
 
+    def test_task_report_pause_resumes_its_exact_d_task_through_the_normal_save_path(self):
+        w = DWorld(records=25, parallel=True)
+        self.addCleanup(w.tmp.cleanup)
+        w.cfg["maintainer"] = "sonnet"
+        w.gh.issues[101] = {"state": "open", "labels": ["urgent"], "title": "Issue 101", "body": "diagnosis"}
+        w.start("single", "deepseek", "d")
+        w.ai(save=False, session="d-session-002")
+        w.tick()
+
+        source = w.row_()
+        task = w.store.task_row(source["id"], "001")
+        self.assertEqual(task["state"], "RUNNING")
+        raw = json.dumps(shared_report(defect_class="d-save-boundary", summary="D task reports a shared save failure"),
+                         ensure_ascii=False)
+        report_path = w.wt() / dparallel.defect_path(source, "001")
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(raw, "utf-8")
+
+        self.assertFalse(w.sup._scan_task_reports(source, w.sup.dp))  # stable-file first observation
+        self.assertTrue(w.sup._scan_task_reports(source, w.sup.dp))   # asks the exact worker to stop
+        self.assertEqual(w.store.batch(source["id"])["state"], "PRODUCING")
+        self.assertTrue(w.sup._scan_task_reports(w.store.batch(source["id"]), w.sup.dp))
+        source = w.store.batch(source["id"])
+        stopped = w.store.task_row(source["id"], "001")
+        self.assertEqual((source["state"], stopped["state"], stopped["run_id"], stopped["session_id"]),
+                         ("PAUSED", "FIXQ", None, "d-session-002"))
+        self.assertFalse(w.store.open_task_runs(source["id"]))
+
+        defect = w.store.defect_by_event(defects.report_event_key(source["id"], raw))
+        self.assertIsNotNone(defect)
+        w.store.update_defect(defect["id"], state="LINKED", issue_number=101)
+        w.store.ensure_maintenance(101)
+        maintainer_id = w.store.claim_maintenance(101, "sonnet", "maint-101", str(w.paths.worktrees / "maint-101"))
+        self.assertIsNotNone(maintainer_id)
+        w.tick()
+        maintainer = w.store.batch(maintainer_id)
+        request_path = Path(maintainer["worktree"]) / ".warroom-scratch/incident-diagnosis-request.json"
+        request = json.loads(request_path.read_text("utf-8"))
+        owner = request["scope"]["task_report"]
+        self.assertEqual((owner["task"], owner["chunk"], owner["row_state"], owner["session_id"]),
+                         ("001", "001", "FIXQ", "d-session-002"))
+        self.assertEqual(owner["path"], dparallel.defect_path(source, "001"))
+
+        scope = {"task": "001", "chunk": "001"}
+        summary = "D의 원 보고 작성 task에서 무코드 저장 재개가 필요하다."
+        cause = "보고서 경로, 활성 chunk, 종료된 worker run과 세션을 대조했다."
+        action = "D task 001을 기존 세션에서 같은 chunk로 재개한다."
+        next_action = "공식 D save가 task 001을 SAVED로 만들 때까지 추적한다."
+        result = {
+            "version": 2, "issue": 101, "attempt": maintainer_id, "round": request["round"],
+            "defect_id": defect["id"], "event_key": defect["event_key"], "batch_id": source["id"],
+            "source_head": request["source_head"], "evidence_sha256": request["evidence_sha256"],
+            "scope": scope, "outcome": "no_code_resume", "summary": summary, "cause": cause,
+            "recovery": {"type": "resume_report_task", **scope, "action": action},
+            "blocker": None, "next_action": next_action,
+        }
+        maintainer_wt = Path(maintainer["worktree"])
+        (maintainer_wt / ".warroom-scratch/incident-diagnosis.json").write_text(
+            json.dumps(result, ensure_ascii=False), "utf-8")
+        marker = f"incident-recovery-101-attempt-{maintainer_id}-round-{request['round']}"
+        w.gh.comment_issue(101, "\n".join((summary, cause, action, next_action, request["evidence_sha256"],
+                                           defects.marker(defects.EVENT_MARK, marker))))
+        w.adapter.finish(maintainer["pid"])
+        w.adapter.plan.append({"code": 0, "session": "d-session-002",
+                               "effect": lambda: w.runner.dchunk.save(w.wt(), 1)})
+        w.tick()
+        self.assertEqual(w.store.batch(source["id"])["state"], "PRODUCING")
+        self.assertEqual(w.store.task_row(source["id"], "001")["state"], "FIXQ")
+
+        w.tick()
+        resumed = w.adapter.launches[-1]
+        self.assertEqual((resumed["kind"], resumed["session"]), ("resume", "d-session-002"))
+        resumed_run = w.store.runs(source["id"])[0]
+        self.assertEqual((resumed_run["task"], resumed_run["session_id"]), ("001", "d-session-002"))
+        w.adapter.finish(resumed["pid"])
+        w.tick()
+        self.assertEqual(w.store.task_row(source["id"], "001")["state"], "SAVED")
+        self.assertEqual(w.store.defect(defect["id"])["state"], "RELEASED")
+        self.assertEqual(w.store.maintenance(101)["state"], "DONE")
+
     def test_restart_controller_refuses_operator_controls_and_open_workers(self):
         w = self.w
         self.assertIsNone(_live_work_or_controls(w.store))
@@ -280,6 +361,62 @@ class RestartHandoff(unittest.TestCase):
         self.assertTrue(update_restart_request(w.paths, 91, "loaded", loaded_code_sha=HEAD1))
         self.assertFalse(has_pending_restart(w.paths))
         self.assertFalse(_live_work_or_controls(w.store))
+
+
+class MergedFixProgress(unittest.TestCase):
+    def setUp(self):
+        self.w = world()
+        self.addCleanup(self.w.tmp.cleanup)
+
+    def prepare_released_fix(self):
+        w = self.w
+        source_wt = w.paths.worktrees / "d-codex-081-01"
+        branch = "d-deepseek-081-01"
+        w.git.create_worktree(source_wt, branch, HEAD1)
+        batch_id = w.store.create_batch(method="d", producer="deepseek", shard="081", batch="01",
+                                        branch=branch, worktree=str(source_wt), state="PREPARE")
+        w.store.line("deepseek", "d")
+        w.store.update(batch_id, state="PRODUCING", run_kind="d_parallel")
+        w.store.add_tasks(batch_id, [("002", "002")])
+        w.store.update_task(batch_id, "002", state="FAILED", data='{"ack":true}')
+        raw = json.dumps(shared_report(defect_class="d-merged-recovery", summary="D task failure needs shared code repair"))
+        defect_id = w.store.report_defect(batch_id, defects.report_event_key(batch_id, raw), "report",
+                                          "d-merged-recovery", "LINKED", raw, "shared_defect", None)
+        w.store.update_defect(defect_id, issue_number=101)
+        w.gh.issues[101] = {"state": "open", "labels": ["urgent"], "title": "Issue 101", "body": "fix"}
+        w.store.ensure_maintenance(101)
+        m_id = w.store.claim_maintenance(101, "sonnet", "maint-101", str(w.paths.worktrees / "maint-101"))
+        self.assertIsNotNone(m_id)
+        w.store.update_defect(defect_id, state="FIX_MERGED", merge_sha=HEAD1)
+        snapshot = {"version": 1, "defect_id": defect_id, "issue": 101, "batch_id": batch_id,
+                    "source_error_seq": 0, "failed_tasks": [{"task": "002", "chunk": "002"}]}
+        self.assertTrue(w.store.release_defect(defect_id, batch_id, None, force_run=False,
+                                               fix_kind="runtime", applied_code_sha=HEAD1,
+                                               recovery_snapshot=snapshot))
+        return batch_id, defect_id
+
+    def test_merged_fix_resolves_only_after_the_exact_failed_task_is_saved(self):
+        w = self.w
+        batch_id, defect_id = self.prepare_released_fix()
+        w.sup.maint.step()
+        proof = json.loads(w.store.get(f"defect_recovery_{defect_id}"))
+        self.assertEqual((proof["status"], w.store.maintenance(101)["state"]), (None, "RECOVERING"))
+
+        w.store.update_task(batch_id, "002", state="SAVED")
+        w.sup.maint.step()
+        proof = json.loads(w.store.get(f"defect_recovery_{defect_id}"))
+        self.assertEqual(proof["status"], "VERIFIED")
+        self.assertEqual(w.store.maintenance(101)["state"], "DONE")
+
+    def test_merged_fix_recurrence_keeps_the_incident_unresolved(self):
+        w = self.w
+        batch_id, defect_id = self.prepare_released_fix()
+        w.store.update(batch_id, state="ERROR", error="same task failed again")
+        w.sup.maint.step()
+        proof = json.loads(w.store.get(f"defect_recovery_{defect_id}"))
+        self.assertEqual(proof["status"], "RECURRENCE")
+        self.assertEqual(w.store.defect(defect_id)["state"], "HELD")
+        self.assertEqual(w.store.maintenance(101)["state"], "HELD")
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,7 @@ import os
 import re
 from pathlib import Path
 
-from . import auth, dchunk, defects, literary, progress, stage2, stage3
+from . import auth, cparallel, dchunk, defects, dparallel, literary, progress, stage2, stage3
 from .config import maintainer_id, maintainer_problem
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked
 from .store import MAINTENANCE_DIAGNOSIS_HOLD_PREFIX, MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
@@ -58,7 +58,8 @@ class Maintenance:
     def step(self) -> None:
         for fn in (self._intake_errors, self._publish, self._publish_issue_requests, self._reassess_external_handoffs,
                    self._start, self._track, self._release,
-                   self._verify_no_code_recoveries, self._report_outcomes, self._resume_diagnoses):
+                   self._verify_no_code_recoveries, self._verify_recovery_progress,
+                   self._report_outcomes, self._resume_diagnoses):
             try:
                 fn()
             except Exception as e:   # GitHub/git trouble never stops the production Lines; the state is re-read next tick
@@ -1111,13 +1112,56 @@ class Maintenance:
         bid = b["id"]
         extra = f"error_evidence_{bid}_{b['error_seq']}"
         if b["method"] == "d":
-            return [f"d_base_head_{bid}", f"d_commit_head_{bid}", dchunk.run_start_key(bid), extra]
+            return [f"d_base_head_{bid}", f"d_commit_head_{bid}", dchunk.run_start_key(bid),
+                    f"s2_defect_path_{bid}", extra]
         if b["method"] == "c":
-            return [literary.run_start_key(bid), f"c_commit_head_{bid}", extra]
+            return [literary.run_start_key(bid), f"c_commit_head_{bid}", f"s2_defect_path_{bid}", extra]
         if b["method"] == STAGE2_METHOD:
             return [stage2.run_start_key(bid), stage2.links_start_key(bid), stage2.repair_run_start_key(bid),
-                    f"s2_commit_head_{bid}", extra]
+                    f"s2_commit_head_{bid}", f"s2_defect_path_{bid}", extra]
         return [stage3.run_start_key(bid), stage3.parallel_start_key(bid), f"s3_commit_head_{bid}", extra]
+
+    def _task_report_scope(self, d, b) -> dict | None:
+        """Bind a per-task report path to its one task row and the exact run/session that wrote it."""
+        rel = self.store.get(f"s2_defect_path_{b['id']}")
+        if d["source"] != "report" or not isinstance(rel, str) or not rel:
+            return None
+        expected = {}
+        for row in self.store.task_rows(b["id"]):
+            if b["method"] == dchunk.METHOD:
+                path = dparallel.defect_path(b, row["task"])
+            elif b["method"] == literary.METHOD:
+                path = cparallel.defect_path(b, row["task"])
+            elif b["method"] == STAGE2_METHOD:
+                path = stage2.task_path(row["task"], "shared-defect.json")
+            else:
+                continue
+            if path == rel:
+                expected[row["task"]] = row
+        if len(expected) != 1:
+            return None
+        task, row = next(iter(expected.items()))
+        path = Path(b["worktree"]) / rel
+        try:
+            raw = path.read_text("utf-8", errors="replace")
+            normalized = defects.canonical(defects.parse(raw))
+        except OSError:
+            return None
+        except defects.ReportProblem:
+            return None
+        report_base = d["report"].partition("\n")[0]
+        report_event = defects.report_event_key(b["id"], raw)
+        if (normalized != report_base
+                or not (d["event_key"] == report_event or d["event_key"].startswith(report_event + ":after:"))):
+            return None
+        runs = [run for run in self.store.runs(b["id"]) if run["task"] == task]
+        run = self.store.run(row["run_id"]) if row["run_id"] is not None else (runs[0] if runs else None)
+        if (run is None or run["batch_id"] != b["id"] or run["task"] != task
+                or run["session_id"] != row["session_id"]):
+            return None
+        return {"path": rel, "task": task, "chunk": row["chunk_id"], "row_state": row["state"],
+                "task_run_id": row["run_id"], "run_id": run["id"], "run_kind": run["kind"],
+                "session_id": row["session_id"], "report_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest()}
 
     @staticmethod
     def _envelope_of(d):
@@ -1159,6 +1203,8 @@ class Maintenance:
                 task_scope = [{"task": row["task"], "chunk": row["chunk_id"], "state": row["state"],
                                "run_id": row["run_id"], "session_id": row["session_id"]}
                               for row in self.store.task_rows(ob["id"])]
+                task_report_path = self.store.get(f"s2_defect_path_{ob['id']}")
+                task_report = self._task_report_scope(d, ob)
                 data = {
                     "version": 2,
                     "defect": {"id": d["id"], "event_key": d["event_key"], "source": d["source"],
@@ -1173,6 +1219,8 @@ class Maintenance:
                     "envelope": self._envelope_of(d),
                     "observation": observation,
                     "task_scope": task_scope,
+                    "task_report_path": task_report_path,
+                    "task_report": task_report,
                     "progress": self._progress_snapshot(ob),
                     "git": self._git_facts(ob) if owt.is_dir() else {"worktree": str(owt), "status": "missing"},
                     "report": d["report"],
@@ -1194,7 +1242,7 @@ class Maintenance:
                     "defect_id": d["id"], "event_key": d["event_key"], "batch_id": ob["id"],
                     "source_head": data["git"].get("head"), "evidence_sha256": evidence_sha256,
                     "scope": {**{key: ob[key] for key in ("method", "shard", "batch", "producer", "run_kind")},
-                              "tasks": task_scope},
+                              "tasks": task_scope, "task_report": task_report},
                 }
                 request_path = Path(b["worktree"]) / self.DIAGNOSIS_REQUEST_FILE
                 request_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1328,7 +1376,10 @@ class Maintenance:
                     or not self._text(recovery.get("action"))):
                 return False
             if data["outcome"] == "no_code_resume":
-                expected_type = "resume_failed_task" if scope["task"] is not None else "resume_same_session"
+                expected_type = ("resume_same_session" if scope["task"] is None else
+                                 "resume_report_task" if (d["source"] == "report"
+                                                           and evidence.get("task_report_path") is not None)
+                                 else "resume_failed_task")
                 if (data.get("blocker") is not None or set(recovery) != {"type", "task", "chunk", "action"}
                         or recovery["type"] != expected_type):
                     return False
@@ -1398,8 +1449,12 @@ class Maintenance:
                                                                     separators=(",", ":")).encode("utf-8")).hexdigest(),
                         "task": recovery["task"], "chunk": recovery["chunk"],
                         "recovery_type": recovery["type"],
-                        "run_id": task_row["run_id"] if task_row is not None else (source_run["id"] if source_run else None),
+                        "run_id": (evidence["task_report"]["run_id"]
+                                   if recovery["type"] == "resume_report_task" else
+                                   task_row["run_id"] if task_row is not None else (source_run["id"] if source_run else None)),
                         "session_id": task_row["session_id"] if task_row is not None else source["session_id"],
+                        "task_report": evidence.get("task_report"),
+                        "task_report_path": evidence.get("task_report_path"),
                         "run_kind": source["run_kind"], "baseline_progress": evidence.get("progress"),
                         "summary": defects.public(data["summary"].strip()),
                         "cause": defects.public(data["cause"].strip()), "action": defects.public(recovery["action"].strip()),
@@ -1419,6 +1474,9 @@ class Maintenance:
             return self._validate_serial_scope(source, evidence, recovery)
         if not isinstance(task, str) or not task or not isinstance(chunk, str) or not chunk:
             return False
+        if (evidence.get("defect", {}).get("source") == "report"
+                and evidence.get("task_report_path") is not None):
+            return self._validate_report_task(source, evidence, recovery)
         row = self.store.task_row(source["id"], task)
         before = next((x for x in evidence.get("task_scope", []) if x.get("task") == task), None)
         if (row is None or before is None or row["state"] != "FAILED" or not row["run_id"]
@@ -1434,6 +1492,65 @@ class Maintenance:
                     and run["batch_id"] == source["id"] and run["task"] == task
                     and run["ended_at"] is not None and run["session_id"] == row["session_id"]
                     and not self.store.open_task_runs(source["id"]))
+
+    def _task_report_path(self, source, task: str) -> str | None:
+        if source["method"] == dchunk.METHOD:
+            return dparallel.defect_path(source, task)
+        if source["method"] == literary.METHOD:
+            return cparallel.defect_path(source, task)
+        if source["method"] == STAGE2_METHOD:
+            return stage2.task_path(task, "shared-defect.json")
+        return None
+
+    def _validate_report_task(self, source, evidence: dict, recovery: dict) -> bool:
+        """Validate the exact task whose stable shared-defect file caused the automatic pause."""
+        owner = evidence.get("task_report")
+        task, chunk = recovery.get("task"), recovery.get("chunk")
+        if (not isinstance(owner, dict) or evidence.get("defect", {}).get("source") != "report"
+                or owner.get("task") != task or owner.get("chunk") != chunk
+                or owner.get("path") != evidence.get("task_report_path")
+                or owner.get("path") != self._task_report_path(source, task)
+                or self.store.get(f"s2_defect_path_{source['id']}") != owner.get("path")
+                or not isinstance(owner.get("report_sha256"), str)
+                or not isinstance(owner.get("run_id"), int)
+                or not isinstance(owner.get("session_id"), str) or not owner["session_id"]
+                or not isinstance(owner.get("run_kind"), str)):
+            return False
+        row = self.store.task_row(source["id"], task)
+        before = next((x for x in evidence.get("task_scope", []) if x.get("task") == task), None)
+        if (row is None or before is None or row["state"] not in ("RUNNING", "FIXQ", "FAILED")
+                or row["state"] != owner.get("row_state") or row["chunk_id"] != chunk
+                or row["run_id"] != owner.get("task_run_id")
+                or row["session_id"] != owner.get("session_id")
+                or before.get("chunk") != chunk or before.get("state") != row["state"]
+                or before.get("run_id") != row["run_id"] or before.get("session_id") != row["session_id"]):
+            return False
+        if source["method"] == dchunk.METHOD and not (source["run_kind"] == "d_parallel"):
+            return False
+        if source["method"] == literary.METHOD and source["run_kind"] != "c_parallel":
+            return False
+        if source["method"] == STAGE2_METHOD and not str(source["run_kind"] or "").startswith("s2_"):
+            return False
+        try:
+            raw = (Path(source["worktree"]) / owner["path"]).read_text("utf-8", errors="replace")
+            report_sha = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+            report_event = defects.report_event_key(source["id"], raw)
+            defect_event = evidence.get("defect", {}).get("event_key")
+            normalized = defects.canonical(defects.parse(raw))
+            report_matches = (report_sha == owner["report_sha256"]
+                              and normalized == str(evidence.get("report", "")).partition("\n")[0]
+                              and (defect_event == report_event or
+                                   isinstance(defect_event, str) and defect_event.startswith(report_event + ":after:")))
+            data = json.loads(row["data"] or "{}")
+        except (OSError, TypeError, ValueError, defects.ReportProblem):
+            return False
+        if row["state"] == "FAILED" and (not isinstance(data, dict) or not data.get("ack")):
+            return False
+        run = self.store.run(owner["run_id"])
+        return bool(report_matches and isinstance(data, dict) and run is not None
+                    and run["batch_id"] == source["id"] and run["task"] == task
+                    and run["kind"] == owner["run_kind"] and run["session_id"] == owner["session_id"]
+                    and run["ended_at"] is not None and not self.store.open_task_runs(source["id"]))
 
     def _validate_serial_scope(self, source, evidence: dict, recovery: dict) -> bool:
         """Bind a legacy serial resume to its one active chunk and the last ended session."""
@@ -1684,6 +1801,9 @@ class Maintenance:
                         and after["done"] > before["done"])
         except (dchunk.DChunkError, literary.LiteraryError, stage3.Stage3Error, OSError, ValueError, KeyError, TypeError):
             return False
+
+    def _verify_recovery_progress(self) -> None:
+        """Resolve merged fixes only after their captured task is SAVED or the source enters its PR stage."""
         for d in self.store.defects(("RELEASED",)):
             if d["fix_kind"] not in ("runtime", "worktree") or d["issue_number"] is None:
                 continue

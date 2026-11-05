@@ -2844,8 +2844,9 @@ class Supervisor:
             if live and self.store.get(sig_key) != sig:
                 self.store.set(sig_key, sig)
                 continue
-            if live:
-                s2p.stop_workers(b)
+            if self.store.open_task_runs(b["id"]):
+                if not s2p.stop_workers(b) or self.store.open_task_runs(b["id"]):
+                    return True   # wait for every exact worker run to close before pausing and snapshotting its owner
             self.store.set(f"s2_defect_path_{b['id']}", rel)
             self.maint.report(b, "report", key, raw)
             return True
