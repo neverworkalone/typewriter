@@ -955,9 +955,19 @@ class Maintenance:
 
     def _prior_incidents(self, bid: int) -> list[dict]:
         out = []
-        for d in self.store.defects(("RELEASED",)):
+        for d in self.store.defects(("RELEASED", "HELD")):
             if d["batch_id"] != bid or d["source"] != "incident":
                 continue
+            if d["state"] == "HELD":
+                recovery = self.store.get(f"defect_recovery_{d['id']}")
+                no_code = self.store.get(f"no_code_approval_{d['id']}")
+                try:
+                    recovery_state = json.loads(recovery or "{}").get("status")
+                    no_code_state = json.loads(no_code or "{}").get("status")
+                except (TypeError, ValueError):
+                    recovery_state = no_code_state = None
+                if recovery_state != "RECURRENCE" and no_code_state != "RECURRENCE":
+                    continue
             fp = None
             try:
                 env = defects.parse_incident(d["report"].partition("\n")[0])
