@@ -153,7 +153,9 @@ def _live_work_or_controls(store: Store, *, recovering_stopped_supervisor: bool 
         # proven finished. The Stop flag stays set; the restarted Supervisor remains responsible for it.
         if line["drain"] or (line["force_stop"] and not recovering_stopped_supervisor):
             return f"operator Stop/Drain is active on {line['model']}/{line['method']}"
-        if store.clear_request(line["model"], line["method"]) is not None:
+        # A stopped Supervisor must be able to consume a previously requested Clear after every worker is
+        # proven finished. Its ordinary Clear path still validates ownership and preserves blocked requests.
+        if store.clear_request(line["model"], line["method"]) is not None and not recovering_stopped_supervisor:
             return f"operator Clear is active on {line['model']}/{line['method']}"
         if store.get(f"stop_pin_{line['model']}_{line['method']}") is not None:
             return f"operator Stop pin is active on {line['model']}/{line['method']}"

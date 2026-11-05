@@ -76,6 +76,8 @@ Supervisor Python 코드가 바뀐 수정은 loaded code SHA가 새 commit을 �
 
 Supervisor가 이미 종료된 경우 모든 worker의 종료가 확인되면 대기 중인 Stop 플래그를 유지한 채 Supervisor를 시작한다. Supervisor가 기존 Stop을 처리하며, 살아 있는 Supervisor의 교체에는 기존 Stop 제한을 그대로 적용한다.
 
+같은 조건에서 기존 Clear 요청도 보존한 채 Supervisor를 시작해 일반 Clear 경로가 소유권과 작업물을 확인하도록 한다. 실행 중인 Supervisor 교체 시에는 Clear가 계속 재시작을 막는다.
+
 코드를 배포한 뒤 운영 루트에서 `./war`를 실행한다. 이 launcher는 기존 TUI가 이미 열려 있어도 별도 controller를 먼저 실행하므로 새 controller가 처음 배포된 경우에도 persisted restart request를 처리할 수 있다. 진행 중 AI/task, operator Stop/Drain/Clear/hold, root/HEAD/ownership 불일치가 있으면 아무 프로세스도 종료하지 않고 요청을 대기 상태로 보존한다. TUI의 Supervisor 상태와 Audit Log에서 blocker를 확인하고 조건이 해소되면 controller가 다시 검사한다.
 
 incident에 직접 연결되지 않은 머지된 Supervisor 수정은 운영 루트에서 `TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" tools/warroom/.local/venv/bin/python -m warroom.restart_controller --request-code-sha <FULL_SHA>`로 명시적으로 요청한다. 이 요청은 사건 해결을 주장하지 않으며 동일한 작업 종료·소유권·운영자 제어 검사를 거친다.

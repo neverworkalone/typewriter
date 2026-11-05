@@ -408,6 +408,21 @@ class RestartHandoff(unittest.TestCase):
         self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
 
+    def test_stopped_supervisor_can_consume_existing_clear_after_workers_finish(self):
+        store = mock.Mock()
+        store.incomplete_batches.return_value = [{"id": 42, "pid": 999999}]
+        store.lines.return_value = [{"model": "codex", "method": "d", "drain": 0, "force_stop": 0}]
+        store.get.return_value = None
+        store.clear_request.return_value = {"batch_id": 42, "status": "REQUESTED"}
+        exit_file = Path(self.w.tmp.name) / "run.exit"
+        store.runs.return_value = [{"ended_at": None, "pid": 999999, "exit_file": str(exit_file)}]
+        with mock.patch("warroom.restart_controller._pid_alive", return_value=False):
+            self.assertIn("unclosed run", _live_work_or_controls(store, recovering_stopped_supervisor=True))
+            exit_file.write_text("0\n")
+            self.assertIn("unclosed run", _live_work_or_controls(store))
+            self.assertIsNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
+        self.assertEqual(store.clear_request.return_value["status"], "REQUESTED")
+
     def test_operator_reload_is_not_an_incident_and_requires_clean_containing_checkout(self):
         result = mock.Mock(returncode=0, stdout=HEAD1)
         clean = mock.Mock(returncode=0, stdout="")
