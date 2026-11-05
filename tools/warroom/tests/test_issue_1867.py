@@ -7,8 +7,9 @@ from tests.fakes import World
 from tests.test_issue_1555 import produce_and_report
 from tests.test_issue_1684 import s2_world
 from warroom import control
-from warroom.config import (DEFAULTS, MAINTAINER, STAGE1, STAGE2, config_problem, maintainer_id, maintainer_problem,
-                            registry_problems, reload_problem, role_of, run_spec)
+from warroom.config import (DEFAULTS, MAINTAINER, STAGE1, STAGE1_AB, STAGE1_C, STAGE1_D, STAGE2, config_problem,
+                            maintainer_id, maintainer_problem, registry_problems, reload_problem, role_of,
+                            role_problem, role_view, run_spec)
 from tests.test_reload import reload, write
 
 PROFILES = {
@@ -44,7 +45,8 @@ class Resolution(unittest.TestCase):
         c = cfg()
         self.assertIsNone(config_problem(c))
         self.assertEqual(registry_problems(c), {})
-        for method, role in (("a", STAGE1), ("b", STAGE1), ("c", STAGE1), ("d", STAGE1), ("s2", STAGE2), ("m", MAINTAINER)):
+        for method, role in (("a", STAGE1_AB), ("b", STAGE1_AB), ("c", STAGE1_C), ("d", STAGE1_D),
+                             ("s2", STAGE2), ("m", MAINTAINER)):
             self.assertEqual(role_of(method), role)
         self.assertEqual(pin(c, "codex", STAGE1), ("gpt-6-luna", "high", "worktree"))
         self.assertEqual(pin(c, "codex", STAGE2), ("gpt-6-luna", "xhigh", "worktree"))
@@ -53,6 +55,40 @@ class Resolution(unittest.TestCase):
         self.assertIs(run_spec(c, "codex", role=STAGE1).fast, True)
         self.assertIs(run_spec(c, "codex", role=STAGE2).fast, False)
         self.assertIsNone(run_spec(c, "claude", role=STAGE1).fast)
+
+    def test_c_override_uses_one_complete_profile_and_other_methods_fall_back_to_stage1(self):
+        profiles = json.loads(json.dumps(PROFILES))
+        profiles["luna-xhigh"]["permission_profile"] = "restricted"
+        c = cfg(model_profiles=profiles)
+        c["assignments"][STAGE1_C] = {"codex": "luna-xhigh"}
+        self.assertIsNone(config_problem(c))
+        self.assertEqual(pin(c, "codex", STAGE1_AB), ("gpt-6-luna", "high", "worktree"))
+        self.assertEqual(pin(c, "codex", STAGE1_C), ("gpt-6-luna", "xhigh", "restricted"))
+        self.assertEqual(pin(c, "codex", STAGE1_D), ("gpt-6-luna", "high", "worktree"))
+        self.assertIs(run_spec(c, "codex", role=STAGE1_C).fast, False)
+        self.assertEqual(pin(c, "claude", STAGE1_C), ("claude-sonnet-5-5", "medium", ""))
+        self.assertEqual(role_view(c, "codex", "c")["effort"], "xhigh")
+        self.assertEqual(role_view(c, "codex", "c")["permission_profile"], "restricted")
+        self.assertEqual(role_view(c, "codex", "a")["effort"], "high")
+
+    def test_stage1_ab_and_d_overrides_are_independent(self):
+        c = cfg()
+        c["assignments"][STAGE1_AB] = {"codex": "luna-xhigh"}
+        c["assignments"][STAGE1_D] = {"codex": "luna-xhigh"}
+        self.assertEqual(pin(c, "codex", STAGE1_AB), ("gpt-6-luna", "xhigh", "worktree"))
+        self.assertEqual(pin(c, "codex", STAGE1_C), ("gpt-6-luna", "high", "worktree"))
+        self.assertEqual(pin(c, "codex", STAGE1_D), ("gpt-6-luna", "xhigh", "worktree"))
+
+    def test_stage1_c_only_assignment_governs_c_without_leaking_to_other_methods(self):
+        c = cfg(assignments={STAGE1_C: {"codex": "luna-xhigh"}, STAGE2: ASSIGN[STAGE2]})
+        self.assertIsNone(config_problem(c))
+        self.assertEqual(registry_problems(c), {})
+        self.assertEqual(pin(c, "codex", STAGE1_C), ("gpt-6-luna", "xhigh", "worktree"))
+        for method in ("a", "b", "d"):
+            self.assertIsNotNone(role_problem(c, "codex", role_of(method)))
+            self.assertEqual(role_view(c, "codex", method)["model"], "")
+            self.assertIn("unassigned", role_view(c, "codex", method))
+        self.assertEqual(role_view(c, "codex", "c")["effort"], "xhigh")
 
     def test_deepseek_tiers_and_effort_are_untouched(self):
         c = cfg()
@@ -99,9 +135,13 @@ class Resolution(unittest.TestCase):
         two_codex = lambda c: c["producers"].update(codex2={"label": "L2", "adapter": "codex"})
         cases = [
             ("profile missing", mut(lambda c: c["assignments"]["stage1"].update(codex="nope"))),
+            ("Stage C profile missing", mut(lambda c: c["assignments"].update({STAGE1_C: {"codex": "nope"}}))),
             ("producer missing", mut(lambda c: c["assignments"]["stage1"].update(ghost="luna-high"))),
+            ("Stage A/B producer missing", mut(lambda c: c["assignments"].update({STAGE1_AB: {"ghost": "luna-high"}}))),
             ("adapter mismatch", mut(lambda c: c["assignments"]["stage1"].update(codex="sonnet-medium"))),
+            ("Stage D adapter mismatch", mut(lambda c: c["assignments"].update({STAGE1_D: {"codex": "sonnet-medium"}}))),
             ("unknown stage", mut(lambda c: c["assignments"].update(stage4={"codex": "luna-high"}))),
+            ("unknown Stage 1 role", mut(lambda c: c["assignments"].update(**{"stage1-e": {"codex": "luna-high"}}))),
             ("bad effort", mut(lambda c: c["model_profiles"]["luna-high"].update(effort="turbo"))),
             ("no effort", mut(lambda c: c["model_profiles"]["luna-high"].pop("effort"))),
             ("no model", mut(lambda c: c["model_profiles"]["luna-high"].pop("model"))),
@@ -133,7 +173,8 @@ class ReloadAndRuns(unittest.TestCase):
     def world(self, **over):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
-        write(self.w, PRODUCERS, model_profiles=PROFILES, assignments=ASSIGN, **over)
+        options = {"model_profiles": PROFILES, "assignments": ASSIGN, **over}
+        write(self.w, PRODUCERS, **options)
         self.assertTrue(reload(self.w)[0])
         return self.w
 
@@ -168,24 +209,47 @@ class ReloadAndRuns(unittest.TestCase):
         w.tick()
         self.assertIn("시작 차단", w.store.peek_line("claude", "a")["blocked"])
 
+    def test_method_specific_profile_is_used_by_new_stage1_runs(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        index = Path(w.tmp.name) / "approved-index.sqlite"
+        index.write_bytes(b"synthetic approved-index path")
+        write(w, PRODUCERS, model_profiles=PROFILES,
+              assignments={**ASSIGN, STAGE1_C: {"codex": "luna-xhigh"}},
+              literary_index_path=str(index), corpus_index_path=str(index))
+        self.assertTrue(reload(w)[0])
+        for method in "abc":
+            w.start("single", "codex", method)
+        w.tick(3)
+        for method, effort in (("a", "high"), ("b", "high"), ("c", "xhigh")):
+            batch = w.store.active_batch("codex", method)
+            run = w.store.runs(batch["id"])[0]
+            self.assertEqual((run["model"], run["effort"], run["fast_mode"]),
+                             ("gpt-6-luna", effort, int(effort == "high")))
+
     def test_running_batch_uses_reloaded_assignment_and_keeps_each_run_record(self):
-        w = self.world()
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        index = Path(w.tmp.name) / "approved-literature.sqlite"
+        index.write_bytes(b"synthetic approved-index path")
+        write(w, PRODUCERS, model_profiles=PROFILES, assignments=ASSIGN, literary_index_path=str(index))
+        self.assertTrue(reload(w)[0])
         w.adapter.plan.append({"session": "session-first"})
-        w.start("single", "codex", "a")
+        w.start("single", "codex", "c")
         w.tick(2)
-        bid = w.row("codex", "a")["id"]
+        bid = w.row("codex", "c")["id"]
         first = w.store.runs(bid)[0]
         self.assertEqual((first["model"], first["effort"], first["permission_profile"]),
                          ("gpt-6-luna", "high", "worktree"))
         self.assertEqual(first["fast_mode"], 1)
         write(w, PRODUCERS, model_profiles=PROFILES,
-              assignments={**ASSIGN, "stage1": {**ASSIGN["stage1"], "codex": "luna-xhigh"}})
+              assignments={**ASSIGN, STAGE1_C: {"codex": "luna-xhigh"}}, literary_index_path=str(index))
         self.assertTrue(reload(w)[0])
-        control.stop_line(w.store, "codex", "a")
+        control.stop_line(w.store, "codex", "c")
         w.tick()
-        control.retry(w.store, "codex", "a")
+        control.retry(w.store, "codex", "c")
         w.tick(2)
-        batch = w.store.active_batch("codex", "a")
+        batch = w.store.active_batch("codex", "c")
         self.assertEqual(batch["state"], "PRODUCING")
         self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["model"],
                           w.adapter.launches[-1]["effort"], w.adapter.launches[-1]["permission_profile"],
@@ -200,10 +264,10 @@ class ReloadAndRuns(unittest.TestCase):
         self.assertEqual((runs[0]["fast_mode"], runs[1]["fast_mode"]), (0, 1))
         self.assertEqual((runs[0]["session_id"], runs[1]["session_id"]),
                          ("session-first", "session-first"))
-        # A different Line also starts from the currently loaded assignment.
+        # Another Stage 1 method keeps the shared fallback instead of borrowing C's override.
         w.start("single", "codex", "b")
         w.tick()
-        self.assertEqual(w.adapter.launches[-1]["effort"], "xhigh")
+        self.assertEqual(w.adapter.launches[-1]["effort"], "high")
 
     def test_running_batch_uses_reloaded_permission_profile(self):
         w = self.world()
