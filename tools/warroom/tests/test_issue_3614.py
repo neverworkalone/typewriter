@@ -13,7 +13,7 @@ from tests.test_issue_2034_d import DWorld
 from tests.test_supervisor import review
 from tests.test_lines import PRODUCERS
 from warroom import control, defects, dchunk, dparallel
-from warroom.restart_controller import (_live_work_or_controls, _request_files, has_pending_restart, record_runtime,
+from warroom.restart_controller import (_live_work_or_controls, _request_files, handle_pending_restart, has_pending_restart, record_runtime,
                                         request_operator_restart, update_restart_request, write_restart_request)
 
 
@@ -422,6 +422,48 @@ class RestartHandoff(unittest.TestCase):
             self.assertIn("unclosed run", _live_work_or_controls(store))
             self.assertIsNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
         self.assertEqual(store.clear_request.return_value["status"], "REQUESTED")
+
+    def test_restart_consumes_pinned_maintainer_stop_only_after_worker_exits(self):
+        w = self.w
+        store = w.store
+        store.line("sonnet", "m")
+        batch = store.create_batch(method="m", producer="sonnet", shard="", batch="101",
+                                   branch="maint-101", worktree="", state="PRODUCING")
+        exit_file = Path(w.tmp.name) / "worker.exit"
+        store.add_run(batch, "m_new", None, 999999, Path(w.tmp.name) / "worker.log", exit_file)
+        store.update(batch, pid=999999)
+        self.assertTrue(store.request_stop_pinned("sonnet", "m", batch))
+        request = write_restart_request(w.paths, {"id": 91, "merge_sha": HEAD1}, None)
+        result = mock.Mock(returncode=0, stdout=HEAD1)
+        absent = mock.Mock(returncode=1, stdout="")
+
+        def tmux(args, **kwargs):
+            if args[0] == "new-session":
+                record_runtime(w.paths, HEAD1)
+                w.sup._tick_maintenance()
+                return result
+            return absent
+
+        with mock.patch("warroom.restart_controller._git", return_value=result), \
+             mock.patch("warroom.restart_controller._ancestor", return_value=True), \
+             mock.patch("warroom.restart_controller._worktree_ownership_problem", return_value=None), \
+             mock.patch("warroom.restart_controller._pid_alive", return_value=False), \
+             mock.patch("warroom.restart_controller._lock_held", return_value=False), \
+             mock.patch("warroom.restart_controller._tmux", side_effect=tmux) as launch:
+            handle_pending_restart(w.paths, store)
+            self.assertIn("unclosed run", json.loads(request.read_text())["blocker"])
+            self.assertFalse(launch.called)
+            exit_file.write_text("0\n")
+            with mock.patch("warroom.restart_controller._lock_held", return_value=True):
+                handle_pending_restart(w.paths, store)
+            self.assertIn("unclosed run", json.loads(request.read_text())["blocker"])
+            self.assertFalse(launch.called)
+            self.assertEqual(store.get("stop_pin_sonnet_m"), str(batch))
+            handle_pending_restart(w.paths, store)
+        self.assertEqual(json.loads(request.read_text())["state"], "loaded")
+        self.assertIsNone(store.get("stop_pin_sonnet_m"))
+        self.assertEqual(store.line("sonnet", "m")["force_stop"], 0)
+        self.assertEqual(store.batch(batch)["state"], "PAUSED")
 
     def test_operator_reload_is_not_an_incident_and_requires_clean_containing_checkout(self):
         result = mock.Mock(returncode=0, stdout=HEAD1)
