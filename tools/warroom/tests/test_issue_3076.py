@@ -288,7 +288,7 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
         def progressive_submit(argv, cwd, env=None, input=None):
             if len(argv) > 2 and argv[2] == "submit":
                 input_name = w.runner.literary.opt(argv, "--input")
-                if input_name == "c-chunk-001.submit.json":
+                if Path(input_name).name == "c-chunk-001.submit.json":
                     cp = w.runner.literary.load(cwd, argv)
                     submission = json.loads((Path(cwd) / input_name).read_text())
                     checkpoint_senses = {sense["sense_id"]: sense for record in cp["records"]
