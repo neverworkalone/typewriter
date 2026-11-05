@@ -426,6 +426,10 @@ class ParallelStage2:
         queue += [t for t in stage2.ready_tasks(plan, rows) if self._data(rows[t["id"]]).get("retry_after", 0) <= now]
         if not queue:
             return
+        with self.sup.launch_gate.permit():   # boundary adoption and slot preparation are launch writes (#3786)
+            self._start_queued(b, rows, round_, queue, free)
+
+    def _start_queued(self, b, rows, round_: _Round, queue, free) -> None:
         if self._halted_by_boundary(b, round_):
             return
         problem = round_.preflight()

@@ -72,3 +72,39 @@ class TaskLauncherPermit(unittest.TestCase):
         self.assertIs(ad.required_launch_gate, built.launch_gate)
         with self.assertRaises(RuntimeError):
             ad._spawn(['true'], w.tmp.name, {}, w.sup.paths.logs / 'x.log', w.sup.paths.logs / 'x.exit')
+
+
+class PreparationIsAdmitted(unittest.TestCase):
+    """Writes that precede a launch (worktree, pending record) happen only after admission."""
+
+    def setUp(self):
+        from tests.test_issue_1555 import make_batch
+        self.w = World()
+        self.addCleanup(self.w.tmp.cleanup)
+        self.b = make_batch(self.w, method='a', run_kind='produce', state='PREPARE', worktree=False)
+
+    def test_denied_prepare_creates_no_worktree_and_changes_no_row(self):
+        w, b = self.w, self.b
+        before = dict(w.store.batch(b['id']))
+        w.sup.launch_gate.close()
+        with self.assertRaises(LaunchDenied):
+            w.sup._prepare_existing(b)
+        self.assertFalse(__import__('pathlib').Path(b['worktree']).exists())
+        self.assertEqual(dict(w.store.batch(b['id'])), before)
+        self.assertEqual(w.store.runs(b['id']), [])
+        self.assertEqual(w.adapter.launches, [])
+
+    def test_denied_relaunch_and_pending_reentry_leave_the_pending_record(self):
+        import json
+        w, b = self.w, self.b
+        key = f"pending_{b['id']}"
+        w.store.set(key, json.dumps({'stage': 'prelaunch', 'evidence': {
+            'entrypoint': 'prepare_existing', 'worktree': str(b['worktree']), 'run_kind': b['run_kind'],
+            'last_run_id': None, 'head': None, 'target': None}}, sort_keys=True))
+        w.sup.launch_gate.close()
+        with self.assertRaises(LaunchDenied):
+            w.sup._pending_gate(b)
+        self.assertIsNotNone(w.store.get(key))
+        with self.assertRaises(LaunchDenied):
+            w.sup._relaunch(b)
+        self.assertEqual(w.store.runs(b['id']), [])

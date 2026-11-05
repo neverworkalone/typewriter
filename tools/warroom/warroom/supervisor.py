@@ -700,6 +700,12 @@ class Supervisor:
 
     def _guarded(self, b, stage: str, fn, **evidence):
         """Run one retryable step; a transient query failure becomes a pending re-entry instead of ERROR/PAUSED."""
+        if stage == "prelaunch":   # preparation (worktree, evidence, plans) precedes the launch's first write
+            with self.launch_gate.permit():
+                return self._guarded_admitted(b, stage, fn, **evidence)
+        return self._guarded_admitted(b, stage, fn, **evidence)
+
+    def _guarded_admitted(self, b, stage: str, fn, **evidence):
         try:
             return fn(b)
         except TRANSIENT as e:
@@ -736,6 +742,12 @@ class Supervisor:
         if problem:
             self._fail(b, "ERROR", f"pending 재판정 증거 불일치({stage}: {problem}) — AI 재실행 없이 보존")
             return True
+        if stage == "prelaunch":   # consuming the record is a write: admission comes first, so a denial leaves it intact
+            with self.launch_gate.permit():
+                return self._reenter_pending(b, stage, ev)
+        return self._reenter_pending(b, stage, ev)
+
+    def _reenter_pending(self, b, stage: str, ev: dict) -> bool:
         self.store.delete(f"pending_{b['id']}")   # consumed: a repeated transient failure records a new one
         if stage == "exit0":
             self._guarded(b, "exit0", self._judge_exit0, run_id=ev["run_id"])

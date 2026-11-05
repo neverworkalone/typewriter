@@ -488,6 +488,10 @@ class ParallelStage3:
         queue = [r for r in due if retried(r)] + [r for r in due if not retried(r)]
         if not queue:
             return
+        with self.sup.launch_gate.permit():   # boundary adoption precedes the first launch write (#3787)
+            self._start_queued(b, round_, queue, free)
+
+    def _start_queued(self, b, round_: _Round, queue, free) -> None:
         if round_.boundary is None:   # proved once per round, only when something is about to start
             round_.boundary = not self._halted_by_boundary(b, round_)
         if not round_.boundary:

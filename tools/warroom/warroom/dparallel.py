@@ -453,7 +453,13 @@ class ParallelD:
         due = lambda r: self._data(r).get("retry_after", 0) <= now and r["task"] not in busy
         queue = [r for r in sorted(rows.values(), key=lambda r: r["task"]) if r["state"] == "FIXQ" and due(r)]
         queue += [r for r in sorted(rows.values(), key=lambda r: r["task"]) if r["state"] == "PENDING" and due(r)]
-        if not queue or self._halted_by_boundary(b, round_):
+        if not queue:
+            return
+        with self.sup.launch_gate.permit():   # chunk activation is a launch preparation write (#3786)
+            self._start_queued(b, round_, queue, free)
+
+    def _start_queued(self, b, round_: _Round, queue, free) -> None:
+        if self._halted_by_boundary(b, round_):
             return
         for row in queue:
             if free <= 0 or self.store.batch(b["id"])["state"] != "PRODUCING":
