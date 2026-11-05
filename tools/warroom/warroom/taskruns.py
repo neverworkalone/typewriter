@@ -85,13 +85,23 @@ def observe_run(store, ad, run, session_id):
     contradicts them; once the process is gone it closes exactly this run (own usage, own exit status)."""
     log = Path(run["log_file"])
     if run["ended_at"] is not None:
+        # A stop may close an already successful process before its session was observed.
+        # Recover only the identity actually recorded by that run, never overwrite a conflict.
+        logged_sid = ad.session_id(log)
+        if not run["session_id"] and logged_sid and (not session_id or session_id == logged_sid):
+            tolerant = {"tolerate_denied": True} if getattr(ad, "supports_tolerate_denied", False) else {}
+            problem = ad.run_problem(log, recorded_spec(run), logged_sid, **tolerant)
+            if problem:
+                return "problem", problem[1]
+            store.set_run_session_by_id(run["id"], logged_sid)
+            run = store.run(run["id"])
         status = run["exit_status"]
         return "ended", (None if status in (None, "unknown") else _int(status)), run
     run, unproven = resolve_pid(store, ad, run)
     if unproven:
         return "wait", session_id
     sid = session_id or ad.session_id(log)
-    if sid and sid != session_id:
+    if sid and not run["session_id"] and ad.session_id(log) == sid:
         store.set_run_session_by_id(run["id"], sid)
     tolerant = {"tolerate_denied": True} if getattr(ad, "supports_tolerate_denied", False) else {}
     problem = ad.run_problem(log, recorded_spec(run), session_id or sid, **tolerant)
