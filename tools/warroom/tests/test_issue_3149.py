@@ -168,7 +168,9 @@ class MissingAnswers(Helpers, unittest.TestCase):
     def test_fast_unavailable_blocks_a_complete_answer_after_nonzero_exit(self):
         w = self.world(1)
         w.sup._classify_run = lambda _producer, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
-        self.respond(w, "001", "Fast mode is not available for this model\n" + answer("chunk 001\nnone"), code=1)
+        pid = self.pid_of(w, "001")
+        w.adapter.running[pid].update(code=1, text="Fast mode is not available for this model\n" + answer("chunk 001\nnone"))
+        w.adapter.finish(pid)
         w.tick()
 
         self.assertEqual(self.states(w)["001"], "FAILED")
