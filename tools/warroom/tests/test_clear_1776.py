@@ -551,6 +551,7 @@ class ClearRealGit(unittest.TestCase):
         def tmux(args, **kwargs):
             if args[0] == "new-session":
                 record_runtime(w.paths, head)
+                git._git("branch", branch, head)  # another actor recreates the ref after the restart gate
                 w.sup._clear(w.store.batch(bid))
                 return mock.Mock(returncode=0, stdout="")
             return absent
@@ -558,6 +559,11 @@ class ClearRealGit(unittest.TestCase):
              mock.patch("warroom.restart_controller._tmux", side_effect=tmux):
             handle_pending_restart(w.paths, w.store)
         self.assertEqual(json.loads(request.read_text())["state"], "loaded")
+        self.assertEqual(w.store.clear_request("deepseek", "a")["status"], "BLOCKED")
+        self.assertTrue(git._git("show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False).ok)
+        git._git("branch", "-D", branch)
+        self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
+        w.sup._clear(w.store.batch(bid))
         self.assertIsNone(w.store.batch(bid))
         self.assertIsNone(w.store.clear_request("deepseek", "a"))
 

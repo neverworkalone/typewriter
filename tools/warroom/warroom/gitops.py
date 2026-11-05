@@ -728,6 +728,8 @@ class Git:
         if not path.exists():
             if reg is not None:
                 raise CleanupBlocked(f"worktree 경로는 없지만 git에 등록되어 있습니다(수동 확인 필요): {path}")
+            if self._git("show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False).ok:
+                raise CleanupBlocked(f"worktree는 없지만 로컬 브랜치가 존재합니다 (수동 확인 필요): {branch}")
             return False
         if reg != branch:
             raise CleanupBlocked(f"worktree가 소유 브랜치 {branch}로 등록되어 있지 않습니다 (등록: {reg!r})")
