@@ -1797,7 +1797,7 @@ class Store:
             if cur.rowcount != 1:
                 return False
             for defect in incidents:
-            c.execute("UPDATE defects SET state='LINKED', hold_reason=NULL, updated_at=? WHERE id=? AND state='HELD'",
+                c.execute("UPDATE defects SET state='LINKED', hold_reason=NULL, updated_at=? WHERE id=? AND state='HELD'",
                           (now, defect["id"]))
                 c.execute("UPDATE batches SET error=NULL, updated_at=? WHERE id=? AND state='PAUSED' AND defect_id=?",
                           (now, defect["batch_id"], defect["id"]))
