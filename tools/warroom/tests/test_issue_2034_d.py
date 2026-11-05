@@ -154,7 +154,7 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
         self.assertEqual(dchunk.verified_prefix(w.wt(), w.row_()), (3, 3))
 
-    def test_zero_exit_without_saved_chunk_gets_one_retry_and_operator_retry_resumes_short(self):
+    def test_zero_exit_without_saved_chunk_gets_one_retry_and_operator_retry_restores_view(self):
         w = self.w
         w.start("single", "deepseek", "d")
         w.ai(save=False)
@@ -163,6 +163,7 @@ class SerialChunks(unittest.TestCase):
         w.finish_last()
         w.tick()
         self.assertEqual((w.adapter.launches[-1]["kind"], len(w.adapter.launches)), ("resume", 2))
+        self.assertIn("## w0001", w.adapter.launches[-1]["prompt"])
         w.finish_last()
         w.tick()
         self.assertEqual(w.row_()["state"], "ERROR")
@@ -172,9 +173,9 @@ class SerialChunks(unittest.TestCase):
         w.tick(2)
         resume = w.adapter.launches[-1]
         self.assertEqual(resume["kind"], "resume")
-        self.assertNotIn(prompts.VIEW_BEGIN, resume["prompt"])           # a resume never puts the view in again
-        self.assertNotIn("## w0001", resume["prompt"])
-        self.assertLess(len(resume["prompt"]), 2000)
+        self.assertIn("## 검증된 청크 view", resume["prompt"])
+        self.assertIn("## w0001", resume["prompt"])
+        self.assertNotIn("## w0026", resume["prompt"])                 # only the resumed chunk
 
     def test_saved_chunk_survives_an_unclean_exit_and_is_never_produced_again(self):
         w = self.w
