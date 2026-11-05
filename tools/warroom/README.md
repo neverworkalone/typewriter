@@ -6,7 +6,7 @@
 
 ```sh
 ./war                 # TUI 열기/재연결, Supervisor가 없으면 시작
-./dashboard           # 읽기 전용 보조 Web View (http://localhost:8000)
+./dashboard           # 기존 Supervisor를 공유하는 보조 Web View (http://localhost:8000)
 ./dashboard --port 8123
 ```
 
