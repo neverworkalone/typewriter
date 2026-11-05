@@ -706,11 +706,18 @@ class ParallelC:
                 return self._incomplete_failed(b, row, data, rec, pending,
                                                {"status": "scope_recovery_not_saved"})
             if literary.deterministic_context_trim_candidate(wt, b, n):
-                refreshed = literary.revalidate_submit_before_skip(self.sup.runner, self._env(b), wt, b, n)
+                refreshed = literary.revalidate_submit_before_skip(self.sup.runner, self._env(b), wt, b, n, scoped=True)
                 if refreshed is not None:
                     if self._pending(b, rec):
                         return self._task_failed(b, row, data, f"[{task}] 결정적 CLI 복구 뒤에도 청크 완료를 확인하지 못했습니다. 보존합니다.")
                     self.store.log(b["id"], f"[{task}] 변경 없는 제출을 일반 CLI로 재검증해 저장했습니다 (문맥 키 공백 정규화).", "warn")
+                    return self._accept(b, row, data, round_)
+            if literary.deterministic_context_sample_candidate(wt, b, n):
+                refreshed = literary.revalidate_submit_before_skip(self.sup.runner, self._env(b), wt, b, n, scoped=True)
+                if refreshed is not None:
+                    if self._pending(b, rec):
+                        return self._task_failed(b, row, data, f"[{task}] 완전한 문맥 표본의 결정적 재제출 뒤에도 청크 완료를 확인하지 못했습니다. 보존합니다.")
+                    self.store.log(b["id"], f"[{task}] 변경 없는 빈 결과 제출을 공식 CLI로 재검증해 저장했습니다 (unshown_empty_sample 표본 완료).", "warn")
                     return self._accept(b, row, data, round_)
             no_submit_fix = run["kind"] == FIX and run["id"] not in data.get("completed_fix_runs", [])
             if no_submit_fix:   # a correction that never submitted is not a completed one, and is never simply repeated
@@ -777,7 +784,7 @@ class ParallelC:
             return self._task_failed(b, row, data, f"[{task}] C technical skip blocked [last_run_not_completed_correction]. 원본을 보존합니다.")
         try:
             base = baseline(self.store, b)
-            refreshed = literary.revalidate_submit_before_skip(self.sup.runner, self._env(b), wt, b, n)
+            refreshed = literary.revalidate_submit_before_skip(self.sup.runner, self._env(b), wt, b, n, scoped=True)
             if refreshed is not None:
                 if self._pending(b, rec):
                     return self._task_failed(b, row, data, f"[{task}] C 결정적 CLI 복구 뒤에도 청크 완료를 확인하지 못했습니다. 보존합니다.")

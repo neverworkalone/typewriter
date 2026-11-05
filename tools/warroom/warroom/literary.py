@@ -27,6 +27,7 @@ SUPERVISOR_CLI = "scripts/relation/literary-context-supervisor-cli.mjs"
 CHUNK_LIMIT = 12
 MAX_PARALLEL = 4   # chunk sessions of one new batch that may run at the same time (#3076)
 CHUNK_CONTEXTS = 8
+MAX_CONTEXTS_PER_SENSE = 16
 # The whole initial prompt (card + chunk view) travels as ONE argv element. Linux caps a single argument at 128 KiB
 # (MAX_ARG_STRLEN) and macOS the whole command line at 1 MiB; stay clearly below the smaller one.
 INLINE_MAX_PROMPT_BYTES = 100_000
@@ -550,6 +551,70 @@ def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
     return any(isinstance(key, str) and key != key.strip() and len(key.strip()) >= 12 for key in entry["verified"])
 
 
+def deterministic_context_sample_candidate(worktree, b, chunk_no: int) -> bool:
+    """Retry an unchanged empty-result submission only after every diagnosed Sense has a complete shown sample."""
+    n = names(b)
+    submit_path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json"
+    diagnostic_path = submit_path.with_name(submit_path.name + ".diag.json")
+    try:
+        input_bytes = submit_path.read_bytes()
+        submission = json.loads(input_bytes)
+        diagnostic = json.loads(diagnostic_path.read_text("utf-8"))
+    except (OSError, ValueError):
+        return False
+    issues = diagnostic.get("issues") if isinstance(diagnostic, dict) else None
+    affected = diagnostic.get("affected") if isinstance(diagnostic, dict) else None
+    if (not isinstance(diagnostic, dict)
+            or diagnostic.get("status") != "FAILED" or diagnostic.get("diagnostic") != "submit_validation"
+            or diagnostic.get("reason") != "unshown_empty_sample"
+            or diagnostic.get("repair_scope") != "resubmit_affected_sense"
+            or diagnostic.get("issues_truncated") is True
+            or diagnostic.get("input_sha256") != hashlib.sha256(input_bytes).hexdigest()
+            or not isinstance(issues, list) or not issues
+            or not isinstance(affected, dict) or affected.get("field") != "verified"
+            or not isinstance(affected.get("entry_number"), int) or isinstance(affected.get("entry_number"), bool)
+            or not isinstance(submission, dict) or set(submission) != {"senses"}
+            or not isinstance(submission.get("senses"), list)):
+        return False
+    try:
+        rec = read_active(worktree, b, chunk_no)
+        if rec is None or rec.get("repair") is True:
+            return False
+        active_ids = rec.get("sense_ids")
+        entries = submission["senses"]
+        if (not isinstance(active_ids, list) or not active_ids or len(entries) != len(active_ids)
+                or [entry.get("sense_id") if isinstance(entry, dict) else None for entry in entries] != active_ids
+                or any(not isinstance(entry, dict) or set(entry) != {"sense_id", "verified", "candidates"}
+                       or not isinstance(entry.get("verified"), list) or not isinstance(entry.get("candidates"), list)
+                       for entry in entries)):
+            return False
+        if not 1 <= affected["entry_number"] <= len(entries):
+            return False
+        first_issue = issues[0]
+        if (not isinstance(first_issue, dict) or first_issue.get("entry_number") != affected["entry_number"]
+                or first_issue.get("reason") != "unshown_empty_sample" or first_issue.get("field") != "verified"
+                or entries[affected["entry_number"] - 1]["sense_id"] != affected.get("sense_id")):
+            return False
+        states = own_state(worktree, b, active_ids)["senses"]
+    except (LiteraryError, OSError, ValueError, KeyError, TypeError):
+        return False
+
+    for issue in issues:
+        if (not isinstance(issue, dict) or issue.get("reason") != "unshown_empty_sample"
+                or issue.get("field") != "verified"
+                or not isinstance(issue.get("entry_number"), int) or isinstance(issue.get("entry_number"), bool)
+                or not 1 <= issue["entry_number"] <= len(entries)):
+            return False
+        entry = entries[issue["entry_number"] - 1]
+        shown = states.get(entry["sense_id"], {}).get("shown")
+        if (entry["verified"] or entry["candidates"] or not isinstance(shown, dict)
+                or shown.get("valid") is not True or not isinstance(shown.get("total_hits"), int)
+                or isinstance(shown.get("total_hits"), bool) or shown["total_hits"] <= 0
+                or shown.get("context_count") != min(shown["total_hits"], MAX_CONTEXTS_PER_SENSE)):
+            return False
+    return True
+
+
 def supervisor_skip(store, runner, env, worktree, b, rec: dict, task: dict | None = None) -> dict:
     """Orchestrate C's source-Sense fallback through the pinned Supervisor-only CLI.
 
@@ -653,7 +718,7 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict, task: dict | Non
             "retry_attempts": retry_attempts, "pending_senses": 0}
 
 
-def revalidate_submit_before_skip(runner, env, worktree, b, chunk_no: int) -> dict | None:
+def revalidate_submit_before_skip(runner, env, worktree, b, chunk_no: int, *, scoped: bool = False) -> dict | None:
     """Re-run the unchanged full submit through the normal CLI before a skip, refreshing its exact failure binding.
 
     A successful deterministic CLI repair completes the chunk without a skip. A failed validation leaves the CLI's
@@ -661,8 +726,11 @@ def revalidate_submit_before_skip(runner, env, worktree, b, chunk_no: int) -> di
     """
     n = names(b)
     input_path = f"{n.submit_prefix}{chunk_no:03d}.submit.json"
-    result = cli(runner, env, worktree, "submit", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
-                 "--checkpoint", n.checkpoint, "--input", input_path)
+    args = ["submit", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
+            "--checkpoint", n.checkpoint, "--input", input_path]
+    if scoped:
+        args.extend(("--chunk", f"{chunk_no:03d}"))
+    result = cli(runner, env, worktree, *args)
     if not result.ok:
         return None
     data = _json(result, "C normal submit revalidation")
