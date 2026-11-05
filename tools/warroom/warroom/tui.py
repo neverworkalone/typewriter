@@ -46,6 +46,10 @@ def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
     if launch_lock is None:
         return "starting", None  # another TUI is checking/starting the shared session
     try:
+        from .restart_controller import handle_pending_restart
+        restart = handle_pending_restart(paths, Store(paths.db))
+        if restart is not None:
+            return restart
         supervisor_lock = acquire_lock(paths.lock)
         if supervisor_lock is None:
             # #3378: a live Supervisor started from another checkout (e.g. a removed Codex worktree) keeps loading that
@@ -896,15 +900,19 @@ class WarRoom(App):
         self._poll_reload()
         root = self.screen_stack[0]   # the board, even while Batch Detail is on top
         alive = control.supervisor_alive(store)
+        from .restart_controller import has_pending_restart
+        restart_pending = has_pending_restart(self.paths)
         now = time.monotonic()
-        if alive:
-            self._supervisor_state, self._supervisor_error = "running", None
-        elif ((now - self._t0 >= SUPERVISOR_STARTUP_GRACE_SECONDS or self._supervisor_error is not None)
-              and now >= self._supervisor_retry_at
-              and not self._supervisor_recovery_running):
+        restart_due = restart_pending
+        missing_due = (not alive and
+                       (now - self._t0 >= SUPERVISOR_STARTUP_GRACE_SECONDS or self._supervisor_error is not None))
+        if ((restart_due or missing_due) and now >= self._supervisor_retry_at
+                and not self._supervisor_recovery_running):
             self._supervisor_recovery_running = True
             self._supervisor_state, self._supervisor_error = "starting", None
             self.run_worker(self._recover_supervisor, thread=True, exit_on_error=False)
+        elif alive:
+            self._supervisor_state, self._supervisor_error = "running", None
         statuses = {}
         for model, me in self._line_keys():
             st = statuses[(model, me)] = control.line_status(store, model, me)

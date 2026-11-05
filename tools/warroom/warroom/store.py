@@ -469,13 +469,223 @@ class Store:
             if m is None or m["state"] == "COMPLETE":
                 return
             c.execute("UPDATE maintenance SET state='HELD', hold_reason=?, updated_at=? WHERE issue_number=?", (reason, now, issue))
-            for d in c.execute("SELECT id, batch_id FROM defects WHERE source='incident' AND issue_number=? AND state='LINKED'",
+            for d in c.execute("SELECT id, batch_id FROM defects WHERE issue_number=? AND state='LINKED'",
                                (issue,)).fetchall():
                 c.execute("UPDATE defects SET state='HELD', hold_reason=?, updated_at=? WHERE id=?", (reason, now, d["id"]))
                 c.execute("UPDATE batches SET error=?, updated_at=? WHERE id=? AND state='PAUSED' AND defect_id=?",
                           (f"장애 진단 완료 — {reason} (Issue #{issue})", now, d["batch_id"], d["id"]))
             c.execute("UPDATE batches SET state='COMPLETE', error=NULL, updated_at=? WHERE id=?", (now, batch_id))
             c.execute("UPDATE lines SET run=0, updated_at=? WHERE model=? AND method=?", (now, m["producer"], m["method"]))
+
+    def approve_no_code_resume(self, maintainer_batch_id: int, issue: int, defect_id: int,
+                               approval: dict) -> bool:
+        """Atomically authorize one evidence-bound resume of one failed C/D/S2/S3 task.
+
+        The caller has already re-read the source snapshot and official task evidence. This transaction repeats the
+        source/event/attempt ownership and operator-control checks, then lets that method's existing scheduler resume
+        the exact failed task. It does not manufacture a merge SHA or mark the incident resolved.
+        """
+        now = time.time()
+        key = f"no_code_approval_{defect_id}"
+        task = approval.get("task")
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            d = c.execute("SELECT * FROM defects WHERE id=? AND issue_number=?", (defect_id, issue)).fetchone()
+            b = c.execute("SELECT * FROM batches WHERE id=?", (approval.get("batch_id"),)).fetchone()
+            m = c.execute("SELECT * FROM batches WHERE id=? AND method=?", (maintainer_batch_id, MAINTENANCE_METHOD)).fetchone()
+            maint = c.execute("SELECT * FROM maintenance WHERE issue_number=? AND batch_id=?",
+                              (issue, maintainer_batch_id)).fetchone()
+            if (d is None or d["state"] != "LINKED" or d["event_key"] != approval.get("event_key")
+                    or b is None or b["state"] != "PAUSED" or b["pause_reason"] != "shared_defect"
+                    or b["defect_id"] != defect_id or b["paused_from"] != "PRODUCING"
+                    or b["error_seq"] != approval.get("source_error_seq")
+                    or b["method"] not in ("c", "d", "s2", "s3") or b["pid"] is not None
+                    or m is None or m["state"] != "PRODUCING" or m["batch"] != str(issue)
+                    or m["pr_number"] is not None or m["merged"]
+                    or maint is None or maint["state"] != "ACTIVE"
+                    or maint["batch_id"] != maintainer_batch_id
+                    or c.execute("SELECT 1 FROM kv WHERE key=?", (key,)).fetchone()
+                    or c.execute("SELECT 1 FROM runs WHERE batch_id IN (?,?) AND ended_at IS NULL",
+                                 (b["id"], m["id"])).fetchone()
+                    or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND task IS NOT NULL AND ended_at IS NULL",
+                                 (b["id"],)).fetchone()
+                    or c.execute("SELECT 1 FROM clear_requests WHERE batch_id IN (?,?)",
+                                 (b["id"], m["id"])).fetchone()):
+                return False
+            line = c.execute("SELECT force_stop,retry_batch FROM lines WHERE model=? AND method=?",
+                             (b["producer"], b["method"])).fetchone()
+            if (line is not None and (line["force_stop"] or line["retry_batch"] == b["id"])
+                    or c.execute("SELECT 1 FROM kv WHERE key=?",
+                                 (f"stop_pin_{b['producer']}_{b['method']}",)).fetchone()
+                    or c.execute("SELECT 1 FROM kv WHERE key=? AND value!=''",
+                                 (f"defect_hold_{b['id']}",)).fetchone()):
+                return False
+            row = c.execute("SELECT * FROM s2_tasks WHERE batch_id=? AND task=?", (b["id"], task)).fetchone()
+            if (not isinstance(task, str) or not task or row is None or row["state"] != "FAILED"
+                    or row["chunk_id"] != approval.get("chunk") or row["run_id"] is None):
+                return False
+            try:
+                task_data = json.loads(row["data"] or "{}")
+            except (TypeError, ValueError):
+                return False
+            if not isinstance(task_data, dict) or not task_data.get("ack"):
+                return False
+            run = c.execute("SELECT * FROM runs WHERE id=? AND batch_id=? AND task=?",
+                            (row["run_id"], b["id"], task)).fetchone()
+            if (run is None or run["ended_at"] is None or run["session_id"] != row["session_id"]):
+                return False
+            if b["method"] == "c":
+                epoch_key = f"c_parallel_retry_epoch_{b['id']}"
+                old = c.execute("SELECT value FROM kv WHERE key=?", (epoch_key,)).fetchone()
+                try:
+                    epoch = int(old["value"]) if old else 0
+                except (TypeError, ValueError):
+                    return False
+                c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) "
+                          "DO UPDATE SET value=excluded.value", (epoch_key, str(epoch + 1)))
+            saved = {**approval, "status": "APPROVED", "approved_at": now}
+            c.execute("INSERT INTO kv(key,value) VALUES(?,?)",
+                      (key, json.dumps(saved, sort_keys=True, separators=(",", ":"))))
+            c.execute("UPDATE defects SET state='RECOVERING', fix_kind='no-code', hold_reason=NULL, updated_at=? "
+                      "WHERE id=? AND state='LINKED'", (now, defect_id))
+            c.execute("UPDATE batches SET state='PRODUCING',pause_reason='',defect_id=NULL,error=NULL,retries=0,"
+                      "retry_after=NULL,updated_at=? WHERE id=? AND state='PAUSED' AND defect_id=?",
+                      (now, b["id"], defect_id))
+            c.execute("UPDATE maintenance SET state='RECOVERING',hold_reason=NULL,updated_at=? "
+                      "WHERE issue_number=? AND batch_id=? AND state='ACTIVE'",
+                      (now, issue, maintainer_batch_id))
+            c.execute("UPDATE batches SET state='COMPLETE',error=NULL,updated_at=? WHERE id=? AND state='PRODUCING'",
+                      (now, maintainer_batch_id))
+            c.execute("UPDATE lines SET run=0,updated_at=? WHERE model=? AND method=?",
+                      (now, m["producer"], MAINTENANCE_METHOD))
+            self._add_event(c, b["id"], f"Maintainer Issue #{issue}: evidence-bound no-code resume approved for task {task}/{row['chunk_id']}; existing task recovery path will continue", level="warn")
+            return True
+
+    def finish_no_code_recovery(self, issue: int, defect_id: int, batch_id: int, task: str) -> bool:
+        """Confirm resolution only after the original failed task is durably SAVED by its existing method path."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            d = c.execute("SELECT * FROM defects WHERE id=? AND issue_number=? AND state='RECOVERING'",
+                          (defect_id, issue)).fetchone()
+            b = c.execute("SELECT state,error_seq FROM batches WHERE id=?", (batch_id,)).fetchone()
+            row = c.execute("SELECT state FROM s2_tasks WHERE batch_id=? AND task=?", (batch_id, task)).fetchone()
+            approval = c.execute("SELECT value FROM kv WHERE key=?", (f"no_code_approval_{defect_id}",)).fetchone()
+            if (d is None or b is None or row is None or row["state"] != "SAVED" or approval is None):
+                return False
+            c.execute("UPDATE defects SET state='RELEASED',integrated_sha=NULL,merge_sha=NULL,fix_kind='no-code',"
+                      "applied_code_sha=NULL,hold_reason=NULL,updated_at=? WHERE id=? AND state='RECOVERING'",
+                      (now, defect_id))
+            other = c.execute("SELECT 1 FROM defects WHERE issue_number=? AND id!=? "
+                              "AND state IN ('REPORTED','LINKED','FIX_MERGED','HELD','RECOVERING') LIMIT 1",
+                              (issue, defect_id)).fetchone()
+            if other is None:
+                c.execute("UPDATE maintenance SET state='DONE',hold_reason=NULL,updated_at=? "
+                          "WHERE issue_number=? AND state='RECOVERING'", (now, issue))
+            try:
+                saved = json.loads(approval["value"])
+            except ValueError:
+                saved = {}
+            if isinstance(saved, dict):
+                saved.update(status="VERIFIED", verified_at=now, verified_task_state=row["state"],
+                             verified_batch_state=b["state"], verified_error_seq=b["error_seq"])
+                c.execute("UPDATE kv SET value=? WHERE key=?",
+                          (json.dumps(saved, sort_keys=True, separators=(",", ":")), f"no_code_approval_{defect_id}"))
+            self._add_event(c, batch_id, f"Maintainer Issue #{issue}: original failed task {task} saved and recovery progress verified")
+            return True
+
+    def hold_no_code_recurrence(self, issue: int, defect_id: int, batch_id: int, reason: str) -> bool:
+        """Keep a repeated no-code failure unresolved without releasing another retry or reserving the AI slot."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            d = c.execute("SELECT state FROM defects WHERE id=? AND issue_number=?",
+                          (defect_id, issue)).fetchone()
+            b = c.execute("SELECT state,error_seq FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if d is None or d["state"] != "RECOVERING" or b is None or b["state"] != "ERROR":
+                return False
+            msg = reason[:1000]
+            c.execute("UPDATE defects SET state='HELD',hold_reason=?,updated_at=? WHERE id=? AND state='RECOVERING'",
+                      (msg, now, defect_id))
+            c.execute("UPDATE maintenance SET state='HELD',hold_reason=?,updated_at=? "
+                      "WHERE issue_number=? AND state='RECOVERING'", (msg, now, issue))
+            self._add_event(c, batch_id, f"Maintainer Issue #{issue}: no-code resume did not progress; original event remains unresolved: {msg}", level="error")
+            return True
+
+    def finish_recovery_progress(self, defect_id: int, batch_id: int) -> bool:
+        """Mark a merged fix resolved only after its captured failing task(s) are SAVED or the next PR stage is reached."""
+        now = time.time()
+        key = f"defect_recovery_{defect_id}"
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            d = c.execute("SELECT issue_number,state,fix_kind FROM defects WHERE id=?", (defect_id,)).fetchone()
+            b = c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()
+            raw = c.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+            if (d is None or d["state"] != "RELEASED" or d["fix_kind"] not in ("runtime", "worktree")
+                    or b is None or raw is None):
+                return False
+            try:
+                proof = json.loads(raw["value"])
+            except (TypeError, ValueError):
+                return False
+            if (not isinstance(proof, dict) or proof.get("batch_id") != batch_id
+                    or proof.get("defect_id") != defect_id or proof.get("status") == "VERIFIED"):
+                return False
+            targets = proof.get("failed_tasks")
+            if not isinstance(targets, list):
+                return False
+            if targets:
+                for target in targets:
+                    row = c.execute("SELECT state,chunk_id,run_id FROM s2_tasks WHERE batch_id=? AND task=?",
+                                    (batch_id, target.get("task"))).fetchone()
+                    if (row is None or row["state"] != "SAVED" or row["chunk_id"] != target.get("chunk")):
+                        return False
+            elif b["state"] not in ("WAITING_REVIEW", "MERGED", "CLEANUP", "COMPLETE"):
+                return False
+            proof.update(status="VERIFIED", verified_at=now, verified_batch_state=b["state"])
+            c.execute("UPDATE kv SET value=? WHERE key=?", (json.dumps(proof, sort_keys=True, separators=(",", ":")), key))
+            if d["issue_number"] is not None:
+                pending = c.execute(
+                    "SELECT 1 FROM defects x LEFT JOIN kv k ON k.key=('defect_recovery_' || x.id) "
+                    "WHERE x.issue_number=? AND (x.state IN ('REPORTED','LINKED','FIX_MERGED','HELD','RECOVERING') "
+                    "OR (x.state='RELEASED' AND x.fix_kind IN ('runtime','worktree') "
+                    "AND (k.value IS NULL OR json_extract(k.value,'$.status')!='VERIFIED'))) LIMIT 1",
+                    (d["issue_number"],)).fetchone()
+                if pending is None:
+                    c.execute("UPDATE maintenance SET state='DONE',hold_reason=NULL,updated_at=? "
+                              "WHERE issue_number=? AND state='RECOVERING'", (now, d["issue_number"]))
+            self._add_event(c, batch_id, f"Maintainer Issue #{d['issue_number']}: original failed production task progress verified")
+            return True
+
+    def hold_recovery_recurrence(self, defect_id: int, batch_id: int, reason: str) -> bool:
+        """Keep a merged fix unresolved when the original production batch fails again before its target task saves."""
+        now = time.time()
+        key = f"defect_recovery_{defect_id}"
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            d = c.execute("SELECT issue_number,state FROM defects WHERE id=?", (defect_id,)).fetchone()
+            b = c.execute("SELECT state,error_seq FROM batches WHERE id=?", (batch_id,)).fetchone()
+            raw = c.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+            if d is None or d["state"] != "RELEASED" or b is None or b["state"] != "ERROR" or raw is None:
+                return False
+            try:
+                proof = json.loads(raw["value"])
+            except (TypeError, ValueError):
+                return False
+            if (not isinstance(proof, dict) or proof.get("status") == "VERIFIED"
+                    or b["error_seq"] <= proof.get("source_error_seq", -1)):
+                return False
+            proof.update(status="RECURRENCE", recurrence_error_seq=b["error_seq"], recurrence_at=now,
+                         recurrence=reason[:1000])
+            c.execute("UPDATE kv SET value=? WHERE key=?", (json.dumps(proof, sort_keys=True, separators=(",", ":")), key))
+            c.execute("UPDATE defects SET state='HELD',hold_reason=?,updated_at=? WHERE id=? AND state='RELEASED'",
+                      (reason[:1000], now, defect_id))
+            if d["issue_number"] is not None:
+                c.execute("UPDATE maintenance SET state='HELD',hold_reason=?,updated_at=? "
+                          "WHERE issue_number=? AND state='RECOVERING'", (reason[:1000], now, d["issue_number"]))
+            self._add_event(c, batch_id, f"Maintainer Issue #{d['issue_number']}: merged fix did not advance original task; event remains unresolved: {reason[:800]}",
+                            level="error")
+            return True
 
     def batch(self, batch_id: int):
         with self._conn() as c:
@@ -490,6 +700,12 @@ class Store:
     def incomplete_batches(self):
         with self._conn() as c:
             return c.execute("SELECT * FROM batches WHERE state != 'COMPLETE' ORDER BY id").fetchall()
+
+    def maintenance_batches(self):
+        """Every unfinished Maintainer issue attempt; one AI slot can coexist with many PR watches."""
+        with self._conn() as c:
+            return c.execute("SELECT * FROM batches WHERE method=? AND state!='COMPLETE' ORDER BY id",
+                             (MAINTENANCE_METHOD,)).fetchall()
 
     def latest_batch(self, model: str, method: str):
         with self._conn() as c:
@@ -851,7 +1067,7 @@ class Store:
             if b["state"] != "CLEARING":
                 # An operator Clear outranks an automatic incident: its open defects are OVERRIDDEN in the same transaction.
                 c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason='운영자 Clear', updated_at=? "
-                          "WHERE batch_id=? AND source='incident' AND state IN ('REPORTED','LINKED','FIX_MERGED','HELD')",
+                          "WHERE batch_id=? AND state IN ('REPORTED','LINKED','FIX_MERGED','HELD','RECOVERING')",
                           (time.time(), req["batch_id"]))
                 c.execute("UPDATE batches SET state='CLEARING', error=NULL, updated_at=? WHERE id=?",
                           (time.time(), req["batch_id"]))
@@ -1313,7 +1529,8 @@ class Store:
 
     def release_defect(self, defect_id: int, batch_id: int, integrated_sha: str | None,
                        run_start: tuple[str, str] | list[tuple[str, str]] | None = None, *, force_run: bool = True,
-                       fix_kind: str | None = None, applied_code_sha: str | None = None) -> bool:
+                       fix_kind: str | None = None, applied_code_sha: str | None = None,
+                       recovery_snapshot: dict | None = None) -> bool:
         """The ONE automatic Retry: batch back to the phase it was paused in, defect RELEASED, in one transaction.
 
         `run_start` = (kv key, value) or a list of them: verified execution baselines retargeted to the integrated HEAD,
@@ -1329,7 +1546,7 @@ class Store:
         pairs = [] if run_start is None else ([run_start] if isinstance(run_start, tuple) else list(run_start))
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
-            d = c.execute("SELECT state FROM defects WHERE id=?", (defect_id,)).fetchone()
+            d = c.execute("SELECT state,issue_number FROM defects WHERE id=?", (defect_id,)).fetchone()
             b = c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()
             if (d is None or d["state"] != "FIX_MERGED" or b is None or b["state"] != "PAUSED"
                     or b["pause_reason"] != "shared_defect" or b["defect_id"] != defect_id or b["pid"] is not None):
@@ -1354,6 +1571,12 @@ class Store:
             c.execute("UPDATE defects SET state='RELEASED', integrated_sha=?, fix_kind=?, applied_code_sha=?, "
                       "hold_reason=NULL, updated_at=? WHERE id=?",
                       (integrated_sha, fix_kind, applied_code_sha, now, defect_id))
+            if recovery_snapshot is not None:
+                c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                          (f"defect_recovery_{defect_id}", json.dumps(recovery_snapshot, sort_keys=True, separators=(",", ":"))))
+                if d["issue_number"] is not None:
+                    c.execute("UPDATE maintenance SET state='RECOVERING',hold_reason=NULL,updated_at=? "
+                              "WHERE issue_number=? AND state IN ('ACTIVE','DONE')", (now, d["issue_number"]))
             for pair in pairs:
                 c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
                           "ON CONFLICT(key) DO UPDATE SET value=excluded.value", pair)
@@ -1445,10 +1668,17 @@ class Store:
             c.execute(f"UPDATE maintenance SET {cols} WHERE issue_number=?", (*fields.values(), issue_number))
 
     def maintenance_batch_open(self) -> bool:
-        """The single Maintainer slot: any unfinished Maintainer execution, whichever producer it runs on."""
+        """Whether the one Maintainer AI execution/modification slot is occupied.
+
+        PR review, merge, cleanup, and paused recovery supervision remain attached to their issue batches, but do not
+        reserve the AI slot. A review fix returns to this slot when its batch enters FIXING.
+        """
         with self._conn() as c:
-            return c.execute("SELECT 1 FROM batches WHERE method=? AND state!='COMPLETE'",
-                             (MAINTENANCE_METHOD,)).fetchone() is not None
+            return c.execute(
+                "SELECT 1 FROM batches b WHERE b.method=? AND "
+                "(b.state IN ('PREPARE','PRODUCING','FIXING') OR b.pid IS NOT NULL OR EXISTS "
+                "(SELECT 1 FROM runs r WHERE r.batch_id=b.id AND r.ended_at IS NULL)) LIMIT 1",
+                (MAINTENANCE_METHOD,)).fetchone() is not None
 
     def claim_maintenance(self, issue_number: int, producer: str, branch: str, worktree: str) -> int | None:
         """Create the issue's execution record and link it to its task row in one transaction (None: not claimable).
@@ -1461,9 +1691,12 @@ class Store:
             m = c.execute("SELECT * FROM maintenance WHERE issue_number=?", (issue_number,)).fetchone()
             if m is None or m["state"] != "QUEUED" or m["batch_id"] is not None:
                 return None
-            if c.execute("SELECT 1 FROM batches WHERE method=? AND state!='COMPLETE'",
-                         (MAINTENANCE_METHOD,)).fetchone():
-                return None
+            if c.execute(
+                    "SELECT 1 FROM batches b WHERE b.method=? AND "
+                    "(b.state IN ('PREPARE','PRODUCING','FIXING') OR b.pid IS NOT NULL OR EXISTS "
+                    "(SELECT 1 FROM runs r WHERE r.batch_id=b.id AND r.ended_at IS NULL)) LIMIT 1",
+                    (MAINTENANCE_METHOD,)).fetchone():
+                return None   # only one Maintainer may execute AI work at a time; PR watches keep their own rows
             if c.execute("SELECT 1 FROM lines WHERE method=? AND drain=1", (MAINTENANCE_METHOD,)).fetchone():
                 return None   # Drain: the current Issue finishes normally, the next one is not claimed automatically
             prior_attempts = c.execute(
@@ -1485,38 +1718,66 @@ class Store:
 
     @staticmethod
     def _undetermined_diagnosis_retry(c, issue_number: int):
-        """Return the completed diagnosis and held incident rows only when this Issue can safely be retried."""
+        """Return a completed no-code handoff only when its exact held source batches remain safe to reassess."""
         m = c.execute("SELECT * FROM maintenance WHERE issue_number=?", (issue_number,)).fetchone()
+        hold = (m["hold_reason"] or "") if m is not None else ""
+        outcome = next((value for value in ("undetermined", "external")
+                        if f"{MAINTENANCE_DIAGNOSIS_HOLD_PREFIX}({value}):" in hold), None)
         if (m is None or m["state"] != "HELD" or m["batch_id"] is None
                 or m["pr_number"] is not None or m["merge_sha"] is not None
-                or not (m["hold_reason"] or "").startswith(
-                    f"{MAINTENANCE_DIAGNOSIS_HOLD_PREFIX}(undetermined):")):
+                or outcome is None):
             return None
         attempt = c.execute("SELECT * FROM batches WHERE id=?", (m["batch_id"],)).fetchone()
         if (attempt is None or attempt["method"] != MAINTENANCE_METHOD or attempt["state"] != "COMPLETE"
                 or attempt["batch"] != str(issue_number) or attempt["pr_number"] is not None or attempt["merged"]):
             return None
-        if c.execute("SELECT 1 FROM batches WHERE method=? AND state!='COMPLETE'",
-                     (MAINTENANCE_METHOD,)).fetchone():
+        proof_row = c.execute("SELECT value FROM kv WHERE key=?", (f"m_diag_{attempt['id']}",)).fetchone()
+        try:
+            proof = json.loads(proof_row["value"]) if proof_row else None
+        except (TypeError, ValueError):
+            proof = None
+        if not isinstance(proof, dict) or proof.get("outcome") != outcome or proof.get("issue") != issue_number:
+            return None
+        if outcome == "external" and (
+                proof.get("version") != 3 or not isinstance(proof.get("recovery"), dict)
+                or not isinstance(proof["recovery"].get("dependency"), str)):
+            return None
+        if c.execute(
+                "SELECT 1 FROM batches b WHERE b.method=? AND "
+                "(b.state IN ('PREPARE','PRODUCING','FIXING') OR b.pid IS NOT NULL OR EXISTS "
+                "(SELECT 1 FROM runs r WHERE r.batch_id=b.id AND r.ended_at IS NULL)) LIMIT 1",
+                (MAINTENANCE_METHOD,)).fetchone():
             return None
         defects_ = c.execute(
-            "SELECT d.id,d.batch_id,b.state AS batch_state,b.pause_reason,b.defect_id AS batch_defect_id FROM defects d "
-            "JOIN batches b ON b.id=d.batch_id WHERE d.source='incident' AND d.issue_number=? AND d.state='HELD'",
+            "SELECT d.id,d.batch_id,b.state AS batch_state,b.pause_reason,b.defect_id AS batch_defect_id,"
+            "b.producer,b.method FROM defects d JOIN batches b ON b.id=d.batch_id "
+            "WHERE d.issue_number=? AND d.state='HELD'",
             (issue_number,)).fetchall()
         if not defects_ or any(d["batch_state"] != "PAUSED" or d["pause_reason"] != "shared_defect"
                                or d["batch_defect_id"] != d["id"] for d in defects_):
             return None
+        for d in defects_:
+            line = c.execute("SELECT force_stop,retry_batch FROM lines WHERE model=? AND method=?",
+                             (d["producer"], d["method"])).fetchone()
+            if ((line is not None and (line["force_stop"] or line["retry_batch"] == d["batch_id"]))
+                    or c.execute("SELECT 1 FROM clear_requests WHERE batch_id=?", (d["batch_id"],)).fetchone()
+                    or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND ended_at IS NULL", (d["batch_id"],)).fetchone()
+                    or c.execute("SELECT 1 FROM kv WHERE key=?",
+                                 (f"stop_pin_{d['producer']}_{d['method']}",)).fetchone()
+                    or c.execute("SELECT 1 FROM kv WHERE key=? AND value!=''",
+                                 (f"defect_hold_{d['batch_id']}",)).fetchone()):
+                return None
         return attempt, defects_
 
     def maintenance_retryable(self, issue_number: int) -> bool:
-        """Whether Detail may explicitly restart a completed `undetermined` diagnosis; never auto-requeue it."""
+        """Whether Detail may explicitly re-open a blocked no-PR diagnosis; never duplicate an active attempt."""
         with self._conn() as c:
             return self._undetermined_diagnosis_retry(c, issue_number) is not None
 
     def requeue_maintenance(self, issue_number: int) -> bool:
-        """Explicit operator Retry of a cleared Issue or an undetermined diagnosis with no live execution.
+        """Explicit operator Retry of a cleared Issue or a blocked diagnosis with no live execution.
 
-        A diagnosis retry relinks only its still-paused incident defects and keeps their production batches PAUSED.
+        A diagnosis retry relinks only its still-paused source defects and keeps their production batches PAUSED.
         Refuse other holds, stale pointers and live executions; a new attempt receives its own batch history.
         """
         with self._conn() as c:
@@ -1536,7 +1797,7 @@ class Store:
             if cur.rowcount != 1:
                 return False
             for defect in incidents:
-                c.execute("UPDATE defects SET state='LINKED', hold_reason=NULL, updated_at=? WHERE id=? AND state='HELD'",
+            c.execute("UPDATE defects SET state='LINKED', hold_reason=NULL, updated_at=? WHERE id=? AND state='HELD'",
                           (now, defect["id"]))
                 c.execute("UPDATE batches SET error=NULL, updated_at=? WHERE id=? AND state='PAUSED' AND defect_id=?",
                           (now, defect["batch_id"], defect["id"]))

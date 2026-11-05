@@ -140,6 +140,16 @@ class Paths:
         return self.supervisor_state / "runtime-root"
 
     @property
+    def runtime_record_file(self) -> Path:
+        """Durable runtime root and code SHA loaded by the current Supervisor."""
+        return self.supervisor_state / "supervisor-runtime.json"
+
+    @property
+    def restart_requests(self) -> Path:
+        """Restart handoffs survive the Supervisor process and live outside its code checkout."""
+        return self.supervisor_state / "restart-requests"
+
+    @property
     def logs(self) -> Path:
         return self.local / "logs"
 

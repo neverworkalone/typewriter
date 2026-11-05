@@ -136,11 +136,19 @@ class Supervisor:
         for b in self.store.incomplete_batches():  # a Line row always exists for a live batch
             self.store.line(b["producer"], b["method"])
         for ln in self.store.lines():
+            if ln["method"] == MAINTENANCE_METHOD:
+                continue   # Maintainer has one serialized AI slot but may own several independent PR watches
             try:
                 self._tick_line(ln["model"], ln["method"])
             except Exception:  # one Line's failure never stalls the others
                 self.store.log(None, f"line {ln['model']}/{ln['method']} 예외:\n"
                                + traceback.format_exc()[-800:], "error", line=f"{ln['model']}/{ln['method']}")
+        try:
+            self._tick_maintenance()
+        except Exception:
+            batches_ = self.store.maintenance_batches()
+            self.store.log(None, "Maintainer 실행/PR 감시 예외:\n" + traceback.format_exc()[-800:], "error",
+                           line=f"{batches_[0]['producer']}/m" if batches_ else None)
         self.maint.step()   # after the Lines: it reads the batch states they just advanced
 
     def _handle_reload(self) -> None:
@@ -171,6 +179,8 @@ class Supervisor:
 
     def _tick_line(self, model: str, method: str) -> None:
         ln = self.store.line(model, method)
+        if method == MAINTENANCE_METHOD:
+            return self._tick_maintenance()
         if self.store.pin_clear(model, method) is not None:   # a Clear pins its batch before anything else can act
             b = self.store.active_batch(model, method)
             if b is not None and b["state"] == "CLEARING":
@@ -194,6 +204,79 @@ class Supervisor:
                    "MERGED": self._to_cleanup, "CLEANUP": self._cleanup,
                    "PAUSED": self._wait_operator, "ERROR": self._wait_operator}[b["state"]]
         handler(b)
+
+    def _tick_batch(self, b, *, allow_maintenance_fix: bool = True) -> None:
+        """Advance one already-claimed batch without selecting a different issue or batch."""
+        handler = {"PREPARE": self._prepare_existing, "PRODUCING": self._poll_producing,
+                   "FIXING": self._poll_run, "WAITING_REVIEW": self._watch,
+                   "MERGED": self._to_cleanup, "CLEANUP": self._cleanup,
+                   "PAUSED": self._wait_operator, "ERROR": self._wait_operator}.get(b["state"])
+        if handler is None:
+            return
+        if b["state"] == "WAITING_REVIEW" and b["method"] == MAINTENANCE_METHOD:
+            return self._watch(b, allow_fix=allow_maintenance_fix)
+        handler(b)
+
+    def _tick_maintenance(self) -> None:
+        """Run one Maintainer AI task while continuing every issue's independent PR lifecycle.
+
+        Review feedback discovered during another issue's AI run stays attached to its own WAITING_REVIEW batch. It is
+        applied only after the shared AI slot becomes free; merge detection and cleanup can continue in the meantime.
+        """
+        batches_ = self.store.maintenance_batches()
+        current = [b for b in batches_ if b["state"] in ("PREPARE", "PRODUCING", "FIXING")
+                   or b["pid"] is not None or self.store.open_task_runs(b["id"])]
+        if len(current) > 1:
+            ids = ", ".join(str(b["id"]) for b in current)
+            self.store.log_once(None, f"Maintainer AI slot 충돌: 실행 상태 배치가 여러 개입니다 ({ids}). 모두 보존하고 시작을 멈춥니다.",
+                                "error", line="maintainer")
+            return
+        model = (current[0]["producer"] if current else
+                 next((line["model"] for line in self.store.lines() if line["method"] == MAINTENANCE_METHOD
+                       and line["run"]), None))
+        if model is None:
+            model = next((line["model"] for line in self.store.lines()
+                          if line["method"] == MAINTENANCE_METHOD), None)
+        if model is None:
+            return
+        ln = self.store.line(model, MAINTENANCE_METHOD)
+
+        request = self.store.pin_clear(model, MAINTENANCE_METHOD)
+        if request is not None:
+            clearing = self.store.batch(request["batch_id"])
+            if clearing is not None and clearing["state"] == "CLEARING":
+                self._clear(clearing)
+                batches_ = self.store.maintenance_batches()
+                current = [b for b in batches_ if b["state"] in ("PREPARE", "PRODUCING", "FIXING")
+                           or b["pid"] is not None or self.store.open_task_runs(b["id"])]
+
+        pin = self.store.get(f"stop_pin_{model}_{MAINTENANCE_METHOD}")
+        if ln["force_stop"]:
+            target = next((b for b in batches_ if str(b["id"]) == str(pin)), None) if pin else None
+            if target is None:
+                target = current[0] if current else self.store.active_batch(model, MAINTENANCE_METHOD)
+            self.store.set_line(model, MAINTENANCE_METHOD, force_stop=0)
+            if pin is not None:
+                self.store.delete(f"stop_pin_{model}_{MAINTENANCE_METHOD}")
+            if target is not None:
+                return self._force_stop(target)
+            return self.store.set_line(model, MAINTENANCE_METHOD, run=0)
+
+        if current:
+            self._tick_batch(current[0])
+
+        # Review/merge/cleanup work does not use the Maintainer AI slot. Keep every owned PR attached and progressing.
+        for b in self.store.maintenance_batches():
+            if b["state"] not in ("WAITING_REVIEW", "MERGED", "CLEANUP"):
+                continue
+            self._tick_batch(b, allow_maintenance_fix=not self.store.maintenance_batch_open())
+
+        # A Retry is pinned to its issue attempt. Parked failures without an explicit Retry never claim or run AI.
+        retry_id = self.store.line(model, MAINTENANCE_METHOD)["retry_batch"]
+        if retry_id is not None:
+            target = self.store.batch(retry_id)
+            if target is not None and target["method"] == MAINTENANCE_METHOD and target["state"] in ("PAUSED", "ERROR"):
+                self._tick_batch(target)
 
     def _poll_producing(self, b) -> None:
         """A parallel Stage 2 Part is driven by its task plan (checked before the single-run poll); a closed plan
@@ -8427,7 +8510,7 @@ class Supervisor:
         self.store.log(b["id"], "AI 프로세스 종료 확인")
         return self.store.batch(b["id"]), False
 
-    def _watch(self, b) -> None:
+    def _watch(self, b, *, allow_fix: bool = True) -> None:
         b, live = self._reap(b)
         stop_key = f"stop_after_pr_{b['id']}"
         if self.store.get(stop_key):
@@ -8510,6 +8593,15 @@ class Supervisor:
                             "자동 재실행하지 않고 보존했습니다. 운영자 Retry에서 현재 PR/HEAD와 답글을 "
                             "재확인하여 미완료 이벤트만 복구합니다.")
                 if fresh:
+                    if b["method"] == MAINTENANCE_METHOD and not allow_fix:
+                        pending_key = f"maintenance_review_pending_{b['id']}"
+                        self.store.set(pending_key, json.dumps({
+                            "pr": b["pr_number"], "head_sha": info["head_sha"],
+                            "event_keys": [e["key"] for e in fresh],
+                        }, sort_keys=True))
+                        return self.store.log_once(
+                            b["id"], "Maintainer PR 리뷰 수정은 다른 Issue의 AI 작업이 끝난 뒤 같은 PR/HEAD에서 직렬 실행합니다.")
+                    self.store.delete(f"maintenance_review_pending_{b['id']}")
                     self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
                     self._launch(b, self._fix_kind(b), fresh)
                 return
@@ -8727,6 +8819,8 @@ def main() -> int:
         return 1
     paths.runtime_root_file.write_text(str(root), "utf-8")   # lets a launcher spot a live Supervisor from another checkout
     sup = build(paths)
+    from .restart_controller import record_runtime
+    record_runtime(paths, sup.code_sha)
     sup.store.log(None, "supervisor 시작")
     sup.run_forever()
     return 0

@@ -1,5 +1,12 @@
-이전 Maintainer 실행이 중단되어 같은 worktree에서 이어서 진행한다 (Issue #{{issue}}, 브랜치 `{{branch}}`).
-worktree의 상태와 기존 커밋·미커밋 변경, 이미 열린 PR이 있는지(`gh pr list --head {{branch}} --state all`)를 먼저 확인하라. 이미 있는 작업·PR을 버리거나 중복 PR을 만들지 말고 남은 작업만 완료한다.
-범위·금지 사항은 처음 지시와 같다: Issue #{{issue}}의 공통 원인 수정과 공유 regression만, 배치 Candidate JSONL은 건드리지 않고, 리뷰 요청·승인·머지를 하지 않으며, 현재 브랜치를 merge/rebase/reset하지 않는다.
-PR이 없으면 이 브랜치에서 `Closes #{{issue}}` 를 포함한 PR 하나를 만들고 Issue의 현재 라벨을 복사한다.
-임시·스크래치 파일은 `.warroom-scratch/` 에만 만든다. PR 생성 및 라벨 확인이 끝나면 즉시 종료한다. 이미 열린 PR을 이어받은 경우에도 필요한 구현·커밋·라벨 확인까지만 수행하고 종료한다. PR 이후의 CI·리뷰·머지 상태를 조회하거나 기다리거나 반복 모니터링하지 않는다(`gh pr checks`, `gh run watch`, `--watch`, `sleep` 및 주기적 폴링 금지). 그 후속 감시는 War Room Supervisor의 책임이다.
+이전 Maintainer 실행이 중단되어 같은 Issue·worktree·branch·session에서 이어서 진행한다 (Issue #{{issue}}, branch {{branch}}).
+새 Issue, 배치, task, branch를 선택하지 않는다. .warroom-scratch/incident-diagnosis-request.json을 읽어 현재 attempt·round·event·원본 batch·task scope·source HEAD·evidence SHA를 확인하고, .warroom-scratch/incident/<defect_id>.json 및 기존 작업물을 보존한다.
+
+먼저 최신 worktree 상태와 이미 열린 PR을 확인한다. 기존 PR이 있으면 현재 Issue의 구현과 리뷰 수정을 이어가고 같은 PR만 유지한다. PR이 아직 없으면 기존 run log, 조사 메모와 uncommitted 작업을 버리지 말고 실제 원인을 계속 조사한다. 코드 수정이 필요하면 공통 원인을 고쳐 하나의 PR을 만든다. 원인이 원 task의 입력·저장 판정 실수이면 그 정확한 task와 chunk만 지목해 근거를 대조한다. C/D/Stage 2/Stage 3 task의 저장·checkpoint·session 경계를 임의로 바꾸지 않는다.
+
+이전 round가 investigate였으면 댓글의 concrete next action부터 수행한다. 같은 세션에서 더 조사할 단계가 남았을 때만 새 structured result를 제출한다. PR 생성 실패, 인증 실패, AI의 정상 종료는 no-code 결과가 아니다. 조사 미완료를 같은 결과로 반복하지 말고, 새로 확인된 사실과 다음 차이를 기록한다.
+
+현재 PR이 없고 원인과 복구가 확정되면 .warroom-scratch/incident-diagnosis.json에 새 structured result를 원자적으로 쓴다. 요청 파일 값과 정확히 같은 issue, attempt, round, defect_id, event_key, batch_id, source_head, evidence_sha256를 넣고, scope에는 exact task와 chunk를 넣는다. outcome은 no_code_resume, investigate, external, undetermined 중 하나다. no_code_resume은 recovery.type=resume_failed_task와 동일한 task/chunk를 사용한다. investigate는 recovery.type=continue_same_session과 concrete action을 사용한다. external은 recovery.type=external_prerequisite와 dependency를 구체화한다. undetermined는 Supervisor가 재검증 가능한 구체적 증거 blocker가 있을 때만 쓴다.
+
+같은 Issue에 summary·cause·action·next action·evidence SHA를 댓글로 남기고 마지막 줄에 정확한 marker <!-- warroom-defect-event:incident-recovery-{{issue}}-attempt-<attempt>-round-<round> --> 하나만 둔다. 이전 attempt 또는 round의 marker를 복사하지 않는다. no-code·external·undetermined handoff는 Maintainer worktree를 clean하게 유지한다. production DB, 원 batch worktree/checkpoint, 다른 task의 결과는 직접 수정하지 않는다.
+
+코드 수정이 필요하면 이 branch에서 commit·push하고 Closes #{{issue}} PR 하나를 만든다. 현재 Issue labels를 PR에 복사한다. 리뷰 요청·승인·merge는 하지 않는다. PR 준비 후 불필요한 상태 조회 없이 종료한다. PR 없는 structured 결과가 완료되더라도 원 batch가 해결됐다고 주장하지 않는다. no-code resume 후 원 task의 official SAVED 진전은 Supervisor만 확인한다.

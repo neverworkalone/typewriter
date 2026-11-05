@@ -19,6 +19,10 @@ if [ ! -x "$VENV/bin/python" ]; then
   "$VENV/bin/pip" install -q -r "$WR/requirements.txt"
 fi
 
+# The launcher is independent of a long-running TUI/Supervisor Python process. It can consume a durable restart
+# request after a code deployment even when the existing TUI session was started from an older checkout revision.
+env TYPEWRITER_WARROOM_ROOT="$ROOT" PYTHONPATH="$WR" "$VENV/bin/python" -m warroom.restart_controller
+
 CMD="cd '$ROOT' && env TYPEWRITER_WARROOM_ROOT='$ROOT' PYTHONPATH='$WR' '$VENV/bin/python' -m warroom.tui"
 if tmux has-session -t warroom 2>/dev/null; then
   LIVE="$(tmux show-environment -t warroom TYPEWRITER_WARROOM_ROOT 2>/dev/null | sed -n 's/^TYPEWRITER_WARROOM_ROOT=//p')"
