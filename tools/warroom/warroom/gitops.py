@@ -6,11 +6,11 @@ import os
 import re
 import shutil
 import tempfile
-import threading
 from functools import wraps
 from dataclasses import dataclass
 from pathlib import Path
 
+from .lanes import OrderedLock
 from .realgit import resolve_git
 from .shell import Runner, transient
 
@@ -88,8 +88,8 @@ class Git:
     def __init__(self, runner: Runner, repo_root: Path, env: dict, worktrees_dir: Path):
         self.r, self.root, self.env = runner, Path(repo_root), env
         self.worktrees_dir = Path(worktrees_dir)
-        self.repo_lock = threading.RLock()
-        self.verify_lock = threading.Lock()
+        self.repo_lock = OrderedLock(4, reentrant=True)
+        self.verify_lock = OrderedLock(3)
         self._bin = resolve_git(env)   # never the (cache-poisonable) xcrun stub
 
     @property

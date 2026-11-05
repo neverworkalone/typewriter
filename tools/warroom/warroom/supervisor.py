@@ -30,6 +30,7 @@ from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
+from .lanes import Lanes
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, LineBusy, LineNotRunnable
 from .usage import submit_attempts
@@ -103,6 +104,7 @@ class Supervisor:
         self.paths, self.cfg, self.store = paths, cfg, store
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
+        self.lanes = Lanes()
         self._worker_git_executables = []
         self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
@@ -178,6 +180,11 @@ class Supervisor:
         self.store.set("reload_result", f"{token}\tok\t{msg}")
 
     def _tick_line(self, model: str, method: str) -> None:
+        with self.lanes.try_hold(model, method) as held:
+            if held:
+                self._tick_line_locked(model, method)
+
+    def _tick_line_locked(self, model: str, method: str) -> None:
         ln = self.store.line(model, method)
         if method == MAINTENANCE_METHOD:
             return self._tick_maintenance()

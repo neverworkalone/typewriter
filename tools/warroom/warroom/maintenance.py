@@ -524,71 +524,91 @@ class Maintenance:
         return None
 
     def _release(self) -> None:
-        for d in self.store.defects(("FIX_MERGED", "HELD")):
-            if d["source"] == "verify":   # no production batch: the scope's exact verify on master releases it (stage2.choose)
+        for candidate in self.store.defects(("FIX_MERGED", "HELD")):
+            if candidate["source"] == "verify":
                 continue
-            if (d["state"] == "HELD" and (d["source"] != "incident"
-                    or not (d["hold_reason"] or "").startswith("재개 증명 불가:") or not d["merge_sha"])):
-                continue   # only formerly unprovable incident releases are eligible for a new proof
-            b = self.store.batch(d["batch_id"])
-            if b is None:   # the batch no longer exists: this defect can never be applied, and must not block the others
-                self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="배치가 더 이상 존재하지 않음")
+            snapshot = self.store.batch(candidate["batch_id"])
+            if snapshot is None:
+                current = self.store.defect(candidate["id"])
+                if current is not None and current["state"] in ("FIX_MERGED", "HELD") and self.store.batch(current["batch_id"]) is None:
+                    self.store.update_defect(current["id"], state="OVERRIDDEN", hold_reason="배치가 더 이상 존재하지 않음")
                 continue
-            if b["state"] != "PAUSED" or b["pause_reason"] != "shared_defect" or b["defect_id"] != d["id"]:
-                # the operator already resumed (Stop + Retry) or the batch moved on: this fix is no longer ours to apply
-                self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="운영자가 배치를 직접 재개함")
-                continue
-            if self.store.get(f"defect_hold_{b['id']}") or self._workers_running(b):
-                continue   # operator Stop is pending/active, or the stopped AI is not confirmed gone yet
-            reproof_head = None
-            if d["state"] == "HELD":
-                reproof_head = self._rearm_held_incident(d, b)
-                if reproof_head is None:
+            with self.sup.lanes.try_hold(snapshot["producer"], snapshot["method"]) as held:
+                if not held:
                     continue
-                d = self.store.defect(d["id"])
-            if d["source"] == "incident":
-                try:
-                    self._release_incident(d, b)
-                except GitTransient as e:
-                    self.store.log(b["id"], f"incident 수정 반영 중 일시 오류(재시도 예정): {e}", "warn")
-                except IntegrationBlocked as e:
-                    self._hold(d, b, f"재개 증명 불가: {b['run_kind'] or b['paused_from']}: {e}")
-                except GitError as e:
-                    self.store.log(b["id"], f"수정 반영 중 Git 오류(재시도 예정): {e}", "warn")
-                if reproof_head is not None:
-                    current = self.store.defect(d["id"])
-                    if current is not None and current["state"] == "HELD":
-                        self.store.set(f"defect_reproof_head_{d['id']}", reproof_head)
-                continue
-            if self._fix_not_loaded(d):
-                continue
-            if not self._due(f"defect_release_try_{d['id']}"):
-                continue
+                b = self.store.batch(snapshot["id"])
+                d = self.store.defect(candidate["id"])
+                if (b is None or d is None or d["batch_id"] != b["id"]
+                        or (b["producer"], b["method"]) != (snapshot["producer"], snapshot["method"])
+                        or d["state"] not in ("FIX_MERGED", "HELD") or d["source"] == "verify"):
+                    continue
+                if (d["state"] == "HELD" and (d["source"] != "incident"
+                        or not (d["hold_reason"] or "").startswith("재개 증명 불가:") or not d["merge_sha"])):
+                    continue
+                self._release_locked(d, b)
+
+    def _release_locked(self, d, b) -> None:
+        if b["state"] != "PAUSED" or b["pause_reason"] != "shared_defect" or b["defect_id"] != d["id"]:
+            # the operator already resumed (Stop + Retry) or the batch moved on: this fix is no longer ours to apply
+            self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="운영자가 배치를 직접 재개함")
+            return
+        line = self.store.peek_line(b["producer"], b["method"])
+        if (line["force_stop"] or line["retry_batch"] == b["id"]
+                or self.store.clear_request(b["producer"], b["method"])
+                or self.store.get(f"stop_pin_{b['producer']}_{b['method']}")
+                or self.store.get(f"defect_hold_{b['id']}") or self._workers_running(b)):
+            return   # operator controls and live workers take precedence over integration
+        reproof_head = None
+        if d["state"] == "HELD":
+            reproof_head = self._rearm_held_incident(d, b)
+            if reproof_head is None:
+                return
+            d = self.store.defect(d["id"])
+        if d["source"] == "incident":
             try:
-                head, run_start = self._apply(d, b)
+                self._release_incident(d, b)
+            except GitTransient as e:
+                self.store.log(b["id"], f"incident 수정 반영 중 일시 오류(재시도 예정): {e}", "warn")
             except IntegrationBlocked as e:
-                self._hold(d, b, str(e))
-                continue
+                self._hold(d, b, f"재개 증명 불가: {b['run_kind'] or b['paused_from']}: {e}")
             except GitError as e:
                 self.store.log(b["id"], f"수정 반영 중 Git 오류(재시도 예정): {e}", "warn")
-                continue
-            if head is None:
-                continue
-            if not self._archive_report(d, b):
-                continue   # the resolved report could not be set aside: never resume into a stale stop signal
-            if run_start is None:
-                run_start = self._retargeted_run_start(b, head)
-            if run_start is None and ((b["method"] == STAGE3_METHOD
-                    and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] in ("s3_finalize", "s3_parallel")))
-                    or (b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel")
-                    or (b["method"] == literary.METHOD and b["run_kind"] == "c_parallel")):
-                self._hold(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
-                                  "checkpoint/view/commit과 소유 worktree를 보존하고 자동 재개하지 않습니다.")
-                continue
-            snapshot = self._recovery_snapshot(d, b, head) if d["source"] == "incident" else None
-            if self.store.release_defect(d["id"], b["id"], head, run_start, recovery_snapshot=snapshot):
-                self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} 반영·검증 완료 (HEAD {head[:10]}) → "
-                               f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
+            if reproof_head is not None:
+                current = self.store.defect(d["id"])
+                if current is not None and current["state"] == "HELD":
+                    self.store.set(f"defect_reproof_head_{d['id']}", reproof_head)
+            return
+        if self._fix_not_loaded(d):
+            return
+        if not self._due(f"defect_release_try_{d['id']}"):
+            return
+        try:
+            head, run_start = self._apply(d, b)
+        except IntegrationBlocked as e:
+            self._hold(d, b, str(e))
+            return
+        except GitError as e:
+            self.store.log(b["id"], f"수정 반영 중 Git 오류(재시도 예정): {e}", "warn")
+            return
+        if head is None:
+            return
+        if not self._archive_report(d, b):
+            return   # the resolved report could not be set aside: never resume into a stale stop signal
+        if run_start is None:
+            run_start = self._retargeted_run_start(b, head)
+        if run_start is None and ((b["method"] == STAGE3_METHOD
+                and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] in ("s3_finalize", "s3_parallel")))
+                or (b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel")
+                or (b["method"] == literary.METHOD and b["run_kind"] == "c_parallel")):
+            self._hold(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
+                              "checkpoint/view/commit과 소유 worktree를 보존하고 자동 재개하지 않습니다.")
+            return
+        snapshot = self._recovery_snapshot(d, b, head) if d["source"] == "incident" else None
+        if self.store.release_defect(d["id"], b["id"], head, run_start, recovery_snapshot=snapshot):
+            self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} 반영·검증 완료 (HEAD {head[:10]}) → "
+                           f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
+
+
 
     def _reassess_external_handoffs(self) -> None:
         """Recheck only typed external prerequisites, then queue a fresh diagnosis on the same Issue."""
@@ -909,11 +929,18 @@ class Maintenance:
             self.store.set("incident_legacy_logged", "1")
             self.store.log(None, "사건 번호가 없는 기존 ERROR 배치는 자동 접수하지 않습니다(운영자 확인): "
                            + ", ".join(f"#{r['id']} {r['method']} {r['shard']}_{r['batch']}" for r in legacy), "warn")
-        for b in self.store.intake_candidates():
+        for snapshot in self.store.intake_candidates():
             try:
-                self._intake(b)
+                with self.sup.lanes.try_hold(snapshot["producer"], snapshot["method"]) as held:
+                    if not held:
+                        continue
+                    b = self.store.batch(snapshot["id"])
+                    if (b is None or b["state"] != "ERROR" or b["error_seq"] != snapshot["error_seq"]
+                            or (b["producer"], b["method"]) != (snapshot["producer"], snapshot["method"])):
+                        continue
+                    self._intake(b)
             except Exception as e:   # one batch's trouble never blocks the others; the ERROR stays as written
-                self.store.log(b["id"], f"장애 접수 예외(ERROR와 증거 보존, 재시도 예정): {e}", "warn")
+                self.store.log(snapshot["id"], f"장애 접수 예외(ERROR와 증거 보존, 재시도 예정): {e}", "warn")
 
     def _intake(self, b) -> None:
         bid, seq = b["id"], b["error_seq"]
