@@ -320,13 +320,18 @@ class Supervisor:
                 state = self._stage2_repair_state(b, required=True)
                 current = state.get("current")
                 attempts = current.get("attempt_log") if isinstance(current, dict) else None
+                groups = current.get("groups") if isinstance(current, dict) else None
+                cursor = current.get("cursor") if isinstance(current, dict) else None
                 if (isinstance(current, dict) and current.get("pending_answer") is None
                         and current.get("apply_intent") is None and isinstance(attempts, list) and attempts
-                        and isinstance(attempts[-1], dict) and attempts[-1].get("status") == "rejected"):
+                        and isinstance(attempts[-1], dict) and attempts[-1].get("status") == "rejected"
+                        and isinstance(groups, list) and type(cursor) is int and 0 <= cursor < len(groups)
+                        and any(group.get("candidate_keys") for group in groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN])
+                        and self._stage2_repair_noncandidate_attempts(current) < stage2.REPAIR_ATTEMPTS_PER_PAGE):
                     # The retry either fails its existing guards or launches a fresh repair page; it cannot apply
                     # an old answer in this state. The page launch renders the operating checkout's s2_repair.
                     return {"s2_repair"}
-            except (ValueError, TypeError, KeyError):
+            except (ValueError, TypeError, KeyError, AttributeError):
                 pass
             return None
         if (b["method"] == STAGE2_METHOD and b["run_kind"] == "s2_deterministic_finalize"
