@@ -262,6 +262,7 @@ class Supervisor:
                 return self._force_stop(target)
             return self.store.set_line(model, MAINTENANCE_METHOD, run=0)
 
+        just_ticked = current[0]["id"] if current else None
         if current:
             pending_diagnosis = (current[0]["method"] == MAINTENANCE_METHOD
                                  and current[0]["state"] == "PRODUCING"
@@ -272,6 +273,8 @@ class Supervisor:
 
         # Review/merge/cleanup work does not use the Maintainer AI slot. Keep every owned PR attached and progressing.
         for b in self.store.maintenance_batches():
+            if b["id"] == just_ticked:
+                continue   # a batch that just reached WAITING_REVIEW is watched on the next tick
             if b["state"] not in ("WAITING_REVIEW", "MERGED", "CLEANUP"):
                 continue
             self._tick_batch(b, allow_maintenance_fix=not self.store.maintenance_batch_open())
