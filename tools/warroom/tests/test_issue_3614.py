@@ -107,7 +107,8 @@ class NoCodeRecovery(unittest.TestCase):
                                         branch=branch, worktree=str(source_wt), state="PREPARE")
         w.store.line("deepseek", "d")
         w.store.update(batch_id, state="PRODUCING", run_kind="d_parallel")
-        w.store.set(f"d_mode_{batch_id}", "parallel")
+        if not serial:
+            w.store.set(f"d_mode_{batch_id}", "parallel")
         report = '{"version":1,"defect_class":"d-task-report","summary":"保存 결과의 Sense ID 대조 필요"}'
         report_path = source_wt / defects.REPORT_FILE
         report_path.parent.mkdir(parents=True, exist_ok=True)
