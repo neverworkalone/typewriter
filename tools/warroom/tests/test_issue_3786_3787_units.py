@@ -87,7 +87,12 @@ BUILDERS = {"s2": build_s2, "d": build_d, "c": build_c, "s3": build_s3}
 
 
 class UnitAdmission(unittest.TestCase):
-    def scenario(self, name, nested):
+    # Where the first task is held while another thread closes the gate: inside the adapter's spawn, or earlier,
+    # in its own preparation (after its unit was admitted, before the launcher runs).
+    PREPARE = {"s2": ("s2p", "_start_allowed"), "d": ("dp", "_prepare"), "c": ("cp", "_render_new"),
+               "s3": ("s3p", "_start_allowed")}
+
+    def scenario(self, name, nested, point="spawn"):
         w, trigger = BUILDERS[name](self, nested)
         gate = w.sup.launch_gate
         runs_before = {r["id"] for b in w.store.all_batches() for r in w.store.runs(b["id"])}
@@ -106,7 +111,25 @@ class UnitAdmission(unittest.TestCase):
             gate.close()
             closed["pids"] = {r["id"]: r["pid"] for b in w.store.all_batches() for r in w.store.runs(b["id"])}
 
-        w.adapter.start = blocking_start
+        if point == "spawn":
+            w.adapter.start = blocking_start
+        else:
+            holder, attr = self.PREPARE[name]
+            par = getattr(w.sup, holder)
+            real_prepare = getattr(par, attr)
+
+            def blocking_prepare(*args, **kwargs):
+                if not entered.is_set():
+                    entered.set()
+                    self.assertTrue(release.wait(10))
+                return real_prepare(*args, **kwargs)
+
+            setattr(par, attr, blocking_prepare)
+
+            def counting_start(*args, **kwargs):
+                spawned.append(1)
+                return real_start(*args, **kwargs)
+            w.adapter.start = counting_start
         worker, closer = threading.Thread(target=trigger), threading.Thread(target=close)
         worker.start()
         self.assertTrue(entered.wait(10), "the first task never reached its spawn")
@@ -135,7 +158,7 @@ class UnitAdmission(unittest.TestCase):
         after = tree(w)
         for path in set(after) | set(files_before):
             if after.get(path) != files_before.get(path):
-                self.assertIn(first, Path(path).name, path)   # no other task's active chunk, view or checkpoint moved
+                self.assertIn(first, str(Path(path).relative_to(w.tmp.name)), path)   # no other task's active chunk, view or checkpoint moved
         return w, first
 
     def restart_is_exactly_once(self, w, first):
@@ -150,30 +173,54 @@ class UnitAdmission(unittest.TestCase):
         self.assertIn(first, tasks)
         self.assertEqual(len(w.adapter.launches), len(tasks))
 
-    def check(self, name, nested):
-        w, first = self.scenario(name, nested)
+    def check(self, name, nested, point="spawn"):
+        w, first = self.scenario(name, nested, point)
         self.restart_is_exactly_once(w, first)
 
-    def test_s2_nested(self):
-        self.check("s2", True)
+    def test_s2_nested_spawn(self):
+        self.check("s2", True, "spawn")
 
-    def test_s2_steady(self):
-        self.check("s2", False)
+    def test_s2_nested_prepare(self):
+        self.check("s2", True, "prepare")
 
-    def test_d_nested(self):
-        self.check("d", True)
+    def test_s2_steady_spawn(self):
+        self.check("s2", False, "spawn")
 
-    def test_d_steady(self):
-        self.check("d", False)
+    def test_s2_steady_prepare(self):
+        self.check("s2", False, "prepare")
 
-    def test_c_nested(self):
-        self.check("c", True)
+    def test_d_nested_spawn(self):
+        self.check("d", True, "spawn")
 
-    def test_c_steady(self):
-        self.check("c", False)
+    def test_d_nested_prepare(self):
+        self.check("d", True, "prepare")
 
-    def test_s3_nested(self):
-        self.check("s3", True)
+    def test_d_steady_spawn(self):
+        self.check("d", False, "spawn")
 
-    def test_s3_steady(self):
-        self.check("s3", False)
+    def test_d_steady_prepare(self):
+        self.check("d", False, "prepare")
+
+    def test_c_nested_spawn(self):
+        self.check("c", True, "spawn")
+
+    def test_c_nested_prepare(self):
+        self.check("c", True, "prepare")
+
+    def test_c_steady_spawn(self):
+        self.check("c", False, "spawn")
+
+    def test_c_steady_prepare(self):
+        self.check("c", False, "prepare")
+
+    def test_s3_nested_spawn(self):
+        self.check("s3", True, "spawn")
+
+    def test_s3_nested_prepare(self):
+        self.check("s3", True, "prepare")
+
+    def test_s3_steady_spawn(self):
+        self.check("s3", False, "spawn")
+
+    def test_s3_steady_prepare(self):
+        self.check("s3", False, "prepare")

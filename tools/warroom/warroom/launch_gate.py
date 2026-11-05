@@ -24,9 +24,19 @@ class LaunchGate:
     def held(self):
         return bool(getattr(self._local, 'depth', 0))
 
+    @contextmanager
     def unit(self):
-        """One launch unit (a single task): the gate is re-checked even when this thread already holds a permit."""
-        return self.permit(recheck=True)
+        """One launch unit (a single task). Entering it from outside any unit re-checks the gate even when this thread
+        already holds a wider permit; code running inside an admitted unit (the task's own launcher) inherits it, so an
+        admitted task is never cut off between its preparation and its PID record."""
+        with self._condition:
+            inside = getattr(self._local, 'unit', 0)
+        with self.permit(recheck=not inside):
+            self._local.unit = inside + 1
+            try:
+                yield
+            finally:
+                self._local.unit = inside
 
     @contextmanager
     def permit(self, recheck=False):
