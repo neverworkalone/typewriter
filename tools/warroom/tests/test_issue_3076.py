@@ -238,6 +238,12 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
         self.assertEqual(saved_senses[target_id]["submission"]["status"], "SAMPLED_NO_VERIFIED")
 
     def test_sequential_unshown_empty_samples_queue_the_latest_diagnosed_sense(self):
+        self._assert_sequential_empty_samples(second_shown=True)
+
+    def test_sequential_empty_sample_with_unshown_next_sense(self):
+        self._assert_sequential_empty_samples(second_shown=False)
+
+    def _assert_sequential_empty_samples(self, *, second_shown):
         w = self.world(senses=24)
         w.start("single", "deepseek", "c")
         w.tick()
@@ -253,7 +259,7 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
             senses[sense_id]["search_forms"] = forms
             senses[sense_id]["added_forms"] = []
             senses[sense_id]["shown"] = None
-        for target_id in target_ids:
+        for target_id in target_ids if second_shown else target_ids[:1]:
             senses[target_id]["shown"] = {"forms_sha256": literary._state_digest(senses[target_id]["search_forms"]),
                                             "total_hits": 42, "unit_rowids": list(range(1, 9))}
         checkpoint_path.write_text(json.dumps(checkpoint))
@@ -296,8 +302,8 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
                     for entry in submission["senses"]:
                         if entry["sense_id"] not in target_ids or entry["verified"] or entry["candidates"]:
                             continue
-                        shown = checkpoint_senses[entry["sense_id"]].get("shown") or {}
-                        if len(shown.get("unit_rowids", [])) < min(shown.get("total_hits", 0), 16):
+                        shown = checkpoint_senses[entry["sense_id"]].get("shown")
+                        if shown is None or len(shown.get("unit_rowids", [])) < min(shown.get("total_hits", 0), 16):
                             write_diagnostic(entry["sense_id"])
                             diagnostic = json.loads(submit_path.with_name(submit_path.name + ".diag.json").read_text())
                             w.runner.literary.calls.append(list(argv))
@@ -316,6 +322,10 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
         self.assertEqual(data["sample_fix_runs"], [first_fix["id"]])
         second_fix = next(r for r in self.open_runs(w) if r["task"] == "001")
         self.assertEqual(second_fix["kind"], "c_chunk_fix")
+        self.assertIsNotNone(first_fix["session_id"])
+        self.assertEqual(second_fix["session_id"], first_fix["session_id"])
+        self.assertEqual(data["fix_launch"][str(second_fix["id"])], "auto")
+        self.assertEqual(literary.unshown_empty_sample_targets(w.wt(), self.b(w), 1), [target_ids[1]])
         second_prompt = w.adapter.launches[-1]["prompt"]
         self.assertIn(target_ids[1], second_prompt)
         self.assertIn("input_sha256", second_prompt)
@@ -324,7 +334,17 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
 
         checkpoint = json.loads(checkpoint_path.read_text())
         senses = {sense["sense_id"]: sense for record in checkpoint["records"] for sense in record["senses"]}
-        senses[target_ids[1]]["shown"]["unit_rowids"] = list(range(1, 17))
+        if not second_shown:
+            # A missing sample is eligible; malformed or stale non-null samples are not.
+            for invalid in ({"unexpected": True}, {"forms_sha256": "0" * 64, "total_hits": 42,
+                                                    "unit_rowids": list(range(1, 9))}):
+                senses[target_ids[1]]["shown"] = invalid
+                checkpoint_path.write_text(json.dumps(checkpoint))
+                self.assertEqual(literary.unshown_empty_sample_targets(w.wt(), self.b(w), 1), [])
+        senses[target_ids[1]]["shown"] = {
+            "forms_sha256": literary._state_digest(senses[target_ids[1]]["search_forms"]),
+            "total_hits": 42, "unit_rowids": list(range(1, 17)),
+        }
         checkpoint_path.write_text(json.dumps(checkpoint))
         self._finish_rejected(w, "001", submits=0, reject=lambda: None)
         w.tick()

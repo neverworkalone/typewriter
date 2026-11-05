@@ -614,6 +614,8 @@ def _unshown_empty_sample_state(worktree, b, chunk_no: int) -> dict | None:
                 or not isinstance(shown, dict)):
             return None
         if shown.get("valid") is not True:
+            return None
+        if shown.get("sha256") == _state_digest(None):
             incomplete.append(entry["sense_id"])
             continue
         total_hits, context_count = shown.get("total_hits"), shown.get("context_count")
