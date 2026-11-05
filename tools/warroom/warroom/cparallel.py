@@ -711,10 +711,10 @@ class ParallelC:
         The exact submit diagnostic may advance to a second empty Sense when the Supervisor revalidates the unchanged
         file after the first Sense's sample becomes complete. Queue that newly exposed Sense instead of ending the task.
         """
-        if (run.get("kind") != FIX or run.get("id") != row["run_id"] or run.get("task") != row["task"]
-                or str(run.get("exit_status")) != "0" or run.get("ended_at") is None
-                or run.get("session_id") != row["session_id"] or not row["session_id"]
-                or run.get("id") in data.get("completed_fix_runs", [])):
+        if (run["kind"] != FIX or run["id"] != row["run_id"] or run["task"] != row["task"]
+                or str(run["exit_status"]) != "0" or run["ended_at"] is None
+                or run["session_id"] != row["session_id"] or not row["session_id"]
+                or run["id"] in data.get("completed_fix_runs", [])):
             return []
         start = data.get("run_start")
         baseline_state = start.get("retry_state") if isinstance(start, dict) else None
@@ -726,7 +726,7 @@ class ParallelC:
                 or baseline_state.get("pending_sense_ids") != pending
                 or not isinstance(baseline_state.get("own_state"), dict)):
             return []
-        log = Path(run["log_file"]) if run.get("log_file") else None
+        log = Path(run["log_file"]) if run["log_file"] else None
         if log is None or submit_attempts(log) != 0:
             return []
         try:
