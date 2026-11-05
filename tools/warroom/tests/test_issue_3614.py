@@ -13,7 +13,7 @@ from tests.test_issue_2034_d import DWorld
 from tests.test_supervisor import review
 from tests.test_lines import PRODUCERS
 from warroom import control, defects, dchunk, dparallel
-from warroom.restart_controller import (_live_work_or_controls, has_pending_restart, record_runtime,
+from warroom.restart_controller import (_live_work_or_controls, _request_files, has_pending_restart, record_runtime,
                                         update_restart_request, write_restart_request)
 
 
@@ -409,6 +409,22 @@ class RestartHandoff(unittest.TestCase):
         self.assertTrue(update_restart_request(w.paths, 91, "loaded", loaded_code_sha=HEAD1))
         self.assertFalse(has_pending_restart(w.paths))
         self.assertFalse(_live_work_or_controls(w.store))
+
+    def test_persisted_restart_signal_converts_database_row_once(self):
+        w = self.w
+        source = produce_and_report(w)
+        defect = w.store.defects()[0]
+        w.store.update_defect(defect["id"], state="FIX_MERGED", issue_number=101, merge_sha=HEAD1)
+        w.store.set(f"restart_needed_{defect['id']}", "1")
+
+        paths = _request_files(w.paths, w.store)
+        self.assertEqual(len(paths), 1)
+        request = json.loads(paths[0].read_text("utf-8"))
+        self.assertEqual((request["defect_id"], request["issue"], request["batch_id"], request["merge_sha"]),
+                         (defect["id"], 101, source["id"], HEAD1))
+        self.assertTrue(update_restart_request(w.paths, defect["id"], "loaded", loaded_code_sha=HEAD1))
+        self.assertEqual(_request_files(w.paths, w.store), paths)
+        self.assertEqual(json.loads(paths[0].read_text("utf-8"))["state"], "loaded")
 
 
 class MergedFixProgress(unittest.TestCase):
