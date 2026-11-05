@@ -7362,8 +7362,17 @@ class Supervisor:
                     f"{chunk_files.decisions}와 {chunk_files.searches}의 기존 판정·검색 증거를 읽고 보존한다. "
                     "이미 완성된 판정을 다시 만들거나 검색 기록을 삭제하지 말고, 미완료 Sense만 이어서 처리한다.\n")
         if kind == "d_chunk_resume":
+            card = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
+                                          searches=chunk_files.searches)
+            if dchunk.delivery(len(card.encode("utf-8")), view) == "inline":
+                chunk_input = view
+            else:
+                pages = dchunk.write_pages(wt, b, view, rec["chunk_no"])
+                chunk_input = ("검증된 view의 모든 페이지를 순서대로 각각 별도 호출로 읽는다 "
+                               "(Codex max_output_tokens: 10000). 누락 또는 잘림이 있으면 저장하지 않는다.\n" +
+                               "\n".join(f"cat {path}" for path in pages))
             prompt = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
-                                            searches=chunk_files.searches)
+                                            searches=chunk_files.searches, chunk_input=chunk_input)
         else:
             card_bytes = len(prompts.d_chunk(b, rec["chunk_no"], view="", note=note).encode("utf-8"))
             if dchunk.delivery(card_bytes, view) == "inline":

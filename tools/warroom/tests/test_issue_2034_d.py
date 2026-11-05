@@ -1089,6 +1089,25 @@ class Prompts(unittest.TestCase):
         self.assertIn('--dir "$TYPEWRITER_D_SCRATCH" --canonical-root "$TYPEWRITER_D_CANONICAL_ROOT"', card)
         self.assertNotIn("{{", card)
 
+    def test_resume_delivers_verified_view_inline_or_as_pages(self):
+        from types import SimpleNamespace
+        from warroom.supervisor import Supervisor
+        b = {"shard": "001", "batch": "01", "branch": "d-x-001-01", "worktree": "/tmp", "producer": "codex"}
+        rec = {"chunk_no": 3}
+        owner = SimpleNamespace(git=SimpleNamespace(head=lambda wt: HEAD1))
+        for mode in ("inline", "pages"):
+            with self.subTest(mode=mode), mock.patch.object(prompts, "prompt_dir", return_value=Path(__file__).resolve().parents[1] / "prompts"), \
+                 mock.patch.object(dchunk, "read_view", return_value="s22 [record=w1] w1-s1 gloss"), \
+                 mock.patch.object(dchunk, "delivery", return_value=mode), \
+                 mock.patch.object(dchunk, "write_pages", return_value=["page-1", "page-2"]):
+                prompt, _ = Supervisor._d_chunk_prompt(owner, b, "d_chunk_resume", remote=None, rec=rec)
+                if mode == "inline":
+                    self.assertIn("s22 [record=w1] w1-s1 gloss", prompt)
+                else:
+                    self.assertIn("cat page-1", prompt)
+                    self.assertIn("cat page-2", prompt)
+                self.assertNotIn("다시 읽거나 요청하지 않는다", prompt)
+
     def test_d_worker_prompts_keep_prepare_supervisor_only(self):
         b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
         prompts_to_check = (
