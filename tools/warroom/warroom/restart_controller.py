@@ -149,7 +149,9 @@ def _live_work_or_controls(store: Store, *, recovering_stopped_supervisor: bool 
         if (recorded_pid is not None or open_runs) and not proven:
             return f"batch {batch['id']} still has an AI/task process or unclosed run"
     for line in store.lines():
-        if line["force_stop"] or line["drain"]:
+        # A dead Supervisor must be allowed to consume pending Stop requests, after all workers above are
+        # proven finished. The Stop flag stays set; the restarted Supervisor remains responsible for it.
+        if line["drain"] or (line["force_stop"] and not recovering_stopped_supervisor):
             return f"operator Stop/Drain is active on {line['model']}/{line['method']}"
         if store.clear_request(line["model"], line["method"]) is not None:
             return f"operator Clear is active on {line['model']}/{line['method']}"
