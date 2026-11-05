@@ -6,6 +6,8 @@ import os
 import re
 import shutil
 import tempfile
+import threading
+from functools import wraps
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,10 +73,23 @@ def parse_verify_failure(code: int, out: str) -> dict | None:
 SCRATCH_DIR = ".warroom-scratch"   # the AI's throw-away files; never part of a batch and never blocks a worktree check
 
 
+def _locked(name):
+    """Hold a shared resource over the whole operation, not individual Git commands."""
+    def decorate(fn):
+        @wraps(fn)
+        def wrapped(self, *args, **kwargs):
+            with getattr(self, name):
+                return fn(self, *args, **kwargs)
+        return wrapped
+    return decorate
+
+
 class Git:
     def __init__(self, runner: Runner, repo_root: Path, env: dict, worktrees_dir: Path):
         self.r, self.root, self.env = runner, Path(repo_root), env
         self.worktrees_dir = Path(worktrees_dir)
+        self.repo_lock = threading.RLock()
+        self.verify_lock = threading.Lock()
         self._bin = resolve_git(env)   # never the (cache-poisonable) xcrun stub
 
     @property
@@ -92,10 +107,12 @@ class Git:
             raise (GitTransient(msg) if net and transient(res) else GitError(msg))
         return res
 
+    @_locked("repo_lock")
     def fetch_base(self, base: str) -> str:
         self._git("fetch", "origin", base, net=True)
         return self._git("rev-parse", f"origin/{base}").out.strip()
 
+    @_locked("repo_lock")
     def create_worktree(self, path: Path, branch: str, base: str) -> None:
         path = Path(path)
         if path.exists():
@@ -113,6 +130,7 @@ class Git:
         self.ignore_scratch()
         self._git("worktree", "add", "-b", branch, str(path), f"origin/{base}")
 
+    @_locked("repo_lock")
     def create_worktree_at(self, path: Path, branch: str, commit: str) -> None:
         """Create an owned branch at an already verified immutable commit, without resolving a moving base ref."""
         if not re.fullmatch(r"[a-f0-9]{40}", commit or ""):
@@ -178,6 +196,7 @@ class Git:
                 return sha.strip()
         return None
 
+    @_locked("repo_lock")
     def ignore_scratch(self) -> None:
         """Keep SCRATCH_DIR out of `git status` in every worktree (shared info/exclude); idempotent."""
         exclude = Path(self._git("rev-parse", "--path-format=absolute", "--git-path", "info/exclude").out.strip())
@@ -261,7 +280,8 @@ class Git:
         desc = f"local HEAD {local[:10]} != merged PR HEAD {pr_head_sha[:10]}"
         have = self._git("cat-file", "-e", f"{pr_head_sha}^{{commit}}", cwd=path, check=False).ok
         if not have:
-            fetched = self._git("fetch", "origin", pr_head_sha, cwd=path, check=False)
+            with self.repo_lock:
+                fetched = self._git("fetch", "origin", pr_head_sha, cwd=path, check=False)
             if not fetched.ok:
                 if transient(fetched):   # the network, not the worktree: ask again, never a Cleanup verdict
                     raise GitTransient(f"git fetch origin {pr_head_sha[:10]}: {fetched.err.strip()[:200]}")
@@ -301,7 +321,8 @@ class Git:
         if local == pr_head_sha:
             return local
 
-        self._git("fetch", "origin", pr_head_sha, cwd=path, timeout=600, net=True)
+        with self.repo_lock:
+            self._git("fetch", "origin", pr_head_sha, cwd=path, timeout=600, net=True)
         if not self._git("cat-file", "-e", f"{pr_head_sha}^{{commit}}", cwd=path, check=False).ok:
             raise FastForwardBlocked(f"원격 PR HEAD {pr_head_sha}를 commit으로 확인할 수 없습니다")
         if not self._git("merge-base", "--is-ancestor", local, pr_head_sha, cwd=path, check=False).ok:
@@ -334,6 +355,7 @@ class Git:
             raise FastForwardBlocked(f"fast-forward 후 worktree가 clean 상태가 아닙니다: {dirty.strip()[:400]}")
         return local
 
+    @_locked("repo_lock")
     def remove_owned(self, path: Path, branch: str, pr_head_sha: str, *,
                      cleanup_proof: dict | None = None, on_verified=None) -> None:
         """Remove worktree + local branch only if provably ours, clean and fully merged.
@@ -411,6 +433,7 @@ class Git:
             raise CleanupBlocked(f"worktree is registered with a different branch (expected {branch}, got {registered!r})")
         self._remove_partial(path, branch, pr_head_sha, cleanup_proof)
 
+    @_locked("repo_lock")
     def remove_diagnosis_worktree(self, path: Path, branch: str, base_sha: str) -> None:
         """Non-force removal of a Maintainer worktree that never committed (a diagnosis-only result, #3326). Idempotent:
         a re-entry after the removal already happened only finishes the branch. Anything unexpected is preserved."""
@@ -744,6 +767,7 @@ class Git:
         self._git("push", "origin", f"--force-with-lease=refs/heads/{branch}:{expected_sha}",
                   "--delete", f"refs/heads/{branch}")
 
+    @_locked("repo_lock")
     def discard_owned(self, path: Path, branch: str) -> None:
         """Remove the verified worktree (tracked-dirty and untracked files included) and its local branch; only these."""
         if not self.verify_owned(path, branch):
@@ -868,9 +892,10 @@ class Git:
         path = self._owned(path)
         if self.registered(path) != branch:
             raise IntegrationBlocked(f"worktree가 브랜치 {branch}에 등록되어 있지 않습니다")
-        self._git("fetch", "origin", base, net=True)   # a network/auth failure is a GitError: transient, caller retries
-        if not self._git("merge-base", "--is-ancestor", sha, f"origin/{base}", check=False).ok:
-            raise IntegrationBlocked(f"{sha[:10]}이 origin/{base}에 포함되어 있지 않습니다")
+        with self.repo_lock:
+            self._git("fetch", "origin", base, net=True)   # transient failures remain retryable
+            if not self._git("merge-base", "--is-ancestor", sha, f"origin/{base}", check=False).ok:
+                raise IntegrationBlocked(f"{sha[:10]}이 origin/{base}에 포함되어 있지 않습니다")
         if self._git("rev-parse", "-q", "--verify", "MERGE_HEAD", cwd=path, check=False).ok:
             raise IntegrationBlocked("worktree에 진행 중인 merge가 있습니다")
         if self.contains(path, sha):
@@ -1067,10 +1092,12 @@ class Git:
     def _verify_checkout(self, sha: str) -> Path:
         """The detached verification worktree at exactly `sha` (created once, then only moved between master commits)."""
         path = self.worktrees_dir / self.VERIFY_DIR
-        if not path.exists():
-            self.worktrees_dir.mkdir(parents=True, exist_ok=True)
-            self._git("worktree", "add", "--detach", str(path), sha)
-        elif self.registered(path) != "":   # detached = registered with no branch; anything else is not ours to move
+        with self.repo_lock:
+            if not path.exists():
+                self.worktrees_dir.mkdir(parents=True, exist_ok=True)
+                self._git("worktree", "add", "--detach", str(path), sha)
+                return path
+        if self.registered(path) != "":   # detached = registered with no branch; anything else is not ours to move
             raise GitError(f"Stage 2 검증 worktree가 War Room의 분리된 체크아웃으로 등록되어 있지 않습니다: {path}")
         else:
             self._git("checkout", "--detach", "--force", sha, cwd=path)
@@ -1338,6 +1365,7 @@ class Git:
             raise GitError("admission-cli reconcile dry-run state did not match the request")
         return payload
 
+    @_locked("verify_lock")
     def stage2_reconcile_latest(self, sha: str, shard: str, diff_from: str, diff_to: str, *, batch: str,
                                 part: str, timeout: int = 900) -> dict:
         """Read-only reconciliation preview on the exact detached master commit."""
@@ -1450,6 +1478,7 @@ class Git:
         ok, detail, _counts = self.verify_stage2_exact_counts(sha, shard, batch, part, timeout=timeout)
         return ok, detail
 
+    @_locked("verify_lock")
     def verify_stage2_exact_counts(self, sha: str, shard: str, batch: str, part: str,
                                    timeout: int = 900) -> tuple[bool, str, dict | None]:
         """Like `verify_stage2_exact`, also returning the Part-scoped accounting counts of that exact commit."""
@@ -1485,6 +1514,7 @@ class Git:
         res = self._git("show", f"{rev}:{rel}", check=False)
         return sum(1 for line in res.out.splitlines() if line.strip()) if res.ok else None
 
+    @_locked("verify_lock")
     def verify_stage2(self, sha: str, kind: str, shard: str, batch: str | None, part: str | None,
                       timeout: int = 900) -> tuple[bool, str]:
         """Run the exact `admission-cli verify` for a Part / Batch / shard on commit `sha` (the latest master)."""
@@ -1497,6 +1527,7 @@ class Git:
         tail = " ".join((res.err or res.out).split())[-300:]
         return res.ok, tail
 
+    @_locked("verify_lock")
     def verify_stage2_outcome(self, sha: str, kind: str, shard: str, batch: str | None, part: str | None,
                               timeout: int = 900) -> VerifyOutcome:
         """Like `verify_stage2` for a Batch / shard, but with `--json` so a deterministic failure is classifiable.

@@ -5,6 +5,7 @@ Fake AI/GitHub/git (the real `verify --json` is covered by scripts/relation/admi
 classification, the state machine and `batch_id=0` isolation, not a real daemon run."""
 import json
 import unittest
+import threading
 
 from tests.fakes import World
 from tests.test_issue_1684 import S2, s2_world
@@ -49,6 +50,7 @@ class Classification(unittest.TestCase):
             def __init__(self, result): self.result, self.argv = result, None
             def run(self, argv, **kw): self.argv = argv; return self.result
         git = Git.__new__(Git)
+        git.verify_lock = threading.Lock()
         git.env = {}
         git._verify_checkout = lambda sha: "/x"
         for result, ok, has_failure in ((Result(0, "valid"), True, False), (Result(2, line()), False, True),
