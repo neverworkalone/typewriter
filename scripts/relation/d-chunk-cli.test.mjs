@@ -169,9 +169,9 @@ withWorld('prepare shares one record search across senses and judges each sense 
   assert.equal(result.status, 'READY');
   const text = await view(world);
   assert.equal((text.match(/search: forms=새벽안개/gu) ?? []).length, 1, 'one search block per record');
-  assert.match(text, /s1 w001-s1 \[noun\] 새벽에 끼는 안개\./u);
-  assert.match(text, /s2 w001-s2 \[noun\] 비유적으로 흐릿함\./u);
-  assert.ok(text.indexOf('[1] 새벽안개') < text.indexOf('s1 w001-s1'), 'senses follow the shared contexts');
+  assert.match(text, /s1 \[record=w001\] w001-s1 \[noun\] 새벽에 끼는 안개\./u);
+  assert.match(text, /s2 \[record=w001\] w001-s2 \[noun\] 비유적으로 흐릿함\./u);
+  assert.ok(text.indexOf('[1] 새벽안개') < text.indexOf('s1 [record=w001]'), 'senses follow the shared contexts');
   const saved = await meta(world);
   assert.equal(saved.senses.length, 25 + 1); // w001 has two senses
   assert.equal(saved.view_sha256.length, 64);
@@ -288,6 +288,24 @@ test('autoZCandidate: POS alone never qualifies; form shape and length are part 
     [noun('서울역'), [], false],
   ];
   for (const [record, forms, want] of table) assert.equal(autoZCandidate(record, forms), want, JSON.stringify([record, forms]));
+});
+
+test('chunk views bind globally numbered Sense rows to their Canonical record explicitly', () => {
+  const first = rec('w110620', '말국', [['noun', '첫 번째 뜻.'], ['noun', '두 번째 뜻.']]);
+  const second = rec('w110622', '망민', [['verb', '백성을 속이다.']]);
+  const search = (forms) => ({ result: {
+    status: forms[0] === '말국' ? 'COMPLETE' : 'ZERO_HITS',
+    items: forms[0] === '말국' ? [{ paragraph_rowid: 1, form: '말국', title: '테스트 문서', author: '테스트', excerpt: '말국 문맥.' }] : [],
+    next_cursor: null,
+    scanned_rows: 1,
+  } });
+
+  const { view } = buildChunk({ records: [first, second], shard: '081', batch: '01',
+    chunkNumber: 2, total: 20, search });
+  assert.match(view, /## w110620 말국[\s\S]*?s1 \[record=w110620\] w110620-s1 \[noun\]/u);
+  assert.match(view, /s1 \[record=w110620\][\s\S]*?s2 \[record=w110620\] w110620-s2 \[noun\]/u);
+  assert.match(view, /## w110622 망민[\s\S]*?s3 \[record=w110622\] w110622-s1 \[verb\]/u);
+  assert.doesNotMatch(view, /s2 \[record=w110622\]/u);
 });
 
 test('hadaPrefetchForms: exact Hangul -하다 bases use POS-scoped forms and omit short or existing forms', () => {

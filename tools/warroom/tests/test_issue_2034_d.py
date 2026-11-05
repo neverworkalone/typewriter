@@ -1102,6 +1102,14 @@ class Prompts(unittest.TestCase):
                 self.assertIn(boundary, prompt)
                 self.assertIn("view가 없거나 불완전하면 `prepare`를 시도하지 말고", prompt)
 
+    def test_d_chunk_prompt_requires_explicit_record_binding_on_each_sense_row(self):
+        b = {"shard": "081", "batch": "01", "branch": "d-codex-081-01"}
+        prompt_dir = Path(__file__).resolve().parents[1] / "prompts"
+        card = prompts.d_chunk(b, 2, view="## w110620 말국\ns22 [record=w110620] w110620-s2 [noun] 뜻\n",
+                               directory=prompt_dir)
+        self.assertIn("sN [record=<record_id>] <sense_id> [<pos>] <gloss>", card)
+        self.assertIn("`sN` 행의 `[record=…]`와 `sense_id`를 확인한다", card)
+
 
 if __name__ == "__main__":
     unittest.main()
