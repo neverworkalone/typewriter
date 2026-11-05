@@ -17,6 +17,37 @@ from warroom.restart_controller import (_live_work_or_controls, _request_files, 
                                         request_operator_restart, update_restart_request, write_restart_request)
 
 
+class MaintainerActionsEvidence(unittest.TestCase):
+    def test_only_exact_terminal_required_job_failure_triggers(self):
+        from warroom.github import GhClient
+        client = GhClient(None, {}, "owner/repo")
+        run = {"id": 42, "event": "pull_request", "path": ".github/workflows/ci.yml",
+               "head_sha": "b" * 40, "head_branch": "maint-101", "status": "completed", "conclusion": "failure",
+               "run_attempt": 1, "pull_requests": [{"number": 50, "head": {"sha": HEAD1}}]}
+        job = {"id": 99, "name": "Validate and test Typewriter", "head_sha": "b" * 40,
+               "status": "completed", "conclusion": "failure", "steps": [{"name": "Tests", "conclusion": "failure"}]}
+        def lookup(path):
+            if "/workflows/" in path:
+                return {"workflow_runs": [run], "total_count": 1}
+            if "/attempts/" in path:
+                return {"jobs": [job], "total_count": 1}
+            return run
+        with mock.patch.object(client, "_api", side_effect=lookup):
+            self.assertEqual(client.maintainer_ci_failure(50, HEAD1, "maint-101")["key"], "ci:42:1")
+            for field, value in [("status", "in_progress"), ("conclusion", "success"),
+                                 ("conclusion", "skipped"), ("head_sha", "c" * 40),
+                                 ("pull_requests", [{"number": 51, "head": {"sha": HEAD1}}])]:
+                old = run[field]
+                run[field] = value
+                self.assertIsNone(client.maintainer_ci_failure(50, HEAD1, "maint-101"), field)
+                run[field] = old
+            run["pull_requests"][0]["head"]["sha"] = "c" * 40
+            self.assertIsNone(client.maintainer_ci_failure(50, HEAD1, "maint-101"))
+            run["pull_requests"][0]["head"]["sha"] = HEAD1
+            job["conclusion"] = "skipped"
+            self.assertIsNone(client.maintainer_ci_failure(50, HEAD1, "maint-101"))
+
+
 class MaintainerQueue(unittest.TestCase):
     def setUp(self):
         self.w = world()
@@ -93,6 +124,38 @@ class MaintainerQueue(unittest.TestCase):
         self.assertIn("PR #50", fix["prompt"])
         self.assertIn("Issue #101", fix["prompt"])
         self.assertTrue(w.store.maintenance_batch_open())
+
+    def test_ci_failure_uses_single_slot_and_claims_without_completing(self):
+        w = self.w
+        produce_and_report(w)
+        w.tick()
+        first = self.open_pr_for(101, 50)
+        w.gh.ci_failure = {"kind": "ci", "author": "GitHub Actions", "key": "ci:42:1", "body": "failed"}
+        w.store.delete(f"last_poll_{first['id']}")
+        w.tick()
+        self.assertEqual(w.store.batch(first["id"])["state"], "FIXING")
+        row = w.store.handled_event(first["id"], 50, HEAD1, "ci:42:1")
+        self.assertEqual(row["status"], "CLAIMED")
+        self.assertIn("ci:42:1", w.adapter.launches[-1]["prompt"])
+
+    def test_ci_completion_requires_new_head_and_matching_comment(self):
+        w = self.w
+        produce_and_report(w)
+        w.tick()
+        first = self.open_pr_for(101, 50)
+        w.gh.ci_failure = {"kind": "ci", "author": "GitHub Actions", "key": "ci:42:1", "body": "failed"}
+        w.store.delete(f"last_poll_{first['id']}")
+        w.tick()
+        batch = w.store.batch(first["id"])
+        run = w.store.runs(first["id"])[0]
+        w.store.finish_run(run["id"], 0)
+        w.store.set(f"verified_completion_run_{first['id']}", str(run["id"]))
+        w.gh.issue_comments_[50] = [{"id": 88, "user": {"login": w.cfg["expected_account"]},
+                                      "body": "수정 및 검증 완료\nWarRoom-CI-Event: ci:42:1\nWarRoom-CI-Fix-Head: " + "b" * 40, "created_at": "2099-01-01T00:00:00Z"}]
+        self.assertIsNotNone(w.sup._complete_producer_fix_events(batch, {"head_sha": HEAD1}))
+        self.assertEqual(w.store.handled_event(first["id"], 50, HEAD1, "ci:42:1")["status"], "CLAIMED")
+        self.assertIsNone(w.sup._complete_producer_fix_events(batch, {"head_sha": "b" * 40}))
+        self.assertEqual(w.store.handled_event(first["id"], 50, HEAD1, "ci:42:1")["status"], "HANDLED")
 
     def test_stale_pinned_stop_does_not_stop_next_maintainer_execution(self):
         w = self.w

@@ -860,6 +860,12 @@ class FakeGh:
         self.fail_create = self.fail_create_lost = self.fail_list = False
         self.fail_pull = False
 
+    def maintainer_ci_failure(self, pr, head, branch):
+        return getattr(self, "ci_failure", None)
+
+    def maintainer_ci_diagnostic(self, event):
+        return "Failed test identifiers: unavailable"
+
     def open_prs(self):
         return self.open
 

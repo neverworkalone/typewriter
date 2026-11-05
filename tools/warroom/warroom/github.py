@@ -160,6 +160,71 @@ class GhClient:
             })
         return result
 
+    def maintainer_ci_failure(self, pr: int, head: str, branch: str):
+        """Return only a terminal failure of this PR's required CI job, with bound API evidence."""
+        from urllib.parse import urlencode
+        query = urlencode({"event": "pull_request", "branch": branch, "per_page": 100})
+        data = self._api(f"repos/{self.repo}/actions/workflows/ci.yml/runs?{query}")
+        if not isinstance(data, dict) or not isinstance(data.get("workflow_runs"), list) or data.get("total_count", 101) > 100:
+            return None
+        runs = data["workflow_runs"]
+        if not runs:
+            return None
+        if any(not isinstance(r, dict) or not isinstance(r.get("id"), int) for r in runs):
+            return None
+        run = max(runs, key=lambda r: r["id"])
+        if run.get("status") != "completed" or run.get("conclusion") != "failure":
+            return None
+        run_id = run["id"]
+        run = self._api(f"repos/{self.repo}/actions/runs/{run_id}")
+        if not isinstance(run, dict) or run.get("id") != run_id:
+            return None
+        prs = run.get("pull_requests")
+        if (run.get("event") != "pull_request" or run.get("path") != ".github/workflows/ci.yml"
+                or not isinstance(run.get("head_sha"), str) or not re.fullmatch(r"[0-9a-f]{40}", run["head_sha"])
+                or run.get("head_branch") != branch
+                or not isinstance(prs, list) or len(prs) != 1 or prs[0].get("number") != pr
+                or (prs[0].get("head") or {}).get("sha") != head
+                or run.get("status") != "completed" or run.get("conclusion") != "failure"
+                or not isinstance(run.get("run_attempt"), int) or run["run_attempt"] < 1):
+            return None
+        attempt, run_id = run["run_attempt"], run["id"]
+        data = self._api(f"repos/{self.repo}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100")
+        if not isinstance(data, dict) or not isinstance(data.get("jobs"), list) or data.get("total_count", 101) > 100:
+            return None
+        jobs = [j for j in data["jobs"] if isinstance(j, dict) and j.get("name") == "Validate and test Typewriter"]
+        if len(jobs) != 1:
+            return None
+        job = jobs[0]
+        if (job.get("head_sha") != run["head_sha"] or job.get("status") != "completed" or job.get("conclusion") != "failure"
+                or not isinstance(job.get("steps"), list) or not isinstance(job.get("id"), int)):
+            return None
+        steps = [s.get("name") for s in job["steps"] if isinstance(s, dict) and s.get("conclusion") == "failure" and isinstance(s.get("name"), str)]
+        if not steps:
+            return None
+        # Names and links are untrusted data; no log content is executed or interpolated into shell commands.
+        body = (f"GitHub Actions PR CI: PR HEAD {head}; execution SHA {run['head_sha']}; run {run_id}, attempt {attempt}; "
+                f"job Validate and test Typewriter ({job.get('html_url', '')}); failed steps: " + ", ".join(steps))[:4000]
+        return {"kind": "ci", "author": "GitHub Actions", "key": f"ci:{run_id}:{attempt}", "body": body,
+                "job_id": job["id"], "run_id": run_id, "attempt": attempt}
+
+    def maintainer_ci_diagnostic(self, event):
+        # Fetch only the failed required job, once when it is about to be assigned. Extract bounded test names,
+        # not arbitrary log lines, which may contain secrets or prompt instructions.
+        r = self.runner.run(["gh", "run", "view", str(event["run_id"]), "--repo", self.repo,
+                             "--attempt", str(event["attempt"]), "--job", str(event["job_id"]), "--log-failed"],
+                            env=self.env, timeout=60)
+        if not r.ok:
+            raise self._fail("gh run view failed job", r)
+        names = []
+        for line in r.out.splitlines():
+            match = re.search(r"(?:FAIL|ERROR): ([A-Za-z0-9_.]+)(?: \([A-Za-z0-9_.]+\))?", line)
+            if match and match.group(1) not in names:
+                names.append(match.group(1))
+            if len(names) >= 20:
+                break
+        return "Failed test identifiers: " + (", ".join(names) if names else "unavailable; inspect the linked failed job")
+
     def reviews(self, n: int) -> list[dict]:
         return self._api(f"repos/{self.repo}/pulls/{n}/reviews", paginate=True)
 
