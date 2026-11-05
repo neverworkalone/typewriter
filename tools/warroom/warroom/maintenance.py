@@ -1309,6 +1309,11 @@ class Maintenance:
     def _text(value, limit=1000) -> bool:
         return isinstance(value, str) and bool(value.strip()) and len(value) <= limit
 
+    @staticmethod
+    def _batch_investigation_scope(source, tasks) -> bool:
+        return (not tasks or (source["method"] == STAGE2_METHOD and source["run_kind"] == "s2_repair_new"
+                              and all(isinstance(t, dict) and t.get("state") == "SAVED" for t in tasks)))
+
     def _finish_structured_diagnosis(self, b, d, data: dict, base: str) -> bool:
         """Re-check the exact source event and evidence bundle before accepting a no-PR result."""
         required = {"version", "issue", "attempt", "round", "defect_id", "event_key", "batch_id", "source_head",
@@ -1342,9 +1347,13 @@ class Maintenance:
                     or evidence.get("defect", {}).get("id") != d["id"]
                     or evidence.get("defect", {}).get("event_key") != d["event_key"]
                     or evidence.get("defect", {}).get("report_sha256") != hashlib.sha256(d["report"].encode("utf-8")).hexdigest()
-                    or data.get("source_head") != evidence.get("git", {}).get("head")
-                    or scope != {"task": (recovery.get("task") if isinstance(recovery, dict) else None),
-                                 "chunk": (recovery.get("chunk") if isinstance(recovery, dict) else None)}):
+                    or data.get("source_head") != evidence.get("git", {}).get("head")):
+                return False
+            expected_scope = {"task": recovery.get("task"), "chunk": recovery.get("chunk")} if isinstance(recovery, dict) else None
+            # Older investigation results sometimes copied the request's complete evidence scope. Accept it only
+            # for a batch-wide investigation and only when it is exactly the immutable request's scope.
+            if scope != expected_scope and not (data["outcome"] == "investigate"
+                    and expected_scope == {"task": None, "chunk": None} and scope == request.get("scope")):
                 return False
             if (source["state"] != "PAUSED" or source["pause_reason"] != "shared_defect"
                     or source["defect_id"] != d["id"] or source["pid"] is not None
@@ -1393,7 +1402,7 @@ class Maintenance:
                 if recovery["task"] is not None or recovery["chunk"] is not None:
                     if not self._validate_failed_task(source, evidence, recovery):
                         return False
-                elif tasks:
+                elif not self._batch_investigation_scope(source, tasks):
                     return False
             elif data["outcome"] == "external":
                 if (data.get("blocker") is not None or set(recovery) != {"type", "dependency", "action"}
