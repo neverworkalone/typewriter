@@ -428,6 +428,17 @@ const RAW_CI_CATEGORIES = Object.freeze({
   deep: {
     label: 'Selective implementation regressions and full-data reproducibility',
     checks: [
+      affectedTestCheck(
+        'scripts/ci/changed-files.test.mjs',
+        'Test exact PR changed-path selection and integration validation range',
+        [
+          '.github/workflows/ci.yml',
+          'scripts/ci/changed-files.mjs',
+          'scripts/ci/deep-gate.mjs',
+          'scripts/ci/registry.mjs',
+          'scripts/ci/run-category.mjs',
+        ],
+      ),
       {
         ...globalCanonicalAuditCheck(),
         schedule: 'affected',
