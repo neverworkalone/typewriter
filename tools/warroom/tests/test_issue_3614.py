@@ -11,6 +11,7 @@ from tests.fakes import HEAD1
 from tests.test_issue_1555 import maintainer_row, produce_and_report, report as shared_report, world
 from tests.test_issue_2034_d import DWorld
 from tests.test_supervisor import review
+from tests.test_lines import PRODUCERS
 from warroom import defects, dchunk, dparallel
 from warroom.restart_controller import (_live_work_or_controls, has_pending_restart, record_runtime,
                                         update_restart_request, write_restart_request)
@@ -257,6 +258,8 @@ class NoCodeRecovery(unittest.TestCase):
     def test_task_report_pause_resumes_its_exact_d_task_through_the_normal_save_path(self):
         w = DWorld(records=25, parallel=True)
         self.addCleanup(w.tmp.cleanup)
+        w.cfg["producers"] = PRODUCERS
+        w.runner.models.append("p/sonnet-free")
         w.cfg["maintainer"] = "sonnet"
         w.gh.issues[101] = {"state": "open", "labels": ["urgent"], "title": "Issue 101", "body": "diagnosis"}
         w.start("single", "deepseek", "d")
