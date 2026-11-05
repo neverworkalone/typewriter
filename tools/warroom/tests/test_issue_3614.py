@@ -113,6 +113,12 @@ class MaintainerQueue(unittest.TestCase):
 
 
 class NoCodeRecovery(unittest.TestCase):
+    def test_batch_investigation_allows_saved_s2_tasks_only_for_repair(self):
+        from warroom.maintenance import Maintenance
+        source = {"method": "s2", "run_kind": "s2_repair_new"}
+        self.assertTrue(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}]))
+        self.assertFalse(Maintenance._batch_investigation_scope(source, [{"state": "FAILED"}]))
+        self.assertFalse(Maintenance._batch_investigation_scope({"method": "c", "run_kind": "s2_repair_new"}, [{"state": "SAVED"}]))
     def setUp(self):
         self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
