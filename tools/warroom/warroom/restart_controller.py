@@ -157,7 +157,8 @@ def _live_work_or_controls(store: Store, *, recovering_stopped_supervisor: bool 
         # proven finished. Its ordinary Clear path still validates ownership and preserves blocked requests.
         if store.clear_request(line["model"], line["method"]) is not None and not recovering_stopped_supervisor:
             return f"operator Clear is active on {line['model']}/{line['method']}"
-        if store.get(f"stop_pin_{line['model']}_{line['method']}") is not None:
+        if (store.get(f"stop_pin_{line['model']}_{line['method']}") is not None
+                and not recovering_stopped_supervisor):
             return f"operator Stop pin is active on {line['model']}/{line['method']}"
     for batch in batches:
         if store.get(f"defect_hold_{batch['id']}"):
