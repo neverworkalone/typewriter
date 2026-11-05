@@ -74,6 +74,8 @@ usage 누락)은 NULL이며 0으로 채우지 않습니다. 비용은 `config.js
 
 Supervisor Python 코드가 바뀐 수정은 loaded code SHA가 새 commit을 포함하지 않으면 자동 재개하지 않는다. Supervisor와 별도인 restart controller는 `.git/typewriter-supervisor/restart-requests/`에 저장된 요청을 읽고, 운영 루트·Supervisor PID/tmux pane·worktree 소유권·모든 worker 종료·Stop/Drain/Clear/defect hold 상태를 확인한다. 모든 조건이 맞으면 `warroom-supervisor` tmux 세션만 종료하고 운영 루트에서 다시 시작한다. 성공은 새 runtime root와 loaded code SHA가 증명되어도 아직 완료가 아니며, 원 task의 공식 SAVED 진행이 확인된 뒤 기록한다.
 
+Supervisor가 이미 종료된 경우 모든 worker의 종료가 확인되면 대기 중인 Stop 플래그를 유지한 채 Supervisor를 시작한다. Supervisor가 기존 Stop을 처리하며, 살아 있는 Supervisor의 교체에는 기존 Stop 제한을 그대로 적용한다.
+
 코드를 배포한 뒤 운영 루트에서 `./war`를 실행한다. 이 launcher는 기존 TUI가 이미 열려 있어도 별도 controller를 먼저 실행하므로 새 controller가 처음 배포된 경우에도 persisted restart request를 처리할 수 있다. 진행 중 AI/task, operator Stop/Drain/Clear/hold, root/HEAD/ownership 불일치가 있으면 아무 프로세스도 종료하지 않고 요청을 대기 상태로 보존한다. TUI의 Supervisor 상태와 Audit Log에서 blocker를 확인하고 조건이 해소되면 controller가 다시 검사한다.
 
 incident에 직접 연결되지 않은 머지된 Supervisor 수정은 운영 루트에서 `TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" tools/warroom/.local/venv/bin/python -m warroom.restart_controller --request-code-sha <FULL_SHA>`로 명시적으로 요청한다. 이 요청은 사건 해결을 주장하지 않으며 동일한 작업 종료·소유권·운영자 제어 검사를 거친다.
