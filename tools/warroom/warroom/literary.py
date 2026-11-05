@@ -551,8 +551,8 @@ def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
     return any(isinstance(key, str) and key != key.strip() and len(key.strip()) >= 12 for key in entry["verified"])
 
 
-def deterministic_context_sample_candidate(worktree, b, chunk_no: int) -> bool:
-    """Retry an unchanged empty-result submission only after every diagnosed Sense has a complete shown sample."""
+def _unshown_empty_sample_state(worktree, b, chunk_no: int) -> dict | None:
+    """Return exact, source-bound empty-sample evidence and its incomplete diagnosed Senses, if valid."""
     n = names(b)
     submit_path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json"
     diagnostic_path = submit_path.with_name(submit_path.name + ".diag.json")
@@ -561,7 +561,7 @@ def deterministic_context_sample_candidate(worktree, b, chunk_no: int) -> bool:
         submission = json.loads(input_bytes)
         diagnostic = json.loads(diagnostic_path.read_text("utf-8"))
     except (OSError, ValueError):
-        return False
+        return None
     issues = diagnostic.get("issues") if isinstance(diagnostic, dict) else None
     affected = diagnostic.get("affected") if isinstance(diagnostic, dict) else None
     if (not isinstance(diagnostic, dict)
@@ -575,11 +575,11 @@ def deterministic_context_sample_candidate(worktree, b, chunk_no: int) -> bool:
             or not isinstance(affected.get("entry_number"), int) or isinstance(affected.get("entry_number"), bool)
             or not isinstance(submission, dict) or set(submission) != {"senses"}
             or not isinstance(submission.get("senses"), list)):
-        return False
+        return None
     try:
         rec = read_active(worktree, b, chunk_no)
         if rec is None or rec.get("repair") is True:
-            return False
+            return None
         active_ids = rec.get("sense_ids")
         entries = submission["senses"]
         if (not isinstance(active_ids, list) or not active_ids or len(entries) != len(active_ids)
@@ -587,32 +587,55 @@ def deterministic_context_sample_candidate(worktree, b, chunk_no: int) -> bool:
                 or any(not isinstance(entry, dict) or set(entry) != {"sense_id", "verified", "candidates"}
                        or not isinstance(entry.get("verified"), list) or not isinstance(entry.get("candidates"), list)
                        for entry in entries)):
-            return False
+            return None
         if not 1 <= affected["entry_number"] <= len(entries):
-            return False
+            return None
         first_issue = issues[0]
         if (not isinstance(first_issue, dict) or first_issue.get("entry_number") != affected["entry_number"]
                 or first_issue.get("reason") != "unshown_empty_sample" or first_issue.get("field") != "verified"
                 or entries[affected["entry_number"] - 1]["sense_id"] != affected.get("sense_id")):
-            return False
+            return None
         states = own_state(worktree, b, active_ids)["senses"]
     except (LiteraryError, OSError, ValueError, KeyError, TypeError):
-        return False
+        return None
 
+    incomplete = []
     for issue in issues:
         if (not isinstance(issue, dict) or issue.get("reason") != "unshown_empty_sample"
                 or issue.get("field") != "verified"
                 or not isinstance(issue.get("entry_number"), int) or isinstance(issue.get("entry_number"), bool)
                 or not 1 <= issue["entry_number"] <= len(entries)):
-            return False
+            return None
         entry = entries[issue["entry_number"] - 1]
         shown = states.get(entry["sense_id"], {}).get("shown")
-        if (entry["verified"] or entry["candidates"] or not isinstance(shown, dict)
-                or shown.get("valid") is not True or not isinstance(shown.get("total_hits"), int)
-                or isinstance(shown.get("total_hits"), bool) or shown["total_hits"] <= 0
-                or shown.get("context_count") != min(shown["total_hits"], MAX_CONTEXTS_PER_SENSE)):
-            return False
-    return True
+        state = states.get(entry["sense_id"], {})
+        if (not isinstance(entry, dict) or entry.get("sense_id") not in active_ids
+                or entry["verified"] or entry["candidates"] or state.get("forms_valid") is not True
+                or not isinstance(shown, dict)):
+            return None
+        if shown.get("valid") is not True:
+            incomplete.append(entry["sense_id"])
+            continue
+        total_hits, context_count = shown.get("total_hits"), shown.get("context_count")
+        if (not isinstance(total_hits, int) or isinstance(total_hits, bool) or total_hits <= 0
+                or not isinstance(context_count, int) or isinstance(context_count, bool)
+                or not 0 <= context_count <= MAX_CONTEXTS_PER_SENSE):
+            return None
+        if context_count < min(total_hits, MAX_CONTEXTS_PER_SENSE):
+            incomplete.append(entry["sense_id"])
+    return {"incomplete_sense_ids": incomplete}
+
+
+def deterministic_context_sample_candidate(worktree, b, chunk_no: int) -> bool:
+    """Retry an unchanged empty-result submission only after every diagnosed Sense has a complete shown sample."""
+    state = _unshown_empty_sample_state(worktree, b, chunk_no)
+    return state is not None and not state["incomplete_sense_ids"]
+
+
+def unshown_empty_sample_targets(worktree, b, chunk_no: int) -> list[str]:
+    """The exact active Senses whose empty result still lacks the full, current-forms shown sample."""
+    state = _unshown_empty_sample_state(worktree, b, chunk_no)
+    return list(state["incomplete_sense_ids"]) if state is not None else []
 
 
 def supervisor_skip(store, runner, env, worktree, b, rec: dict, task: dict | None = None) -> dict:
