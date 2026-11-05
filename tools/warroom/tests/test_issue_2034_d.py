@@ -1104,10 +1104,11 @@ class Prompts(unittest.TestCase):
 
     def test_d_worker_prompts_use_latest_search_state_over_the_prepare_snapshot(self):
         b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
+        prompt_dir = Path(__file__).resolve().parents[1] / "prompts"
         prompts_to_check = (
-            prompts.d_chunk(b, 3, view="VIEW\n"),
-            prompts.d_chunk_resume(3, decisions="decision-003.txt", searches="search-003.jsonl"),
-            prompts.d_chunk_fix(b, 3, "fixture rejection"),
+            prompts.d_chunk(b, 3, view="VIEW\n", directory=prompt_dir),
+            prompts.d_chunk_resume(3, decisions="decision-003.txt", searches="search-003.jsonl", directory=prompt_dir),
+            prompts.d_chunk_fix(b, 3, "fixture rejection", directory=prompt_dir),
         )
         for prompt in prompts_to_check:
             with self.subTest(prompt=prompt[:24]):
