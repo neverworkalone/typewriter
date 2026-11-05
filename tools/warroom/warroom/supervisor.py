@@ -4612,6 +4612,8 @@ class Supervisor:
                 proposed_forms = proposed.get("candidate_forms")
                 if not isinstance(proposed_forms, list) or any(not isinstance(form, str) for form in proposed_forms):
                     return None
+                proposed_target = proposed.get("target")
+                target_lemma = proposed_target.get("lemma") if isinstance(proposed_target, dict) else None
                 matched = 0
                 for key in conflict_keys:
                     candidate = candidates.get(key)
@@ -4619,7 +4621,8 @@ class Supervisor:
                         return None
                     if key not in group_keys:
                         return None
-                    if candidate["source_sense_id"] != source_sense_id or candidate["candidate"] not in proposed_forms:
+                    if candidate["source_sense_id"] != source_sense_id \
+                            or (candidate["candidate"] not in proposed_forms and candidate["candidate"] != target_lemma):
                         continue
                     if candidate.get("already_accounted") is True:
                         optional = candidate.get("additional_relations")

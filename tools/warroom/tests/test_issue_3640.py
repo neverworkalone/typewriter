@@ -29,11 +29,11 @@ def _relation(source_sense, source_record, source_lemma, target_sense, target_re
     }
 
 
-def duplicate_report(*, already_accounted=False, reverse_candidate=CANDIDATE):
+def duplicate_report(*, already_accounted=False, reverse_candidate=CANDIDATE, proposed_forms=(CANDIDATE,)):
     existing = _relation(TARGET_SENSE, "target-record", CANDIDATE,
                          SOURCE_SENSE, "source-record", "source-lemma")
     proposed = _relation(SOURCE_SENSE, "source-record", "source-lemma",
-                         TARGET_SENSE, "target-record", CANDIDATE, forms=[CANDIDATE])
+                         TARGET_SENSE, "target-record", CANDIDATE, forms=proposed_forms)
     if reverse_candidate != CANDIDATE:
         existing["source"]["lemma"] = reverse_candidate
     decision = ({"source_sense_id": SOURCE_SENSE, "candidate": CANDIDATE, "disposition": "existing"}
@@ -129,6 +129,16 @@ class DuplicateIdPairFallback(unittest.TestCase):
         repair = w.git.stage2_repair_calls[0]["decisions"][0]
         self.assertIsNone(repair["decision"])
         self.assertEqual(repair["additional_relations"], [unrelated])
+
+    def test_legacy_relation_uses_target_lemma_when_no_explicit_candidate_form_is_stored(self):
+        report = duplicate_report(proposed_forms=[])
+        w, b, checkpoint = prepare_world(self, report)
+
+        stopped = w.sup._stage2_preflight_repair(b, stage2.checkpoint(b["worktree"], b["shard"], b["batch"]))
+
+        self.assertFalse(stopped, w.store.batch(b["id"])["error"])
+        saved = json.loads(checkpoint.read_text("utf-8"))["items"][0]["candidates"][0]
+        self.assertEqual(saved["decision"]["reason"], "e")
 
     def test_missing_reverse_candidate_projection_stays_fail_closed(self):
         report = duplicate_report(reverse_candidate="different-form")
