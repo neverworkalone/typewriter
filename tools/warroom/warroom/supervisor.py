@@ -3061,8 +3061,8 @@ class Supervisor:
         return (info.get("merged") is True and info.get("state") == "closed"
                 and info.get("head_ref") == b["branch"] and isinstance(info.get("number"), int))
 
-    def _stage2_final_pr_problem(self, b, info) -> str | None:
-        """Require local checkpoint verification and an independent exact PR-HEAD verification."""
+    def _stage2_final_pr_problem(self, b, info, verified=None, telemetry=None) -> str | None:
+        """Require both verifications, or reuse this finalization call’s matching successful results."""
         merged = self._merged_owned_pr(b, info)
         try:
             reconcile_task = self._stage2_reconcile_task(b)
@@ -3085,9 +3085,13 @@ class Supervisor:
                 if not self.git.is_ancestor(base_revision, head, path=wt):
                     return "Stage 2 reconciliation PR does not contain its recorded base revision"
                 bb, pp = stage2.split_key(b["batch"])
+                if telemetry is not None:
+                    telemetry["checkpoint_verify"] = 1
                 ok, tail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=False)
                 if not ok:
                     return f"{stage2.label(b['shard'], b['batch'])} reconciliation verify failed: {tail}"
+                if telemetry is not None:
+                    telemetry["exact_head_verify"] = 1
                 ok, tail = self.git.verify_stage2_exact(head, b["shard"], bb, pp)
                 if not ok:
                     return f"{stage2.label(b['shard'], b['batch'])} exact reconciliation PR HEAD verify failed: {tail}"
@@ -3111,9 +3115,27 @@ class Supervisor:
                 if remote != head:
                     return f"Stage 2 PR HEAD가 원격 소유 브랜치에 없습니다 ({remote} / {head})"
             batch, part = stage2.split_key(b["batch"])
+            path = (wt / ".warroom-scratch" / f"relation-admission-{b['shard']}-{batch}-{part}.json").resolve()
+            try:
+                stat = path.stat()
+                fingerprint = (stat.st_ino, stat.st_size, stat.st_mtime_ns)
+            except OSError:
+                fingerprint = None
+            # stat detects accidental checkpoint changes within this call; CLI verification supplies integrity.
+            if (isinstance(verified, dict) and type(verified.get("batch_id")) is type(b["id"])
+                    and verified.get("batch_id") == b["id"]
+                    and verified.get("checkpoint_path") == str(path) and verified.get("head") == head
+                    and fingerprint is not None and verified.get("checkpoint_stat") == fingerprint):
+                if telemetry is not None:
+                    telemetry["mode"] = "reused"
+                return None
+            if telemetry is not None:
+                telemetry["checkpoint_verify"] = 1
             ok, tail = self.git.verify_stage2_local(wt, b["shard"], batch, part, checkpoint=True)
             if not ok:
                 return f"{stage2.label(b['shard'], b['batch'])} 로컬 checkpoint verify 실패: {tail}"
+            if telemetry is not None:
+                telemetry["exact_head_verify"] = 1
             ok, tail = self.git.verify_stage2_exact(head, b["shard"], batch, part)
             if not ok:
                 return f"{stage2.label(b['shard'], b['batch'])} PR 정확한 HEAD의 별도 checkout verify 실패: {tail}"
@@ -5407,6 +5429,12 @@ class Supervisor:
             ok, detail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=True)
             if not ok:
                 return self._fail(b, "ERROR", f"로컬 checkpoint-bearing Part verify 실패: {detail}")
+            checkpoint_path = (wt / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json").resolve()
+            try:
+                st = checkpoint_path.stat()
+                checkpoint_stat = (st.st_ino, st.st_size, st.st_mtime_ns)
+            except OSError:
+                checkpoint_stat = None
             end_stage()
             begin_stage("commit")
             allowed = {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"}
@@ -5460,7 +5488,9 @@ class Supervisor:
             if not exact_ok:
                 return self._fail(b, "ERROR", f"Stage 2 PR 생성 전 정확한 HEAD verify 실패: {exact_detail}")
             end_stage()
-            begin_stage("pr_prep_create")
+            proof = {"head": head, "batch_id": b["id"], "checkpoint_path": str(checkpoint_path),
+                     "checkpoint_stat": checkpoint_stat}
+            begin_stage("pr_prep")
             if (problem := prbody.stage2_counts_problem(counts)) is not None:
                 self.store.log(b["id"], f"Stage 2 통계를 측정하지 못해 미측정으로 표기합니다: {problem}", "warn")
             delta = self.git.row_delta(base, head, b["shard"]) if base else None
@@ -5468,7 +5498,9 @@ class Supervisor:
                                       part_verify=True, exact_verify=True)
             issue = self.gh.issue(927)
             labels = [label for label in issue.get("labels", []) if label != "batch"]
-            result = self._create_pr_once(b, title, body, labels)
+            end_stage()
+            begin_stage("pr_create_handoff")
+            result = self._create_pr_once(b, title, body, labels, stage2_proof=proof)
             end_stage("returned")
             return result
         except TRANSIENT:
@@ -7044,15 +7076,18 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"C 최종화 중 GitHub/Git 오류: {e}. worktree를 보존합니다.")
 
-    def _create_pr_once(self, b, title: str, body: str, labels: list[str]) -> None:
+    def _create_pr_once(self, b, title: str, body: str, labels: list[str], *, stage2_proof=None) -> None:
         """Open the batch PR at most once. Invariant: while it is unknown whether a create request made a PR, the request is
         never repeated; only the owned-branch lookup is (a transient 'unconfirmed' outcome raises GhTransient)."""
         key = f"pr_create_{b['id']}"
         raw = self.store.get(key)
+        created = False
+        create_started = time.monotonic()
         if raw is None:
             self.store.set(key, json.dumps({"head": self._local_head(b), "at": self.clock()}))
             try:
                 self.gh.create_pr(b["branch"], self.cfg["base_branch"], title, body, labels)
+                created = True
             except GhTransient as e:   # unknown whether GitHub created it: look, never create again
                 self.store.log(b["id"], f"PR 생성 응답 오류(생성 여부 미확정, 재생성 금지): {e}", "warn")
             except GhError as e:   # gh got an answer: a definite rejection unless it says the PR is already there
@@ -7063,11 +7098,22 @@ class Supervisor:
             except Exception as e:   # no answer to interpret (lost response, local failure): outcome unknown, never create again
                 self.store.log(b["id"], f"PR 생성 응답 오류(생성 여부 미확정, 재생성 금지): {e}", "warn")
             raw = self.store.get(key)
+        create_ms = round((time.monotonic() - create_started) * 1000)
+        lookup_started = time.monotonic()
         info = self._find_recovery_pr(b)
+        lookup_ms = round((time.monotonic() - lookup_started) * 1000)
         if info is not None:
             self.store.delete(key)
             if b["method"] == STAGE2_METHOD:
-                if problem := self._stage2_final_pr_problem(b, info):
+                telemetry = {"mode": "full", "checkpoint_verify": 0, "exact_head_verify": 0}
+                started = time.monotonic()
+                problem = self._stage2_final_pr_problem(b, info, verified=stage2_proof if created else None,
+                                                        telemetry=telemetry)
+                elapsed = round((time.monotonic() - started) * 1000)
+                self.store.log(b["id"], f"pr_handoff_verify elapsed_ms={elapsed} mode={telemetry['mode']} "
+                               f"checkpoint_verify={telemetry['checkpoint_verify']} exact_head_verify={telemetry['exact_head_verify']} "
+                               f"create_ms={create_ms} lookup_ms={lookup_ms}")
+                if problem:
                     return self._fail(b, "ERROR", problem)
             return self._to_review(b, info)
         try:
