@@ -27,7 +27,7 @@ import {
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
 
 async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', firstSenseGlosses,
-  firstSearchForms = [], secondLemma, workCount = 1, supervisorWorktree = false,
+  firstSearchForms = [], firstSenseId, secondLemma, workCount = 1, supervisorWorktree = false,
   senseCount = 500, repeatFirstLemma = false } = {}) {
   const fixtureRoot = path.resolve('.warroom-scratch');
   await mkdir(fixtureRoot, { recursive: true });
@@ -75,13 +75,13 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
     const lemma = repeatFirstLemma ? firstForm : index === 0 ? firstForm : index === 1 && secondLemma ? secondLemma : `표제${ordinal}`;
     const senses = index === 0 && firstSenseGlosses
       ? firstSenseGlosses.map((gloss, senseIndex) => ({
-        id: senseIndex === 0 ? `sense-${ordinal}` : `sense-${ordinal}-${senseIndex + 1}`,
+        id: senseIndex === 0 ? firstSenseId ?? `sense-${ordinal}` : `sense-${ordinal}-${senseIndex + 1}`,
         pos: 'noun',
         gloss,
         relations: [],
       }))
       : Array.from({ length: index < extraSenseCount ? 2 : 1 }, (_, senseIndex) => ({
-        id: senseIndex === 0 ? `sense-${ordinal}` : `sense-${ordinal}-extra`,
+        id: senseIndex === 0 ? index === 0 && firstSenseId ? firstSenseId : `sense-${ordinal}` : `sense-${ordinal}-extra`,
         pos: 'noun', gloss: senseIndex === 0 ? `fixture gloss ${ordinal}` : `fixture extra gloss ${ordinal}`, relations: [],
       }));
     return {
@@ -1647,10 +1647,10 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
   }
 });
 
-test('chunk CLI accepts --skip and emits only the unseen context suffix', async () => {
-  const fixture = await makeFixture({ unitCount: 42 });
+test('chunk CLI accepts --skip with the C chunk scope and emits the unread suffix for a 42-hit sense', async () => {
+  const fixture = await makeFixture({ unitCount: 42, firstForm: '능사', firstSenseId: 'w68162-s1' });
   try {
-    const first = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--contexts', '8', '--format', 'text']));
+    const first = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'w68162-s1', '--contexts', '8', '--format', 'text']));
     assert.equal(first.status, 0, first.stderr);
     const initialKeys = [...first.stdout.matchAll(/^\[([A-Za-z0-9]{12})\] /gmu)].map((match) => match[1]);
     assert.equal(initialKeys.length, 8);
@@ -1658,13 +1658,13 @@ test('chunk CLI accepts --skip and emits only the unseen context suffix', async 
     const activeView = Buffer.from(first.stdout);
     await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.txt'), activeView);
     await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.json'), JSON.stringify({
-      chunk_id: '001-01-001', chunk_no: 1, sense_ids: ['sense-000001'], shard: '001', batch: '01', model: 'codex',
+      chunk_id: '001-01-001', chunk_no: 1, sense_ids: ['w68162-s1'], shard: '001', batch: '01', model: 'codex',
       git_head: 'a'.repeat(40), view_sha256: createHash('sha256').update(activeView).digest('hex'),
       view_bytes: activeView.byteLength,
     }));
 
     const extra = runCli(fixture, cliChunkArgs(fixture, [
-      '--sense-ids', 'sense-000001', '--skip', '8', '--contexts', '16', '--format', 'text', '--chunk', '001',
+      '--sense-ids', 'w68162-s1', '--skip', '8', '--contexts', '16', '--format', 'text', '--chunk', '001',
     ]));
     assert.equal(extra.status, 0, extra.stderr);
     const suffixKeys = [...extra.stdout.matchAll(/^\[([A-Za-z0-9]{12})\] /gmu)].map((match) => match[1]);
@@ -1672,6 +1672,7 @@ test('chunk CLI accepts --skip and emits only the unseen context suffix', async 
     for (const key of initialKeys) assert.equal(suffixKeys.includes(key), false);
     assert.match(extra.stdout, /hits=42 unseen=26/u);
     const checkpoint = await load(fixture);
+    assert.equal(checkpoint.records[0].senses[0].sense_id, 'w68162-s1');
     assert.equal(checkpoint.records[0].senses[0].shown.unit_rowids.length, 16);
   } finally {
     await cleanup(fixture);
