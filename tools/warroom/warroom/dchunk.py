@@ -25,7 +25,7 @@ CLI = "scripts/relation/d-chunk-cli.mjs"
 CONTRACT_CLI = "scripts/relation/candidate-contract.mjs"
 # Same whole-prompt-as-one-argv bound as Method C (Linux MAX_ARG_STRLEN 128 KiB, kept clearly below).
 INLINE_MAX_PROMPT_BYTES = 100_000
-MAX_PARALLEL = 4   # fixed concurrent AI runs inside one active batch (#3074); not configurable
+MAX_PARALLEL = 8   # fixed concurrent AI runs inside one active batch (#3074); not configurable
 MAX_FIXES = 1   # automatic same-session corrections per chunk (an operator Retry grants one more)
 MAX_DIAGNOSTIC_CHARS = 3000
 PR_LABEL = "batch"

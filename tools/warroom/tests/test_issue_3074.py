@@ -1,4 +1,4 @@
-"""Issue #3074 PR 2: Method D runs its 25-record chunks as up to four parallel War Room tasks inside one batch."""
+"""Issue #3074 PR 2: Method D runs its 25-record chunks as up to eight parallel War Room tasks inside one batch."""
 import json
 import unittest
 
@@ -58,7 +58,7 @@ class ParallelD(ParallelDHelpers, unittest.TestCase):
         self.assertIn("Codex가 Fast 설정을 지원하지 않는다고 명시했습니다", json.loads(self.tasks(w)["001"]["data"])["error"])
         self.assertEqual(w.row_()["state"], "ERROR")
 
-    def test_four_slots_refill_one_by_one_and_one_pr_in_chunk_order(self):
+    def test_eight_slots_refill_one_by_one_and_one_pr_in_chunk_order(self):
         w = self.world()
         self.plan_all(w, range(1, 11))
         w.start("single", "deepseek", "d")
@@ -68,13 +68,13 @@ class ParallelD(ParallelDHelpers, unittest.TestCase):
         self.assertEqual(w.store.get(f"d_mode_{b['id']}"), "parallel")
         self.assertEqual(sorted(self.tasks(w)), [f"{n:03d}" for n in range(1, 11)])
         self.assertEqual(len(self.open_runs(w)), dchunk.MAX_PARALLEL)
-        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "002", "003", "004"])
+        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), [f"{n:03d}" for n in range(1, 9)])
         self.assertTrue(all(l["kind"] == "start" for l in w.adapter.launches))
         # no wave barrier: one finished run frees one slot, immediately refilled with the next chunk in number order
         self.finish_task(w, "003")
         w.tick()
         self.assertEqual(self.tasks(w)["003"]["state"], "SAVED")
-        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "002", "004", "005"])
+        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "002", "004", "005", "006", "007", "008", "009"])
         for _ in range(12):
             self.assertLessEqual(len(self.open_runs(w)), dchunk.MAX_PARALLEL)
             for r in list(self.open_runs(w)):
@@ -86,7 +86,7 @@ class ParallelD(ParallelDHelpers, unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 10)
         assembled = (w.wt() / REL).read_text().splitlines()
         self.assertEqual([json.loads(l)["record_id"] for l in assembled], [r["id"] for r in w.runner.dchunk.rows()])
-        self.assertIn("최대 4개", w.gh.created_prs[0]["body"])
+        self.assertIn("최대 8개", w.gh.created_prs[0]["body"])
 
     def test_stored_chunk_does_not_free_its_slot_until_the_process_is_gone(self):
         w = self.world()
@@ -95,16 +95,16 @@ class ParallelD(ParallelDHelpers, unittest.TestCase):
         w.tick()
         w.runner.dchunk.save(w.wt(), 1)                      # the worker has saved but is still finishing
         w.tick(2)
-        self.assertEqual(len(w.adapter.launches), 4)
+        self.assertEqual(len(w.adapter.launches), dchunk.MAX_PARALLEL)
         self.assertEqual(self.tasks(w)["001"]["state"], "RUNNING")
-        self.assertEqual(len(self.open_runs(w)), 4)
+        self.assertEqual(len(self.open_runs(w)), dchunk.MAX_PARALLEL)
         self.finish_task(w, "001")
         w.tick()
         self.assertEqual(self.tasks(w)["001"]["state"], "SAVED")
         self.assertEqual(w.store.run(self.tasks(w)["001"]["run_id"] or 1)["task"], "001")
         self.assertIsNone(w.store.get(f"d_chunk_sha_{w.row_()['id']}_2"))
         self.assertIsNotNone(w.store.get(f"d_chunk_sha_{w.row_()['id']}_1"))
-        self.assertEqual(len(w.adapter.launches), 5)
+        self.assertEqual(len(w.adapter.launches), dchunk.MAX_PARALLEL + 1)
 
     def test_automatic_chunks_use_no_slot_and_no_ai(self):
         w = self.world()
@@ -112,9 +112,9 @@ class ParallelD(ParallelDHelpers, unittest.TestCase):
         self.plan_all(w, [1, 4, 5, 6, 7, 8, 9, 10])
         w.start("single", "deepseek", "d")
         w.tick()
-        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "004", "005", "006"])
+        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "004", "005", "006", "007", "008", "009", "010"])
         self.assertEqual({t: r["state"] for t, r in self.tasks(w).items() if t in ("002", "003")}, {"002": "SAVED", "003": "SAVED"})
-        self.assertEqual(len(w.adapter.launches), 4)
+        self.assertEqual(len(w.adapter.launches), dchunk.MAX_PARALLEL)
 
     def test_stored_chunk_found_without_a_run_is_accepted_without_an_ai_call(self):
         w = self.world()

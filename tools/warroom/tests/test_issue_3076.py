@@ -1,4 +1,4 @@
-"""Issue #3076 PR 2: Method C runs its 12-Sense chunks as up to four parallel War Room tasks inside one batch."""
+"""Issue #3076 PR 2: Method C runs its 12-Sense chunks as up to eight parallel War Room tasks inside one batch."""
 import hashlib
 import json
 import unittest
@@ -69,15 +69,15 @@ class ParallelC(Helpers, unittest.TestCase):
         self.assertIn("Codex가 Fast 설정을 지원하지 않는다고 명시했습니다", self.data(w, "001")["error"])
         self.assertEqual(self.b(w)["state"], "ERROR")
 
-    def test_four_slots_refill_one_by_one_no_sense_twice_and_one_pr(self):
-        w = self.world(senses=62)                        # chunks of 12: 12,12,12,12,12,2
+    def test_eight_slots_refill_one_by_one_no_sense_twice_and_one_pr(self):
+        w = self.world(senses=98)                        # 8 full chunks of 12 plus 2 Senses (9 chunks)
         w.start("single", "deepseek", "c")
         w.tick()
         b = self.b(w)
         self.assertEqual((b["state"], b["run_kind"], b["pid"]), ("PRODUCING", "c_parallel", None))
         self.assertEqual(w.store.get(f"c_mode_{b['id']}"), "parallel")
-        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "002", "003", "004"])
-        for launch, task in zip(w.adapter.launches, ("001", "002", "003", "004")):
+        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), [f"{n:03d}" for n in range(1, 9)])
+        for launch, task in zip(w.adapter.launches, (f"{n:03d}" for n in range(1, 9))):
             ids = self.sense_ids(w, task)
             self.assertIn("Supervisor가 배정한 조회 허용 ID(아래 문자열을 그대로 복사): " + ", ".join(ids), launch["prompt"])
             self.assertIn("이번 실행의 미완료 제출 ID: " + ", ".join(ids), launch["prompt"])
@@ -87,7 +87,7 @@ class ParallelC(Helpers, unittest.TestCase):
         self.finish(w, "003")                                              # no wave barrier
         w.tick()
         self.assertEqual(self.tasks(w)["003"]["state"], "SAVED")
-        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "002", "004", "005"])
+        self.assertEqual(sorted(r["task"] for r in self.open_runs(w)), ["001", "002", "004", "005", "006", "007", "008", "009"])
         for _ in range(12):
             self.assertLessEqual(len(self.open_runs(w)), literary.MAX_PARALLEL)
             for r in list(self.open_runs(w)):
@@ -97,7 +97,7 @@ class ParallelC(Helpers, unittest.TestCase):
         self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 100))
         self.assertEqual(len(w.gh.created_prs), 1)
         self.assertEqual(w.runner.literary.exports, 1)
-        self.assertEqual(len(w.adapter.launches), 6)
+        self.assertEqual(len(w.adapter.launches), 9)
         self.assertTrue(all("--chunk 00" in l["prompt"] for l in w.adapter.launches))
 
     def test_runtime_baseline_and_mode_exist_before_the_checkpoint(self):

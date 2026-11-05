@@ -169,9 +169,9 @@ withWorld('prepare shares one record search across senses and judges each sense 
   assert.equal(result.status, 'READY');
   const text = await view(world);
   assert.equal((text.match(/search: forms=새벽안개/gu) ?? []).length, 1, 'one search block per record');
-  assert.match(text, /s1 w001-s1 \[noun\] 새벽에 끼는 안개\./u);
-  assert.match(text, /s2 w001-s2 \[noun\] 비유적으로 흐릿함\./u);
-  assert.ok(text.indexOf('[1] 새벽안개') < text.indexOf('s1 w001-s1'), 'senses follow the shared contexts');
+  assert.match(text, /s1 \[record=w001\] w001-s1 \[noun\] 새벽에 끼는 안개\./u);
+  assert.match(text, /s2 \[record=w001\] w001-s2 \[noun\] 비유적으로 흐릿함\./u);
+  assert.ok(text.indexOf('[1] 새벽안개') < text.indexOf('s1 [record=w001]'), 'senses follow the shared contexts');
   const saved = await meta(world);
   assert.equal(saved.senses.length, 25 + 1); // w001 has two senses
   assert.equal(saved.view_sha256.length, 64);
@@ -288,6 +288,24 @@ test('autoZCandidate: POS alone never qualifies; form shape and length are part 
     [noun('서울역'), [], false],
   ];
   for (const [record, forms, want] of table) assert.equal(autoZCandidate(record, forms), want, JSON.stringify([record, forms]));
+});
+
+test('chunk views bind globally numbered Sense rows to their Canonical record explicitly', () => {
+  const first = rec('w110620', '말국', [['noun', '첫 번째 뜻.'], ['noun', '두 번째 뜻.']]);
+  const second = rec('w110622', '망민', [['verb', '백성을 속이다.']]);
+  const search = (forms) => ({ result: {
+    status: forms[0] === '말국' ? 'COMPLETE' : 'ZERO_HITS',
+    items: forms[0] === '말국' ? [{ paragraph_rowid: 1, form: '말국', title: '테스트 문서', author: '테스트', excerpt: '말국 문맥.' }] : [],
+    next_cursor: null,
+    scanned_rows: 1,
+  } });
+
+  const { view } = buildChunk({ records: [first, second], shard: '081', batch: '01',
+    chunkNumber: 2, total: 20, search });
+  assert.match(view, /## w110620 말국[\s\S]*?s1 \[record=w110620\] w110620-s1 \[noun\]/u);
+  assert.match(view, /s1 \[record=w110620\][\s\S]*?s2 \[record=w110620\] w110620-s2 \[noun\]/u);
+  assert.match(view, /## w110622 망민[\s\S]*?s3 \[record=w110622\] w110622-s1 \[verb\]/u);
+  assert.doesNotMatch(view, /s2 \[record=w110622\]/u);
 });
 
 test('hadaPrefetchForms: exact Hangul -하다 bases use POS-scoped forms and omit short or existing forms', () => {
@@ -1006,6 +1024,65 @@ withWorld('mixed zero-hit V, hit-bearing LIMITED Z, and zero-hit V are locally r
   const savedResult = await saveActive({ inputPath: decisionPath, root: world.root });
   assert.equal(savedResult.status, 'SAVED');
   assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), true);
+});
+
+withWorld('latest search state supersedes a ZERO_HITS prepare view and resumes its exact LIMITED condition', async (world) => {
+  const database = new DatabaseSync(world.options.databasePath);
+  const start = database.prepare('SELECT COALESCE(MAX(paragraph_rowid), 0) AS max_id FROM paragraphs').get().max_id;
+  for (let index = 1; index <= 5; index += 1) {
+    const rowid = start + index;
+    const form = `달려서 생긴 추가 문맥 ${index}.`;
+    database.prepare('INSERT INTO paragraphs VALUES (?, 1, ?, ?, ?)').run(rowid, `variant-${index}`, index, form);
+    database.prepare('INSERT INTO paragraph_fts(rowid, form) VALUES (?, ?)').run(rowid, form);
+  }
+  database.close();
+
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const active = await meta(world);
+  const target = active.senses.find((sense) => sense.record_id === 'w003');
+  assert.match(await view(world), /## w003 달리다[\s\S]*?ZERO_HITS shown=0/u,
+    'the immutable prepare view contains a complete zero-hit search for the Canonical form');
+
+  const first = await searchBatchActive({
+    requests: [{ sense: target.ref, forms: ['달려서'], contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(first.results[0].status, 'LIMITED');
+  assert.equal(first.results[0].hits, 4);
+  assert.deepEqual(first.requests[0].decision_state, {
+    state: 'V_N_ALLOWED', searches: 2, recorded_hits: 4, all_complete: false,
+  });
+
+  const entriesPath = chunkPath(world, 'searches');
+  const entries = (await readFile(entriesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const decisions = active.senses.filter((sense) => !sense.auto).map((sense) => {
+    if (sense.ref === target.ref) return `${sense.ref} Z`;
+    const evidence = recordEvidence(entries, sense.record_id);
+    return `${sense.ref} ${evidence.hits > 0 ? 'V' : 'Z'}`;
+  });
+  await writeFile(chunkPath(world, 'decisions'), `${decisions.join('\n')}\n`);
+  await assert.rejects(saveActive({ inputPath: chunkPath(world, 'decisions'), root: world.root }), (error) => {
+    assert.match(error.message, new RegExp(`${target.ref}: Z needs every recorded search`));
+    assert.match(error.message, /decision_state=V_N_ALLOWED searches=2 recorded_hits=4 all_complete=false/u);
+    return true;
+  });
+
+  const beforeRetry = await readFile(entriesPath, 'utf8');
+  await assert.rejects(searchBatchActive({
+    requests: [{ sense: target.ref, forms: ['달려서'], contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  }), /INVALID_CURSOR: s4: a recorded LIMITED search/u);
+  assert.equal(await readFile(entriesPath, 'utf8'), beforeRetry, 'cursorless retry records no search evidence');
+
+  const next = await searchBatchActive({
+    requests: [{ sense: target.ref, forms: ['달려서'], cursor: 'next', contexts: 4 }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(next.results[0].status, 'COMPLETE');
+  assert.equal(next.requests[0].decision_state.state, 'V_N_ALLOWED');
+  assert.equal(next.requests[0].decision_state.recorded_hits, 5);
+  assert.equal(next.requests[0].decision_state.all_complete, true,
+    'both the separate Canonical ZERO_HITS search and the completed variant search remain in record evidence');
 });
 
 withWorld('search-batch reuses prepare completion for same-record senses without returning stale contexts', async (world) => {

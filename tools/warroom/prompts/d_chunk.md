@@ -13,7 +13,9 @@ Supervisor는 최신 D CLI 경로와 이 배치의 scratch/Canonical 루트를 `
 
 view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record로 이미 조회한 **공유 문맥**(상태 줄 `COMPLETE`/`LIMITED`/`ZERO_HITS`/`SEARCH_FAILED`와 `[키] 표제 저자` 다음 줄의 발췌), 그리고 아래에 `s1…sK`로 번호가 붙은 record의 모든 Sense(정확한 Sense ID·품사·전체 gloss)가 온다. 문맥은 record의 Sense들이 공유하지만 **source-sense 판정과 후보 발굴은 Sense마다 따로** 한다. 머리 줄의 `decide=`는 이번 청크에서 판정할 필수 Sense 전체이며, `auto_z`는 War Room이 기계적으로 완전 0건을 증명해 자동 저장하므로 판정 줄에 넣지 않는다.
 
-**Sense·Record 결속:** `s1…sK`는 청크의 모든 Canonical Sense를 펼친 **청크 내부 순번**이지 Record 순번이 아니다. 하나의 `## <record_id>` 아래 여러 Sense가 있으면 `s6`·`s7`처럼 연속된 번호가 **같은 Record ID**에 속하고, 다음 Record의 첫 Sense가 `s8`일 수 있다. 각 `sN`의 소유 Record는 반드시 **해당 `##` 블록과 그 아래의 정확한 `sN <sense_id>` 행**으로 확인한다. `sN` 숫자, 동일한 표제어, 검색 결과 개수에서 Record ID를 추정하지 않는다.
+**Sense·Record 결속:** `s1…sK`는 청크의 모든 Canonical Sense를 펼친 **청크 내부 순번**이지 Record 순번이다. 각 Sense 행은 `sN [record=<record_id>] <sense_id> [<pos>] <gloss>` 형식으로 그 소유 Record ID를 직접 표시한다. 하나의 `## <record_id>` 아래 여러 Sense가 있으면 `s6`·`s7`처럼 연속된 번호가 **같은 Record ID**에 속하고, 다음 Record의 첫 Sense가 `s8`일 수 있다. 판정·검색·저장 전에 `sN` 행의 `[record=…]`와 `sense_id`를 확인한다. `sN` 숫자, 동일한 표제어, 검색 결과 개수에서 Record ID를 추정하지 않는다.
+
+**검색 상태 스냅샷:** 제공된 `view`의 검색 상태는 `prepare` 시점의 스냅샷이며 이후 검색으로 갱신되지 않는다. `search`/`search-batch` 응답 중 가장 최근 `decision_state`가 그 Canonical record의 현재 기계 상태다(같은 record의 모든 Sense에 공유). 예전 view의 `ZERO_HITS`/`COMPLETE`로 이 상태를 덮어쓰지 않는다. `Z`는 현재 상태가 `Z_ALLOWED`일 때만 가능하다. 현재 `LIMITED`인 같은 조건은 cursor 없이 다시 요청하지 말고 `cursor:"next"`로 이어 읽는다. 현재 상태는 Sense 판독을 대신하지 않으며 hit만으로 `V`/`N`을 고르지 않는다.
 
 운영자가 `prepare --hada-prefetch`를 명시한 경우 첫 `search:` 줄에는 Canonical 검색형과 함께 제한된 `-하다` 활용형 검색 결과가 들어 있을 수 있다. 이는 해당 record에 이미 기록된 일반 검색 증거다. 같은 검색형을 다시 조회하지 말고 상태와 문맥을 판독한다. 옵션은 기본 실행에서 꺼져 있다. 추가 활용형이 필요하면 아래 검색 도구로 별도 조회할 수 있다.
 
