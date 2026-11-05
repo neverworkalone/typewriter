@@ -12,7 +12,7 @@ from tests.test_issue_1555 import maintainer_row, produce_and_report, report as 
 from tests.test_issue_2034_d import DWorld
 from tests.test_supervisor import review
 from tests.test_lines import PRODUCERS
-from warroom import defects, dchunk, dparallel
+from warroom import control, defects, dchunk, dparallel
 from warroom.restart_controller import (_live_work_or_controls, has_pending_restart, record_runtime,
                                         update_restart_request, write_restart_request)
 
@@ -93,6 +93,23 @@ class MaintainerQueue(unittest.TestCase):
         self.assertIn("PR #50", fix["prompt"])
         self.assertIn("Issue #101", fix["prompt"])
         self.assertTrue(w.store.maintenance_batch_open())
+
+    def test_stale_pinned_stop_does_not_stop_next_maintainer_execution(self):
+        w = self.w
+        produce_and_report(w)
+        w.tick()
+        first = maintainer_row(w)
+        self.assertTrue(control.stop_maintainer(w.store, "sonnet", first["id"]))
+        w.store.update(first["id"], state="COMPLETE", pid=None)
+        second = w.store.create_batch(method="m", producer="sonnet", shard="", batch="102",
+                                      branch="maint-102", worktree=str(w.paths.worktrees / "maint-102"),
+                                      state="PRODUCING")
+        w.store.update(second, state="PRODUCING")
+
+        w.sup._tick_maintenance()
+        self.assertEqual(w.store.batch(second)["state"], "PRODUCING")
+        self.assertIsNone(w.store.get("stop_pin_sonnet_m"))
+        self.assertEqual(w.store.peek_line("sonnet", "m")["force_stop"], 0)
 
 
 class NoCodeRecovery(unittest.TestCase):
