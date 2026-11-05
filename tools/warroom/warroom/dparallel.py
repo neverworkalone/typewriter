@@ -292,6 +292,9 @@ class ParallelD:
         ad = self._adapter(b)
         if code is None:
             return self._task_failed(b, row, data, f"[{task}] AI 프로세스가 종료 상태 기록 없이 사라졌습니다. 결과·세션을 보존합니다.")
+        cls = self.sup._classify_run(b["producer"], run["log_file"]) if code != 0 else None
+        if cls == "fast_unavailable":
+            return self._task_failed(b, row, data, f"[{task}] {self.sup._fast_unavailable_message(run['log_file'])}")
         try:
             stored = n in round_.saved()
         except (dchunk.DChunkError, OSError, ValueError) as error:
@@ -304,15 +307,17 @@ class ParallelD:
                 self.store.log(b["id"], f"[{task}] 비정상 종료(코드 {code})지만 저장된 청크와 실행 identity를 확인해 수락 경로로 진행합니다", "warn")
             return self._accept(b, row, data, round_)
         if code != 0:
-            return self._run_failed(b, row, data, run, code)
+            return self._run_failed(b, row, data, run, code, cls)
         self._unsaved(b, row, data, run, round_)
 
-    def _run_failed(self, b, row, data, run, code: int) -> None:
+    def _run_failed(self, b, row, data, run, code: int, cls: str | None = None) -> None:
         task = row["task"]
-        cls = self.sup._classify_run(b["producer"], run["log_file"])
+        cls = cls if cls is not None else self.sup._classify_run(b["producer"], run["log_file"])
         self.store.log(b["id"], f"[{task}] AI 종료 코드 {code}, 분류={cls}", "warn")
-        if cls in ("auth", "usage_limit", "free_quota", "effort"):
-            return self._task_failed(b, row, data, f"[{task}] AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+        if cls in ("auth", "usage_limit", "free_quota", "effort", "fast_unavailable"):
+            message = (self.sup._fast_unavailable_message(run["log_file"]) if cls == "fast_unavailable" else
+                       f"AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+            return self._task_failed(b, row, data, f"[{task}] {message}")
         if cls not in ("rate_limit", "network"):   # unknown / session_missing: preserved, never silently re-run
             return self._task_failed(b, row, data, f"[{task}] AI 실행 실패(코드 {code}, {cls}) — 자동 재시도 없이 파일·세션을 보존합니다.")
         retries = data.get("transient_retries", 0)

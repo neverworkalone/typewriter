@@ -32,7 +32,7 @@ RUN_KIND = "s3_parallel"
 RUN_RECORD_KIND = "s3_chunk_new"
 TRANSIENT = (GhTransient, GitTransient)
 _ERRORS = (GitError, Stage3Error, OSError, ValueError, KeyError, TypeError)
-HARD = ("auth", "usage_limit", "free_quota", "effort")
+HARD = ("auth", "usage_limit", "free_quota", "effort", "fast_unavailable")
 MAX_SAVE_FAILURES = 2
 
 
@@ -388,7 +388,9 @@ class ParallelStage3:
                 self.store.log(b["id"], f"[{task}] 비정상 종료지만 현재 청크의 완전한 응답과 실행 identity를 확인해 저장 경로로 진행합니다", "warn")
                 return self._accept_answer(b, row, data, run)
         if hard:
-            return self._task_failed(b, row, data, f"[{task}] AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.", "hard")
+            message = (self.sup._fast_unavailable_message(run["log_file"]) if cls == "fast_unavailable" else
+                       f"AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+            return self._task_failed(b, row, data, f"[{task}] {message}", "hard")
         if cls not in ("rate_limit", "network"):
             return self._task_failed(b, row, data, f"[{task}] AI 실행 실패(코드 {code}, {cls}) — 자동 재시도 없이 보존합니다.", "run_failed")
         retries = data.get("transient_retries", 0)

@@ -8238,12 +8238,16 @@ class Supervisor:
             return classify_failure(text, [])
         return classify_failure(text, self.cfg["quota_patterns"])
 
+    @staticmethod
+    def _fast_unavailable_message(log_file) -> str:
+        return ("Codex가 Fast 설정을 지원하지 않는다고 명시했습니다. Fast로 실행하지 않았고 자동 Standard 재시도도 하지 않습니다. "
+                "모델·로그인 방식·CLI 지원을 확인한 뒤 프로필을 조정하고 Retry하세요. "
+                f"로그: {log_file}")
+
     def _saved_output_failure(self, b, cls: str) -> bool:
         """Keep known authentication, quota, Fast, and run-pin failures blocking even when a chunk file exists."""
         if cls == "fast_unavailable":
-            self._fail(b, "ERROR", "Codex가 Fast 설정을 지원하지 않는다고 명시했습니다. Fast로 실행하지 않았고 자동 Standard 재시도도 하지 않습니다. "
-                       "모델·로그인 방식·CLI 지원을 확인한 뒤 프로필을 조정하고 Retry하세요. "
-                       f"로그: {b['log_file']}")
+            self._fail(b, "ERROR", self._fast_unavailable_message(b["log_file"]))
             return True
         if cls == "effort":
             self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
@@ -8344,9 +8348,7 @@ class Supervisor:
             return self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
                               f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
         if cls == "fast_unavailable":
-            return self._fail(b, "ERROR", "Codex가 Fast 설정을 지원하지 않는다고 명시했습니다. Fast로 실행하지 않았고 자동 Standard 재시도도 하지 않습니다. "
-                              "모델·로그인 방식·CLI 지원을 확인한 뒤 프로필을 조정하고 Retry하세요. "
-                              f"로그: {b['log_file']}")
+            return self._fail(b, "ERROR", self._fast_unavailable_message(b["log_file"]))
         if cls == "session_missing":
             if self._ab_chunk_run(b) and b["state"] == "PRODUCING":
                 try:

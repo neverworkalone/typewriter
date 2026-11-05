@@ -8,6 +8,7 @@ from pathlib import Path
 
 from tests.fakes import HEAD1, HEAD2, World
 from tests.test_issue_2450_stage3 import PRODUCERS
+from warroom.adapters import classify_codex_failure
 from warroom import control, s3parallel, stage2, stage3, taskruns
 from warroom.store import STAGE3_METHOD, Store
 
@@ -163,6 +164,17 @@ class MissingAnswers(Helpers, unittest.TestCase):
         w.tick()
         # an unknown abnormal exit without a pinned identity is still accepted only with a complete answer
         self.assertIn(self.states(w)["002"], {"SAVED", "FAILED"})
+
+    def test_fast_unavailable_blocks_a_complete_answer_after_nonzero_exit(self):
+        w = self.world(1)
+        w.sup._classify_run = lambda _producer, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
+        self.respond(w, "001", "Fast mode is not available for this model\n" + answer("chunk 001\nnone"), code=1)
+        w.tick()
+
+        self.assertEqual(self.states(w)["001"], "FAILED")
+        self.assertIn("Codex가 Fast 설정을 지원하지 않는다고 명시했습니다", json.loads(self.tasks(w)["001"]["data"])["error"])
+        self.assertEqual(self.batch(w)["state"], "ERROR")
+        self.assertEqual(w.runner.edit.saves, [])
 
 
 class SaveRejection(Helpers, unittest.TestCase):

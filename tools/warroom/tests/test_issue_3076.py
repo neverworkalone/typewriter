@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from tests.test_issue_2033_c import CP_NAME, CWorld
+from warroom.adapters import classify_codex_failure
 from warroom import control, cparallel, literary, taskruns
 from warroom.shell import Result
 
@@ -52,6 +53,21 @@ class Helpers:
 
 
 class ParallelC(Helpers, unittest.TestCase):
+    def test_fast_unavailable_blocks_a_completed_chunk_after_abnormal_exit(self):
+        w = self.world(senses=12)
+        w.ai(code=1)
+        w.adapter.plan[-1]["text"] = "Fast mode is not available for this model\nCandidate chunk saved"
+        w.start("single", "deepseek", "c")
+        w.tick()
+        w.sup._classify_run = lambda _producer, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
+        self.finish(w, "001")  # the fake CLI stores every Sense before the process exits non-zero
+        w.tick()
+
+        task = self.tasks(w)["001"]
+        self.assertEqual(task["state"], "FAILED")
+        self.assertIn("Codex가 Fast 설정을 지원하지 않는다고 명시했습니다", self.data(w, "001")["error"])
+        self.assertEqual(self.b(w)["state"], "ERROR")
+
     def test_four_slots_refill_one_by_one_no_sense_twice_and_one_pr(self):
         w = self.world(senses=62)                        # chunks of 12: 12,12,12,12,12,2
         w.start("single", "deepseek", "c")

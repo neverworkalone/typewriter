@@ -266,7 +266,7 @@ class ParallelStage2:
     def _run_failed(self, b, row, data, run, code: int) -> None:
         cls = self.sup._classify_run(b["producer"], run["log_file"])
         self.store.log(b["id"], f"[{row['task']}] AI 종료 코드 {code}, 분류={cls}", "warn")
-        hard = cls in ("auth", "usage_limit", "free_quota", "effort")
+        hard = cls in ("auth", "usage_limit", "free_quota", "effort", "fast_unavailable")
         if not hard:   # a complete current answer survives an ordinary non-zero exit, like the serial path
             ad, log = self._adapter(b), Path(run["log_file"])
             sid = run["session_id"] or ad.session_id(log)
@@ -275,7 +275,9 @@ class ParallelStage2:
                 self.store.log(b["id"], f"[{row['task']}] 비정상 종료지만 현재 task의 응답과 실행 identity를 확인해 저장 경로로 진행합니다", "warn")
                 return self._accept_answer(b, row, data, run)
         if hard:
-            return self._task_failed(b, row, data, f"[{row['task']}] AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+            message = (self.sup._fast_unavailable_message(run["log_file"]) if cls == "fast_unavailable" else
+                       f"AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+            return self._task_failed(b, row, data, f"[{row['task']}] {message}")
         if cls not in ("rate_limit", "network"):   # unknown / session_missing: preserved, never silently re-run
             return self._task_failed(b, row, data, f"[{row['task']}] AI 실행 실패(코드 {code}, {cls}) — 자동 재시도 없이 응답·세션을 보존합니다.")
         retries = data.get("transient_retries", 0)
