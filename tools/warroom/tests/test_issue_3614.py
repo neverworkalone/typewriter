@@ -14,7 +14,7 @@ from tests.test_supervisor import review
 from tests.test_lines import PRODUCERS
 from warroom import control, defects, dchunk, dparallel
 from warroom.restart_controller import (_live_work_or_controls, _request_files, has_pending_restart, record_runtime,
-                                        update_restart_request, write_restart_request)
+                                        request_operator_restart, update_restart_request, write_restart_request)
 
 
 class MaintainerQueue(unittest.TestCase):
@@ -403,6 +403,23 @@ class RestartHandoff(unittest.TestCase):
     def setUp(self):
         self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
+
+    def test_operator_reload_is_not_an_incident_and_requires_clean_containing_checkout(self):
+        result = mock.Mock(returncode=0, stdout=HEAD1)
+        clean = mock.Mock(returncode=0, stdout="")
+        with mock.patch("warroom.restart_controller._git", side_effect=[result, clean]), \
+             mock.patch("warroom.restart_controller._ancestor", return_value=True):
+            path = request_operator_restart(self.w.paths, HEAD1)
+        request = json.loads(path.read_text())
+        self.assertEqual((request["kind"], request["issue"], request["batch_id"], request["merge_sha"]),
+                         ("operator_code_reload", None, None, HEAD1))
+        self.assertTrue(has_pending_restart(self.w.paths))
+        with self.assertRaises(ValueError):
+            request_operator_restart(self.w.paths, "bad")
+        dirty = mock.Mock(returncode=0, stdout=" M tools/warroom/warroom/supervisor.py")
+        with mock.patch("warroom.restart_controller._git", side_effect=[result, dirty]):
+            with self.assertRaises(ValueError):
+                request_operator_restart(self.w.paths, HEAD1)
 
     def test_stopped_supervisor_can_recover_proven_exited_runs(self):
         store = mock.Mock()

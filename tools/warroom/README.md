@@ -76,6 +76,8 @@ Supervisor Python 코드가 바뀐 수정은 loaded code SHA가 새 commit을 �
 
 코드를 배포한 뒤 운영 루트에서 `./war`를 실행한다. 이 launcher는 기존 TUI가 이미 열려 있어도 별도 controller를 먼저 실행하므로 새 controller가 처음 배포된 경우에도 persisted restart request를 처리할 수 있다. 진행 중 AI/task, operator Stop/Drain/Clear/hold, root/HEAD/ownership 불일치가 있으면 아무 프로세스도 종료하지 않고 요청을 대기 상태로 보존한다. TUI의 Supervisor 상태와 Audit Log에서 blocker를 확인하고 조건이 해소되면 controller가 다시 검사한다.
 
+incident에 직접 연결되지 않은 머지된 Supervisor 수정은 운영 루트에서 `TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" tools/warroom/.local/venv/bin/python -m warroom.restart_controller --request-code-sha <FULL_SHA>`로 명시적으로 요청한다. 이 요청은 사건 해결을 주장하지 않으며 동일한 작업 종료·소유권·운영자 제어 검사를 거친다.
+
 **운영 루트(#3378):** 프롬프트·`.local` 상태·Supervisor 코드는 모두 운영 메인 checkout(예: `~/git/neverworkalone/typewriter`)에서만 읽는다. `./war`/`./dashboard`가 검증된 루트를 `TYPEWRITER_WARROOM_ROOT`로 TUI·Supervisor에 명시 전달하고, 코드가 그 루트에서 import되지 않았거나 기본 프롬프트가 없으면 임시 worktree로 fallback하지 않고 시작을 거부한다. 살아 있는 Supervisor/TUI가 다른 루트에서 시작됐다면 controller는 이를 교체하지 않고 요청을 대기 상태로 둔다.
 
 `./war` creates or reattaches the TUI and starts a fresh Supervisor if none holds its lock. The Supervisor recovers existing batches using persisted state and running processes. Do not delete `tools/warroom/.local/`, manually reset worktrees, force-kill processes, or press Retry just to reload code.

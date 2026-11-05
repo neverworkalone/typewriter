@@ -8,6 +8,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -54,6 +55,27 @@ def write_restart_request(paths: Paths, defect: dict, loaded_code_sha: str | Non
                        ("version", "runtime_root", "defect_id", "issue", "batch_id", "merge_sha")):
         return path
     _atomic_json(path, request)
+    return path
+
+
+def request_operator_restart(paths: Paths, code_sha: str) -> Path:
+    """Request loading an already deployed commit, without asserting that an incident was fixed."""
+    if not re.fullmatch(r"[0-9a-f]{40}", code_sha):
+        raise ValueError("code SHA must be a full lowercase commit SHA")
+    root = paths.repo_root.resolve()
+    head = _git(["rev-parse", "HEAD"], root)
+    status = _git(["status", "--porcelain", "--", "tools/warroom/warroom", "tools/warroom/prompts"], root)
+    if head.returncode or status.returncode or status.stdout.strip() or not _ancestor(root, code_sha, head.stdout.strip()):
+        raise ValueError("operating checkout must be clean and contain the requested code SHA")
+    path = request_path(paths, 0)  # reserved for operator code reload; no defect is associated
+    current = _read_json(path)
+    if current and current.get("state") not in ("loaded", "cancelled"):
+        if current.get("merge_sha") == code_sha:
+            return path
+        raise ValueError("another operator code reload is pending")
+    _atomic_json(path, {"version": 1, "state": "requested", "kind": "operator_code_reload",
+                        "runtime_root": str(root), "defect_id": 0, "issue": None, "batch_id": None,
+                        "merge_sha": code_sha, "loaded_code_sha": None})
     return path
 
 
@@ -315,6 +337,10 @@ def main() -> int:
     if lock is None:
         return 0
     try:
+        if len(sys.argv) == 3 and sys.argv[1] == "--request-code-sha":
+            request_operator_restart(paths, sys.argv[2])
+        elif len(sys.argv) != 1:
+            raise SystemExit("usage: python -m warroom.restart_controller [--request-code-sha FULL_SHA]")
         handle_pending_restart(paths, Store(paths.db))
     finally:
         lock.close()
