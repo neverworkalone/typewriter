@@ -5455,6 +5455,8 @@ class Supervisor:
             ok, detail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=True)
             if not ok:
                 return self._fail(b, "ERROR", f"로컬 checkpoint-bearing Part verify 실패: {detail}")
+            if detail:
+                self.store.log(b["id"], f"S2 part_verify {detail}")
             checkpoint_path = (wt / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json").resolve()
             try:
                 st = checkpoint_path.stat()

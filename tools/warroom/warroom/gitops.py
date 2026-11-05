@@ -1437,7 +1437,8 @@ class Git:
         if not isinstance(payload, dict) or payload.get("ok") is not True:
             return False, "verify exited 0 without {ok:true}", None
         counts = payload.get("counts")
-        return True, "", counts if isinstance(counts, dict) else None
+        timing = next((line for line in (res.err or "").splitlines() if line.startswith("verify_timing ")), "")
+        return True, timing if checkpoint else "", counts if isinstance(counts, dict) else None
 
     def verify_stage2_local(self, worktree: Path, shard: str, batch: str, part: str,
                             *, checkpoint: bool, timeout: int = 900) -> tuple[bool, str]:
