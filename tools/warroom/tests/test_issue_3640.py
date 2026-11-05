@@ -155,6 +155,22 @@ class DuplicateIdPairFallback(unittest.TestCase):
         self.assertEqual(w.git.stage2_repair_check_calls, [])
         self.assertEqual(w.git.stage2_repair_calls, [])
 
+    def test_canonical_orthographic_variant_requires_exact_endpoint_evidence(self):
+        report = duplicate_report(reverse_candidate="candidate 0")
+        candidate = report["problems"][0]["candidates"][0]
+        candidate["target_senses"][0]["lemma"] = "candidate 0"
+        w, b, checkpoint = prepare_world(self, report)
+        plan = w.sup._stage2_duplicate_pair_fallback_plan(report)
+        self.assertEqual(plan["repair_input"]["decisions"][0]["decision"]["reason"], "e")
+        candidate["target_senses"][0]["sense_id"] = "another-sense"
+        self.assertIsNone(w.sup._stage2_duplicate_pair_fallback_plan(report))
+        candidate["target_senses"][0]["sense_id"] = TARGET_SENSE
+        candidate["target_senses"][0]["lemma"] = "different word"
+        self.assertIsNone(w.sup._stage2_duplicate_pair_fallback_plan(report))
+        candidate["target_senses"][0]["lemma"] = "candidate 0"
+        self.assertFalse(w.sup._stage2_preflight_repair(b, stage2.checkpoint(b["worktree"], b["shard"], b["batch"])))
+        self.assertEqual(json.loads(checkpoint.read_text("utf-8"))["items"][0]["candidates"][0]["decision"]["reason"], "e")
+
     def test_repair_prompt_explains_reverse_pair_resolution_and_preservation(self):
         prompt = Path(__file__).resolve().parents[1] / "prompts" / "s2_repair.md"
         text = prompt.read_text("utf-8")
