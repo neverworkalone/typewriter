@@ -72,6 +72,15 @@ def _data(row) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _fix_budget_used(data: dict) -> int:
+    """Count submitted corrections plus bounded no-submit sample continuations."""
+    completed = data.get("completed_fix_runs", [])
+    sample_runs = data.get("sample_fix_runs", [])
+    if not isinstance(completed, list) or not isinstance(sample_runs, list):
+        return AUTO_FIX_LIMIT + int(data.get("operator_grants", 0))
+    return len(completed) + len(sample_runs)
+
+
 def _command_failed(fact: dict) -> bool | None:
     """Resolve exact exit codes or adapter error flags; contradictory or absent evidence stays unknown."""
     code = fact.get("exit_code")
@@ -693,8 +702,66 @@ class ParallelC:
 
     # ---- an unfinished task: correction, skip, recovery, continuation, failure ------------------------------
     def _fix_allowed(self, data: dict) -> bool:
-        """completed corrections (+ a running one, none here) < automatic limit + operator grants."""
-        return len(data.get("completed_fix_runs", [])) < AUTO_FIX_LIMIT + int(data.get("operator_grants", 0))
+        """Bound submitted fixes and source-sample continuations by the same automatic/granted correction budget."""
+        return _fix_budget_used(data) < AUTO_FIX_LIMIT + int(data.get("operator_grants", 0))
+
+    def _sample_followup_targets(self, b, row, data, run, rec, pending) -> list[str]:
+        """Allow another bounded C fix only after a successful no-submit run made source-bound sample progress.
+
+        The exact submit diagnostic may advance to a second empty Sense when the Supervisor revalidates the unchanged
+        file after the first Sense's sample becomes complete. Queue that newly exposed Sense instead of ending the task.
+        """
+        if (run["kind"] != FIX or run["id"] != row["run_id"] or run["task"] != row["task"]
+                or str(run["exit_status"]) != "0" or run["ended_at"] is None
+                or run["session_id"] != row["session_id"] or not row["session_id"]
+                or run["id"] in data.get("completed_fix_runs", [])):
+            return []
+        start = data.get("run_start")
+        baseline_state = start.get("retry_state") if isinstance(start, dict) else None
+        if (not isinstance(start, dict) or not isinstance(baseline_state, dict)
+                or start.get("branch") != b["branch"] or Path(start.get("worktree", "")) != Path(b["worktree"])
+                or start.get("head") != rec.get("git_head") or start.get("chunk_no") != rec.get("chunk_no")
+                or baseline_state.get("chunk_id") != rec.get("chunk_id")
+                or baseline_state.get("view_sha256") != rec.get("view_sha256")
+                or baseline_state.get("pending_sense_ids") != pending
+                or not isinstance(baseline_state.get("own_state"), dict)):
+            return []
+        log = Path(run["log_file"]) if run["log_file"] else None
+        if log is None or submit_attempts(log) != 0:
+            return []
+        try:
+            current_state = literary.own_state(self._wt(b), b, rec["sense_ids"])
+            progressed = literary.shown_only_progress(baseline_state["own_state"], current_state)
+            if not progressed:
+                return []
+            targets = literary.unshown_empty_sample_targets(self._wt(b), b, rec["chunk_no"])
+            if not targets:
+                return []
+            current_retry = literary.retry_state(self._wt(b), b, rec, pending,
+                                                  session_available=True, task_state=True)
+        except _ERRORS:
+            return []
+        if (baseline_state.get("diagnostic") == current_retry.get("diagnostic")
+                and not set(targets).intersection(progressed)):
+            return []
+        return targets
+
+    def _queue_sample_followup(self, b, row, data, run, rec, pending) -> bool:
+        targets = self._sample_followup_targets(b, row, data, run, rec, pending)
+        if not targets or not self._fix_allowed(data):
+            return False
+        runs = data.setdefault("sample_fix_runs", [])
+        if run["id"] in runs:
+            return False
+        runs.append(run["id"])
+        data["kind"] = "fix"
+        self._set(b, row["task"], data, state="FIXQ", run_id=None)
+        budget = _fix_budget_used(data)
+        limit = AUTO_FIX_LIMIT + int(data.get("operator_grants", 0))
+        self.store.log(b["id"], f"[{row['task']}] 공식 재검증에서 새 미노출 빈 표본을 확인했습니다. "
+                       f"현재 진단의 Sense {', '.join(targets)}만 같은 세션에서 이어갑니다 "
+                       f"(수정 예산 {budget}/{limit})", "warn")
+        return True
 
     def _unsaved(self, b, row, data, run, rec, pending, round_: _Round) -> None:
         task, n, wt, sid = row["task"], int(row["task"]), self._wt(b), row["session_id"]
@@ -721,6 +788,8 @@ class ParallelC:
                     return self._accept(b, row, data, round_)
             no_submit_fix = run["kind"] == FIX and run["id"] not in data.get("completed_fix_runs", [])
             if no_submit_fix:   # a correction that never submitted is not a completed one, and is never simply repeated
+                if self._queue_sample_followup(b, row, data, run, rec, pending):
+                    return
                 return self._incomplete_failed(b, row, data, rec, pending, {"status": "fix_run_without_submit"})
             if sid and literary.submit_retryable(wt, b, n) and self._fix_allowed(data):
                 data["kind"] = "fix"
@@ -1012,9 +1081,9 @@ class ParallelC:
         run_id = self.store.add_run(b["id"], kind, sid, handle.pid, log, ex, model=run.model, effort=run.effort,
                                     permission_profile=run.permission_profile, task=task)
         data.pop("retry_after", None)
-        if kind == FIX:   # the first AUTO_FIX_LIMIT completed corrections are automatic, any further one is an operator grant
+        if kind == FIX:   # corrections within the bounded budget are automatic; further ones need an operator grant
             data.setdefault("fix_launch", {})[str(run_id)] = \
-                "auto" if len(data.get("auto_fix_runs", [])) < AUTO_FIX_LIMIT else "grant"
+                "auto" if _fix_budget_used(data) < AUTO_FIX_LIMIT else "grant"
         data["run_start"] = {"branch": b["branch"], "worktree": str(wt), "head": base["head"],
                              "remote_head": round_.remote(), "chunk_id": rec["chunk_id"], "chunk_no": n,
                              "retry_state": literary.retry_state(wt, b, rec, remaining, session_available=bool(sid),
@@ -1029,10 +1098,27 @@ class ParallelC:
         checkpoint = literary.names(b).checkpoint
         note = (f"이 청크 전용 공통 결함 보고 파일: `{defect_path(b, f'{n:03d}')}` "
                 "(공유 코드·검증기의 결함을 발견했을 때만 이 경로에 쓰고, 다른 경로에는 쓰지 않는다).\n"
+                "공통 결함 보고는 실제로 실행해 확인한 재현만 기록한다. 로그에 없는 CLI 호출을 했다고 주장하거나, "
+                "AI의 설명만으로 CLI 결함을 단정하지 않는다. 보고 파일은 아래 v1 필수 필드만 사용한다(추가 필드 금지): "
+                f'{{"version":1,"defect_class":"c-chunk-{n:03d}-cli","summary":"...",'
+                '"failing_cases":["..."],"reproduction":"실제 CLI 명령·인자·종료 상태·관측 결과",'
+                '"suspected_layer":"C CLI"}. 선택 필드는 root_cause, scope, proposed_fix, regression이며 '
+                "값이 없으면 생략한다.\n"
                 f"이 청크 범위의 Sense만 다룬다. 공식 CLI 호출(`chunk --sense-ids`, `add-form`, `submit`)에는 모두 `--chunk {n:03d}`를 붙인다.\n"
                 "Supervisor가 배정한 조회 허용 ID(아래 문자열을 그대로 복사): " + ", ".join(rec["sense_ids"]) + "\n"
                 "표제어나 번호에서 인접 Sense ID를 만들지 않는다. 이번 실행의 미완료 제출 ID: " + ", ".join(remaining) + "\n")
         if kind in (FIX, SCOPE_RECOVERY):
+            diagnostic_path = wt / f"{literary.names(b).submit_prefix}{n:03d}.submit.json.diag.json"
+            try:
+                diagnostic = json.loads(diagnostic_path.read_text("utf-8"))
+                current_diagnostic = {key: diagnostic[key] for key in
+                                      ("status", "diagnostic", "reason", "affected", "issues", "repair_scope", "input_sha256")
+                                      if key in diagnostic}
+                note += ("Supervisor가 현재 저장된 submit 진단을 아래처럼 다시 확인했다. 이 진단은 이 세션의 마지막 CLI 출력보다 "
+                         "최신일 수 있으므로 아래의 affected/entry_number와 input_sha256를 기준으로 수정한다:\n"
+                         + json.dumps(current_diagnostic, ensure_ascii=False, sort_keys=True) + "\n")
+            except (OSError, ValueError, TypeError):
+                pass
             return prompts.c_chunk_resume(n, checkpoint, remaining, note=note, scoped=True)
         view = literary.read_view(wt, rec, n)
         if kind == RECOVERY:

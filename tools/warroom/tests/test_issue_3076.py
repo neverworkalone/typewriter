@@ -7,6 +7,7 @@ from pathlib import Path
 
 from tests.test_issue_2033_c import CP_NAME, CWorld
 from warroom import control, cparallel, literary, taskruns
+from warroom.shell import Result
 
 
 class ParallelCWorld(CWorld):
@@ -235,6 +236,125 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
         saved = json.loads(checkpoint_path.read_text())
         saved_senses = {sense["sense_id"]: sense for record in saved["records"] for sense in record["senses"]}
         self.assertEqual(saved_senses[target_id]["submission"]["status"], "SAMPLED_NO_VERIFIED")
+
+    def test_sequential_unshown_empty_samples_queue_the_latest_diagnosed_sense(self):
+        self._assert_sequential_empty_samples(second_shown=True)
+
+    def test_sequential_empty_sample_with_unshown_next_sense(self):
+        self._assert_sequential_empty_samples(second_shown=False)
+
+    def _assert_sequential_empty_samples(self, *, second_shown):
+        w = self.world(senses=24)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        ids = self.sense_ids(w, "001")
+        target_ids = ids[:2]
+        self.finish(w, "002")
+
+        checkpoint_path = w.wt() / f".warroom-scratch/{CP_NAME}"
+        checkpoint = json.loads(checkpoint_path.read_text())
+        senses = {sense["sense_id"]: sense for record in checkpoint["records"] for sense in record["senses"]}
+        for sense_id in ids:
+            forms = [f"form-{sense_id}"]
+            senses[sense_id]["search_forms"] = forms
+            senses[sense_id]["added_forms"] = []
+            senses[sense_id]["shown"] = None
+        for target_id in target_ids if second_shown else target_ids[:1]:
+            senses[target_id]["shown"] = {"forms_sha256": literary._state_digest(senses[target_id]["search_forms"]),
+                                            "total_hits": 42, "unit_rowids": list(range(1, 9))}
+        checkpoint_path.write_text(json.dumps(checkpoint))
+
+        submit_path = w.wt() / ".warroom-scratch/c-chunk-001.submit.json"
+        entries = [{"sense_id": sense_id,
+                    "verified": [] if sense_id in target_ids else ["abcdef123456"],
+                    "candidates": []} for sense_id in ids]
+        submit_path.write_text(json.dumps({"senses": entries}), encoding="utf-8")
+        target_entry = {sense_id: i + 1 for i, sense_id in enumerate(ids)}
+
+        def write_diagnostic(target_id):
+            entry_number = target_entry[target_id]
+            submit_bytes = submit_path.read_bytes()
+            (submit_path.with_name(submit_path.name + ".diag.json")).write_text(json.dumps({
+                "status": "FAILED", "diagnostic": "submit_validation", "reason": "unshown_empty_sample",
+                "repair_scope": "resubmit_affected_sense", "affected": {"sense_id": target_id,
+                "field": "verified", "entry_number": entry_number}, "issues": [{"entry_number": entry_number,
+                "reason": "unshown_empty_sample", "field": "verified"}],
+                "input_sha256": hashlib.sha256(submit_bytes).hexdigest(),
+            }) + "\n")
+
+        write_diagnostic(target_ids[0])
+        self._finish_rejected(w, "001", submits=1, reject=lambda: None)
+        w.tick()
+        self.assertEqual(self.tasks(w)["002"]["state"], "SAVED")
+        first_fix = next(r for r in self.open_runs(w) if r["task"] == "001")
+        self.assertIn(target_ids[0], w.adapter.launches[-1]["prompt"])
+
+        original_run = w.runner.literary.run
+
+        def progressive_submit(argv, cwd, env=None, input=None):
+            if len(argv) > 2 and argv[2] == "submit":
+                input_name = w.runner.literary.opt(argv, "--input")
+                if Path(input_name).name == "c-chunk-001.submit.json":
+                    cp = w.runner.literary.load(cwd, argv)
+                    submission = json.loads((Path(cwd) / input_name).read_text())
+                    checkpoint_senses = {sense["sense_id"]: sense for record in cp["records"]
+                                         for sense in record["senses"]}
+                    for entry in submission["senses"]:
+                        if entry["sense_id"] not in target_ids or entry["verified"] or entry["candidates"]:
+                            continue
+                        shown = checkpoint_senses[entry["sense_id"]].get("shown")
+                        if shown is None or len(shown.get("unit_rowids", [])) < min(shown.get("total_hits", 0), 16):
+                            write_diagnostic(entry["sense_id"])
+                            diagnostic = json.loads(submit_path.with_name(submit_path.name + ".diag.json").read_text())
+                            w.runner.literary.calls.append(list(argv))
+                            return Result(1, "", json.dumps(diagnostic))
+            return original_run(argv, cwd, env, input)
+
+        w.runner.literary.run = progressive_submit
+        checkpoint = json.loads(checkpoint_path.read_text())
+        senses = {sense["sense_id"]: sense for record in checkpoint["records"] for sense in record["senses"]}
+        senses[target_ids[0]]["shown"]["unit_rowids"] = list(range(1, 17))
+        checkpoint_path.write_text(json.dumps(checkpoint))
+        self._finish_rejected(w, "001", submits=0, reject=lambda: None)
+        w.tick()
+
+        data = self.data(w, "001")
+        self.assertEqual(data["sample_fix_runs"], [first_fix["id"]])
+        second_fix = next(r for r in self.open_runs(w) if r["task"] == "001")
+        self.assertEqual(second_fix["kind"], "c_chunk_fix")
+        self.assertIsNotNone(first_fix["session_id"])
+        self.assertEqual(second_fix["session_id"], first_fix["session_id"])
+        self.assertEqual(data["fix_launch"][str(second_fix["id"])], "auto")
+        self.assertEqual(literary.unshown_empty_sample_targets(w.wt(), self.b(w), 1), [target_ids[1]])
+        second_prompt = w.adapter.launches[-1]["prompt"]
+        self.assertIn(target_ids[1], second_prompt)
+        self.assertIn("input_sha256", second_prompt)
+        self.assertIn('"version":1', second_prompt)
+        self.assertIn('"failing_cases"', second_prompt)
+
+        checkpoint = json.loads(checkpoint_path.read_text())
+        senses = {sense["sense_id"]: sense for record in checkpoint["records"] for sense in record["senses"]}
+        if not second_shown:
+            # A missing sample is eligible; malformed or stale non-null samples are not.
+            for invalid in ({"unexpected": True}, {"forms_sha256": "0" * 64, "total_hits": 42,
+                                                    "unit_rowids": list(range(1, 9))}):
+                senses[target_ids[1]]["shown"] = invalid
+                checkpoint_path.write_text(json.dumps(checkpoint))
+                self.assertEqual(literary.unshown_empty_sample_targets(w.wt(), self.b(w), 1), [])
+        senses[target_ids[1]]["shown"] = {
+            "forms_sha256": literary._state_digest(senses[target_ids[1]]["search_forms"]),
+            "total_hits": 42, "unit_rowids": list(range(1, 17)),
+        }
+        checkpoint_path.write_text(json.dumps(checkpoint))
+        self._finish_rejected(w, "001", submits=0, reject=lambda: None)
+        w.tick()
+
+        self.assertEqual(self.tasks(w)["001"]["state"], "SAVED")
+        self.assertEqual(self.tasks(w)["002"]["state"], "SAVED")
+        saved = json.loads(checkpoint_path.read_text())
+        saved_senses = {sense["sense_id"]: sense for record in saved["records"] for sense in record["senses"]}
+        self.assertTrue(all(saved_senses[sense_id]["submission"] for sense_id in ids))
+        self.assertEqual(len([call for call in w.runner.literary.calls if len(call) > 2 and call[2] == "submit"]), 2)
 
     def test_skip_needs_two_completed_automatic_corrections_and_runs_through_the_task_authority(self):
         w = self.world(senses=12)
