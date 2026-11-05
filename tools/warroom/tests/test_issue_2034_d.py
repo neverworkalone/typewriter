@@ -1102,6 +1102,20 @@ class Prompts(unittest.TestCase):
                 self.assertIn(boundary, prompt)
                 self.assertIn("view가 없거나 불완전하면 `prepare`를 시도하지 말고", prompt)
 
+    def test_d_worker_prompts_use_latest_search_state_over_the_prepare_snapshot(self):
+        b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
+        prompts_to_check = (
+            prompts.d_chunk(b, 3, view="VIEW\n"),
+            prompts.d_chunk_resume(3, decisions="decision-003.txt", searches="search-003.jsonl"),
+            prompts.d_chunk_fix(b, 3, "fixture rejection"),
+        )
+        for prompt in prompts_to_check:
+            with self.subTest(prompt=prompt[:24]):
+                self.assertIn("검색 상태 스냅샷", prompt)
+                self.assertIn("가장 최근 `decision_state`", prompt)
+                self.assertIn("`Z`는 현재 상태가 `Z_ALLOWED`일 때만", prompt)
+                self.assertIn('`cursor:"next"`', prompt)
+
     def test_d_chunk_prompt_requires_explicit_record_binding_on_each_sense_row(self):
         b = {"shard": "081", "batch": "01", "branch": "d-codex-081-01"}
         prompt_dir = Path(__file__).resolve().parents[1] / "prompts"
