@@ -4,6 +4,8 @@ Invariant: nothing is deleted before the AI is gone and ownership of worktree, P
 merged work is never abandoned; a blocked/interrupted Clear resumes teardown and never relaunches production.
 """
 import unittest
+import json
+from unittest import mock
 from pathlib import Path
 
 from tests.fakes import HEAD1, HEAD2, World
@@ -512,6 +514,76 @@ class ClearRealGit(unittest.TestCase):
         self.assertTrue((self.repo / "f").exists())                  # main checkout untouched
         self.assertFalse(self.git.verify_owned(wt, "b1"))            # resumed Clear: already gone is fine
         self.git.discard_owned(wt, "b1")
+
+    def test_restart_finishes_interrupted_clear_only_with_exact_ownership(self):
+        from warroom.gitops import Git
+        from warroom.shell import Runner
+        from warroom.restart_controller import (handle_pending_restart, record_runtime, write_restart_request,
+                                                _worktree_ownership_problem)
+        from tests.test_gitops_adapter import ENV
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.paths.repo_root = self.repo
+        git = Git(Runner(), self.repo, ENV, w.paths.worktrees)
+        w.sup.git = git
+        branch = BRANCH
+        wt = w.paths.worktrees / branch
+        git.fetch_base("master")
+        git.create_worktree(wt, branch, "master")
+        w.store.line("deepseek", "a")
+        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01",
+                                   branch=branch, worktree=str(wt), state="ERROR")
+        self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
+        w.store.pin_clear("deepseek", "a")
+        git.discard_owned(wt, branch)
+        self.assertIsNotNone(_worktree_ownership_problem(w.paths, w.store))
+        self.assertIsNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
+        w.store.update(bid, branch="wrong")
+        self.assertIsNotNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
+        w.store.update(bid, branch=branch)
+        git.create_worktree(w.paths.worktrees / "other", branch, "master")
+        self.assertIsNotNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
+        git.discard_owned(w.paths.worktrees / "other", branch)
+
+        head = git.head(self.repo)
+        request = write_restart_request(w.paths, {"id": 91, "merge_sha": head}, None)
+        absent = mock.Mock(returncode=1, stdout="")
+        def tmux(args, **kwargs):
+            if args[0] == "new-session":
+                record_runtime(w.paths, head)
+                git._git("branch", branch, head)  # another actor recreates the ref after the restart gate
+                w.sup._clear(w.store.batch(bid))
+                return mock.Mock(returncode=0, stdout="")
+            return absent
+        with mock.patch("warroom.restart_controller._lock_held", return_value=False), \
+             mock.patch("warroom.restart_controller._tmux", side_effect=tmux):
+            handle_pending_restart(w.paths, w.store)
+        self.assertEqual(json.loads(request.read_text())["state"], "loaded")
+        self.assertEqual(w.store.clear_request("deepseek", "a")["status"], "BLOCKED")
+        self.assertTrue(git._git("show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False).ok)
+        git._git("branch", "-D", branch)
+        self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
+        w.sup._clear(w.store.batch(bid))
+        self.assertIsNone(w.store.batch(bid))
+        self.assertIsNone(w.store.clear_request("deepseek", "a"))
+
+    def test_discard_missing_worktree_never_deletes_ref_created_after_check(self):
+        self.git.fetch_base("master")
+        wt = self.wts / "w1"
+        self.git.create_worktree(wt, "b1", "master")
+        self.git.discard_owned(wt, "b1")
+        git_call = self.git._git
+        def recreate_after_check(*args, **kwargs):
+            result = git_call(*args, **kwargs)
+            if args[:2] == ("show-ref", "--verify"):
+                git_call("branch", "b1", "master")
+            return result
+        with mock.patch.object(self.git, "_git", side_effect=recreate_after_check):
+            self.git.discard_owned(wt, "b1")
+        self.assertTrue(git_call("show-ref", "--verify", "--quiet", "refs/heads/b1", check=False).ok)
+        from warroom.gitops import CleanupBlocked
+        with self.assertRaises(CleanupBlocked):
+            self.git.discard_owned(wt, "b1")
 
     def test_foreign_paths_and_branches_are_refused(self):
         from warroom.gitops import CleanupBlocked

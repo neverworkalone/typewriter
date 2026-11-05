@@ -166,7 +166,7 @@ def _live_work_or_controls(store: Store, *, recovering_stopped_supervisor: bool 
     return None
 
 
-def _worktree_ownership_problem(paths: Paths, store: Store) -> str | None:
+def _worktree_ownership_problem(paths: Paths, store: Store, *, recovering_stopped_supervisor: bool = False) -> str | None:
     result = _git(["worktree", "list", "--porcelain"], paths.repo_root, timeout=10)
     if result.returncode:
         return "worktree ownership could not be read"
@@ -185,6 +185,24 @@ def _worktree_ownership_problem(paths: Paths, store: Store) -> str | None:
         path = Path(raw)
         if not path.exists():
             if batch["state"] == "PREPARE":
+                continue
+            req = store.clear_request(batch["producer"], batch["method"])
+            branch = batch["branch"]
+            expected = (f"maint-{batch['batch']}" if batch["method"] == MAINTENANCE_METHOD else
+                        f"{batch['method']}-{batch['producer']}-{batch['shard']}-{batch['batch']}")
+            maint = store.maintenance(int(batch["batch"])) if (batch["method"] == MAINTENANCE_METHOD
+                                                               and str(batch["batch"]).isdigit()) else None
+            try:
+                rel = path.resolve().relative_to(paths.worktrees.resolve())
+            except ValueError:
+                rel = Path(".")
+            ref = f"refs/heads/{branch}"
+            if (recovering_stopped_supervisor and batch["state"] == "CLEARING" and req is not None
+                    and req["batch_id"] == batch["id"] and req["model"] == batch["producer"]
+                    and req["method"] == batch["method"] and branch == expected and rel.parts
+                    and (batch["method"] != MAINTENANCE_METHOD or (maint is not None and maint["batch_id"] == batch["id"]))
+                    and str(path.resolve()) not in owned and ref not in owned.values()
+                    and _git(["show-ref", "--verify", "--quiet", ref], paths.repo_root).returncode == 1):
                 continue
             return f"owned worktree for batch {batch['id']} is missing"
         if owned.get(str(path.resolve())) != f"refs/heads/{batch['branch']}":
@@ -249,7 +267,9 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
     if not pending:
         return "locked", None
 
-    blocker = _live_work_or_controls(store, recovering_stopped_supervisor=not _lock_held(paths.lock)) or _worktree_ownership_problem(paths, store)
+    recovering = not _lock_held(paths.lock)
+    blocker = (_live_work_or_controls(store, recovering_stopped_supervisor=recovering)
+               or _worktree_ownership_problem(paths, store, recovering_stopped_supervisor=recovering))
     if blocker:
         for path, request in pending:
             _set_waiting(paths, request, blocker)
