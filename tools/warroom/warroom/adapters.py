@@ -202,8 +202,13 @@ class ProcessAdapter(AgentAdapter):
     # True: do not wrap this adapter in the common chunk sandbox. Its own CLI policy (or compatibility needs)
     # defines the boundary; macOS also refuses nested sandbox_apply calls.
     native_stage2_chunk_sandbox = False
+    # Opt-in seam for #3787, after every task launcher has been connected.
+    required_launch_gate = None
 
     def _spawn(self, cmd: list[str], cwd, env, log_file: Path, exit_file: Path) -> Handle:
+        gate = self.required_launch_gate
+        if gate is not None and not gate.held():
+            raise RuntimeError("AI spawn requires the current thread's launch permit")
         log_file, exit_file = Path(log_file), Path(exit_file)
         log_file.parent.mkdir(parents=True, exist_ok=True)
         exit_file.unlink(missing_ok=True)

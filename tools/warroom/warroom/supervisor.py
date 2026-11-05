@@ -22,6 +22,7 @@ import time
 import traceback
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
 from pathlib import Path
 
 from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, s3parallel, stage1ab,
@@ -33,6 +34,7 @@ from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
 from .lanes import Lanes
+from .launch_gate import LaunchDenied, LaunchGate
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, LineBusy, LineNotRunnable
 from .usage import submit_attempts
@@ -101,12 +103,24 @@ class _SupervisorLock:
         self.instance_file.close()
 
 
+def _single_launch_scope(fn):
+    """Keep the single-run launch's durable preparation and PID publication in one permit."""
+    @wraps(fn)
+    def wrapped(self, *args, **kwargs):
+        with self.launch_gate.permit():
+            return fn(self, *args, **kwargs)
+    return wrapped
+
+
 class Supervisor:
     def __init__(self, paths, cfg, store, runner, adapter, gh, git, env, clock=time.time):
         self.paths, self.cfg, self.store = paths, cfg, store
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
         self.lanes = Lanes()
+        self.launch_gate = LaunchGate()
+        self._frozen_lanes = set()
+        self._frozen_lock = threading.Lock()
         self._maintenance_lane = threading.Lock()
         self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
@@ -147,13 +161,20 @@ class Supervisor:
             except Exception:  # one Line's failure never stalls the others
                 self.store.log(None, f"line {ln['model']}/{ln['method']} 예외:\n"
                                + traceback.format_exc()[-800:], "error", line=f"{ln['model']}/{ln['method']}")
-        try:
-            self._tick_maintenance()
-        except Exception:
-            batches_ = self.store.maintenance_batches()
-            self.store.log(None, "Maintainer 실행/PR 감시 예외:\n" + traceback.format_exc()[-800:], "error",
-                           line=f"{batches_[0]['producer']}/m" if batches_ else None)
-        self.maint.step()   # after the Lines: it reads the batch states they just advanced
+        with self._frozen_lock:
+            maintenance_frozen = None in self._frozen_lanes
+        if not maintenance_frozen:
+            try:
+                try:
+                    self._tick_maintenance()
+                except Exception:
+                    batches_ = self.store.maintenance_batches()
+                    self.store.log(None, "Maintainer 실행/PR 감시 예외:\n" + traceback.format_exc()[-800:], "error",
+                                   line=f"{batches_[0]['producer']}/m" if batches_ else None)
+                self.maint.step()   # after the Lines: it reads the batch states they just advanced
+            except LaunchDenied:
+                with self._frozen_lock:
+                    self._frozen_lanes.add(None)
 
     def _handle_reload(self) -> None:
         """Operator `r`: re-read config.json. The new config replaces `self.cfg` only if it passes every check."""
@@ -182,9 +203,17 @@ class Supervisor:
         self.store.set("reload_result", f"{token}\tok\t{msg}")
 
     def _tick_line(self, model: str, method: str) -> None:
+        key = (model, method)
+        with self._frozen_lock:
+            if key in self._frozen_lanes:
+                return
         with self.lanes.try_hold(model, method) as held:
             if held:
-                self._tick_line_locked(model, method)
+                try:
+                    self._tick_line_locked(model, method)
+                except LaunchDenied:
+                    with self._frozen_lock:
+                        self._frozen_lanes.add(key)
 
     def _tick_line_locked(self, model: str, method: str) -> None:
         ln = self.store.line(model, method)
@@ -538,6 +567,7 @@ class Supervisor:
     def _auto_retry_key(self, b, target: str) -> str:
         return f"auto_chunk_retry_{b['id']}:{b['method']}:{target}"
 
+    @_single_launch_scope
     def _auto_retry_chunk(self, b, reason: str, *, fresh_session: bool = False) -> bool:
         """Use the one persisted additional re-entry for this exact active chunk, then reuse its normal Retry path."""
         if b["state"] != "PRODUCING" or b["pid"] is not None:
@@ -1652,6 +1682,7 @@ class Supervisor:
         self._guarded(b, "prelaunch", lambda current: self._launch(current, "s3_chunk_new"),
                       entrypoint="launch_stage3_next")
 
+    @_single_launch_scope
     def _relaunch_stage3_chunk(self, b) -> None:
         """Resume this exact unsaved chunk or accept its one saved checkpoint advance; never select a new shard."""
         try:
@@ -1772,6 +1803,7 @@ class Supervisor:
             return f"Stage 3 실행 경계를 확인하지 못했습니다: {error}. 보존합니다."
         return None
 
+    @_single_launch_scope
     def _stage3_fallback_for_missing_view(self, b) -> None:
         """Discard an unbound legacy answer and start this exact chunk once with a saved view."""
         if b["run_kind"] == "s3_chunk_fallback_new":
@@ -2055,6 +2087,7 @@ class Supervisor:
                                                                "WARROOM_REAL_GIT")}   # leftovers of the removed shim
         return env
 
+    @_single_launch_scope
     def _launch(self, b, kind: str, events=None) -> None:
         """Launch one run with the current effective settings; Stage 2/3 use bounded review-fix prompts."""
         if (b["method"] == STAGE2_METHOD and str(b["run_kind"] or "").startswith("s2_reconcile|")
@@ -3918,6 +3951,7 @@ class Supervisor:
         self._run_ok_stage2_repair(self.store.batch(b["id"]))
         return True
 
+    @_single_launch_scope
     def _launch_stage2_repair_page(self, b) -> None:
         try:
             state = self._stage2_repair_state(b, required=True)
@@ -5027,6 +5061,7 @@ class Supervisor:
         self._save_stage2_repair_state(b, state)
         self.store.log(b["id"], f"Stage 2 exact reverse-covered ID-pair conflict fallback saved {len(candidate_keys)} decision(s) through admission-cli", "warn")
 
+    @_single_launch_scope
     def _stage2_preflight_repair(self, b, checkpoint: dict, report_override: dict | None = None) -> bool:
         """Run the read-only complete preflight; return True once it has launched or stopped a repair action."""
         if report_override is None:
@@ -5715,6 +5750,7 @@ class Supervisor:
         except (OSError, ValueError, KeyError, TypeError, GitError) as error:
             return self._fail(b, "ERROR", f"Stage 2 repair answer rejected; no checkpoint change was made: {error}")
 
+    @_single_launch_scope
     def _stage2_links_rejected(self, b, diagnostic: str) -> None:
         used = stage2.fixes_used(self.store.runs(b["id"]), "s2_links_new", ("s2_links_fix",))
         if used < stage2.MAX_FIXES and b["session_id"]:
@@ -6012,6 +6048,7 @@ class Supervisor:
                               "자동 재생산하지 않고 worktree와 기록을 보존합니다.")
         return self._stage2_accept(b)
 
+    @_single_launch_scope
     def _stage2_rejected(self, b, diagnostic: str) -> None:
         """Retry one source-bound candidate once, then use only its technical Drop fallback if it still fails."""
         pending = self._stage2_pending(b)
@@ -6693,6 +6730,7 @@ class Supervisor:
         except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
             return False
 
+    @_single_launch_scope
     def _c_start_no_submission_recovery(self, b, rec, pending, outcome) -> bool:
         """Persist the one bounded fresh-session recovery before launching it."""
         if not isinstance(outcome, dict) or outcome.get("status") != "no_submission" or rec is None:
@@ -6991,6 +7029,7 @@ class Supervisor:
             return self._fail(b, "ERROR", f"활성 청크 정리 실패: {e}")
         return self._launch_c_next(self.store.batch(b["id"]))
 
+    @_single_launch_scope
     def _c_resubmit(self, b) -> bool:
         """The run ended with nothing saved and the CLI's own diagnostic marking the rejection repairable in place
         (`stop_and_report`, unknown or missing diagnostics never qualify).
@@ -7009,6 +7048,7 @@ class Supervisor:
         self._launch_c_next(self.store.batch(b["id"]))
         return True
 
+    @_single_launch_scope
     def _relaunch_c(self, b) -> None:
         problem = self._c_boundary_problem(b)
         if problem:
@@ -7176,6 +7216,7 @@ class Supervisor:
         rival = self._duplicate_claim(b, 0)
         return f"열린 PR #{rival}" if rival else None
 
+    @_single_launch_scope
     def _c_repair(self, b, exp) -> None:
         """Candidate v1 named senses: re-read exactly those in a session, resubmit, then export again."""
         wt = Path(b["worktree"])
@@ -7557,6 +7598,7 @@ class Supervisor:
         self.store.log(b["id"], "D 청크 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         return self._launch_d_next(self.store.batch(b["id"]))
 
+    @_single_launch_scope
     def _d_fix(self, b) -> bool:
         """The run ended with nothing saved and the CLI's own `save` rejection for exactly this active chunk says the
         decisions can be repaired over intact evidence. This includes a hit-bearing Z, but never `SEARCH_FAILED` or
@@ -7624,6 +7666,7 @@ class Supervisor:
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
             return ""
 
+    @_single_launch_scope
     def _relaunch_d(self, b) -> None:
         legacy_handoff = self.store.get(dchunk.run_start_key(b["id"])) is None
         if legacy_handoff:
@@ -7912,6 +7955,7 @@ class Supervisor:
     def _ab_remember(self, b, chunk: dict) -> None:
         self.store.set(f"ab_sha_{b['id']}_{chunk['number']}", stage1ab.chunk_sha(Path(b["worktree"]), b, chunk))
 
+    @_single_launch_scope
     def _launch_ab_next(self, b) -> None:
         self._guarded(b, "prelaunch", self._launch_ab_next_do, entrypoint="launch_ab_next")
 
@@ -7970,6 +8014,7 @@ class Supervisor:
                     "saved": stage1ab.saved_snapshot(wt, b, cp)}
         return prompt, baseline, resume
 
+    @_single_launch_scope
     def _ab_accept(self, b, chunk: dict, repair: bool) -> None:
         """A saved chunk: remember its bytes, clear its run state, and move on with a new session."""
         self._clear_batch_retry(b["id"])
@@ -8110,6 +8155,7 @@ class Supervisor:
         except (OSError, ValueError, KeyError, TypeError):
             return False
 
+    @_single_launch_scope
     def _relaunch_ab(self, b) -> None:
         problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
         if problem and self.store.get(stage1ab.run_start_key(b["id"])) is not None:
@@ -8250,6 +8296,7 @@ class Supervisor:
         except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
             return f"source_context 없음: {e}\n", {}
 
+    @_single_launch_scope
     def _retry_producer_fix(self, b) -> None:
         """Owner Retry rechecks the attached PR and current-HEAD blockers before assigning incomplete review events."""
         try:
@@ -8886,6 +8933,7 @@ class Supervisor:
             return True
         return False
 
+    @_single_launch_scope
     def _run_failed(self, b, code: int) -> None:
         cls = self._classify_run(b["producer"], b["log_file"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
@@ -9003,10 +9051,11 @@ class Supervisor:
                                   "(로그 확인 후 Retry).")
             go = registry(self.cfg).get(b["producer"], {}).get("models", {}).get("go")
             if b["model_tier"] == "free" and go:
-                self.store.set_line(b["producer"], b["method"], model_tier="go")
-                self.store.update(b["id"], model_tier="go")
-                self.store.log(b["id"], f"제공자 Free 한도 오류 확인 ({QUOTA_EVIDENCE}) → Go 모델로 전환")
-                return self._relaunch(self.store.batch(b["id"]))
+                with self.launch_gate.permit():
+                    self.store.set_line(b["producer"], b["method"], model_tier="go")
+                    self.store.update(b["id"], model_tier="go")
+                    self.store.log(b["id"], f"제공자 Free 한도 오류 확인 ({QUOTA_EVIDENCE}) → Go 모델로 전환")
+                    return self._relaunch(self.store.batch(b["id"]))
             return self._fail(b, "PAUSED", "무료 한도 소진이 확인되었지만 전환할 Go 모델이 없거나 이미 Go입니다.")
         if cls in ("rate_limit", "network"):
             if b["retries"] < self.cfg["rate_limit_retries"]:
@@ -9017,8 +9066,9 @@ class Supervisor:
         if cls == "auth":
             return self._fail(b, "PAUSED", "인증 실패 — Board 상단의 GitHub 인증 안내를 확인하세요.")
         if b["run_kind"] == "fix_resume":  # session resume impossible -> safe recovery once
-            self.store.log(b["id"], "세션 resume 실패 → 새 AI 세션으로 복구", "warn")
-            return self._launch(b, "fix_new", self._events(b)[1])
+            with self.launch_gate.permit():
+                self.store.log(b["id"], "세션 resume 실패 → 새 AI 세션으로 복구", "warn")
+                return self._launch(b, "fix_new", self._events(b)[1])
         self._fail(b, "PAUSED", f"인식할 수 없는 AI 실패(코드 {code}) — 조용히 유료 전환/재생산하지 않음. 로그: {b['log_file']}")
 
     # ---- WAITING_REVIEW ------------------------------------------------
@@ -9156,9 +9206,10 @@ class Supervisor:
                         for event in fresh:
                             if event.get("kind") == "ci":
                                 event["body"] += "\n" + self.gh.maintainer_ci_diagnostic(event)
-                    self.store.delete(f"maintenance_review_pending_{b['id']}")
-                    self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
-                    self._launch(b, self._fix_kind(b), fresh)
+                    with self.launch_gate.permit():
+                        self.store.delete(f"maintenance_review_pending_{b['id']}")
+                        self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
+                        self._launch(b, self._fix_kind(b), fresh)
                 return
         except TRANSIENT as e:
             return self._transient_wait(f"b{b['id']}:watch", e, b["id"])
@@ -9345,6 +9396,9 @@ class Supervisor:
             del pending[key]
             try:
                 future.result()
+            except LaunchDenied:
+                with self._frozen_lock:
+                    self._frozen_lanes.add(key)
             except Exception:
                 label = "Maintainer" if key is None else f"{key[0]}/{key[1]}"
                 self.store.log(None, f"{label} worker 예외:\n" + traceback.format_exc()[-800:], "error", line=label)
@@ -9352,6 +9406,11 @@ class Supervisor:
         keys.append(None)
         offset = cursor % len(keys)
         for key in keys[offset:] + keys[:offset]:
+            if not self.launch_gate.is_open:
+                break
+            with self._frozen_lock:
+                if key in self._frozen_lanes:
+                    continue
             if len(pending) >= workers:
                 break
             if key in pending:

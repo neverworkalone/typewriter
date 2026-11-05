@@ -1681,6 +1681,10 @@ class Maintenance:
         return False
 
     def _continue_investigation(self, b, data: dict, base: str, evidence_hash: str) -> bool:
+        with self.sup.launch_gate.permit():
+            return self._continue_investigation_admitted(b, data, base, evidence_hash)
+
+    def _continue_investigation_admitted(self, b, data: dict, base: str, evidence_hash: str) -> bool:
         rounds = int(self.store.get(f"m_diagnosis_round_{b['id']}", "0"))
         if data["round"] != rounds or rounds >= self.MAX_DIAGNOSIS_CONTINUATIONS:
             return False
