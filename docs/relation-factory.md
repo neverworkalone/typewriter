@@ -100,9 +100,9 @@ Issue #1750/#1761의 공통 read-only 조회·checkpoint·집계·Candidate 출�
 
 D는 전용 Workbench 없이 #1156의 25-record 청크 직접 검색 → AI 판독 → 후보 편집 → Candidate JSONL 조립 → 공통 validator 순서로 생산한다. 전수 선행 scan, 문맥/후보별 영수증은 요구하지 않는다.
 
-**D 청크 병렬 실행 (#3074):** 오너가 승인한 War Room Supervisor는 새로 시작하는 D 배치 내부의 25-record 청크를 최대 4개까지 동시에 실행할 수 있다. 작업 단위·모델·판독·검색·후보 형태 규칙, 배치당 Candidate JSONL 하나와 PR 하나, 모델 간 공유 D cursor·claim은 그대로이며 청크 결과는 번호순으로 조립된다. 병렬 실행은 worker에게 다른 AI·CLI·서브에이전트를 추가 실행할 권한을 주지 않는다.
+**D 청크 병렬 실행 (#3074):** 오너가 승인한 War Room Supervisor는 새로 시작하는 D 배치 내부의 25-record 청크를 최대 8개까지 동시에 실행할 수 있다. 작업 단위·모델·판독·검색·후보 형태 규칙, 배치당 Candidate JSONL 하나와 PR 하나, 모델 간 공유 D cursor·claim은 그대로이며 청크 결과는 번호순으로 조립된다. 병렬 실행은 worker에게 다른 AI·CLI·서브에이전트를 추가 실행할 권한을 주지 않는다.
 
-**C 청크 병렬 실행 (#3076):** 오너가 승인한 War Room Supervisor는 새로 시작하는 C 배치 내부의 12-Sense 청크를 최대 4개까지 동시에 실행할 수 있다. 판독·발굴·후보 형태 규칙, checkpoint 형식, 배치당 Candidate JSONL 하나와 PR 하나, 모델 간 공유 C cursor·claim은 그대로다. 각 청크는 다른 청크에 예약되지 않은 Sense만 맡고 worker CLI(`--chunk NNN`)는 자기 청크 범위만 다룬다. 병렬 실행은 worker에게 다른 AI·CLI·서브에이전트를 추가 실행할 권한을 주지 않는다.
+**C 청크 병렬 실행 (#3076):** 오너가 승인한 War Room Supervisor는 새로 시작하는 C 배치 내부의 12-Sense 청크를 최대 8개까지 동시에 실행할 수 있다. 판독·발굴·후보 형태 규칙, checkpoint 형식, 배치당 Candidate JSONL 하나와 PR 하나, 모델 간 공유 C cursor·claim은 그대로다. 각 청크는 다른 청크에 예약되지 않은 Sense만 맡고 worker CLI(`--chunk NNN`)는 자기 청크 범위만 다룬다. 병렬 실행은 worker에게 다른 AI·CLI·서브에이전트를 추가 실행할 권한을 주지 않는다.
 
 **C/D 기술적 생산 제외 (#2881):** Supervisor는 먼저 기존 source-bound 증거로 가능한 결정적 정규화(예: C의 문맥 키 양끝 공백 제거)를 일반 CLI 검증 경로에서 시도하고, 이후 기존 same-session Retry 한도를 그대로 사용한다. 한도 소진 뒤에는 정상 결과를 보존하면서 오류가 입증된 source Sense만 기술적으로 제외한다. C와 D 모두 실패 Sense 후보만 `[]`로 저장하고, 같은 Record의 다른 Sense 후보는 보존한다. D의 검색 증거는 Record 단위로 공유되므로 다른 Sense도 의존하는 실제 공유 검색 증거가 손상되었거나 실패 범위를 안전하게 특정할 수 없으면 Record의 정상 Sense까지 비우지 않고 중단한다. 이 제외는 검색 0건·편집적 무가치·Stage 2 Drop을 뜻하지 않는다. C의 일반 `submit`과 D의 일반 `save` Candidate 형식에는 skip 표식을 추가하지 않는다. Supervisor 전용 CLI 경로만 정확한 최신 진단·청크/HEAD·입력 파일에 결속해 제외를 기록한다. 검색 상태, 원본 검색 증거, 나머지 정상 제출은 그대로 유지한다. 다수·모호·stale 진단, `SEARCH_FAILED`, hit-bearing `Z`, cursor/인덱스 무결성 실패, 전역 증거 손상은 기술적 제외로 바꾸지 않고 중단한다. 로컬 checkpoint/청크 sidecar와 Supervisor Audit Log에 정확한 ID·진단·Retry 수를 남기며, 생산 PR 본문에는 제외 수와 source ID를 표시한다.
 

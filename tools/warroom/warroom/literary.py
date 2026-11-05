@@ -25,7 +25,7 @@ VIEW = f"{SCRATCH}/c-active-chunk.txt"
 CLI = "scripts/relation/literary-context-cli.mjs"
 SUPERVISOR_CLI = "scripts/relation/literary-context-supervisor-cli.mjs"
 CHUNK_LIMIT = 12
-MAX_PARALLEL = 4   # chunk sessions of one new batch that may run at the same time (#3076)
+MAX_PARALLEL = 8   # chunk sessions of one new batch that may run at the same time (#3076)
 CHUNK_CONTEXTS = 8
 MAX_CONTEXTS_PER_SENSE = 16
 # The whole initial prompt (card + chunk view) travels as ONE argv element. Linux caps a single argument at 128 KiB
