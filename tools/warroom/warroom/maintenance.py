@@ -1436,7 +1436,13 @@ class Maintenance:
             if self._due(f"m_no_code_cleanup_{b['id']}", 60):
                 self.store.log(b["id"], f"무코드 복구 인계 정리를 완료하지 못했습니다(원 배치 보존, 재시도 예정): {e}", "warn")
             return True
-        if not self.store.approve_no_code_resume(b["id"], proof["issue"], proof["defect_id"], proof):
+        try:
+            approved = self.store.approve_no_code_resume(b["id"], proof["issue"], proof["defect_id"], proof)
+        except Exception as e:
+            if self._due(f"m_no_code_commit_{b['id']}", 60):
+                self.store.log(b["id"], f"무코드 인가 트랜잭션이 끝나지 않아 저장된 증거로 재진입합니다: {e}", "warn")
+            return True
+        if not approved:
             self.sup._fail(self.store.batch(b["id"]), "ERROR",
                            "무코드 재개 인가가 현재 운영자 제어·task·사건 상태와 일치하지 않습니다. 증거를 보존하고 자동 실행을 중단했습니다.")
             return False
@@ -1457,7 +1463,12 @@ class Maintenance:
             return True
         reason = (f"{MAINTENANCE_DIAGNOSIS_HOLD_PREFIX}({proof['outcome']}): {proof['summary']} — "
                   f"원인: {proof['cause']} — 다음 조치: {proof['next_action']}. 원 배치는 PAUSED로 보존되며 해결로 처리하지 않습니다.")
-        self.store.complete_diagnosis(b["id"], proof["issue"], defects.public(reason))
+        try:
+            self.store.complete_diagnosis(b["id"], proof["issue"], defects.public(reason))
+        except Exception as e:
+            if self._due(f"m_handoff_commit_{b['id']}", 60):
+                self.store.log(b["id"], f"미해결 handoff 트랜잭션이 끝나지 않아 저장된 증거로 재진입합니다: {e}", "warn")
+            return True
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"Issue #{proof['issue']}: 미해결 {proof['outcome']} handoff; Maintainer AI 슬롯 반환")
         return True
@@ -1513,7 +1524,12 @@ class Maintenance:
             f"차단 근거({blocker.get('observation')}): {blocker['reason']} — "
             f"다음 조치: {m['next_action']}. 원 배치는 PAUSED로 보존되며 자동 재개되지 않습니다."
         )
-        self.store.complete_diagnosis(b["id"], m["issue"], why)
+        try:
+            self.store.complete_diagnosis(b["id"], m["issue"], why)
+        except Exception as e:
+            if self._due(f"m_diag_commit_{b['id']}", 60):
+                self.store.log(b["id"], f"진단 인계 상태 저장이 끝나지 않아 persisted proof로 재진입합니다: {e}", "warn")
+            return True
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"Issue #{m['issue']}: {why}; Maintainer worktree 정리·슬롯 반환")
         return True
