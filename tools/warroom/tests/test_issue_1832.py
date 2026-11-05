@@ -73,6 +73,18 @@ class DeterministicStage2Completion(unittest.TestCase):
             w.tick()
         self.assertTrue(any(timing in str(call) for call in log.call_args_list))
 
+    def test_verify_failure_preserves_stdout_diagnostic_in_finalization(self):
+        w = self.w
+        runner = mock.Mock()
+        runner.run.return_value = Result(2, '{"ok":false,"family":"accounting","errors":["missing candidate"]}\n',
+                                         'verify_timing {"stages":[{"stage":"accounting","status":"failed"}]}\n')
+        git = Git(runner, Path("."), {}, Path("."))
+        with mock.patch.object(w.git, "verify_stage2_local", side_effect=git.verify_stage2_local):
+            w.adapter.finish(w.adapter.launches[-1]["pid"])
+            w.tick()
+        b = w.store.active_batch("claude", S2)
+        self.assertIn("missing candidate", b["error"])
+
     def test_non_stage2_denial_still_requires_a_clean_owned_pr_at_local_head(self):
         w = base_s2_world(self)
         w.runner.set_batches(canon={1: 1000}, done={})
