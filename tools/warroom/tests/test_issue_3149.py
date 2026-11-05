@@ -24,6 +24,24 @@ class _Crash(BaseException):
 
 
 class LaunchHandshake(unittest.TestCase):
+    def test_closed_success_recovers_only_matching_logged_session(self):
+        from unittest.mock import Mock
+        run = {"id": 7, "log_file": "run.log", "ended_at": 1, "exit_status": "0",
+               "session_id": None, "model": None}
+        store = Mock()
+        store.run.return_value = dict(run, session_id="logged")
+        ad = Mock(session_id=Mock(return_value="logged"), run_problem=Mock(return_value=None))
+        ad.supports_tolerate_denied = False
+        result = taskruns.observe_run(store, ad, run, None)
+        self.assertEqual(result[2]["session_id"], "logged")
+        store.set_run_session_by_id.assert_called_once_with(7, "logged")
+        store.reset_mock()
+        taskruns.observe_run(store, ad, run, "different")
+        store.set_run_session_by_id.assert_not_called()
+        ad.run_problem.return_value = ("identity", "bad identity")
+        self.assertEqual(taskruns.observe_run(store, ad, run, "logged"), ("problem", "bad identity"))
+        store.set_run_session_by_id.assert_not_called()
+
     def spawn(self, root, cmd):
         from warroom.adapters import ProcessAdapter
         ex = Path(root) / "run.exit"
