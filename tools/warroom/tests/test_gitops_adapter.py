@@ -1,4 +1,7 @@
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 import os
 import shutil
 import stat
@@ -71,6 +74,62 @@ class RealGit(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def test_shared_verify_checkout_is_held_through_cli_and_reconcile(self):
+        entered, release, second_entered = threading.Event(), threading.Event(), threading.Event()
+        current = [None]
+
+        def checkout(sha):
+            current[0] = sha
+            if sha == "second":
+                second_entered.set()
+            return self.wt
+
+        def verify(path, *args, **kwargs):
+            self.assertEqual(current[0], "first")
+            entered.set()
+            self.assertTrue(release.wait(5))
+            self.assertEqual(current[0], "first")
+            return True, "", None
+
+        def reconcile(path, *args, **kwargs):
+            self.assertEqual(current[0], "second")
+            return {"ok": True}
+
+        with patch.object(self.git, "_verify_checkout", side_effect=checkout), \
+             patch.object(self.git, "_verify_stage2_part", side_effect=verify), \
+             patch.object(self.git, "stage2_reconcile", side_effect=reconcile), \
+             ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(self.git.verify_stage2_exact_counts, "first", "001", "01", "01")
+            self.assertTrue(entered.wait(5))
+            second = pool.submit(self.git.stage2_reconcile_latest, "second", "001", "a", "b", batch="01", part="01")
+            try:
+                self.assertFalse(second_entered.wait(0.1))
+                # Local worktree verification does not take the shared checkout lock.
+                with patch.object(self.git, "_verify_stage2_part", return_value=(True, "", None)):
+                    self.assertTrue(self.git.verify_stage2_local(self.wt, "001", "01", "01", checkpoint=False)[0])
+            finally:
+                release.set()
+            self.assertTrue(first.result(timeout=5)[0])
+            self.assertTrue(second.result(timeout=5)["ok"])
+
+    def test_competing_worktree_creation_preserves_single_owner(self):
+        self.git.fetch_base("master")
+        barrier = threading.Barrier(2)
+
+        def create(path):
+            barrier.wait(timeout=5)
+            try:
+                self.git.create_worktree(path, "same-branch", "master")
+                return True
+            except GitError:
+                return False
+
+        paths = [self.wts / "first", self.wts / "second"]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(create, paths))
+        self.assertEqual(sorted(results), [False, True])
+        self.assertEqual(sum(self.git.registered(path) == "same-branch" for path in paths), 1)
 
     def test_deleted_id_relation_detection_ignores_additions_and_text_only_deletions(self):
         relation = self.repo / "data" / "relations" / "relation-001.jsonl"
