@@ -1647,29 +1647,38 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
   }
 });
 
-test('chunk CLI accepts --skip with the C chunk scope and emits the unread suffix for a 42-hit sense', async () => {
-  const fixture = await makeFixture({ unitCount: 42, firstForm: '능사', firstSenseId: 'w68162-s1' });
+test('chunk CLI emits each shared-form Sense’s unread suffix within the C chunk scope', async () => {
+  const fixture = await makeFixture({ unitCount: 42, firstForm: '능사', firstSenseId: 'w68162-s1',
+    firstSenseGlosses: ['뜻 하나', '뜻 둘'], repeatFirstLemma: true });
   try {
-    const first = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'w68162-s1', '--contexts', '8', '--format', 'text']));
+    const ids = ['w68162-s1', 'sense-000001-2', 'sense-000002'];
+    const keysBySense = (output) => new Map(output.split(/^## /mu).slice(1).map((item) => [
+      item.split(' ')[0], [...item.matchAll(/^\[([A-Za-z0-9]{12})\] /gmu)].map((match) => match[1]),
+    ]));
+    const first = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', ids.join(','), '--contexts', '8', '--format', 'text']));
     assert.equal(first.status, 0, first.stderr);
-    const initialKeys = [...first.stdout.matchAll(/^\[([A-Za-z0-9]{12})\] /gmu)].map((match) => match[1]);
-    assert.equal(initialKeys.length, 8);
+    const initialKeys = keysBySense(first.stdout);
 
     const activeView = Buffer.from(first.stdout);
     await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.txt'), activeView);
     await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.json'), JSON.stringify({
-      chunk_id: '001-01-001', chunk_no: 1, sense_ids: ['w68162-s1'], shard: '001', batch: '01', model: 'codex',
+      chunk_id: '001-01-001', chunk_no: 1, sense_ids: ids, shard: '001', batch: '01', model: 'codex',
       git_head: 'a'.repeat(40), view_sha256: createHash('sha256').update(activeView).digest('hex'),
       view_bytes: activeView.byteLength,
     }));
 
     const extra = runCli(fixture, cliChunkArgs(fixture, [
-      '--sense-ids', 'w68162-s1', '--skip', '8', '--contexts', '16', '--format', 'text', '--chunk', '001',
+      '--sense-ids', ids.join(','), '--skip', '8', '--contexts', '16', '--format', 'text', '--chunk', '001',
     ]));
     assert.equal(extra.status, 0, extra.stderr);
-    const suffixKeys = [...extra.stdout.matchAll(/^\[([A-Za-z0-9]{12})\] /gmu)].map((match) => match[1]);
-    assert.equal(suffixKeys.length, 8);
-    for (const key of initialKeys) assert.equal(suffixKeys.includes(key), false);
+    const suffixKeys = keysBySense(extra.stdout);
+    for (const id of ids) {
+      assert.equal(initialKeys.get(id).length, 8);
+      assert.equal(suffixKeys.get(id).length, 8);
+      for (const key of initialKeys.get(id)) assert.equal(suffixKeys.get(id).includes(key), false);
+      assert.deepEqual(initialKeys.get(id), initialKeys.get(ids[0]));
+      assert.deepEqual(suffixKeys.get(id), suffixKeys.get(ids[0]));
+    }
     assert.match(extra.stdout, /hits=42 unseen=26/u);
     const checkpoint = await load(fixture);
     assert.equal(checkpoint.records[0].senses[0].sense_id, 'w68162-s1');
