@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from tests.fakes import HEAD1
 from tests.test_issue_1555 import maintainer_row, produce_and_report, world
 from tests.test_supervisor import review
-from warroom import defects
+from warroom import defects, dchunk
 from warroom.restart_controller import (_live_work_or_controls, has_pending_restart, record_runtime,
                                         update_restart_request, write_restart_request)
 
@@ -96,7 +97,7 @@ class NoCodeRecovery(unittest.TestCase):
         self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
 
-    def prepare_failed_d_task(self):
+    def prepare_failed_d_task(self, *, serial=False):
         w = self.w
         source_wt = w.paths.worktrees / "d-codex-081-01"
         branch = "d-deepseek-081-01"
@@ -115,15 +116,32 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertIsNotNone(defect_id)
         w.store.update_defect(defect_id, issue_number=101)
 
-        w.store.add_tasks(batch_id, [("002", "002")])
         run_log = w.paths.logs / "source-d-002.log"
         run_log.parent.mkdir(parents=True, exist_ok=True)
         run_log.write_text("official save-chunk rejected task 002", "utf-8")
-        run_id = w.store.add_run(batch_id, "d_chunk_new", "d-session-002", None,
-                                 run_log, run_log.with_suffix(".exit"), task="002")
-        w.store.finish_run(run_id, 0)
-        w.store.update_task(batch_id, "002", state="FAILED", run_id=run_id,
-                            session_id="d-session-002", data='{"ack":true}')
+        if serial:
+            source = w.store.batch(batch_id)
+            active = dchunk.chunk_names(source, 2)
+            active_path = source_wt / active.active
+            active_path.parent.mkdir(parents=True, exist_ok=True)
+            (source_wt / active.view).write_text("bound D view", "utf-8")
+            active_path.write_text(json.dumps({
+                "shard": "081", "batch": "01", "model": "deepseek", "chunk_no": 2,
+                "view_sha256": "a" * 64, "git_head": HEAD1, "senses": [{"sense_id": "w0001-s1"}],
+            }), "utf-8")
+            w.store.update(batch_id, run_kind="d_chunk_new", session_id="d-session-002")
+            run_id = w.store.add_run(batch_id, "d_chunk_new", "d-session-002", None,
+                                     run_log, run_log.with_suffix(".exit"))
+            w.store.finish_run(run_id, 0)
+            w.store.update(batch_id, state="PAUSED", pause_reason="shared_defect", paused_from="PRODUCING",
+                           defect_id=defect_id, session_id="d-session-002", pid=None)
+        else:
+            w.store.add_tasks(batch_id, [("002", "002")])
+            run_id = w.store.add_run(batch_id, "d_chunk_new", "d-session-002", None,
+                                     run_log, run_log.with_suffix(".exit"), task="002")
+            w.store.finish_run(run_id, 0)
+            w.store.update_task(batch_id, "002", state="FAILED", run_id=run_id,
+                                session_id="d-session-002", data='{"ack":true}')
 
         w.cfg["maintainer"] = "sonnet"
         w.gh.issues[101] = {"state": "open", "labels": ["urgent"], "title": "Issue 101", "body": "diagnosis"}
@@ -174,6 +192,50 @@ class NoCodeRecovery(unittest.TestCase):
         # Resume alone is intermediate; only the original task's persisted SAVED state resolves the Issue.
         w.store.update_task(batch_id, "002", state="SAVED")
         w.tick()
+        self.assertEqual(w.store.defect(defect_id)["state"], "RELEASED")
+        self.assertEqual(w.store.maintenance(101)["state"], "DONE")
+
+    def test_legacy_serial_no_code_resume_keeps_the_exact_active_chunk_and_session(self):
+        w = self.w
+        batch_id, defect_id, maintainer, request = self.prepare_failed_d_task(serial=True)
+        scope = {"task": None, "chunk": "002"}
+        summary = "D의 활성 002 청크 저장 경계에서 공통 코드 결함 없이 멈춘 것을 확인했다."
+        cause = "공식 active chunk와 종료된 원 세션이 같은 청크를 가리킨다."
+        action = "D의 기존 세션에서 활성 002 청크를 재개한다."
+        next_action = "동일 002 청크의 공식 저장 진전만 확인한다."
+        result = {
+            "version": 2, "issue": 101, "attempt": maintainer["id"], "round": request["round"],
+            "defect_id": defect_id, "event_key": request["event_key"], "batch_id": batch_id,
+            "source_head": request["source_head"], "evidence_sha256": request["evidence_sha256"],
+            "scope": scope, "outcome": "no_code_resume", "summary": summary, "cause": cause,
+            "recovery": {"type": "resume_same_session", **scope, "action": action},
+            "blocker": None, "next_action": next_action,
+        }
+        maintainer_wt = Path(maintainer["worktree"])
+        (maintainer_wt / ".warroom-scratch/incident-diagnosis.json").write_text(
+            json.dumps(result, ensure_ascii=False), "utf-8")
+        marker = f"incident-recovery-101-attempt-{maintainer['id']}-round-{request['round']}"
+        w.gh.comment_issue(101, "\n".join((summary, cause, action, next_action, request["evidence_sha256"],
+                                           defects.marker(defects.EVENT_MARK, marker))))
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+
+        resumed = w.store.batch(batch_id)
+        self.assertEqual((resumed["state"], resumed["run_kind"], resumed["session_id"]),
+                         ("PRODUCING", "d_chunk_new", "d-session-002"))
+        self.assertEqual(w.store.task_rows(batch_id), [])
+        approval = json.loads(w.store.get(f"no_code_approval_{defect_id}"))
+        self.assertEqual((approval["status"], approval["task"], approval["chunk"],
+                          approval["recovery_type"]),
+                         ("APPROVED", None, "002", "resume_same_session"))
+        self.assertEqual(w.store.defect(defect_id)["state"], "RECOVERING")
+        self.assertEqual(w.store.maintenance(101)["state"], "RECOVERING")
+
+        with mock.patch.object(dchunk, "verified_chunks", return_value=(set(), 3)):
+            w.tick()
+        self.assertEqual(w.store.maintenance(101)["state"], "RECOVERING")
+        with mock.patch.object(dchunk, "verified_chunks", return_value=({2}, 3)):
+            w.tick()
         self.assertEqual(w.store.defect(defect_id)["state"], "RELEASED")
         self.assertEqual(w.store.maintenance(101)["state"], "DONE")
 

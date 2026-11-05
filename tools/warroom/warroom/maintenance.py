@@ -19,7 +19,7 @@ import os
 import re
 from pathlib import Path
 
-from . import auth, dchunk, defects, literary, stage2, stage3
+from . import auth, dchunk, defects, literary, progress, stage2, stage3
 from .config import maintainer_id, maintainer_problem
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked
 from .store import MAINTENANCE_DIAGNOSIS_HOLD_PREFIX, MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
@@ -1041,6 +1041,18 @@ class Maintenance:
         put("error_evidence", lambda: ok("ok", evidence) if evidence else missing())
         return obs
 
+    def _progress_snapshot(self, b) -> dict | None:
+        try:
+            if b["method"] == STAGE3_METHOD:
+                done, total = stage3.progress(stage3.checkpoint(b["worktree"], b["shard"]))
+                return {"kind": "chunks", "done": done, "total": total}
+            observed = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
+            if observed is None:
+                return None
+            return {"kind": observed[0], "done": observed[1], "total": observed[2]}
+        except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):
+            return None
+
     def _preserved(self, b, obs: dict, head_moves: bool) -> str | None:
         """Compare the intake-time observations with now. None = preserved; else the reason it cannot be proven."""
         for name, o in obs.items():
@@ -1161,6 +1173,7 @@ class Maintenance:
                     "envelope": self._envelope_of(d),
                     "observation": observation,
                     "task_scope": task_scope,
+                    "progress": self._progress_snapshot(ob),
                     "git": self._git_facts(ob) if owt.is_dir() else {"worktree": str(owt), "status": "missing"},
                     "report": d["report"],
                     "receipts": [{"defect_id": x["id"], "merge_sha": x["merge_sha"], "integrated_sha": x["integrated_sha"]}
@@ -1315,8 +1328,9 @@ class Maintenance:
                     or not self._text(recovery.get("action"))):
                 return False
             if data["outcome"] == "no_code_resume":
+                expected_type = "resume_failed_task" if scope["task"] is not None else "resume_same_session"
                 if (data.get("blocker") is not None or set(recovery) != {"type", "task", "chunk", "action"}
-                        or recovery["type"] != "resume_failed_task"):
+                        or recovery["type"] != expected_type):
                     return False
                 if not self._validate_failed_task(source, evidence, recovery):
                     return False
@@ -1373,17 +1387,25 @@ class Maintenance:
                 return self._complete_structured_handoff(b, proof)
             if not self._archive_report(d, source):
                 return False
-            task_row = self.store.task_row(source["id"], recovery["task"])
+            task_row = (self.store.task_row(source["id"], recovery["task"])
+                        if recovery["task"] is not None else None)
+            source_runs = self.store.runs(source["id"])
+            source_run = self.store.run(task_row["run_id"]) if task_row is not None else (source_runs[0] if source_runs else None)
             approval = {"issue": data["issue"], "attempt": b["id"], "defect_id": d["id"],
                         "event_key": d["event_key"], "batch_id": source["id"], "source_error_seq": source["error_seq"],
                         "source_head": data["source_head"], "evidence_sha256": evidence_hash,
                         "result_sha256": hashlib.sha256(json.dumps(data, ensure_ascii=False, sort_keys=True,
                                                                     separators=(",", ":")).encode("utf-8")).hexdigest(),
-                        "task": recovery["task"], "chunk": recovery["chunk"], "run_id": task_row["run_id"],
-                        "session_id": task_row["session_id"], "summary": defects.public(data["summary"].strip()),
+                        "task": recovery["task"], "chunk": recovery["chunk"],
+                        "recovery_type": recovery["type"],
+                        "run_id": task_row["run_id"] if task_row is not None else (source_run["id"] if source_run else None),
+                        "session_id": task_row["session_id"] if task_row is not None else source["session_id"],
+                        "run_kind": source["run_kind"], "baseline_progress": evidence.get("progress"),
+                        "summary": defects.public(data["summary"].strip()),
                         "cause": defects.public(data["cause"].strip()), "action": defects.public(recovery["action"].strip()),
                         "next_action": defects.public(data["next_action"].strip()),
-                        "baseline_task_state": task_row["state"], "baseline_task_run_id": task_row["run_id"]}
+                        "baseline_task_state": task_row["state"] if task_row is not None else None,
+                        "baseline_task_run_id": task_row["run_id"] if task_row is not None else None}
             proof = {"version": 3, "issue": data["issue"], "outcome": "no_code_resume", "base": base,
                      "branch": b["branch"], "worktree": str(b["worktree"]), **approval}
             self.store.set(f"m_diag_{b['id']}", json.dumps(proof, sort_keys=True))
@@ -1393,6 +1415,8 @@ class Maintenance:
 
     def _validate_failed_task(self, source, evidence: dict, recovery: dict) -> bool:
         task, chunk = recovery.get("task"), recovery.get("chunk")
+        if task is None:
+            return self._validate_serial_scope(source, evidence, recovery)
         if not isinstance(task, str) or not task or not isinstance(chunk, str) or not chunk:
             return False
         row = self.store.task_row(source["id"], task)
@@ -1410,6 +1434,37 @@ class Maintenance:
                     and run["batch_id"] == source["id"] and run["task"] == task
                     and run["ended_at"] is not None and run["session_id"] == row["session_id"]
                     and not self.store.open_task_runs(source["id"]))
+
+    def _validate_serial_scope(self, source, evidence: dict, recovery: dict) -> bool:
+        """Bind a legacy serial resume to its one active chunk and the last ended session."""
+        chunk = recovery.get("chunk")
+        if (not isinstance(chunk, str) or not chunk or evidence.get("task_scope")
+                or source["paused_from"] != "PRODUCING" or source["pid"] is not None
+                or self.store.open_task_runs(source["id"])):
+            return False
+        runs = self.store.runs(source["id"])
+        run = runs[0] if runs else None
+        if (run is None or run["ended_at"] is None or run["task"] is not None
+                or not source["session_id"] or run["session_id"] != source["session_id"]):
+            return False
+        wt = Path(source["worktree"])
+        try:
+            if source["method"] == dchunk.METHOD and self._serial_d(source) and source["run_kind"].startswith("d_chunk_"):
+                record = dchunk.read_active(wt, source)
+                return bool(record is not None and chunk == f"{record['chunk_no']:03d}")
+            if source["method"] == literary.METHOD and self._serial_c(source) and source["run_kind"].startswith("c_chunk_"):
+                record = literary.read_active(wt, source)
+                return bool(record is not None and chunk == f"{record['chunk_no']:03d}")
+            if source["method"] == STAGE2_METHOD and str(source["run_kind"] or "").startswith("s2_chunk_"):
+                state = stage2.checkpoint(wt, source["shard"], source["batch"])
+                return bool(state is not None and state.get("pending_chunk") == chunk)
+            if source["method"] == STAGE3_METHOD and str(source["run_kind"] or "").startswith("s3_chunk_"):
+                state = stage3.checkpoint(wt, source["shard"])
+                return bool(state is not None and stage3.next_chunk(state) == chunk)
+        except (dchunk.DChunkError, literary.LiteraryError, stage3.Stage3Error,
+                OSError, ValueError, KeyError, TypeError):
+            return False
+        return False
 
     def _continue_investigation(self, b, data: dict, base: str, evidence_hash: str) -> bool:
         rounds = int(self.store.get(f"m_diagnosis_round_{b['id']}", "0"))
@@ -1457,7 +1512,9 @@ class Maintenance:
                            "무코드 재개 인가가 현재 운영자 제어·task·사건 상태와 일치하지 않습니다. 증거를 보존하고 자동 실행을 중단했습니다.")
             return False
         self.store.finish_runs(b["id"], None)
-        self.store.log(b["id"], f"Issue #{proof['issue']}: no-code recovery 승인 기록 후 원 task {proof['task']}/{proof['chunk']} 재개; Maintainer AI 슬롯 반환")
+        scope = (f"task {proof['task']}/{proof['chunk']}" if proof.get("task") is not None
+                 else f"serial chunk {proof['chunk']}")
+        self.store.log(b["id"], f"Issue #{proof['issue']}: no-code recovery 승인 기록 후 원 {scope} 재개; Maintainer AI 슬롯 반환")
         return True
 
     def _complete_structured_handoff(self, b, proof: dict) -> bool:
@@ -1574,19 +1631,27 @@ class Maintenance:
                 proof = json.loads(self.store.get(f"m_diag_{m['batch_id']}") or "null")
                 if not isinstance(proof, dict) or proof.get("version") != 3 or proof.get("outcome") != "no_code_resume":
                     continue
+                task = proof.get("task")
+                serial_progress = self._serial_recovery_progress(proof) if task is None else False
                 if self.store.finish_no_code_recovery(m["issue_number"], proof["defect_id"],
-                                                       proof["batch_id"], proof["task"]):
+                                                       proof["batch_id"], task,
+                                                       serial_progress=serial_progress):
                     ev = f"incident-outcome-{proof['defect_id']}-no-code-resumed"
-                    body = (f"확인된 무코드 원인({proof['cause']})에 대해 원래 task {proof['task']}/{proof['chunk']}의 "
+                    scope = (f"task {task}/{proof['chunk']}" if task is not None
+                             else f"serial chunk {proof['chunk']}")
+                    body = (f"확인된 무코드 원인({proof['cause']})에 대해 원래 {scope}의 "
                             "공식 저장 진전을 확인했습니다. 동일 세션의 기존 복구 경로를 사용했습니다.\n\n"
                             + defects.marker(defects.EVENT_MARK, ev))
                     self._comment_once(m["issue_number"], ev, body)
                     continue
                 batch = self.store.batch(proof["batch_id"])
-                task = self.store.task_row(proof["batch_id"], proof["task"])
-                if (batch is not None and batch["state"] == "ERROR" and task is not None
-                        and task["state"] == "FAILED" and batch["error_seq"] > proof["source_error_seq"]):
-                    reason = f"원 task {proof['task']}/{proof['chunk']}가 재개 후 다시 실패했습니다 (e{batch['error_seq']}): {batch['error'] or '오류 증거 보존'}"
+                task_row = self.store.task_row(proof["batch_id"], task) if task is not None else None
+                task_failed = (task is None or (task_row is not None and task_row["state"] == "FAILED"))
+                if (batch is not None and batch["state"] == "ERROR" and task_failed
+                        and batch["error_seq"] > proof["source_error_seq"]):
+                    scope = (f"task {proof['task']}/{proof['chunk']}" if task is not None
+                             else f"serial chunk {proof['chunk']}")
+                    reason = f"원 {scope}가 재개 후 다시 실패했습니다 (e{batch['error_seq']}): {batch['error'] or '오류 증거 보존'}"
                     if self.store.hold_no_code_recurrence(m["issue_number"], proof["defect_id"],
                                                           proof["batch_id"], reason):
                         self.store.set(f"no_code_approval_{proof['defect_id']}",
@@ -1595,6 +1660,30 @@ class Maintenance:
             except Exception as e:
                 if self._due(f"no_code_progress_{m['issue_number']}"):
                     self.store.log(m["batch_id"], f"원 task의 저장 진전을 검증하지 못해 미해결 상태를 유지합니다: {e}", "warn")
+
+    def _serial_recovery_progress(self, proof: dict) -> bool:
+        """Confirm the exact serial chunk or saved-progress advancement on its original batch."""
+        batch = self.store.batch(proof["batch_id"])
+        if batch is None:
+            return False
+        if batch["state"] in ("WAITING_REVIEW", "MERGED", "CLEANUP", "COMPLETE"):
+            return True
+        try:
+            chunk = proof["chunk"]
+            if batch["method"] == dchunk.METHOD:
+                saved, _total = dchunk.verified_chunks(Path(batch["worktree"]), batch)
+                return int(chunk) in saved
+            if batch["method"] == STAGE3_METHOD:
+                checkpoint = stage3.checkpoint(batch["worktree"], batch["shard"])
+                return checkpoint is not None and chunk in checkpoint["completed_chunks"]
+            before = proof.get("baseline_progress")
+            after = self._progress_snapshot(batch)
+            return bool(isinstance(before, dict) and isinstance(after, dict)
+                        and before.get("kind") == after.get("kind") and before.get("total") == after.get("total")
+                        and type(before.get("done")) is int and type(after.get("done")) is int
+                        and after["done"] > before["done"])
+        except (dchunk.DChunkError, literary.LiteraryError, stage3.Stage3Error, OSError, ValueError, KeyError, TypeError):
+            return False
         for d in self.store.defects(("RELEASED",)):
             if d["fix_kind"] not in ("runtime", "worktree") or d["issue_number"] is None:
                 continue
@@ -1896,7 +1985,9 @@ class Maintenance:
                                else f"(worktree 통합 HEAD {(d['integrated_sha'] or '?')[:10]}). 아직 완료가 아닙니다."))
                 elif phase == "no-code-resumed":
                     approval = json.loads(self.store.get(f"no_code_approval_{d['id']}") or "{}")
-                    head = (f"확인된 무코드 원인에 대해 원 task {approval.get('task')}/{approval.get('chunk')}의 공식 SAVED 진전을 확인했습니다. "
+                    scope = (f"task {approval.get('task')}/{approval.get('chunk')}" if approval.get("task") is not None
+                             else f"serial chunk {approval.get('chunk')}")
+                    head = (f"확인된 무코드 원인에 대해 원 {scope}의 공식 SAVED 진전을 확인했습니다. "
                             "같은 Issue·task·session의 기존 복구 경로를 사용했습니다.")
                 elif phase == "review":
                     head = f"원 배치 `{b['shard']}_{b['batch']}`가 PR 리뷰 대기에 들어갔습니다{pr}. 아직 완료가 아닙니다."

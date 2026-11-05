@@ -11,7 +11,7 @@ production DB·checkpoint·원 배치 worktree를 수정하거나 force Git을 �
 
 PR 없이 반환할 때 `.warroom-scratch/incident-diagnosis.json`에 version 2 구조화 결과를 원자적으로 작성한다. 필수 값: `version=2`, 현재 `issue`, `attempt`, `round`, 정확한 `defect_id`·`event_key`·`batch_id`, `source_head`, 요청 파일에 적힌 `evidence_sha256`, 정확한 `scope`, `outcome`, `summary`, `cause`, typed `recovery`, `blocker`, `next_action`. 자유 형식 최종 답변이나 이 JSON만으로 Supervisor가 복구를 허가하지 않는다.
 
-- `no_code_resume`: 확인된 task 입력/저장 거부 또는 오진을 공식 근거로 대조했고 공통 코드 수정이 필요하지 않다. `recovery.type=resume_failed_task`와 동일한 원 task ID·chunk ID, 실제 다음 조치를 기록한다. 코드 변경, 범위 교체, 다른 task 선택, Z 강제 수락은 금지다. Supervisor가 원본 evidence·task·세션·운영자 제어를 재검증한 뒤 기존 C/D/Stage 2/Stage 3 task 복구 경로를 한 번만 실행한다.
+- `no_code_resume`: 확인된 task 입력/저장 거부 또는 오진을 공식 근거로 대조했고 공통 코드 수정이 필요하지 않다. 병렬 실행이면 `recovery.type=resume_failed_task`와 동일한 원 task ID·chunk ID를, legacy serial이면 `recovery.type=resume_same_session`와 같은 활성 chunk ID를 기록한다. 코드 변경, 범위 교체, 다른 task 선택, Z 강제 수락은 금지다. Supervisor가 원본 evidence·task·세션·운영자 제어를 재검증한 뒤 기존 C/D/Stage 2/Stage 3 resume 경로를 한 번만 실행한다.
 - `investigate`: 조사를 끝내지 못했으며, 현재 세션·worktree에서 수행할 구체적 다음 조사 단계를 기록한다. Supervisor는 같은 Issue/branch/session만 제한 횟수 이어간다. 무작위 재시도나 새 Issue/배치로 바꾸지 않는다.
 - `external`: `recovery.type=external_prerequisite`, dependency는 `github_auth`, `maintainer_preflight`, `approved_literary_index`, `approved_corpus_index`, `source_worktree` 중 하나다. Supervisor는 해당 조건을 주기적으로 다시 확인해 준비되면 같은 Issue의 새 조사 시도를 대기열에 넣는다. 임의 명령을 자동 실행하지 않는다. 원 배치는 PAUSED로 남고 이 handoff는 해결이 아니다.
 - `undetermined`: Supervisor가 intake 원본을 다시 확인해 무결성/재현 불가 blocker를 독립적으로 입증한 경우만 가능하다. 그 외 불확실성은 evidence를 더 조사한다.

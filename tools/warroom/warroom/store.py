@@ -479,7 +479,7 @@ class Store:
 
     def approve_no_code_resume(self, maintainer_batch_id: int, issue: int, defect_id: int,
                                approval: dict) -> bool:
-        """Atomically authorize one evidence-bound resume of one failed C/D/S2/S3 task.
+        """Atomically authorize one evidence-bound resume of one failed task or serial chunk.
 
         The caller has already re-read the source snapshot and official task evidence. This transaction repeats the
         source/event/attempt ownership and operator-control checks, then lets that method's existing scheduler resume
@@ -520,21 +520,39 @@ class Store:
                     or c.execute("SELECT 1 FROM kv WHERE key=? AND value!=''",
                                  (f"defect_hold_{b['id']}",)).fetchone()):
                 return False
-            row = c.execute("SELECT * FROM s2_tasks WHERE batch_id=? AND task=?", (b["id"], task)).fetchone()
-            if (not isinstance(task, str) or not task or row is None or row["state"] != "FAILED"
-                    or row["chunk_id"] != approval.get("chunk") or row["run_id"] is None):
-                return False
-            try:
-                task_data = json.loads(row["data"] or "{}")
-            except (TypeError, ValueError):
-                return False
-            if not isinstance(task_data, dict) or not task_data.get("ack"):
-                return False
-            run = c.execute("SELECT * FROM runs WHERE id=? AND batch_id=? AND task=?",
-                            (row["run_id"], b["id"], task)).fetchone()
-            if (run is None or run["ended_at"] is None or run["session_id"] != row["session_id"]):
-                return False
-            if b["method"] == "c":
+            row = (c.execute("SELECT * FROM s2_tasks WHERE batch_id=? AND task=?", (b["id"], task)).fetchone()
+                   if task is not None else None)
+            if task is not None:
+                if (approval.get("recovery_type") != "resume_failed_task"
+                        or not isinstance(task, str) or not task or row is None or row["state"] != "FAILED"
+                        or row["chunk_id"] != approval.get("chunk") or row["run_id"] is None
+                        or row["run_id"] != approval.get("run_id")
+                        or row["session_id"] != approval.get("session_id")):
+                    return False
+                try:
+                    task_data = json.loads(row["data"] or "{}")
+                except (TypeError, ValueError):
+                    return False
+                if not isinstance(task_data, dict) or not task_data.get("ack"):
+                    return False
+                run = c.execute("SELECT * FROM runs WHERE id=? AND batch_id=? AND task=?",
+                                (row["run_id"], b["id"], task)).fetchone()
+                if (run is None or run["ended_at"] is None or run["session_id"] != row["session_id"]):
+                    return False
+            else:
+                if (approval.get("recovery_type") != "resume_same_session"
+                        or not isinstance(approval.get("chunk"), str) or not approval["chunk"]
+                        or c.execute("SELECT 1 FROM s2_tasks WHERE batch_id=? LIMIT 1", (b["id"],)).fetchone()
+                        or not isinstance(approval.get("session_id"), str) or not approval["session_id"]
+                        or b["session_id"] != approval["session_id"]
+                        or approval.get("run_kind") != b["run_kind"]):
+                    return False
+                run = c.execute("SELECT * FROM runs WHERE batch_id=? AND task IS NULL ORDER BY id DESC LIMIT 1",
+                                (b["id"],)).fetchone()
+                if (run is None or run["ended_at"] is None or run["id"] != approval.get("run_id")
+                        or run["session_id"] != approval["session_id"]):
+                    return False
+            if b["method"] == "c" and task is not None:
                 epoch_key = f"c_parallel_retry_epoch_{b['id']}"
                 old = c.execute("SELECT value FROM kv WHERE key=?", (epoch_key,)).fetchone()
                 try:
@@ -558,10 +576,12 @@ class Store:
                       (now, maintainer_batch_id))
             c.execute("UPDATE lines SET run=0,updated_at=? WHERE model=? AND method=?",
                       (now, m["producer"], MAINTENANCE_METHOD))
-            self._add_event(c, b["id"], f"Maintainer Issue #{issue}: evidence-bound no-code resume approved for task {task}/{row['chunk_id']}; existing task recovery path will continue", level="warn")
+            scope_text = f"task {task}/{row['chunk_id']}" if row is not None else f"serial chunk {approval['chunk']}"
+            self._add_event(c, b["id"], f"Maintainer Issue #{issue}: evidence-bound no-code resume approved for {scope_text}; existing recovery path will continue", level="warn")
             return True
 
-    def finish_no_code_recovery(self, issue: int, defect_id: int, batch_id: int, task: str) -> bool:
+    def finish_no_code_recovery(self, issue: int, defect_id: int, batch_id: int, task: str | None,
+                                *, serial_progress: bool = False) -> bool:
         """Confirm resolution only after the original failed task is durably SAVED by its existing method path."""
         now = time.time()
         with self._conn() as c:
@@ -569,9 +589,12 @@ class Store:
             d = c.execute("SELECT * FROM defects WHERE id=? AND issue_number=? AND state='RECOVERING'",
                           (defect_id, issue)).fetchone()
             b = c.execute("SELECT state,error_seq FROM batches WHERE id=?", (batch_id,)).fetchone()
-            row = c.execute("SELECT state FROM s2_tasks WHERE batch_id=? AND task=?", (batch_id, task)).fetchone()
+            row = (c.execute("SELECT state FROM s2_tasks WHERE batch_id=? AND task=?", (batch_id, task)).fetchone()
+                   if task is not None else None)
             approval = c.execute("SELECT value FROM kv WHERE key=?", (f"no_code_approval_{defect_id}",)).fetchone()
-            if (d is None or b is None or row is None or row["state"] != "SAVED" or approval is None):
+            if (d is None or b is None or approval is None
+                    or (task is not None and (row is None or row["state"] != "SAVED"))
+                    or (task is None and not serial_progress and b["state"] not in ("WAITING_REVIEW", "MERGED", "CLEANUP", "COMPLETE"))):
                 return False
             c.execute("UPDATE defects SET state='RELEASED',integrated_sha=NULL,merge_sha=NULL,fix_kind='no-code',"
                       "applied_code_sha=NULL,hold_reason=NULL,updated_at=? WHERE id=? AND state='RECOVERING'",
@@ -587,11 +610,12 @@ class Store:
             except ValueError:
                 saved = {}
             if isinstance(saved, dict):
-                saved.update(status="VERIFIED", verified_at=now, verified_task_state=row["state"],
+                saved.update(status="VERIFIED", verified_at=now,
+                             verified_task_state=(row["state"] if row is not None else "CHECKPOINT_ADVANCED"),
                              verified_batch_state=b["state"], verified_error_seq=b["error_seq"])
                 c.execute("UPDATE kv SET value=? WHERE key=?",
                           (json.dumps(saved, sort_keys=True, separators=(",", ":")), f"no_code_approval_{defect_id}"))
-            self._add_event(c, batch_id, f"Maintainer Issue #{issue}: original failed task {task} saved and recovery progress verified")
+            self._add_event(c, batch_id, f"Maintainer Issue #{issue}: original failed scope {task if task is not None else 'serial chunk'} progress verified")
             return True
 
     def hold_no_code_recurrence(self, issue: int, defect_id: int, batch_id: int, reason: str) -> bool:
