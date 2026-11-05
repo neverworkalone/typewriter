@@ -6,6 +6,7 @@ from pathlib import Path
 
 from tests.test_issue_2034_d import DWorld, REL
 from tests.fakes import HEAD2
+from warroom.adapters import classify_codex_failure
 from warroom import control, dchunk, taskruns
 
 
@@ -42,6 +43,21 @@ class ParallelDHelpers:
 
 
 class ParallelD(ParallelDHelpers, unittest.TestCase):
+    def test_fast_unavailable_blocks_a_saved_chunk_after_abnormal_exit(self):
+        w = self.world(records=25)
+        outcome = self.saver(w, 1, code=1)
+        outcome["text"] = "Fast mode is not available for this model\nChunk saved"
+        w.adapter.plan.append(outcome)
+        w.start("single", "deepseek", "d")
+        w.tick()
+        w.sup._classify_run = lambda _producer, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
+        self.finish_task(w, "001")  # the fake CLI stores the chunk before the process exits non-zero
+        w.tick()
+
+        self.assertEqual(self.tasks(w)["001"]["state"], "FAILED")
+        self.assertIn("Codex가 Fast 설정을 지원하지 않는다고 명시했습니다", json.loads(self.tasks(w)["001"]["data"])["error"])
+        self.assertEqual(w.row_()["state"], "ERROR")
+
     def test_four_slots_refill_one_by_one_and_one_pr_in_chunk_order(self):
         w = self.world()
         self.plan_all(w, range(1, 11))

@@ -28,13 +28,15 @@
       "adapter": "codex",
       "model": "gpt-6-luna",
       "effort": "high",
-      "permission_profile": "worktree"
+      "permission_profile": "worktree",
+      "fast": true
     },
     "luna-xhigh": {
       "adapter": "codex",
       "model": "gpt-6-luna",
       "effort": "xhigh",
-      "permission_profile": "worktree"
+      "permission_profile": "worktree",
+      "fast": false
     },
     "sonnet-medium": {
       "adapter": "claude",

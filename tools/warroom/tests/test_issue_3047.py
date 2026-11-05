@@ -9,6 +9,7 @@ from pathlib import Path
 
 from tests.fakes import FakeAdapter
 from tests.test_issue_1684 import S2, s2_world
+from warroom.adapters import classify_codex_failure
 from warroom import control, stage2
 from warroom.config import DEFAULTS, config_problem
 from warroom.store import SCHEMA_VERSION, Store
@@ -270,6 +271,19 @@ class ParallelStage2Recovery(Helpers, unittest.TestCase):
         w.tick()
         self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
         self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_fast_unavailable_blocks_a_complete_answer_after_nonzero_exit(self):
+        w = self.world([("s", 3)])
+        self.launch(w, 1)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.finish_code(w, task, 1, "Fast mode is not available for this model\n" + answer(drop_rows(task, 3)))
+        w.sup._classify_run = lambda _producer, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
+        w.tick()
+
+        self.assertEqual(self.tasks(w)[task]["state"], "FAILED")
+        self.assertIn("Codex가 Fast 설정을 지원하지 않는다고 명시했습니다", json.loads(self.tasks(w)[task]["data"])["error"])
+        self.assertEqual(w.store.active_batch("claude", S2)["state"], "ERROR")
 
     def test_unknown_failure_without_answer_is_preserved_not_rerun(self):
         w = self.world([("s", 3)])

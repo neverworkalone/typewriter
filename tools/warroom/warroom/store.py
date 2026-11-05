@@ -135,7 +135,8 @@ RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_toke
 # Additive migration (user_version 12, Issue #2361): best-effort/incomplete OpenCode usage quality for honest totals.
 # Additive migration (user_version 15, Issue #3349): `batches.error_seq/error_at/error_first` number each non-ERROR -> ERROR
 # transition; `defects.fix_kind/applied_code_sha` record how a merged Maintainer fix was proven applied.
-SCHEMA_VERSION = 15
+# Additive migration (user_version 16, Issue #3583): nullable per-run Codex Fast setting; old runs remain unknown.
+SCHEMA_VERSION = 16
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 MAINTENANCE_DIAGNOSIS_HOLD_PREFIX = "증거 검증 차단으로 HELD 인계"
@@ -192,6 +193,8 @@ class Store:
         for col in RUN_COLUMNS_V3 + RUN_COLUMNS_V5:
             if col not in have:
                 c.execute(f"ALTER TABLE runs ADD COLUMN {col} TEXT")
+        if "fast_mode" not in have:
+            c.execute("ALTER TABLE runs ADD COLUMN fast_mode INTEGER")
         # Legacy single-worker controls become the controls of that batch's Line.
         legacy = {r["key"]: r["value"] for r in c.execute("SELECT key,value FROM kv")}
         rows = c.execute("SELECT * FROM batches ORDER BY id").fetchall()
@@ -887,13 +890,15 @@ class Store:
     # --- run history ---
     def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file,
                 model: str | None = None, effort: str | None = None,
-                permission_profile: str | None = None, task: str | None = None) -> int:
-        """Record a launch with the model ID and effort it was pinned to (what the CLI was asked for)."""
+                permission_profile: str | None = None, task: str | None = None,
+                fast_mode: bool | None = None) -> int:
+        """Record a launch with the settings it was pinned to (what the CLI was asked for)."""
         with self._conn() as c:
             return c.execute("INSERT INTO runs(batch_id,kind,session_id,pid,log_file,exit_file,started_at,model,effort,"
-                             "permission_profile,task) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                             "permission_profile,task,fast_mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                              (batch_id, kind, session_id, pid, str(log_file), str(exit_file), time.time(),
-                              model, effort, permission_profile, task)).lastrowid
+                              model, effort, permission_profile, task,
+                              None if fast_mode is None else int(fast_mode))).lastrowid
 
     def set_run_pid(self, run_id: int, pid: int) -> None:
         with self._conn() as c:

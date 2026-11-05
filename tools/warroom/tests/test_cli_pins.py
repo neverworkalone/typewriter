@@ -113,6 +113,8 @@ class RegistryValidation(unittest.TestCase):
         self.assertEqual(run_spec(cfg_with({"m": {**LUNA, "permission_profile": "worktree"}}), "m"),
                          RunSpec("gpt-6-luna", "xhigh", "worktree"))
         self.assertEqual(run_spec(cfg_with({"m": LUNA}), "m").permission_profile, "")
+        self.assertIs(run_spec(cfg_with({"m": {**LUNA, "fast": True}}), "m").fast, True)
+        self.assertIsNone(run_spec(cfg_with({"m": {**SONNET, "fast": "ignored"}}), "m").fast)
 
     def test_effort_problem_table(self):
         for adapter, effort, ok in [("claude", "medium", True), ("claude", "", False), ("claude", "none", False),
@@ -234,7 +236,7 @@ class PinnedLaunches(unittest.TestCase):
 
     def test_resume_uses_current_model_effort_and_permission_profile_and_preserves_history(self):
         w = self.w
-        w.cfg["producers"] = {"codex": {**LUNA, "permission_profile": "worktree"}}
+        w.cfg["producers"] = {"codex": {**LUNA, "permission_profile": "worktree", "fast": True}}
         w.adapter.plan.append({"session": "session-first"})
         w.start("single", "codex", "a")
         w.tick(2)   # capture the first run's session ID
@@ -242,20 +244,23 @@ class PinnedLaunches(unittest.TestCase):
         old_run = w.store.runs(bid)[0]
         self.assertEqual((old_run["model"], old_run["effort"], old_run["permission_profile"]),
                          ("gpt-6-luna", "xhigh", "worktree"))
+        self.assertEqual(old_run["fast_mode"], 1)
 
         w.cfg["producers"]["codex"] = {"label": "Luna", "adapter": "codex", "model": "gpt-6-sol",
-                                         "effort": "high", "permission_profile": "restricted"}
+                                         "effort": "high", "permission_profile": "restricted", "fast": False}
         w.sup._launch(w.store.batch(bid), "produce_resume")
 
         self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["model"],
                           w.adapter.launches[-1]["effort"], w.adapter.launches[-1]["permission_profile"],
                           w.adapter.launches[-1]["session"]),
                          ("resume", "gpt-6-sol", "high", "restricted", "session-first"))
+        self.assertIs(w.adapter.launches[-1]["fast"], False)
         runs = w.store.runs(bid)
         self.assertEqual((runs[0]["model"], runs[0]["effort"], runs[0]["permission_profile"]),
                          ("gpt-6-sol", "high", "restricted"))
         self.assertEqual((runs[1]["model"], runs[1]["effort"], runs[1]["permission_profile"]),
                          ("gpt-6-luna", "xhigh", "worktree"))
+        self.assertEqual((runs[0]["fast_mode"], runs[1]["fast_mode"]), (0, 1))
         self.assertEqual((runs[0]["session_id"], runs[1]["session_id"]),
                          ("session-first", "session-first"))
 
@@ -275,19 +280,21 @@ class StoreV3(unittest.TestCase):
             store = Store(db)
             with store._conn() as c:
                 cols = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
-            self.assertTrue({"model", "effort"} <= cols)
+            self.assertTrue({"model", "effort", "fast_mode"} <= cols)
             run = store.runs(1)[0]
             self.assertIsNone(run["model"])
             self.assertIsNone(run["effort"])
+            self.assertIsNone(run["fast_mode"])
 
     def test_add_run_round_trips_the_pin(self):
         with tempfile.TemporaryDirectory() as d:
             store = Store(Path(d) / "warroom.db")
             bid = store.create_batch(method="a", producer="claude", shard="001", batch="01", branch="b",
                                      worktree="/w")
-            store.add_run(bid, "produce", None, 1, "l.log", "l.exit", model="sonnet", effort="medium")
+            store.add_run(bid, "produce", None, 1, "l.log", "l.exit", model="gpt-6-luna", effort="xhigh",
+                          fast_mode=True)
             run = store.runs(bid)[0]
-            self.assertEqual((run["model"], run["effort"]), ("sonnet", "medium"))
+            self.assertEqual((run["model"], run["effort"], run["fast_mode"]), ("gpt-6-luna", "xhigh", 1))
 
 
 class RelaunchSettings(unittest.TestCase):
