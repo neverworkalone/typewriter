@@ -503,15 +503,13 @@ test('recorded cursors require the exact active record, search and unconsumed LI
   assert.throws(() => resolveRecordedCursor({ cursor: null, recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [{ ...first, key: 'corrupted-key' }] }), /incomplete or malformed/u);
 
   const complete = { ...second, status: 'COMPLETE', complete: true, cursor_out: null };
-  assert.throws(() => resolveRecordedCursor({ cursor: 'next', recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [first, complete] }), (error) => {
-    assert.ok(error instanceof InvalidCursorError);
-    assert.match(error.message, /no unfinished search/u);
-    assert.match(error.message, /recorded_status=COMPLETE/u);
-    assert.doesNotMatch(error.message, /use cursor:"next"/u);
-    return true;
-  });
+  assert.equal(resolveRecordedCursor({ cursor: 'next', recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [first, complete] }), null,
+    'the next alias is an idempotent no-op after the recorded chain completes');
+  assert.throws(() => resolveRecordedCursor({ cursor: 'cursor-two', recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [first, complete] }), InvalidCursorError,
+    'a consumed concrete cursor remains invalid');
   const zero = { ...first, status: 'ZERO_HITS', hits: 0, complete: true, cursor_out: null };
-  assert.throws(() => resolveRecordedCursor({ cursor: 'next', recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [zero] }), /no unfinished search/u);
+  assert.equal(resolveRecordedCursor({ cursor: 'next', recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [zero] }), null,
+    'next is also a no-op after a completed zero-hit search');
   const failedStart = { ...first, status: 'SEARCH_FAILED', hits: 0, complete: false, cursor_in: null, cursor_out: null };
   assert.equal(resolveRecordedCursor({ cursor: null, recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [failedStart] }), null,
     'a failed first page can still be retried without a cursor');
@@ -1098,10 +1096,13 @@ withWorld('single and batch reread return context without changing evidence or d
   assert.equal(cached.result.recorded_hits, 2);
   assert.equal(cached.context_source, 'view');
   assert.match(cached.text, /context_source=view/u);
-  await assert.rejects(searchActive({
+  const staleCursor = await searchActive({
     ref: 's1', forms: ['새벽안개'], cursor: 'next', databasePath: world.options.databasePath, root: world.root,
-  }), (error) => /recorded_status=COMPLETE recorded_hits=2/u.test(error.message)
-    && /forms=\["새벽안개"\] boundary=null/u.test(error.message));
+  });
+  assert.equal(staleCursor.result.status, 'ALREADY_COMPLETE');
+  assert.equal(staleCursor.result.recorded_status, 'COMPLETE');
+  assert.equal(staleCursor.result.recorded_hits, 2);
+  assert.equal(staleCursor.result.scanned_rows, 0);
 
   const singleReread = await searchActive({
     ref: 's1', forms: ['새벽안개'], contexts: 1, reread: true,
@@ -1391,6 +1392,54 @@ withWorld('search-batch cursor next resumes its recorded cursor and rejects a mi
   const recorded = (await readFile(searchesPath, 'utf8')).trim().split('\n').map(JSON.parse)
     .filter((entry) => entry.record_id === 'w001' && entry.forms[0] === '새벽안개' && entry.source === 'search');
   assert.equal(recorded.at(-1).cursor_in, firstCursor, 'search-batch stores the resolved raw cursor');
+});
+
+withWorld('a stale LIMITED view cursor is idempotent after search-batch completes the recorded chain', async (world) => {
+  const database = new DatabaseSync(world.options.databasePath);
+  const firstRowid = database.prepare('SELECT max(paragraph_rowid) AS id FROM paragraphs').get().id + 1;
+  for (let index = 0; index < 5; index += 1) {
+    const rowid = firstRowid + index;
+    const form = `새벽안개가 더해진 문맥 ${index}.`;
+    database.prepare('INSERT INTO paragraphs VALUES (?, 1, ?, ?, ?)').run(rowid, `stale-${index}`, rowid, form);
+    database.prepare('INSERT INTO paragraph_fts(rowid, form) VALUES (?, ?)').run(rowid, form);
+  }
+  database.close();
+
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const preparedView = await view(world);
+  assert.match(preparedView, /LIMITED shown=4 next_cursor=/u);
+  const initialEvidence = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse)
+    .find((entry) => entry.record_id === 'w001' && entry.forms[0] === '새벽안개');
+  assert.equal(initialEvidence.status, 'LIMITED');
+  assert.equal(initialEvidence.hits, 4);
+
+  const continued = await searchBatchActive({
+    requests: [{ sense: 's1', forms: ['새벽안개'], cursor: 'next' }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(continued.results[0].status, 'COMPLETE');
+  const completedEvidence = await readFile(chunkPath(world, 'searches'), 'utf8');
+
+  // The view remains the prepared snapshot and still contains its consumed cursor. Retrying the documented alias
+  // must return the current terminal state without searching or appending another evidence row.
+  const staleRetry = await searchBatchActive({
+    requests: [{ sense: 's2', forms: ['새벽안개'], cursor: 'next' }],
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(staleRetry.results[0].status, 'ALREADY_COMPLETE');
+  assert.equal(staleRetry.results[0].recorded_status, 'COMPLETE');
+  assert.equal(staleRetry.results[0].scanned_rows, 0);
+  assert.deepEqual(staleRetry.results[0].contexts, []);
+  assert.equal(await readFile(chunkPath(world, 'searches'), 'utf8'), completedEvidence);
+  assert.match(await view(world), /LIMITED shown=4 next_cursor=/u);
+
+  const singleRetry = await searchActive({
+    ref: 's1', forms: ['새벽안개'], cursor: 'next',
+    databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(singleRetry.result.status, 'ALREADY_COMPLETE');
+  assert.equal(singleRetry.result.scanned_rows, 0);
+  assert.equal(await readFile(chunkPath(world, 'searches'), 'utf8'), completedEvidence);
 });
 
 withWorld('search-batch upgrades a pre-stabilization cursor on the same corpus index', async (world) => {
