@@ -42,6 +42,7 @@ def request_path(paths: Paths, defect_id: int) -> Path:
 
 def write_restart_request(paths: Paths, defect: dict, loaded_code_sha: str | None) -> Path:
     """Persist one request tied to the exact merged defect and loaded Supervisor SHA."""
+    defect = dict(defect)  # Store.defects() yields sqlite3.Row, which does not implement get().
     path = request_path(paths, defect["id"])
     current = _read_json(path)
     request = {
