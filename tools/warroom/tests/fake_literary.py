@@ -119,6 +119,29 @@ class FakeLiteraryCli:
             if diagnostic_path.is_file():
                 diagnostic = json.loads(diagnostic_path.read_text("utf-8"))
                 submission = json.loads(input_path.read_text("utf-8"))
+                if (diagnostic.get("reason") == "unshown_empty_sample"
+                        and diagnostic.get("input_sha256") == hashlib.sha256(input_path.read_bytes()).hexdigest()):
+                    target_id = (diagnostic.get("affected") or {}).get("sense_id")
+                    target = next((sense for record in cp["records"] for sense in record["senses"]
+                                   if sense["sense_id"] == target_id), None)
+                    shown = target.get("shown") if isinstance(target, dict) else None
+                    row_ids = shown.get("unit_rowids") if isinstance(shown, dict) else None
+                    total_hits = shown.get("total_hits") if isinstance(shown, dict) else None
+                    if (isinstance(row_ids, list) and isinstance(total_hits, int)
+                            and len(row_ids) == min(total_hits, 16)):
+                        for entry in submission.get("senses", []):
+                            status = ("SAMPLED_NO_VERIFIED" if entry["sense_id"] == target_id
+                                      and not entry["verified"] and not entry["candidates"] else "SUBMITTED")
+                            cp["status"][entry["sense_id"]] = status
+                            cp.setdefault("submitted", {})[entry["sense_id"]] = entry
+                            for record in cp["records"]:
+                                for sense in record["senses"]:
+                                    if sense["sense_id"] == entry["sense_id"]:
+                                        sense["submission"] = {"status": status, "candidates": entry["candidates"]}
+                        cp["output"] = None
+                        self.save(cwd, argv, cp)
+                        diagnostic_path.unlink(missing_ok=True)
+                        return Result(0, json.dumps({"status": "SAVED", "senses": len(submission["senses"])}))
                 affected = diagnostic.get("affected") or {}
                 entries = submission.get("senses") or []
                 target = entries[affected["entry_number"] - 1] if 1 <= affected.get("entry_number", 0) <= len(entries) else {}
