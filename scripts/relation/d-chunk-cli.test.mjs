@@ -169,9 +169,9 @@ withWorld('prepare shares one record search across senses and judges each sense 
   assert.equal(result.status, 'READY');
   const text = await view(world);
   assert.equal((text.match(/search: forms=새벽안개/gu) ?? []).length, 1, 'one search block per record');
-  assert.match(text, /s1 w001-s1 \[noun\] 새벽에 끼는 안개\./u);
-  assert.match(text, /s2 w001-s2 \[noun\] 비유적으로 흐릿함\./u);
-  assert.ok(text.indexOf('[1] 새벽안개') < text.indexOf('s1 w001-s1'), 'senses follow the shared contexts');
+  assert.match(text, /s1 \[record=w001\] w001-s1 \[noun\] 새벽에 끼는 안개\./u);
+  assert.match(text, /s2 \[record=w001\] w001-s2 \[noun\] 비유적으로 흐릿함\./u);
+  assert.ok(text.indexOf('[1] 새벽안개') < text.indexOf('s1 [record=w001]'), 'senses follow the shared contexts');
   const saved = await meta(world);
   assert.equal(saved.senses.length, 25 + 1); // w001 has two senses
   assert.equal(saved.view_sha256.length, 64);
