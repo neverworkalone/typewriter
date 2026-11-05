@@ -123,6 +123,11 @@ class NoCodeRecovery(unittest.TestCase):
         run_log.write_text("official save-chunk rejected task 002", "utf-8")
         if serial:
             source = w.store.batch(batch_id)
+            canonical = source_wt / dchunk.names(source).canonical
+            canonical.parent.mkdir(parents=True, exist_ok=True)
+            canonical.write_text(json.dumps({
+                "id": "w0001", "lemma": "단어", "senses": [{"id": "w0001-s1"}],
+            }) + "\n", "utf-8")
             active = dchunk.chunk_names(source, 1)
             active_path = source_wt / active.active
             active_path.parent.mkdir(parents=True, exist_ok=True)
@@ -240,10 +245,10 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertEqual(w.store.defect(defect_id)["state"], "RECOVERING")
         self.assertEqual(w.store.maintenance(101)["state"], "RECOVERING")
 
-        with mock.patch.object(dchunk, "verified_chunks", return_value=(set(), 3)):
+        with mock.patch.object(dchunk, "verified_chunks", return_value=(set(), 1)):
             w.tick()
         self.assertEqual(w.store.maintenance(101)["state"], "RECOVERING")
-        with mock.patch.object(dchunk, "verified_chunks", return_value=({1}, 3)):
+        with mock.patch.object(dchunk, "verified_chunks", return_value=({1}, 1)):
             w.tick()
         self.assertEqual(w.store.defect(defect_id)["state"], "RELEASED")
         self.assertEqual(w.store.maintenance(101)["state"], "DONE")
