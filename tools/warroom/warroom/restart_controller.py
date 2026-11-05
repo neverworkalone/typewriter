@@ -109,10 +109,22 @@ def _pid_alive(pid) -> bool:
     return True
 
 
-def _live_work_or_controls(store: Store) -> str | None:
+def _live_work_or_controls(store: Store, *, recovering_stopped_supervisor: bool = False) -> str | None:
     batches = store.incomplete_batches()
     for batch in batches:
-        if batch["pid"] is not None or store.open_task_runs(batch["id"]):
+        open_runs = [r for r in store.runs(batch["id"]) if r["ended_at"] is None]
+        def finished(run):
+            if _pid_alive(run["pid"]) or not run["exit_file"]:
+                return False
+            try:
+                int(Path(run["exit_file"]).read_text("utf-8").strip())
+                return True
+            except (OSError, ValueError):
+                return False
+        recorded_pid = batch["pid"]
+        proven = (recovering_stopped_supervisor and all(finished(r) for r in open_runs)
+                  and (recorded_pid is None or any(r["pid"] == recorded_pid for r in open_runs)))
+        if (recorded_pid is not None or open_runs) and not proven:
             return f"batch {batch['id']} still has an AI/task process or unclosed run"
     for line in store.lines():
         if line["force_stop"] or line["drain"]:
@@ -210,7 +222,7 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
     if not pending:
         return "locked", None
 
-    blocker = _live_work_or_controls(store) or _worktree_ownership_problem(paths, store)
+    blocker = _live_work_or_controls(store, recovering_stopped_supervisor=not _lock_held(paths.lock)) or _worktree_ownership_problem(paths, store)
     if blocker:
         for path, request in pending:
             _set_waiting(paths, request, blocker)
@@ -224,6 +236,8 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
             return _set_waiting(paths, pending[0][1], "live TUI runtime root does not match the operating checkout")
 
     if _lock_held(paths.lock):
+        if blocker := _live_work_or_controls(store):
+            return _set_waiting(paths, pending[0][1], blocker)
         # The supervisor is live; it may only be replaced after the exact shared tmux session and operating root pass.
         try:
             live_root = paths.runtime_root_file.read_text("utf-8").strip()

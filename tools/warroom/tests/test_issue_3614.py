@@ -398,6 +398,21 @@ class RestartHandoff(unittest.TestCase):
         self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
 
+    def test_stopped_supervisor_can_recover_proven_exited_runs(self):
+        store = mock.Mock()
+        store.incomplete_batches.return_value = [{"id": 42, "pid": 999999}]
+        store.lines.return_value = []
+        store.get.return_value = None
+        exit_file = Path(self.w.tmp.name) / "run.exit"
+        store.runs.return_value = [{"ended_at": None, "pid": 999999, "exit_file": str(exit_file)}]
+        self.assertIsNotNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
+        exit_file.write_text("0\n")
+        with mock.patch("warroom.restart_controller._pid_alive", return_value=False):
+            self.assertIsNotNone(_live_work_or_controls(store))
+            self.assertIsNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
+        with mock.patch("warroom.restart_controller._pid_alive", return_value=True):
+            self.assertIsNotNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
+
     def test_restart_request_and_loaded_sha_survive_process_boundaries(self):
         w = self.w
         defect = {"id": 91, "issue_number": 92, "batch_id": 93, "merge_sha": HEAD1}
