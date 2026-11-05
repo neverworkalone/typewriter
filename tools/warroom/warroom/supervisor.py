@@ -2079,7 +2079,7 @@ class Supervisor:
                     f"permission_profile={run.permission_profile or '(기본)'}, fast={run.fast}). "
                     "worktree와 세션을 보존합니다.",
                 )
-        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and not events:
+        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD, MAINTENANCE_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
         problem = self._preflight(b["producer"], b["method"])
@@ -2087,6 +2087,18 @@ class Supervisor:
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
             return self._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+        preclaimed_run_id = None
+        if b["method"] == MAINTENANCE_METHOD and kind.startswith("fix"):
+            # Persist assignment before spawning. A crash leaves CLAIMED evidence and never silently relaunches.
+            preclaimed_run_id = self.store.add_run(
+                b["id"], kind, None if kind == "fix_new" else sid, None, log, ex,
+                model=run.model, effort=run.effort, permission_profile=run.permission_profile, fast_mode=run.fast)
+            keys = [e["key"] for e in events]
+            self.store.claim_events(b["id"], b["pr_number"], b["head_sha"], keys, preclaimed_run_id)
+            self.store.set(f"fix_claim_{b['id']}", json.dumps({
+                "pr": b["pr_number"], "head_sha": b["head_sha"], "event_keys": keys,
+                "run_id": preclaimed_run_id, "status": "CLAIMED",
+            }, sort_keys=True))
         try:
             agent_env = self._agent_env()
         except Exception as e:
@@ -2364,9 +2376,13 @@ class Supervisor:
                                          "d_chunk_new", "ab_chunk_new"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
-        run_id = self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
-                                    model=run.model, effort=run.effort, permission_profile=run.permission_profile,
-                                    fast_mode=run.fast)
+        if preclaimed_run_id is not None:
+            run_id = preclaimed_run_id
+            self.store.set_run_pid(run_id, h.pid)
+        else:
+            run_id = self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
+                                        model=run.model, effort=run.effort, permission_profile=run.permission_profile,
+                                        fast_mode=run.fast)
         if c_recovery_marker_key is not None:
             self._c_record_recovery_launch(c_recovery_marker_key, log, run_id)
         if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
@@ -2379,7 +2395,9 @@ class Supervisor:
                 self._save_stage2_repair_state(b, repair_state)
         if events:
             keys = [e["key"] for e in events]
-            if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and kind.startswith("fix"):
+            if preclaimed_run_id is not None:
+                pass  # Maintainer assignment was durably recorded before starting the process.
+            elif b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and kind.startswith("fix"):
                 self.store.claim_events(b["id"], b["pr_number"], b["head_sha"], keys, run_id)
                 self.store.set(f"fix_claim_{b['id']}", json.dumps({
                     "pr": b["pr_number"], "head_sha": b["head_sha"], "event_keys": keys,
@@ -2574,8 +2592,16 @@ class Supervisor:
                     elif b["method"] == STAGE3_METHOD:
                         if problem := self._stage3_fix_completion_problem(b, info):
                             return self._fail(b, "ERROR", problem)
+                    elif b["method"] == MAINTENANCE_METHOD:
+                        if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
+                                or info.get("state") != "open" or info.get("merged")):
+                            return self._fail(b, "ERROR", "Maintainer PR 소유권 확인 실패. 보존합니다.")
+                        if problem := self._complete_producer_fix_events(b, info):
+                            return self._fail(b, "ERROR", problem)
                     self._to_review(b, info)
                 return
+            if b["method"] == MAINTENANCE_METHOD:
+                return self._fail(b, "ERROR", "Maintainer 수정 실행의 완료 증거가 없습니다. 자동 재실행하지 않고 보존합니다.")
             if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD):
                 return self._retry_producer_fix(b)
             return self._launch(b, self._fix_kind(b), self._events(b)[1])
@@ -3001,12 +3027,12 @@ class Supervisor:
         if b["state"] == "FIXING":
             if self._check_fix_head(b, info) != "ok":
                 return
-            if b["method"] in ("a", "b", "c", "d"):
+            if b["method"] in ("a", "b", "c", "d", MAINTENANCE_METHOD):
                 if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
                     return self._fail(b, "ERROR", "리뷰 수정 완료 PR의 번호 또는 소유 브랜치가 다릅니다. worktree·PR을 보존합니다.")
                 if info.get("state") != "open" or info.get("merged"):
                     return self._fail(b, "ERROR", "리뷰 수정 완료 시 소유 PR이 열린 상태가 아닙니다. worktree·PR을 보존합니다.")
-                if problem := self._complete_producer_fix_events(b):
+                if problem := self._complete_producer_fix_events(b, info if b["method"] == MAINTENANCE_METHOD else None):
                     return self._fail(b, "ERROR", problem)
             if b["method"] == STAGE2_METHOD:
                 if problem := self._stage2_fix_result_problem(b, info):
@@ -8259,7 +8285,7 @@ class Supervisor:
         except (TypeError, ValueError, KeyError):
             return
 
-    def _complete_producer_fix_events(self, b) -> str | None:
+    def _complete_producer_fix_events(self, b, maintainer_info=None) -> str | None:
         """A fix event is complete only after its exact run, owned PR and a new PR reply are confirmed."""
         try:
             claim = json.loads(self.store.get(f"fix_claim_{b['id']}") or "")
@@ -8284,7 +8310,11 @@ class Supervisor:
             for comment in replies:
                 body_lines = {line.strip() for line in str(comment.get("body") or "").splitlines()}
                 for key in claim["event_keys"]:
-                    if f"WarRoom-Review-Event: {key}" in body_lines:
+                    marker = "WarRoom-CI-Event" if key.startswith("ci:") else "WarRoom-Review-Event"
+                    if (f"{marker}: {key}" in body_lines
+                            and (not key.startswith("ci:") or (maintainer_info is not None
+                                 and maintainer_info.get("head_sha") != claim["head_sha"]
+                                 and f"WarRoom-CI-Fix-Head: {maintainer_info.get('head_sha')}" in body_lines))):
                         comment_id = int(comment["id"])
                         old = event_replies.get(key)
                         if old is None or (reviews._ts(comment.get("created_at")), comment_id) > old[0]:
@@ -8996,6 +9026,17 @@ class Supervisor:
                         if live:
                             self._adapter(b["producer"]).stop(b["pid"])
                         return self.maint.report(b, "review", key, raw, info)
+                if b["method"] == MAINTENANCE_METHOD:
+                    if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
+                        return self._fail(b, "ERROR", "Maintainer PR 소유권이 일치하지 않습니다. 보존합니다.")
+                    ci = self.gh.maintainer_ci_failure(b["pr_number"], info["head_sha"], b["branch"])
+                    if ci:
+                        current = self.gh.pull(b["pr_number"])
+                        if (current.get("number") != b["pr_number"] or current.get("head_ref") != b["branch"]
+                                or current.get("head_sha") != info["head_sha"] or current.get("state") != "open"
+                                or current.get("merged")):
+                            return self.store.log(b["id"], "CI 조회 중 PR이 변경되어 다음 감시에서 재확인합니다.", "warn")
+                        evs.append(ci)
                 fresh = [e for e in evs if not self.store.is_handled(b["id"], b["pr_number"], info["head_sha"], e["key"])]
                 if fresh and live:
                     # Never run two AI processes in one worktree: stop the old one, confirm exit
@@ -9023,7 +9064,7 @@ class Supervisor:
                     synced = True
                     continue   # re-read PR HEAD and review events after the FF; never act on a stale snapshot
                 self._transient_clear(f"b{b['id']}:branch_sync", b["id"])
-                if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and not live:
+                if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD, MAINTENANCE_METHOD) and not live:
                     # Older versions marked an event handled when the fix process STARTED, not when the
                     # reply was confirmed. A safe Update branch can return that failed run to REVIEW.
                     # Likewise, a stranded CLAIMED event must not launch again without operator Retry.
@@ -9047,6 +9088,10 @@ class Supervisor:
                         }, sort_keys=True))
                         return self.store.log_once(
                             b["id"], "Maintainer PR 리뷰 수정은 다른 Issue의 AI 작업이 끝난 뒤 같은 PR/HEAD에서 직렬 실행합니다.")
+                    if b["method"] == MAINTENANCE_METHOD:
+                        for event in fresh:
+                            if event.get("kind") == "ci":
+                                event["body"] += "\n" + self.gh.maintainer_ci_diagnostic(event)
                     self.store.delete(f"maintenance_review_pending_{b['id']}")
                     self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
                     self._launch(b, self._fix_kind(b), fresh)
