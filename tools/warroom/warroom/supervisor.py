@@ -213,13 +213,18 @@ class Supervisor:
             return self.cp.poll(b)   # run_kind decides: c_finalize and the singleton Candidate repair keep the serial path
         return self._poll_run(b)
 
-    # Names of the prompt templates the NEXT launch of a released batch renders, as a pure function of the batch row (#3349).
+    # Templates used by the next AI launch, if one is needed, after a released batch resumes (#3349).
     # Only the chunk kinds whose resume-vs-new choice is decided by the recorded session are modelled; every other
     # run_kind returns None = "cannot prove what is delivered" and a prompt-only fix is held, never guessed.
     _CHUNK_PROMPTS = {dchunk.METHOD: ("d_chunk_resume", ("d_chunk", "contract_d")),
                       literary.METHOD: ("c_chunk_resume", ("c_chunk", "contract_c"))}
 
     def resume_prompt_names(self, b) -> set[str] | None:
+        if (b["method"] == STAGE2_METHOD and b["run_kind"] == "s2_deterministic_finalize"
+                and b["paused_from"] == "PRODUCING" and not b["pr_number"]):
+            # Finalization can finish without AI. If it needs AI, its only launch is a new repair page, which
+            # renders s2_repair from the operating checkout; checkpoint and ownership guards still apply.
+            return {"s2_repair"}
         if b["method"] == dchunk.METHOD and b["run_kind"] == dparallel.RUN_KIND:
             return None if b["pr_number"] else self._d_parallel_resume_prompt_names(b)
         spec = self._CHUNK_PROMPTS.get(b["method"])

@@ -1439,6 +1439,23 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertIn("재개 실행에 전달되지 않음", d["hold_reason"])
         self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
 
+    def test_stage2_deterministic_finalize_releases_for_repair_prompt_only(self):
+        w = self.w
+        b, d = self.merged([self.PY, "tools/warroom/prompts/s2_repair.md"],
+                           method="s2", run_kind="s2_deterministic_finalize")
+        self.assertEqual(w.sup.resume_prompt_names(b), {"s2_repair"})
+        d = self.settle(d)
+        self.assertEqual(d["state"], "RELEASED")
+        self.assertEqual(w.store.batch(b["id"])["state"], "PRODUCING")
+
+    def test_stage2_deterministic_finalize_does_not_claim_other_prompts(self):
+        w = self.w
+        b, d = self.merged(["tools/warroom/prompts/s2_links.md"],
+                           method="s2", run_kind="s2_deterministic_finalize")
+        d = self.settle(d)
+        self.assertEqual(d["state"], "HELD")
+        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
+
     def test_parallel_d_retry_with_one_used_fix_predicts_and_launches_the_fix_prompt(self):
         from unittest import mock
         from warroom import prompts
