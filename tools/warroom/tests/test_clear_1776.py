@@ -379,6 +379,22 @@ class ClearVsSharedDefects(ClearBase):
         self.assertEqual(w.store.defect(ids["a"])["state"], "OVERRIDDEN")
         self.assertNotEqual(w.store.defect(ids["b"])["state"], "FIX_MERGED")   # b was processed (released/held), not stuck
 
+    def test_clear_reconciles_recovery_only_after_all_incidents_are_overridden(self):
+        w = self.w
+        a, b, ids = self.two_paused()
+        w.store.ensure_maintenance(200)
+        w.store.update_maintenance(200, state="RECOVERING")
+        w.store.update_defect(ids["a"], state="RECOVERING")
+        self.clear(a)
+        w.store.pin_clear("deepseek", "a")
+        self.assertEqual(w.store.maintenance(200)["state"], "RECOVERING")
+        w.store.update_defect(ids["b"], state="OVERRIDDEN")
+        # Also repairs the same persisted state left by older versions.
+        w.store.reconcile_overridden_recoveries()
+        self.assertEqual(w.store.maintenance(200)["state"], "HELD")
+        self.assertIn("OVERRIDDEN", w.store.maintenance(200)["hold_reason"])
+        self.assertFalse(any(m["issue_number"] == 200 for m, _ in control.open_maintenance(w.store)))
+
     def test_release_skips_a_defect_whose_batch_row_is_gone(self):
         w = self.w
         a, b, ids = self.two_paused()

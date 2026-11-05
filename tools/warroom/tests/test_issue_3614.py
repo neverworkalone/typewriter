@@ -92,6 +92,9 @@ class MaintainerQueue(unittest.TestCase):
         second = w.store.batch(second["id"])
         self.assertEqual(second["state"], "PRODUCING")
         self.assertTrue(w.store.maintenance_batch_open())
+        card = control.maintainer_card(w.store, w.cfg)
+        self.assertIn("#102", card["issue"])
+        self.assertIn("+1", card["issue"])
 
     def test_review_fix_waits_for_the_shared_ai_slot_and_keeps_pr_ownership(self):
         w = self.w

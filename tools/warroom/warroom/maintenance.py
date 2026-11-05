@@ -58,7 +58,7 @@ class Maintenance:
     def step(self) -> None:
         for fn in (self._intake_errors, self._publish, self._publish_issue_requests, self._reassess_external_handoffs,
                    self._start, self._track, self._release,
-                   self._verify_no_code_recoveries, self._verify_recovery_progress,
+                   self.store.reconcile_overridden_recoveries, self._verify_no_code_recoveries, self._verify_recovery_progress,
                    self._report_outcomes, self._resume_diagnoses):
             try:
                 fn()

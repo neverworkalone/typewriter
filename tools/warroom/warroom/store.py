@@ -1128,12 +1128,29 @@ class Store:
                 c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason='운영자 Clear', updated_at=? "
                           "WHERE batch_id=? AND state IN ('REPORTED','LINKED','FIX_MERGED','HELD','RECOVERING')",
                           (time.time(), req["batch_id"]))
+                self._hold_overridden_recoveries(c)
                 c.execute("UPDATE batches SET state='CLEARING', error=NULL, updated_at=? WHERE id=?",
                           (time.time(), req["batch_id"]))
                 c.execute("UPDATE lines SET run=0, drain=CASE WHEN method=? THEN drain ELSE 0 END, "
                           "force_stop=0, retry_batch=NULL, blocked='', updated_at=? WHERE model=? AND method=?",
                           (MAINTENANCE_METHOD, time.time(), model, method))
             return req
+
+    @staticmethod
+    def _hold_overridden_recoveries(c) -> None:
+        # An operator override is not proof of recovery. Close only orphaned recovery tracking,
+        # preserving the incident and the reason; never hide an unresolved sibling incident.
+        c.execute("UPDATE maintenance SET state='HELD', hold_reason=?, updated_at=? "
+                  "WHERE state='RECOVERING' "
+                  "AND EXISTS (SELECT 1 FROM defects d WHERE d.issue_number=maintenance.issue_number) "
+                  "AND NOT EXISTS (SELECT 1 FROM defects d WHERE d.issue_number=maintenance.issue_number "
+                  "AND d.state!='OVERRIDDEN')",
+                  ('연결된 incident가 모두 운영자에 의해 OVERRIDDEN', time.time()))
+
+    def reconcile_overridden_recoveries(self) -> None:
+        with self._conn() as c:
+            c.execute('BEGIN IMMEDIATE')
+            self._hold_overridden_recoveries(c)
 
     def finish_clear(self, b, audit: str) -> None:
         """One transaction: the batch row (so nothing stays claimed), its runs, review dedupe, events, request and
