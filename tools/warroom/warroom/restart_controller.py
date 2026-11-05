@@ -265,7 +265,9 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
                if (_read_json(path) or {}).get("state") not in
                ("loaded", "progress_verified", "recovery_blocked", "cancelled")]
     if not pending:
-        return "locked", None
+        # A durable loaded record outlives its process. Let the normal launcher
+        # recover a stopped Supervisor instead of mistaking that record for a lock.
+        return ("locked", None) if _lock_held(paths.lock) else None
 
     recovering = not _lock_held(paths.lock)
     blocker = (_live_work_or_controls(store, recovering_stopped_supervisor=recovering)

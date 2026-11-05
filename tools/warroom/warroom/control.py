@@ -531,6 +531,9 @@ def maintainer_card(store: Store, cfg: dict) -> dict:
     out["issue"] = head + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
     rows = [m for m in store.maintenance_rows() if f"urgent issue #{m['issue_number']} · " in items[0][0]]
     b = store.batch(rows[0]["batch_id"]) if rows and rows[0]["batch_id"] else None
+    if (rows and rows[0]["state"] in ("DONE", "RECOVERING") and rows[0]["merge_sha"]
+            and (b is None or b["state"] == "COMPLETE") and out["state"] != "ERROR"):
+        out["state"] = "COMING"
     if b is not None:   # the same actual elapsed time as every other card
         runs, now = store.runs(b["id"]), time.time()
         if runs:

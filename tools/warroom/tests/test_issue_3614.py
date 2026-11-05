@@ -62,6 +62,26 @@ class MaintainerQueue(unittest.TestCase):
             "state": "open", "labels": ["urgent"], "title": f"Issue {number}", "body": "diagnosis",
         }
 
+    def test_merged_fix_waiting_for_batch_is_coming(self):
+        from warroom import views
+        w = self.w
+        source = produce_and_report(w)
+        w.tick()
+        maint = maintainer_row(w)
+        w.store.update(maint["id"], state="COMPLETE", pid=None)
+        w.store.update_maintenance(101, state="DONE", merge_sha=HEAD1)
+        defect = w.store.defects()[0]
+        w.store.update_defect(defect["id"], state="FIX_MERGED")
+        card = control.maintainer_card(w.store, w.cfg)
+        self.assertEqual(card["state"], "COMING")
+        self.assertIn("COMING", views.maintainer_card_text(card))
+        w.store.update_maintenance(101, state="RECOVERING")
+        w.store.update_defect(defect["id"], state="RELEASED")
+        self.assertEqual(control.maintainer_card(w.store, w.cfg)["state"], "COMING")
+        w.store.update_maintenance(101, state="HELD", hold_reason="failure")
+        w.store.update_defect(defect["id"], state="HELD", hold_reason="failure")
+        self.assertEqual(control.maintainer_card(w.store, w.cfg)["state"], "ERROR")
+
     def open_pr_for(self, issue: int, pr: int) -> dict:
         w = self.w
         branch = f"maint-{issue}"
@@ -473,6 +493,20 @@ class RestartHandoff(unittest.TestCase):
     def setUp(self):
         self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
+
+    def test_loaded_request_does_not_mask_a_stopped_supervisor(self):
+        w = self.w
+        write_restart_request(w.paths, {"id": 91, "merge_sha": HEAD1}, None)
+        record_runtime(w.paths, HEAD1)
+        result = mock.Mock(returncode=0, stdout=HEAD1)
+        with mock.patch("warroom.restart_controller._git", return_value=result), \
+             mock.patch("warroom.restart_controller._ancestor", return_value=True), \
+             mock.patch("warroom.restart_controller._lock_held", return_value=True):
+            self.assertEqual(handle_pending_restart(w.paths, w.store), ("locked", None))
+        with mock.patch("warroom.restart_controller._git", return_value=result), \
+             mock.patch("warroom.restart_controller._ancestor", return_value=True), \
+             mock.patch("warroom.restart_controller._lock_held", return_value=False):
+            self.assertIsNone(handle_pending_restart(w.paths, w.store))
 
     def test_stopped_supervisor_can_consume_existing_clear_after_workers_finish(self):
         store = mock.Mock()
