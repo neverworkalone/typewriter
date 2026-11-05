@@ -400,7 +400,7 @@ class MergedFixProgress(unittest.TestCase):
         batch_id, defect_id = self.prepare_released_fix()
         w.sup.maint.step()
         proof = json.loads(w.store.get(f"defect_recovery_{defect_id}"))
-        self.assertEqual((proof["status"], w.store.maintenance(101)["state"]), (None, "RECOVERING"))
+        self.assertEqual((proof.get("status"), w.store.maintenance(101)["state"]), (None, "RECOVERING"))
 
         w.store.update_task(batch_id, "002", state="SAVED")
         w.sup.maint.step()

@@ -2819,6 +2819,39 @@ class Supervisor:
             return [cparallel.defect_path(b, row["task"]) for row in self.store.task_rows(b["id"])]
         return [stage2.task_path(row["task"], "shared-defect.json") for row in self.store.task_rows(b["id"])]
 
+    def _task_report_row(self, b, rel: str):
+        for row in self.store.task_rows(b["id"]):
+            if b["method"] == dchunk.METHOD:
+                path = dparallel.defect_path(b, row["task"])
+            elif b["method"] == literary.METHOD:
+                path = cparallel.defect_path(b, row["task"])
+            elif b["method"] == STAGE2_METHOD:
+                path = stage2.task_path(row["task"], "shared-defect.json")
+            else:
+                continue
+            if path == rel:
+                return row
+        return None
+
+    def _capture_task_report_session(self, b, rel: str) -> bool:
+        """Persist the report owner's exact session before stopping its worker for the shared-defect pause."""
+        row = self._task_report_row(b, rel)
+        if row is None:
+            return False
+        run = self.store.run(row["run_id"]) if row["run_id"] is not None else next(
+            (item for item in self.store.runs(b["id"]) if item["task"] == row["task"]), None)
+        if (run is None or run["batch_id"] != b["id"] or run["task"] != row["task"]
+                or (row["session_id"] and run["session_id"] not in (None, row["session_id"]))):
+            return False
+        session = row["session_id"] or run["session_id"] or self._adapter(b["producer"]).session_id(Path(run["log_file"]))
+        if not isinstance(session, str) or not session:
+            return False
+        if run["session_id"] != session:
+            self.store.set_run_session_by_id(run["id"], session)
+        if row["session_id"] != session:
+            self.store.update_task(b["id"], row["task"], session_id=session)
+        return True
+
     def _scan_task_reports(self, b, s2p) -> bool:
         """Shared-defect reports of parallel tasks (Stage 2 `s2-tasks/<id>/shared-defect.json`, D
         `shared-defect-NNN.json`): same stability and once-per-content rules as `_scan_report`, but ALL task workers are
@@ -2844,6 +2877,8 @@ class Supervisor:
             if live and self.store.get(sig_key) != sig:
                 self.store.set(sig_key, sig)
                 continue
+            if not self._capture_task_report_session(b, rel):
+                return True   # keep the report and task intact until its exact session can be proven
             if self.store.open_task_runs(b["id"]):
                 if not s2p.stop_workers(b) or self.store.open_task_runs(b["id"]):
                     return True   # wait for every exact worker run to close before pausing and snapshotting its owner
