@@ -337,6 +337,34 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertEqual(w.store.defect(defect["id"])["state"], "RELEASED")
         self.assertEqual(w.store.maintenance(101)["state"], "DONE")
 
+    def test_report_without_session_stops_workers_and_cannot_authorize_resume(self):
+        w = DWorld(records=50, parallel=True)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        w.ai(save=False, session=None)
+        w.ai(save=False, session="sibling-session")
+        w.tick()
+        source = w.row_()
+        self.assertGreaterEqual(len(w.store.open_task_runs(source["id"])), 2)
+        raw = json.dumps(shared_report(defect_class="d-save-boundary", summary="D task reports a shared save failure"))
+        report_path = w.wt() / dparallel.defect_path(source, "001")
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(raw, "utf-8")
+
+        self.assertFalse(w.sup._scan_task_reports(source, w.sup.dp))
+        self.assertTrue(w.sup._scan_task_reports(source, w.sup.dp))
+        self.assertTrue(w.sup._scan_task_reports(w.store.batch(source["id"]), w.sup.dp))
+        source = w.store.batch(source["id"])
+        self.assertEqual(source["state"], "PAUSED")
+        self.assertFalse(w.store.open_task_runs(source["id"]))
+        defect = w.store.defect_by_event(defects.report_event_key(source["id"], raw))
+        self.assertIsNotNone(defect)
+        owner = w.sup.maint._task_report_scope(defect, source)
+        self.assertTrue(owner is None or not owner["session_id"])
+        evidence = {"defect": {"source": "report"}, "task_report": owner,
+                    "task_report_path": dparallel.defect_path(source, "001")}
+        self.assertFalse(w.sup.maint._validate_report_task(source, evidence, {"task": "001", "chunk": "001"}))
+
     def test_restart_controller_refuses_operator_controls_and_open_workers(self):
         w = self.w
         self.assertIsNone(_live_work_or_controls(w.store))

@@ -2877,8 +2877,9 @@ class Supervisor:
             if live and self.store.get(sig_key) != sig:
                 self.store.set(sig_key, sig)
                 continue
-            if not self._capture_task_report_session(b, rel):
-                return True   # keep the report and task intact until its exact session can be proven
+            # Capture the session while its worker is still alive when possible. A missing session must not
+            # prevent stopping workers and recording the incident; the resume gate separately requires proof.
+            self._capture_task_report_session(b, rel)
             if self.store.open_task_runs(b["id"]):
                 if not s2p.stop_workers(b) or self.store.open_task_runs(b["id"]):
                     return True   # wait for every exact worker run to close before pausing and snapshotting its owner
