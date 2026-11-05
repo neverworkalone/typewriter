@@ -5254,8 +5254,24 @@ class Supervisor:
         title = prbody.s2_title(label, b["shard"], *b["batch"].split("-"))
         legacy_title = prbody.s2_legacy_title(b["shard"], *b["batch"].split("-"))   # commits made before #2838
         self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="s2_deterministic_finalize", error=None)
+        active_stage = None
+        stage_started = None
+
+        def begin_stage(name):
+            nonlocal active_stage, stage_started
+            active_stage, stage_started = name, time.monotonic()
+
+        def end_stage(status="success"):
+            nonlocal active_stage, stage_started
+            if active_stage is not None:
+                elapsed_ms = round((time.monotonic() - stage_started) * 1000)
+                self.store.log(b["id"], f"S2 finalization {b['shard']}/{b['batch']} stage={active_stage} elapsed_ms={elapsed_ms} status={status}")
+                active_stage, stage_started = None, None
+
         try:
+            begin_stage("recovery_pr_initial")
             info = self._find_recovery_pr(b)
+            end_stage()
             if info is not None:
                 if problem := self._stage2_final_pr_problem(b, info):
                     return self._fail(b, "ERROR", problem)
@@ -5307,6 +5323,7 @@ class Supervisor:
                     premerge = checkpoint.get("premerge")
                     integrated = False
                     target = self.cfg["base_branch"]
+                    begin_stage("master_sync")
                     change_point = self._stage2_change_point(b, checkpoint, wt)
                     latest = self.git.fetch_base(target)
                     if not self.git.contains(wt, latest):
@@ -5320,6 +5337,8 @@ class Supervisor:
                     if not self.git.contains(wt, latest):
                         raise IntegrationBlocked("latest master advanced during Stage 2 finalization; preserving the worktree")
                     synchronized_head = self.git.head(wt)
+                    end_stage()
+                    begin_stage("prepare_merge")
                     relation_diff = (change_point, synchronized_head) if self._relation_deletion_between(
                         change_point, synchronized_head, wt) else None
                     relation_diff_manifest = {"from": relation_diff[0], "to": relation_diff[1]} if relation_diff else None
@@ -5333,20 +5352,29 @@ class Supervisor:
                     if checkpoint is None or not isinstance(checkpoint.get("premerge"), dict) \
                             or checkpoint["premerge"].get("status") != "ready":
                         return self._fail(b, "ERROR", "trusted premerge snapshot could not be prepared")
+                    end_stage()
+                    begin_stage("preflight")
                     if self._stage2_preflight_repair(b, checkpoint):
+                        end_stage("stopped")
                         return
+                    end_stage()
                 except TRANSIENT:
                     raise
                 except (GitError, IntegrationBlocked, OSError, ValueError, KeyError, TypeError) as e:
                     return self._fail(b, "ERROR", f"Stage 2 preflight preparation failed: {e}. Worktree is preserved.")
+            begin_stage("merge")
             self.git.stage2_merge(wt, b["shard"], bb, pp)
             checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
             if checkpoint is None or not checkpoint.get("merged") or not checkpoint.get("optional_review_complete") or \
                     not isinstance(checkpoint.get("premerge"), dict) or checkpoint["premerge"].get("status") != "ready":
                 return self._fail(b, "ERROR", "merge가 완료되지 않았거나 trusted premerge snapshot이 없습니다")
+            end_stage()
+            begin_stage("part_verify")
             ok, detail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=True)
             if not ok:
                 return self._fail(b, "ERROR", f"로컬 checkpoint-bearing Part verify 실패: {detail}")
+            end_stage()
+            begin_stage("commit")
             allowed = {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"}
             changed = self.git.changed_paths(wt)
             unexpected = changed - allowed
@@ -5371,6 +5399,8 @@ class Supervisor:
                 self.store.set(commit_key, head)
             else:
                 return self._fail(b, "ERROR", f"HEAD가 finalization baseline과 달라 승인된 Stage 2 commit을 확인하지 못했습니다 ({base} / {head})")
+            end_stage()
+            begin_stage("push")
             if self.git.dirty(wt).strip():
                 return self._fail(b, "ERROR", "Stage 2 commit 뒤 worktree가 깨끗하지 않아 push를 중단합니다")
             remote = self.git.remote_head(b["branch"])
@@ -5381,16 +5411,22 @@ class Supervisor:
                 remote = self.git.remote_head(b["branch"])
             if remote != head:
                 return self._fail(b, "ERROR", f"push 뒤 원격 HEAD가 로컬 HEAD와 다릅니다 ({remote} / {head})")
+            end_stage()
+            begin_stage("recovery_pr_after_push")
             info = self._find_recovery_pr(b)
+            end_stage()
             if info is not None:
                 if problem := self._stage2_final_pr_problem(b, info):
                     return self._fail(b, "ERROR", problem)
                 return self._to_review(b, info)
             # Statistics come from the exact pushed commit: its own Part verify (no private checkpoint) and the rows
             # this Part's commit added relative to the finalization baseline, never the shard's cumulative files.
+            begin_stage("exact_head_verify")
             exact_ok, exact_detail, counts = self.git.verify_stage2_exact_counts(head, b["shard"], bb, pp)
             if not exact_ok:
                 return self._fail(b, "ERROR", f"Stage 2 PR 생성 전 정확한 HEAD verify 실패: {exact_detail}")
+            end_stage()
+            begin_stage("pr_prep_create")
             if (problem := prbody.stage2_counts_problem(counts)) is not None:
                 self.store.log(b["id"], f"Stage 2 통계를 측정하지 못해 미측정으로 표기합니다: {problem}", "warn")
             delta = self.git.row_delta(base, head, b["shard"]) if base else None
@@ -5398,13 +5434,17 @@ class Supervisor:
                                       part_verify=True, exact_verify=True)
             issue = self.gh.issue(927)
             labels = [label for label in issue.get("labels", []) if label != "batch"]
-            return self._create_pr_once(b, title, body, labels)
+            result = self._create_pr_once(b, title, body, labels)
+            end_stage("returned")
+            return result
         except TRANSIENT:
             raise
         except (GitError, DuplicateClaim, OSError, ValueError, KeyError, TypeError) as e:
             return self._fail(b, "ERROR", f"Stage 2 deterministic finalization 중단: {e}. worktree를 보존합니다.")
         except Exception as e:
             return self._fail(b, "ERROR", f"Stage 2 deterministic finalization 중단: {e}. worktree를 보존합니다.")
+        finally:
+            end_stage("failed")
 
     def _stage2_chunk_saved(self, b) -> bool:
         """Compare the current checkpoint to the saved chunk-run baseline."""
