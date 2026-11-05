@@ -508,6 +508,20 @@ def maintainer_card(store: Store, cfg: dict) -> dict:
     items = urgent_items(store, cfg)
     if not items:
         return {"state": "IDLE", "text": ""}
+    # Prefer the active AI execution, then an owned PR lifecycle, over older parked issues.
+    # Keep all other issues in the count and retain their normal detail view.
+    batches = store.maintenance_batches()
+    live = sorted((b for b in batches if b["state"] in
+                   ("PREPARE", "PRODUCING", "FIXING", "WAITING_REVIEW", "MERGED", "CLEANUP")),
+                  key=lambda b: (b["state"] not in ("PREPARE", "PRODUCING", "FIXING"), -b["id"]))
+    for b in live:
+        row = next((m for m in store.maintenance_rows() if m["batch_id"] == b["id"]), None)
+        if row is not None:
+            prefix = f"urgent issue #{row['issue_number']} · "
+            index = next((i for i, (item, _) in enumerate(items) if item.startswith(prefix)), None)
+            if index is not None:
+                items.insert(0, items.pop(index))
+                break
     text = items[0][0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
     out = {"state": "ERROR" if any(bad for _, bad in items[:1]) else "WORKING", "text": text,
            "issue": "", "pr": "", "detail": "", "elapsed": None}
