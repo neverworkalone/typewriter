@@ -1,6 +1,7 @@
 """Issue #1832 regression: Stage 2 decisions with denied tools still use deterministic finalization."""
 import unittest
 from unittest import mock
+from pathlib import Path
 
 from warroom.gitops import Git
 from warroom.shell import Result
@@ -65,7 +66,7 @@ class DeterministicStage2Completion(unittest.TestCase):
         timing = 'verify_timing {"stages":[{"stage":"total","elapsed_ms":12,"status":"success"}]}'
         runner = mock.Mock()
         runner.run.return_value = Result(0, '{"ok":true,"counts":{"missing":0}}\n', timing + "\n")
-        git = Git(runner, w.cfg.repo_root, {}, w.cfg.worktrees_dir)
+        git = Git(runner, Path("."), {}, Path("."))
         with mock.patch.object(w.git, "verify_stage2_local", side_effect=git.verify_stage2_local), \
              mock.patch.object(w.store, "log", wraps=w.store.log) as log:
             w.adapter.finish(w.adapter.launches[-1]["pid"])
