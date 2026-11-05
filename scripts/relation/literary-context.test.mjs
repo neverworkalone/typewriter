@@ -1648,19 +1648,29 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
 });
 
 test('chunk CLI accepts --skip and emits only the unseen context suffix', async () => {
-  const fixture = await makeFixture({ unitCount: 20 });
+  const fixture = await makeFixture({ unitCount: 42 });
   try {
     const first = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--contexts', '8', '--format', 'text']));
     assert.equal(first.status, 0, first.stderr);
     const initialKeys = [...first.stdout.matchAll(/^\[([A-Za-z0-9]{12})\] /gmu)].map((match) => match[1]);
     assert.equal(initialKeys.length, 8);
 
+    const activeView = Buffer.from(first.stdout);
+    await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.txt'), activeView);
+    await writeFile(path.join(fixture.scratchDirectory, 'c-active-001.json'), JSON.stringify({
+      chunk_id: '001-01-001', chunk_no: 1, sense_ids: ['sense-000001'], shard: '001', batch: '01', model: 'codex',
+      git_head: 'a'.repeat(40), view_sha256: createHash('sha256').update(activeView).digest('hex'),
+      view_bytes: activeView.byteLength,
+    }));
+
     const extra = runCli(fixture, cliChunkArgs(fixture, [
-      '--sense-ids', 'sense-000001', '--skip', '8', '--contexts', '16', '--format', 'text',
+      '--sense-ids', 'sense-000001', '--skip', '8', '--contexts', '16', '--format', 'text', '--chunk', '001',
     ]));
     assert.equal(extra.status, 0, extra.stderr);
-    for (const key of initialKeys) assert.equal(extra.stdout.includes(`[${key}]`), false);
-    assert.match(extra.stdout, /hits=20 unseen=4/u);
+    const suffixKeys = [...extra.stdout.matchAll(/^\[([A-Za-z0-9]{12})\] /gmu)].map((match) => match[1]);
+    assert.equal(suffixKeys.length, 8);
+    for (const key of initialKeys) assert.equal(suffixKeys.includes(key), false);
+    assert.match(extra.stdout, /hits=42 unseen=26/u);
     const checkpoint = await load(fixture);
     assert.equal(checkpoint.records[0].senses[0].shown.unit_rowids.length, 16);
   } finally {
