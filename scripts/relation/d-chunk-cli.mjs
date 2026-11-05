@@ -225,7 +225,7 @@ const entryOf = (recordId, forms, boundary, result, source, cursorIn = null, exa
 
 function cursorInputError(ref, reason, guidance = 'preserve') {
   const nextStep = guidance === 'no-pending'
-    ? 'check the last recorded status and exact forms/order/boundary; next is available only for an unconsumed LIMITED search'
+    ? 'check the last recorded status and exact forms/order/boundary; next resumes an unfinished LIMITED search and is a no-op after completion'
     : guidance === 'duplicate'
       ? 'an unfinished LIMITED search already exists; continue it with next under the same condition, or start only a different condition without a cursor'
       : guidance === 'batch'
@@ -659,6 +659,9 @@ export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entri
     return null;
   }
   if (requestedCursor === 'next') {
+    // The prepared view is an immutable snapshot. A continuation can finish the search while that view still shows
+    // its original LIMITED cursor, so retrying the alias must be safe and report the current terminal state.
+    if (condition.complete) return null;
     if (condition.status !== 'LIMITED') {
       const conditionText = `recorded_status=${condition.recorded_status ?? 'UNRECORDED'} recorded_hits=${condition.recorded_hits} forms=${JSON.stringify(forms)} boundary=${JSON.stringify(boundary ?? null)}`;
       throw cursorInputError(ref, `${condition.status === 'UNRECORDED' ? 'there is no recorded search' : 'there is no unfinished search'} for this condition (${conditionText})`, 'no-pending');
