@@ -4730,8 +4730,9 @@ class Supervisor:
                 if not isinstance(conflict, dict) or conflict.get("code") != "id-pair-conflict":
                     return None
                 rows = conflict.get("relations")
-                conflict_keys = conflict.get("candidate_keys")
-                if not isinstance(rows, list) or len(rows) != 2 or not isinstance(conflict_keys, list) or not conflict_keys:
+                # Admission preflight exposes candidate identities on the enclosing group.
+                conflict_keys = group_keys
+                if not isinstance(rows, list) or len(rows) != 2 or not conflict_keys:
                     return None
                 # collectMergeConflicts returns the already-approved row first and the proposed Part row second.
                 existing, proposed = rows

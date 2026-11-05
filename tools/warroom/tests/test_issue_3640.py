@@ -58,7 +58,8 @@ def duplicate_report(*, already_accounted=False, reverse_candidate=CANDIDATE, pr
                            "sense_id": TARGET_SENSE, "pos": "noun", "gloss": "target gloss"}],
         "approved_peers": [], "same_group_peers": [], "drop_gloss": [],
     }
-    conflict = {"code": "id-pair-conflict", "candidate_keys": [KEY],
+    # Match the actual admission-cli preflight shape: keys belong to the group.
+    conflict = {"code": "id-pair-conflict",
                 "relations": [existing, proposed], "message": "duplicate pair"}
     return {
         "version": 1, "type_tier_policy": "source-mirror-v1", "ok": False, "repairable": True,
