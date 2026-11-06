@@ -197,6 +197,7 @@ class Lifecycle(unittest.TestCase):
         w.start("single", "deepseek", "c")
         w.tick()
         batch = w.row("deepseek", "c")
+        w.store.set_run_session(batch["id"], "ses_c")
         event = [{"kind": "review", "author": "reviewer", "path": "data/relation-candidates/001/001_01_c_deepseek.jsonl",
                   "line": 1, "key": "review-1", "body": "Recheck the exact source sense."}]
 

@@ -101,6 +101,27 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(again["source"]["chunk_size"], 50)
         self.assertNotIn("--chunk-size", [c for c in w.runner.workbench.calls if c[2] == "prepare"][-1])
 
+    def test_changed_tier_resumes_ab_correction(self):
+        w = self.w
+        w.cfg["models"]["api"] = "p/go"
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, end=False), session="ses_1")
+        w.ai(w.block(1, end=False), session="ses_1")
+        w.tick()
+        w.store.update(w.row_()["id"], model_tier="api")
+        w.finish_last()
+        w.tick()
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["model"]),
+                         ("resume", "p/go"))
+        self.assertEqual(w.row_()["state"], "PRODUCING")
+        self.assertEqual(w.row_()["session_id"], "ses_1")
+        w.store.update(w.row_()["id"], model_tier="free")
+        w.finish_last()
+        w.tick()
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["model"]),
+                         ("resume", "p/free-x-free"))
+
     def test_missing_end_marker_wrong_chunk_and_prose_are_rejected_and_retried_in_the_same_session(self):
         w = self.w
         w.start("single", "deepseek", "a")

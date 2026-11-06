@@ -1786,7 +1786,7 @@ class Supervisor:
             return f"{adapter_label(name)} CLI 어댑터가 이 War Room 빌드에 없습니다 — 다른 CLI로 대신 실행하지 않습니다."
         return None
 
-    def _preflight(self, producer: str, method: str = "a") -> str | None:
+    def _preflight(self, producer: str, method: str = "a", tier: str | None = None) -> str | None:
         """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
         if method == STAGE3_METHOD and (problem := stage3_problem(self.cfg, producer)):
             return problem
@@ -1804,7 +1804,13 @@ class Supervisor:
             if not re.search(self.cfg.get("free_model_pattern", r"-free$"), free):
                 return f"models.free={free!r} 는 무료 모델 ID로 확인되지 않습니다 (패턴 {self.cfg.get('free_model_pattern', '-free$')})."
         try:
-            runs = self._pinned_runs(producer, role_of(method))
+            if self._tiered(producer):
+                selected = tier if tier is not None else self.store.peek_line(producer, method)["model_tier"]
+                runs = self._pinned_runs(producer, role_of(method))
+                if selected == "api":
+                    runs.append(run_spec(self.cfg, producer, selected, role_of(method)))
+            else:
+                runs = self._pinned_runs(producer, role_of(method))
         except ValueError as e:
             return str(e)
         return ad.preflight(self.runner, self.env, runs)
@@ -1879,8 +1885,8 @@ class Supervisor:
         """Every model/effort this producer may run with: both tiers of a tiered CLI (a configured Go model too)."""
         if not self._tiered(producer):
             return [run_spec(self.cfg, producer, role=role)]
-        go = registry(self.cfg)[producer]["models"].get("go")
-        return [run_spec(self.cfg, producer, "free", role)] + ([run_spec(self.cfg, producer, "go", role)] if go else [])
+        models = registry(self.cfg)[producer]["models"]
+        return [run_spec(self.cfg, producer, tier, role) for tier in ("free", "go") if tier == "free" or models.get(tier)]
 
     def _prepare_existing(self, b) -> None:
         if self._pending_gate(b):
@@ -2355,6 +2361,24 @@ class Supervisor:
         return RunSpec(r["model"], r["effort"], r["permission_profile"] or "",
                        fast=None if r["fast_mode"] is None else bool(r["fast_mode"])) if r else None
 
+    def _check_session_pin(self, b, session, run):
+        """Prove the session pin and permit configured tier transitions with unchanged permissions."""
+        if b["method"] not in ("a", "b", "c", "d") or not self._tiered(b["producer"]):
+            return
+        row = next((r for r in self.store.runs(b["id"]) if r["session_id"] == session and r["model"]), None)
+        pinned = (RunSpec(row["model"], row["effort"], row["permission_profile"] or "",
+                          fast=None if row["fast_mode"] is None else bool(row["fast_mode"])) if row else None)
+        configured = []
+        for tier in ("free", "go", "api"):
+            try:
+                configured.append(run_spec(self.cfg, b["producer"], tier, role_of(b["method"])))
+            except ValueError:
+                continue
+        compatible = (pinned in configured and run in configured and pinned is not None and
+                      pinned.permission_profile == run.permission_profile and pinned.fast == run.fast)
+        if pinned != run and not compatible:
+            raise prompts.PromptError("기존 세션의 모델·effort·권한 핀이 현재 설정과 다르거나 확인되지 않아 재개하지 않습니다")
+
     def _agent_env(self) -> dict:
         """Worker CLIs run with the normal environment (and normal Git). The Git binaries on PATH are only recorded so
         a Stage 2 chunk can have them blocked; with none found, only that chunk fails closed (`stage2_git_executables`)."""
@@ -2397,7 +2421,7 @@ class Supervisor:
         if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD, MAINTENANCE_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
-        problem = self._preflight(b["producer"], b["method"])
+        problem = self._preflight(b["producer"], b["method"], b["model_tier"])
         if problem and problem.startswith(PREFLIGHT_PENDING):
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
@@ -2426,6 +2450,10 @@ class Supervisor:
                 extra["git_dir"] = self.git.worktree_gitdir(Path(wt))
             except Exception as e:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
+        def resume_checked(session, *args, **kwargs):
+            self._check_session_pin(b, session, run)
+            return ad.resume(session, *args, **kwargs)
+
         try:
             run_env = self._launch_env(b, kind, agent_env)
             remote = "?"
@@ -2449,7 +2477,7 @@ class Supervisor:
                 self.store.set(stage3.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                 title = f"Stage 3 {b['shard']} chunk {chunk}"
                 if kind == "s3_chunk_resume":
-                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
@@ -2493,7 +2521,7 @@ class Supervisor:
                             if file_state != "current":
                                 raise prompts.PromptError("부분 수정에는 현재 pending 청크의 기존 판정 파일이 필요합니다")
                             prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail, checkpoint)
-                        h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                        h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                     else:
                         if kind == "s2_chunk_resume":
                             if not checkpoint["pending_chunk"]:
@@ -2510,7 +2538,7 @@ class Supervisor:
                                     "checkpoint_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()}
                         self.store.set(stage2.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                         if kind.endswith("_resume"):
-                            h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                            h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                         else:
                             h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
                 elif kind in ("s2_links_new", "s2_links_fix"):
@@ -2555,7 +2583,7 @@ class Supervisor:
                         if not re.fullmatch(r"[a-f0-9]{64}", baseline.get("digest", "")):
                             raise prompts.PromptError("optional-link 수정 digest 기준이 없습니다")
                         prompt = prompts.stage2_links_fix(baseline["digest"], detail, checkpoint)
-                        h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                        h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 elif kind == "s2_repair_new":
                     state = self._stage2_repair_state(b, required=True)
                     current = state.get("current")
@@ -2605,7 +2633,7 @@ class Supervisor:
                     c_recovery_marker_key = literary.no_submission_recovery_key(b["id"], baseline["chunk_id"])
                 title = f"C {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
                 if kind == "c_chunk_resume":
-                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     if kind == "c_chunk_recovery":
                         self._c_begin_recovery_launch(b, c_recovery_marker_key, log)
@@ -2621,13 +2649,13 @@ class Supervisor:
                 if not sid or diag is None:
                     raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
                 prompt = prompts.d_chunk_fix(b, rec["chunk_no"], dchunk.fix_problem(diag))
-                h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
             elif b["method"] == dchunk.METHOD and kind in ("d_chunk_new", "d_chunk_resume"):
                 prompt, baseline = self._d_chunk_prompt(b, kind, remote)
                 self.store.set(dchunk.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                 title = f"D {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
                 if kind == "d_chunk_resume":
-                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif b["method"] in stage1ab.METHODS and kind in ("ab_chunk_new", "ab_chunk_retry"):
@@ -2635,7 +2663,7 @@ class Supervisor:
                 self.store.set(stage1ab.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                 title = f"{b['method'].upper()} {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
                 if resume:
-                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif kind == "produce":
@@ -2643,7 +2671,7 @@ class Supervisor:
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
-                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
+                h = resume_checked(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             elif kind == "produce_recover":
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
                 h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run,
@@ -2655,7 +2683,7 @@ class Supervisor:
                 source_context = ""
                 if b["method"] in ("a", "b", "c", "d"):
                     source_context, fix_context_digests = self._producer_fix_context(b, events, session_id=sid)
-                h = ad.resume(sid, prompts.fix(b, events, True, source_context=source_context,
+                h = resume_checked(sid, prompts.fix(b, events, True, source_context=source_context,
                                                checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
                 context = ""

@@ -418,7 +418,7 @@ def tier_state(store: Store, cfg: dict, methods) -> str:
 
 def next_tier(state: str) -> str | None:
     """f: Free -> Go; Go or a mixed board -> Free (never silently towards paid when unsure); none -> nothing."""
-    return {"free": "go", "go": "free", "mixed": "free"}.get(state)
+    return {"free": "go", "go": "free", "api": "free", "mixed": "free"}.get(state)
 
 
 def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
@@ -426,9 +426,11 @@ def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
 
     A running AI keeps its model; the next launch (new batch, fix, recovery) uses the new tier.
     """
-    if tier not in ("free", "go"):
+    if tier not in ("free", "go", "api"):
         raise ValueError(tier)
     models = go_models(cfg)
+    if tier != "free" and any(not registry(cfg)[m]["models"].get(tier) for m in models):
+        raise ValueError(f"models.{tier}가 설정되지 않았습니다")
     for m in models:
         for me in methods:
             store.set_line(m, me, model_tier=tier)

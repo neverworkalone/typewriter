@@ -18,9 +18,11 @@
       "adapter": "opencode",
       "models": {
         "free": "opencode/deepseek-v4.1-flash-free",
-        "go": "opencode-go/deepseek-v4.1-flash"
+        "go": "opencode-go/deepseek-v4.1-flash",
+        "api": "deepseek/deepseek-flash"
       },
-      "effort": "high"
+      "effort": "low",
+      "tier_efforts": {"api": "none"}
     }
   },
   "model_profiles": {

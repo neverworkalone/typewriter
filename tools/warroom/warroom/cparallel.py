@@ -378,7 +378,7 @@ class _Round:
 
     def preflight(self):
         if self._preflight is self._unset:
-            self._preflight = self.cp.sup._preflight(self.b["producer"], self.b["method"])
+            self._preflight = self.cp.sup._preflight(self.b["producer"], self.b["method"], self.b["model_tier"])
         return self._preflight
 
 
@@ -1133,6 +1133,8 @@ class ParallelC:
                     or recovery.get("launch_started") is not False):
                 raise prompts.PromptError("legacy chunk_scope 복구 예산이 이미 사용됐거나 손상되었습니다")
             prompt = self._prompt(b, kind, rec, remaining, data)
+            if kind in (FIX, SCOPE_RECOVERY):
+                sup._check_session_pin(b, sid, run)
             if kind == SCOPE_RECOVERY:
                 recovery["launch_started"] = True
                 data["recovery"] = recovery

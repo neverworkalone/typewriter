@@ -155,6 +155,17 @@ class ParallelD(ParallelDHelpers, unittest.TestCase):
 
 
 class ParallelDCorrections(ParallelDHelpers, unittest.TestCase):
+    def test_tier_change_resumes_the_correct_task_session(self):
+        w = self.world(records=25)
+        w.adapter.plan += [self.rejecter(w, 1, "ses_1"), self.saver(w, 1, "ses_1")]
+        w.start("single", "deepseek", "d")
+        w.tick()
+        control.set_tier(w.store, w.cfg, ["d"], "go")
+        self.finish_task(w, "001")
+        w.tick()
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["session"],
+                          w.adapter.launches[-1]["model"]), ("resume", "ses_1", "p/go"))
+
     @staticmethod
     def rejecter(w, chunk, session):
         """A fake AI whose `save` was rejected: the decision file stays and the CLI's diagnostic for this chunk is written."""

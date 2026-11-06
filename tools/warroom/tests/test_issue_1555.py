@@ -1503,6 +1503,8 @@ class IncidentRecoveryProof(unittest.TestCase):
         w.store.add_tasks(b["id"], [(task, task)])
         w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
                             data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
+        w.store.add_run(b["id"], "d_chunk_new", "ses_1", None, "old.log", "old.exit",
+                        model="p/free-x-free", effort="high", task=task)
         w.store.set(dchunk.fix_key(b["id"], 1), "1")
         active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
         rejection = {"errors": ["fixture rejection"]}
@@ -1952,6 +1954,8 @@ class RealGitIntegration(unittest.TestCase):
         wt = str(self.wt)
         bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch="a-x-001-01", worktree=wt)
         w.store.update(bid, state="PRODUCING", session_id="ses_1")
+        w.store.add_run(bid, "produce_new", "ses_1", None, "old.log", "old.exit",
+                        model="p/free-x-free", effort="high")
         (self.wt / "partial.jsonl").write_text("p\n")
         did = w.store.report_defect(bid, "k", "report", "span-in-jsonl-form", "REPORTED", "{}", "shared_defect", "paused")
         sha = self.land_fix()

@@ -154,6 +154,15 @@ class ParallelC(Helpers, unittest.TestCase):
 
 
 class ParallelCCorrections(Helpers, unittest.TestCase):
+    def test_tier_change_resumes_the_correct_task_session(self):
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        control.set_tier(w.store, w.cfg, ["c"], "go")
+        self._finish_rejected(w, "001", submits=1)
+        w.tick()
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["model"]), ("resume", "p/go"))
+
     def _rejected(self, w, task):
         ids = self.sense_ids(w, task)
         submit = w.wt() / f".warroom-scratch/c-chunk-{task}.submit.json"

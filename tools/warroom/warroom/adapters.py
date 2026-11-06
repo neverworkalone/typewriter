@@ -415,9 +415,9 @@ class OpenCodeAdapter(ProcessAdapter):
         answered = any(isinstance(e, dict) and e.get("type") == "text" for e in events)
         provider_reached = any(isinstance(e, dict) and e.get("type") == "error"
                                and str((e.get("error") or {}).get("type", "")).startswith("provider.") for e in events)
-        if answered or provider_reached:
+        if answered or (provider_reached and not run.model.startswith("deepseek/")):
             return None
-        detail = (res.err or res.out).strip()[:200]
+        detail = "제공자 인증 또는 요청 실패" if run.model.startswith("deepseek/") else (res.err or res.out).strip()[:200]
         return (f"OpenCode가 {run.model}#{run.effort}의 추론 수준을 확인하지 못했습니다 (exit {res.code}: {detail}) — "
                 "검증되지 않은 설정으로 실행하지 않습니다.")
 

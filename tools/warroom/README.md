@@ -58,3 +58,9 @@ workers>1 Supervisor의 모든 정상 Restart는 AI가 0개여도 `RUNNING → D
 - READY 이후 접수된 Stop/Clear는 영속 요청으로 남아 새 Supervisor가 처리합니다. 수동 강제 종료·비정상 종료는 정상 Restart가 아니며, 새 instance가 시작 시 Git/Node fence 스캔으로 복구합니다.
 
 프롬프트·설정·Supervisor는 검증된 **운영 메인 checkout**에서만 읽습니다. 임시 worktree로 대체하지 않습니다. **`.local/` 삭제, DB 수동 초기화, 강제 프로세스 종료, 코드 리로드 목적의 Retry는 금지합니다.** 장애나 재시작 지연 사유는 TUI의 Supervisor 상태·Audit Log에서 확인합니다.
+
+DeepSeek 공식 API를 사용하려면 OpenCode에서 `/connect`로 DeepSeek를 등록하고
+`opencode models`에서 `deepseek/deepseek-flash`를 확인한다. 인증 정보는 OpenCode의
+인증 저장소 또는 승인된 환경 변수에만 저장한다. `config.example.json`의 `models.api`와
+`tier_efforts.api`를 참고해 로컬 설정에 추가하면 `f` 선택 창에서 API를 선택할 수 있다.
+API의 `none`은 별도 override이며 Free/Go는 기존 `effort`를 상속한다.
