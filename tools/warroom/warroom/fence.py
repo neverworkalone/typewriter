@@ -234,9 +234,13 @@ class Fence:
         return self.group_verdict(entry)
 
     def terminate(self, entry: dict) -> Verdict:
-        """TERM -> grace -> KILL -> re-judge, for a group whose identity is confirmed. Never for UNKNOWN."""
+        """TERM -> grace -> KILL -> re-judge, for a group whose identity is confirmed. Identity is re-judged before EACH
+        signal and throughout the grace: anything but ALIVE stops signalling and keeps the fence (UNKNOWN)."""
         pgid = entry["pgid"]
         for sig, wait in ((signal.SIGTERM, self.grace), (signal.SIGKILL, self.grace)):
+            verdict = self._settled(entry)
+            if verdict.state != ALIVE:   # never signal a group whose identity is no longer confirmed
+                return verdict
             try:
                 self._killpg(pgid, sig)
             except ProcessLookupError:
@@ -250,6 +254,15 @@ class Fence:
                 time.sleep(0.05)
         verdict = self.group_verdict(entry)
         return verdict if verdict.state != ALIVE else Verdict(UNKNOWN, f"pgid {pgid} survived TERM/KILL")
+
+    def _settled(self, entry: dict) -> Verdict:
+        """Judge now; an UNKNOWN right after a signal may be the reaping instant, so allow a short settling window."""
+        verdict = self.group_verdict(entry)
+        end = self._mono() + min(self.grace, 1.0)
+        while verdict.state == UNKNOWN and self._mono() < end:
+            time.sleep(0.05)
+            verdict = self.group_verdict(entry)
+        return verdict
 
     def _entry_resources(self, entry) -> list[str]:
         res = entry.get("resources") if isinstance(entry, dict) else None

@@ -253,7 +253,7 @@ class ResourceBindingTests(Harness):
         (wts / "a").mkdir(parents=True)
         r = FencedRunner(Runner(), self.next_instance(), wts)
         verify, repo = OrderedLock(3, name="verify"), OrderedLock(4, reentrant=True, name="repo")
-        self.assertEqual(r.resources(wts / "a"), {"worktree:a"})
+        self.assertEqual(r.resources(wts / "a"), {"worktree:a", "repo"})
         self.assertEqual(r.resources(self.root), {"repo"}, "unprovable independence is the repository")
         with verify:
             self.assertEqual(r.resources(self.root), {"verify"})
@@ -381,6 +381,38 @@ class VerdictTests(Harness):
         self.assertEqual(f.previous_unresolved(), [])
         self.assertFalse(marker.exists())
         self.assertFalse(old.exists(), "an empty past instance directory is removed")
+
+
+class TerminateRegressionTests(Harness):
+    def test_no_kill_after_term_when_identity_is_lost(self):
+        entry = VerdictTests.entry(self)
+        sent = []
+        rows = [[row(4242, 4242)]]   # judged ALIVE before TERM, then the leader is gone and a member remains
+
+        def ps():
+            return rows[0]
+
+        def killpg(pgid, sig):
+            sent.append(sig)
+            if sig == signal.SIGTERM:
+                rows[0] = [row(4300, 4242)]
+        f = Fence(self.children, ps=ps, killpg=killpg, grace=0.3)
+        v = f.terminate(entry)
+        self.assertEqual(v.state, UNKNOWN)
+        self.assertNotIn(signal.SIGKILL, sent)
+        self.assertEqual(sent.count(signal.SIGTERM), 1)
+
+    def test_lock_free_worktree_command_fence_blocks_other_repo_access(self):
+        wts = self.root / "wts"
+        (wts / "a").mkdir(parents=True)
+        fence = self.next_instance()
+        r = FencedRunner(Runner(), fence, wts)
+        fence._hold(self.root / "m.json", {"resources": sorted(r.resources(wts / "a")), "pid": 1, "pgid": 2}, "old",
+                    fence_mod.Verdict(UNKNOWN, "x"))
+        with self.assertRaises(ResourceFenced):
+            r.run(["git", "--version"], cwd=self.root)   # another repo access
+        with self.assertRaises(ResourceFenced):
+            r.run(["git", "--version"], cwd=wts / "a")
 
 
 class StartupAndInterfaceTests(Harness):

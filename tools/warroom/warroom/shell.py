@@ -100,6 +100,7 @@ class FencedRunner:
                 owned = None
         if owned:
             found.add(f"worktree:{owned}")
+            found.add("repo")   # a worktree command shares the object store/refs (fetch, child git): never provably independent
         return found or {"repo"}
 
     def run(self, argv, cwd=None, env=None, input=None, timeout=120) -> Result:
