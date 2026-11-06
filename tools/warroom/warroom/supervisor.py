@@ -2700,6 +2700,7 @@ class Supervisor:
                                 "checkpoint_sha256": hashlib.sha256(cp_path.read_bytes()).hexdigest(),
                                 "amend_revision": checkpoint.get("amend_revision", 0)}
                     self.store.set(f"s2_fix_start_{b['id']}", json.dumps(baseline, sort_keys=True))
+                    self.store.delete(f"s2_unpushed_fix_resume_{b['id']}")
                 h = ad.start(prompts.fix(b, events, False, source_context=context, checkpoint=checkpoint), wt, run_env, run,
                                        f"PR {b['pr_number']} fix", log, ex, **extra)
         except prompts.PromptError as e:   # rendered before any process is started
@@ -2945,6 +2946,8 @@ class Supervisor:
                 return
             if b["method"] == MAINTENANCE_METHOD:
                 return self._fail(b, "ERROR", "Maintainer 수정 실행의 완료 증거가 없습니다. 자동 재실행하지 않고 보존합니다.")
+            if b["method"] == STAGE2_METHOD and b["run_kind"] == "fix_resume" and self.store.get(f"s2_unpushed_fix_resume_{b['id']}"):
+                return self._fail(b, "ERROR", "Stage 2 리뷰 수정 재개 결과가 확인되지 않아 새 세션을 시작하지 않습니다. worktree와 PR을 보존합니다.")
             if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD):
                 return self._retry_producer_fix(b)
             return self._launch(b, self._fix_kind(b), self._events(b)[1])
@@ -9100,6 +9103,37 @@ class Supervisor:
         return old
 
     # ---- FIXING: is the fix really on the PR? ------------------------------
+    def _resume_unpushed_stage2_fix(self, b, info, local: str) -> bool:
+        """One same-session continuation of a completed fix that left an owned commit unpushed."""
+        if b["method"] != STAGE2_METHOD or b["run_kind"] != "fix_new" or not b["session_id"]:
+            return False
+        try:
+            baseline = json.loads(self.store.get(f"s2_fix_start_{b['id']}") or "")
+            last = self._last_run(b)
+            wt = Path(b["worktree"])
+            key = f"s2_unpushed_fix_resume_{b['id']}"
+            if (not isinstance(baseline, dict) or baseline.get("branch") != b["branch"]
+                    or baseline.get("worktree") != str(wt) or baseline.get("head") != info.get("head_sha")
+                    or info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
+                    or info.get("state") != "open" or info.get("merged") or self.store.get(key)
+                    or not self._verified_fix_exit(b) or last is None or last["kind"] != "fix_new"
+                    or last["session_id"] != b["session_id"] or self.git.registered(wt) != b["branch"]
+                    or not self.git.is_ancestor(info["head_sha"], local, path=wt)):
+                return False
+            current = self.gh.pull(b["pr_number"])
+            if (current.get("number") != info["number"] or current.get("head_ref") != b["branch"]
+                    or current.get("head_sha") != info["head_sha"] or current.get("state") != "open"
+                    or current.get("merged") or self.git.remote_head(b["branch"]) != info["head_sha"]
+                    or self.git.head(wt) != local or self.git.dirty(wt).strip()):
+                return False
+            # Persist before launch: a crash or failed resume must never grant another automatic attempt.
+            self.store.set(key, str(last["id"]))
+            self.store.log(b["id"], "미push Stage 2 수정 커밋을 보존하고 동일 리뷰 수정 세션을 한 번 이어갑니다.", "warn")
+            self._launch(b, "fix_resume", [])
+            return True
+        except (TypeError, ValueError, KeyError):
+            return False
+
     def _check_fix_head(self, b, info) -> str:
         """Accept a fix only on the owned PR; safely follow an Update branch fast-forward before returning to review."""
         key, wt = f"headlag_{b['id']}", Path(b["worktree"])
@@ -9135,6 +9169,8 @@ class Supervisor:
             if remote == local:
                 return self._head_lag_wait(
                     b, key, f"원격에는 local HEAD {local[:10]}이 있지만 PR API HEAD는 {info['head_sha'][:10]}입니다")
+            if remote == info["head_sha"] and self._resume_unpushed_stage2_fix(b, info, local):
+                return "stop"
             if remote != info["head_sha"]:
                 # A stale PR API can briefly trail an Update branch push. Re-read once before classifying
                 # an unrelated origin SHA as divergence; only a PR now pointing at that exact SHA may sync.
@@ -9431,6 +9467,8 @@ class Supervisor:
     def _run_failed(self, b, code: int) -> None:
         cls = self._classify_run(b["producer"], b["log_file"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
+        if b["state"] == "FIXING" and b["method"] == STAGE2_METHOD and b["run_kind"] == "fix_resume":
+            return self._fail(b, "ERROR", "Stage 2 리뷰 수정 세션 재개 실패. 새 세션을 시작하지 않고 worktree와 PR을 보존합니다.")
         # A stored chunk can outlive an ordinary non-zero exit, but it never converts a known authentication,
         # quota, or run-pin failure into success.
         safe_to_accept_stored = cls not in ("effort", "auth", "usage_limit", "free_quota", "fast_unavailable")
