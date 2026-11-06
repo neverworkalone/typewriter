@@ -604,6 +604,11 @@ class Supervisor:
                       literary.METHOD: ("c_chunk_resume", ("c_chunk", "contract_c"))}
 
     def resume_prompt_names(self, b) -> set[str] | None:
+        if (b["method"] == STAGE2_METHOD and b["run_kind"] in ("fix_new", "fix_resume")
+                and b["paused_from"] == "FIXING" and b["pr_number"]):
+            # Every Stage 2 review-fix launch renders these templates, whether it starts a fresh
+            # session or resumes the verified unpushed fix. Other gates may still prevent launch.
+            return {"fix", "s2_policy_card"}
         if (b["method"] == STAGE2_METHOD and b["run_kind"] == "s2_repair_new"
                 and b["paused_from"] == "PRODUCING" and not b["pr_number"]):
             try:
