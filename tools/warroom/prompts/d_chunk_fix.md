@@ -9,3 +9,5 @@
 `line N` 같은 순수 출력 형식 오류라면 기존 판정 의미를 보존하고 지목된 줄의 형식만 바로잡는다.
 
 {{problem}}
+
+재열람의 `search_status=LIMITED`는 새 표본 호출의 한계이며 기록된 완료 상태를 바꾸지 않는다. `recorded_status`가 완료이면 `cursor:next`로 재열람을 이어가지 않는다. 이때 `ALREADY_COMPLETE`는 정상이다.

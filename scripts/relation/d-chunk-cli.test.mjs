@@ -653,6 +653,27 @@ test('search-batch binds a sense ref to its Canonical sense owner instead of a s
   assert.deepEqual(evidence.map((entry) => entry.record_id), ['w88716']);
 });
 
+test('shared rereads bind recorded completion and hits to each record', () => {
+  const records = [rec('w1', '난주', [['noun', '첫 뜻.']]), rec('w2', '난주', [['noun', '둘째 뜻.']])];
+  const meta = { senses: records.map((record, index) => ({ ref: `s${index + 1}`, record_id: record.id,
+    sense_id: `${record.id}-s1`, auto: false })) };
+  const complete = (recordId, status, hits) => ({ ...cursorEvidence(recordId, ['난주'], null, null),
+    status, hits, complete: true });
+  const priorEntries = [complete('w1', 'COMPLETE', 3), complete('w2', 'ZERO_HITS', 0)];
+  const before = JSON.stringify(priorEntries);
+  const search = () => ({ result: { status: 'LIMITED', items: [{ paragraph_rowid: 1, excerpt: '문맥' }],
+    next_cursor: 'sample', scanned_rows: 1 } });
+  const { output, evidence } = buildSearchBatch({ requests: [
+    { sense: 's1', reread: true, contexts: 1 }, { sense: 's2', reread: true, contexts: 1 },
+  ], meta, records, search, priorEntries });
+  assert.deepEqual(output.requests.map(({ record_id, result_id }) => [record_id, result_id]), [['w1', 'q1'], ['w2', 'q2']]);
+  assert.deepEqual(output.results.map(({ status, search_status, recorded_status, recorded_hits }) =>
+    [status, search_status, recorded_status, recorded_hits]),
+  [['REREAD', 'LIMITED', 'COMPLETE', 3], ['REREAD', 'LIMITED', 'ZERO_HITS', 0]]);
+  assert.deepEqual(evidence, []);
+  assert.equal(JSON.stringify(priorEntries), before);
+});
+
 test('search-batch resolves recorded cursors and leaves actual SEARCH_FAILED intact', () => {
   const records = [rec('w1', '난주', [['noun', '첫 뜻.'], ['noun', '둘째 뜻.']]), rec('w2', '난주', [['noun', '다른 record.']])];
   const metaValue = { senses: [
@@ -1225,6 +1246,8 @@ withWorld('single and batch reread return context without changing evidence or d
   });
   assert.equal(singleReread.result.status, 'REREAD');
   assert.equal(singleReread.result.search_status, 'LIMITED');
+  assert.equal(singleReread.result.recorded_status, 'COMPLETE');
+  assert.match(singleReread.text, /reread sample only/u);
   assert.equal(singleReread.result.items.length, 1);
   assert.equal(singleReread.result.next_cursor, null, 'unrecorded reread cursor is not exposed');
   assert.equal(singleReread.decision_state.state, cached.decision_state.state);
@@ -1235,6 +1258,11 @@ withWorld('single and batch reread return context without changing evidence or d
     databasePath: world.options.databasePath, root: world.root,
   });
   assert.equal(batchReread.results[0].status, 'REREAD');
+  assert.equal(batchReread.results[0].search_status, 'LIMITED');
+  assert.equal(batchReread.results[0].recorded_status, 'COMPLETE');
+  assert.equal(batchReread.results[0].recorded_hits, 2);
+  const afterReread = await searchActive({ ref: 's1', forms: ['새벽안개'], cursor: 'next', databasePath: world.options.databasePath, root: world.root });
+  assert.equal(afterReread.result.status, 'ALREADY_COMPLETE');
   assert.equal(batchReread.requests[0].decision_state.state, cached.decision_state.state);
   assert.equal(await readFile(searchesPath, 'utf8'), before, 'batch reread writes no evidence');
 });
