@@ -303,6 +303,12 @@ class Store:
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
                       "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
 
+    def commit_ab_rejection(self, batch_id: int, key: str, value: str) -> None:
+        """Commit a rejected answer and its exit outcome together; retain its boundary until the next launch."""
+        with self._conn() as c:
+            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+            c.execute("DELETE FROM kv WHERE key=?", (exit_verdict_key(batch_id),))
+
     # --- restart_phase: {instance, phase, request, seq}, changed only by an exact-match CAS (#3774) ---
     def restart_phase(self) -> dict | None:
         raw = self.get(RESTART_PHASE_KEY)
