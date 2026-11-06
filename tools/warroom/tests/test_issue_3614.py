@@ -554,7 +554,8 @@ class RestartHandoff(unittest.TestCase):
             self.assertIn("unclosed run", json.loads(request.read_text())["blocker"])
             self.assertFalse(launch.called)
             exit_file.write_text("0\n")
-            with mock.patch("warroom.restart_controller._lock_held", return_value=True):
+            with mock.patch("warroom.restart_controller._lock_held", return_value=True), \
+                 mock.patch("warroom.restart_controller._is_serial_runtime", return_value=True):   # a live workers=1 Supervisor
                 handle_pending_restart(w.paths, store)
             self.assertIn("unclosed run", json.loads(request.read_text())["blocker"])
             self.assertFalse(launch.called)

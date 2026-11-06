@@ -58,18 +58,34 @@ class LaunchGate:
                     self._active -= 1
                     self._condition.notify_all()
 
-    def close(self):
+    def begin_close(self):
+        """Non-blocking close: from return on, every new permit is denied. Existing permits keep running; poll `drained`
+        and call `end_close()` once it is True. `close()` is this plus the wait, for callers that may block."""
         if self.held():
             raise RuntimeError('cannot close the launch gate while holding its permit')
         with self._condition:
             self._closing += 1
             self._open = False
             self._condition.notify_all()
-            try:
+
+    @property
+    def drained(self):
+        """True when no permit is active (meaningful only after `begin_close`: new permits are denied by then)."""
+        with self._condition:
+            return self._active == 0
+
+    def end_close(self):
+        with self._condition:
+            self._closing -= 1
+            self._condition.notify_all()
+
+    def close(self):
+        self.begin_close()
+        try:
+            with self._condition:
                 self._condition.wait_for(lambda: self._active == 0)
-            finally:
-                self._closing -= 1
-                self._condition.notify_all()
+        finally:
+            self.end_close()
 
     def open(self):
         """Reopen only after all close callers have observed the drained gate."""

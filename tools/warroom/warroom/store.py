@@ -138,6 +138,7 @@ RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_toke
 # Additive migration (user_version 16, Issue #3583): nullable per-run Codex Fast setting; old runs remain unknown.
 SCHEMA_VERSION = 16
 
+RESTART_PHASE_KEY = "restart_phase"
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 MAINTENANCE_DIAGNOSIS_HOLD_PREFIX = "증거 검증 차단으로 HELD 인계"
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -301,6 +302,38 @@ class Store:
         with self._conn() as c:
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
                       "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+
+    # --- restart_phase: {instance, phase, request, seq}, changed only by an exact-match CAS (#3774) ---
+    def restart_phase(self) -> dict | None:
+        raw = self.get(RESTART_PHASE_KEY)
+        try:
+            value = json.loads(raw) if raw else None
+        except ValueError:
+            return None
+        return value if isinstance(value, dict) else None
+
+    def begin_restart_phase(self, instance: str) -> dict:
+        """A new instance supersedes whatever an earlier instance left: its READY/STOPPING proves nothing about this one."""
+        value = {"instance": instance, "phase": "RUNNING", "request": "", "seq": 0}
+        self.set(RESTART_PHASE_KEY, json.dumps(value, sort_keys=True))
+        return value
+
+    def cas_restart_phase(self, expect: dict, phase: str, request: str) -> dict | None:
+        """Move `expect` to `phase` iff the stored value is exactly `expect` (one BEGIN IMMEDIATE winner). seq increases on
+        every change. Returns the new value, or None when another actor won."""
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            row = c.execute("SELECT value FROM kv WHERE key=?", (RESTART_PHASE_KEY,)).fetchone()
+            try:
+                current = json.loads(row["value"]) if row else None
+            except ValueError:
+                current = None
+            if current != expect:
+                return None
+            new = {"instance": expect["instance"], "phase": phase, "request": request, "seq": expect["seq"] + 1}
+            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                      (RESTART_PHASE_KEY, json.dumps(new, sort_keys=True)))
+            return new
 
     def kv_prefix(self, prefix: str) -> list:
         with self._conn() as c:
