@@ -281,12 +281,39 @@ class Store:
                 c.execute(f"ALTER TABLE defects ADD COLUMN {col}")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
+    @staticmethod
+    def _ensure_wal(conn) -> None:
+        busy_codes = (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+        try:
+            mode = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+        except sqlite3.OperationalError as exc:
+            code = getattr(exc, "sqlite_errorcode", None)
+            if code is None or (code & 0xFF) not in busy_codes:
+                raise
+            mode = None
+        if mode is not None and str(mode[0]).lower() == "wal":
+            return
+
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            time.sleep(0.01)
+            try:
+                mode = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+            except sqlite3.OperationalError as exc:
+                code = getattr(exc, "sqlite_errorcode", None)
+                if code is None or (code & 0xFF) not in busy_codes:
+                    raise
+                continue
+            if mode is not None and str(mode[0]).lower() == "wal":
+                return
+        raise sqlite3.OperationalError("War Room database did not enter WAL mode")
+
     @contextmanager
     def _conn(self):
         conn = sqlite3.connect(self.path, timeout=30)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
         try:
+            self._ensure_wal(conn)
             with conn:
                 yield conn
         finally:
