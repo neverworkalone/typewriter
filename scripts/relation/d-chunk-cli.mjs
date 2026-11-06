@@ -820,7 +820,8 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     }
     recordConditions.set(recordCondition, exactRequestKey);
     const mode = reread ? 'reread' : condition.complete ? 'cached' : 'search';
-    const groupKey = JSON.stringify([mode, mode === 'cached' ? record.id : null, exactRequestKey]);
+    const groupKey = JSON.stringify([mode, mode === 'cached' ? record.id : null, exactRequestKey,
+      mode === 'reread' ? [condition.recorded_status, condition.recorded_hits] : null]);
     let group = groups.get(groupKey);
     if (!group) {
       group = {
