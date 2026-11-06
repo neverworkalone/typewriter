@@ -2387,7 +2387,7 @@ class Supervisor:
         return env
 
     @_single_launch_scope
-    def _launch(self, b, kind: str, events=None) -> None:
+    def _launch(self, b, kind: str, events=None, *, s2_resume_run_id=None) -> None:
         """Launch one run with the current effective settings; Stage 2/3 use bounded review-fix prompts."""
         if (b["method"] == STAGE2_METHOD and str(b["run_kind"] or "").startswith("s2_reconcile|")
                 and isinstance(kind, str) and kind.startswith("fix")):
@@ -2452,6 +2452,12 @@ class Supervisor:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
         def resume_checked(session, *args, **kwargs):
             self._check_session_pin(b, session, run)
+            if s2_resume_run_id is not None:
+                key = f"s2_unpushed_fix_resume_{b['id']}"
+                if kind != "fix_resume" or b["method"] != STAGE2_METHOD or self.store.get(key):
+                    raise prompts.PromptError("Stage 2 리뷰 수정 재개가 이미 사용되었거나 대상이 다릅니다")
+                # The launch gate covers this write and spawn. A crash or failed spawn consumes the attempt.
+                self.store.set(key, str(s2_resume_run_id))
             return ad.resume(session, *args, **kwargs)
 
         try:
@@ -9126,10 +9132,8 @@ class Supervisor:
                     or current.get("merged") or self.git.remote_head(b["branch"]) != info["head_sha"]
                     or self.git.head(wt) != local or self.git.dirty(wt).strip()):
                 return False
-            # Persist before launch: a crash or failed resume must never grant another automatic attempt.
-            self.store.set(key, str(last["id"]))
-            self.store.log(b["id"], "미push Stage 2 수정 커밋을 보존하고 동일 리뷰 수정 세션을 한 번 이어갑니다.", "warn")
-            self._launch(b, "fix_resume", [])
+            # _launch records the attempt immediately before spawn, after any asynchronous preflight wait.
+            self._launch(b, "fix_resume", [], s2_resume_run_id=last["id"])
             return True
         except (TypeError, ValueError, KeyError):
             return False
