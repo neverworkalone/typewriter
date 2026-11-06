@@ -190,8 +190,9 @@ def _closed_store_connection():
 @contextmanager
 def _store_initialization_lock(path: Path):
     """Serialize only first-open/schema setup; Worker connections remain short-lived and independent."""
+    lock_path = path.with_name(path.name + ".init.lock")
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o666)
     if fcntl is not None:
-        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o666)
         try:
             fcntl.flock(fd, fcntl.LOCK_EX)
             try:
@@ -202,9 +203,7 @@ def _store_initialization_lock(path: Path):
             os.close(fd)
         return
 
-    # Windows has no fcntl.flock. A persistent one-byte sidecar preserves the same auto-released process lock.
-    lock_path = path.with_name(path.name + ".init.lock")
-    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o666)
+    # Windows has no fcntl.flock. The persistent sidecar gives msvcrt a byte range to lock.
     try:
         if os.fstat(fd).st_size == 0:
             os.write(fd, b"\0")
