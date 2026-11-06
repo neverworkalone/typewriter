@@ -479,14 +479,14 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertIsNone(_live_work_or_controls(w.store))
         w.store.line("deepseek", "a")
         w.store.set_line("deepseek", "a", drain=1)
-        self.assertIn("Stop/Drain", _live_work_or_controls(w.store))
-        w.store.set_line("deepseek", "a", drain=0)
+        self.assertIsNone(_live_work_or_controls(w.store))
         w.store.set_line("deepseek", "a", force_stop=1)
-        self.assertIn("Stop/Drain", _live_work_or_controls(w.store))
+        self.assertIn("Stop", _live_work_or_controls(w.store))
         self.assertIsNone(_live_work_or_controls(w.store, recovering_stopped_supervisor=True))
         self.assertEqual(w.store.line("deepseek", "a")["force_stop"], 1)
         w.store.set_line("deepseek", "a", drain=1)
-        self.assertIn("Stop/Drain", _live_work_or_controls(w.store, recovering_stopped_supervisor=True))
+        self.assertIsNone(_live_work_or_controls(w.store, recovering_stopped_supervisor=True))
+        self.assertEqual(w.store.line("deepseek", "a")["drain"], 1)
 
 
 class RestartHandoff(unittest.TestCase):

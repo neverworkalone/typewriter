@@ -226,6 +226,11 @@ class SharedDefectTaskDeferral(ParallelCHelpers, unittest.TestCase):
         self.addCleanup(fence.close)
         w.sup.begin_instance()
 
+        drained_line = ("idle", "a")
+        w.store.line(*drained_line)
+        w.store.set_line(*drained_line, run=1)
+        w.store.request_drain(*drained_line, True)
+
         w.start("single", "deepseek", "c")
         drive.cycle()  # one task run starts
         b = w.row("deepseek", "c")
@@ -259,7 +264,7 @@ class SharedDefectTaskDeferral(ParallelCHelpers, unittest.TestCase):
         with mock.patch.object(w.sup, "_wait_operator", side_effect=hold_current_worker):
             drive.cycle(wait_workers=False)  # keep one pre-drain C Worker outstanding
             self.assertTrue(entered.wait(5))
-            rc.write_restart_request(w.paths, {"id": 91, "merge_sha": HEAD1}, None)
+            request_path = rc.write_restart_request(w.paths, {"id": 91, "merge_sha": HEAD1}, None)
             drive.cycle(wait_workers=False)
             self.assertEqual((w.store.restart_phase() or {}).get("phase"), "DRAINING")
             release.set()
@@ -273,10 +278,12 @@ class SharedDefectTaskDeferral(ParallelCHelpers, unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), launches_before)  # no new AI during DRAINING
         self.assertEqual(w.store.batch(bid)["state"], "PAUSED")
 
-        rc.update_restart_request(w.paths, 91, "loaded", loaded_code_sha=HEAD2)
-        w.store.update_defect(did, state="FIX_MERGED", merge_sha=HEAD2)
+        state = DrainCollectsThenReady.controller(self, w)
+        self.assertEqual((state["kill"], w.store.restart_phase()["phase"]), (1, "STOPPING"))
+        self.assertEqual(json.loads(request_path.read_text())["state"], "loaded")
+        w.store.update_defect(did, state="FIX_MERGED", merge_sha=HEAD1)
         self.assertTrue(w.store.release_defect(did, bid, None, None, force_run=False,
-                                              fix_kind="runtime", applied_code_sha=HEAD2))
+                                              fix_kind="runtime", applied_code_sha=HEAD1))
         w.sup = Supervisor(w.paths, w.cfg, w.store, w.runner, w.adapter, w.gh, w.git,
                            {"GH_CONFIG_DIR": "x"}, clock=lambda: w.now)
         w.sup.parallel_new_c = True
@@ -285,6 +292,11 @@ class SharedDefectTaskDeferral(ParallelCHelpers, unittest.TestCase):
         w.sup.begin_instance()
         next_drive.cycle()
         self.assertEqual(w.store.task_row(bid, "001")["state"], "SAVED")
+        self.assertTrue(w.store.line(*drained_line)["drain"])
+        with mock.patch.object(w.sup, "_prepare_new") as prepare:
+            w.sup._tick_line_locked(*drained_line)
+        prepare.assert_not_called()
+        self.assertEqual(w.store.line(*drained_line)["run"], 0)  # idle Drain cancels its reservation
 
 
 class FrozenLaneDoesNotBlockOtherTasks(RestartWorld, unittest.TestCase):
