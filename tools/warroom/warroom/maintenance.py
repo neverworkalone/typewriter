@@ -2090,13 +2090,15 @@ class Maintenance:
             return "c_parallel" if k == "c_parallel" else ("c_serial" if self._serial_c(b) else None)
         if m == STAGE2_METHOD:
             return ("s2_chunk" if k.startswith("s2_chunk_") else "s2_links" if k in ("s2_links_new", "s2_links_fix")
-                    else "s2_repair" if k == "s2_repair_new" else None)
+                    else "s2_repair" if k == "s2_repair_new" else "s2_finalize" if k == "s2_deterministic_finalize" else None)
         if m == STAGE3_METHOD:
             return "s3_chunk" if k.startswith("s3_chunk_") else None
         return None
 
     def _first_head(self, b, kind: str) -> str | None:
         """The FIRST recorded HEAD of the batch's current baseline chain (never rewritten by this module)."""
+        if kind == "s2_finalize":
+            return self.store.get(f"s2_finalize_base_{b['id']}")
         if kind.startswith("d_"):
             return self.store.get(f"d_base_head_{b['id']}")
         if kind.startswith("c_"):
@@ -2146,6 +2148,27 @@ class Maintenance:
             return self._hold_unprovable(d, b, "최초 기준 HEAD를 확인할 수 없습니다")
         if why := self._preserved(b, env["observed"], head_moves=True):
             return self._hold_unprovable(d, b, why)
+        finalize_remote = None
+        if kind == "s2_finalize":
+            # Finalization has no in-flight AI run to retarget. Require its own HEAD, completed
+            # repair page and unchanged owner boundary before moving the finalization baseline.
+            try:
+                state = self.sup._stage2_repair_state(b, required=True)
+                current = state["current"]
+                identity = state["identity"]
+                finalize_remote = identity["remote_head"]
+                if (old_first != self.sup.git.head(wt) or identity["base_head"] != old_first
+                        or identity["branch"] != b["branch"] or identity["worktree"] != str(wt)
+                        or self.sup.git.registered(wt) != b["branch"]
+                        or self.sup.git.remote_head(b["branch"]) != finalize_remote
+                        or self.sup.git.dirty(wt).strip() or self._workers_running(b)
+                        or not isinstance(current.get("groups"), list)
+                        or current.get("cursor") != len(current["groups"])
+                        or current.get("pending_answer") is not None or current.get("apply_intent") is not None
+                        or self.sup._stage2_repair_correction(current) is not None):
+                    return self._hold_unprovable(d, b, "완료된 S2 repair 및 finalize 소유 경계를 증명할 수 없습니다")
+            except (KeyError, ValueError, TypeError, OSError):
+                return self._hold_unprovable(d, b, "S2 finalize 기준 또는 repair 증거가 손상되었습니다")
         head, run_start = self._apply(d, b)
         if head is None:
             return
@@ -2155,12 +2178,19 @@ class Maintenance:
             pending = self._fix_merged_integration_proof(b, d, old_first, head)
             if pending is None:
                 return self._hold_unprovable(d, b, "수정 통합 HEAD를 FIX_MERGED 상태에서 직접 증명하지 못했습니다")
-            moved = self._retargeted_run_start(b, head)
-            if moved is None:
-                return self._hold_unprovable(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다")
-            if problem := self._prerun_guards(b, kind, json.loads(moved[1]), pending):
-                return self._hold_unprovable(d, b, f"재개 guard 사전 검증 실패: {str(problem)[:300]}")
-            pairs = [moved]
+            if kind == "s2_finalize":
+                if (self.sup.git.registered(wt) != b["branch"] or self.sup.git.head(wt) != head
+                        or self.sup.git.remote_head(b["branch"]) != finalize_remote or self.sup.git.dirty(wt).strip()
+                        or self._workers_running(b)):
+                    return self._hold_unprovable(d, b, "S2 finalize 통합 후 소유 경계가 변경되었습니다")
+                pairs = [(f"s2_finalize_base_{b['id']}", head)]
+            else:
+                moved = self._retargeted_run_start(b, head)
+                if moved is None:
+                    return self._hold_unprovable(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다")
+                if problem := self._prerun_guards(b, kind, json.loads(moved[1]), pending):
+                    return self._hold_unprovable(d, b, f"재개 guard 사전 검증 실패: {str(problem)[:300]}")
+                pairs = [moved]
         if not self._archive_report(d, b):
             return
         snapshot = self._recovery_snapshot(d, b, head)

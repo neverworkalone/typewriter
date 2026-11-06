@@ -149,6 +149,58 @@ class Stage2RepairRebind(unittest.TestCase):
         self.assertEqual(sum(len(item["candidates"]) for item in checkpoint["items"]), 2)
         self.assertEqual(len(checkpoint["repair_receipts"]), 1)
 
+    def test_repeated_gloss_conflict_gets_one_officially_checked_retry(self):
+        from unittest.mock import patch
+        w, b, path = _world(self)
+        key = "source-sense\0candidate-0"
+        decision = {"source_sense_id": "source-sense", "candidate": "candidate-0", "disposition": "drop", "reason": "x"}
+        candidate = {"source_sense_id": "source-sense", "candidate": "candidate-0", "decision": decision,
+                     "additional_relations": None, "already_accounted": False, "same_group_peers": []}
+        group = {"candidate_keys": [key], "conflicts": [], "drop_gloss": ["named"], "candidates": [candidate]}
+        report = {**conflict_report(OLD_FINGERPRINT), "problems": [group]}
+        w.git.stage2_repair_checker = lambda _: {"ok": False, "invalid_candidates": [{"candidate_key": key,
+            "problems": [{"field_path": "decision.reason", "condition": "gloss_named", "message": "named"}]}]}
+        before = path.read_bytes()
+        with patch.object(w.sup, "_launch_stage2_repair_page") as launch:
+            self.assertTrue(w.sup._stage2_preflight_repair(b, stage2.checkpoint(b["worktree"], b["shard"], b["batch"]), report))
+            launch.assert_called_once()
+        state = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
+        self.assertEqual(state["gloss_rechecks"], [OLD_FINGERPRINT])
+        self.assertEqual(state["rounds_used"], 2)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertTrue(w.sup._stage2_preflight_repair(b, stage2.checkpoint(b["worktree"], b["shard"], b["batch"]), report))
+        self.assertIn("repeated fingerprint", w.store.batch(b["id"])["error"])
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_incident_finalize_retargets_only_owned_completed_repair(self):
+        from unittest.mock import patch
+        for dirty in (False, True):
+            with self.subTest(dirty=dirty):
+                w, b, _ = _world(self)
+                w.store.set(f"s2_finalize_base_{b['id']}", HEAD1)
+                w.git.dirty_text = " M unrelated\n" if dirty else ""
+                maint = w.sup.maint
+                d = {"id": 57, "merge_sha": HEAD2}
+                def apply(*_):
+                    w.git.local_head = HEAD2
+                    return HEAD2, None
+                with patch.object(maint, "_preserved", return_value=None), \
+                     patch.object(maint, "_fix_not_loaded", return_value=False), \
+                     patch.object(maint, "_apply", side_effect=apply) as integrate, \
+                     patch.object(maint, "_fix_merged_integration_proof", return_value={"head": HEAD2}), \
+                     patch.object(maint, "_archive_report", return_value=True), \
+                     patch.object(maint, "_recovery_snapshot", return_value={}), \
+                     patch.object(maint, "_hold_unprovable") as hold, \
+                     patch.object(w.store, "release_defect", return_value=True) as release:
+                    maint._release_worktree(d, b, {"observed": {}})
+                    if dirty:
+                        integrate.assert_not_called()
+                        release.assert_not_called()
+                        hold.assert_called_once()
+                    else:
+                        integrate.assert_called_once()
+                        self.assertEqual(release.call_args.args[3], [(f"s2_finalize_base_{b['id']}", HEAD2)])
+
     def test_inflight_answer_dirty_owner_remote_and_receipt_mismatch_fail_closed(self):
         cases = ("pending", "apply_intent", "dirty", "remote", "wrong_branch", "non_ancestor", "baseline", "receipt")
         for case in cases:

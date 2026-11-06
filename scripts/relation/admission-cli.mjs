@@ -3111,6 +3111,13 @@ function checkOneDecision(checkpoint, item, candidate, decision, pathPrefix, nor
   }
   const { problems, unevaluated } = decisionProblems(item, options.validationCandidate ?? candidate, normalizedDecision,
     { allowSupervisorFailureDrop: options.allowSupervisorFailureDrop === true, pathPrefix });
+  if (normalizedDecision?.disposition === 'drop' && normalizedDecision.reason === 'x' && options.glossContext) {
+    const matches = findGlossNamedDrops({
+      dropRows: [{ source_sense_id: item.sense_id, candidate: candidate.text, reason: 'x' }],
+      ...options.glossContext,
+    });
+    if (matches.length) problems.push({ field_path: `${pathPrefix}.reason`, condition: 'gloss_named', message: matches[0].message });
+  }
   for (const note of notes) {
     normalizedLog.push({ candidate_key: `${item.sense_id}\u0000${candidate.text}`, field_path: `${pathPrefix}.${note.field}`, rule: note.rule });
   }
@@ -3182,7 +3189,7 @@ function checkRepair(checkpoint, input, baseline, { requireNonce = true } = {}) 
           || !isPlainObject(current.decision)) {
         throw new Error(`${row.source_sense_id}/${row.candidate}: fallback current_row does not bind to this candidate`);
       }
-      const { problems } = checkOneDecision(checkpoint, item, candidate, current.decision, 'decision', []);
+      const { problems } = checkOneDecision(checkpoint, item, candidate, current.decision, 'decision', [], { glossContext: baseline.glossContext });
       if (!problems.some((problem) => problem.field_path === prior_request.problem.field_path
           && problem.condition === prior_request.problem.condition)) {
         throw new Error(`${row.source_sense_id}/${row.candidate}: the requested problem ${prior_request.problem.field_path} [${prior_request.problem.condition}] does not currently exist`);
@@ -3190,6 +3197,18 @@ function checkRepair(checkpoint, input, baseline, { requireNonce = true } = {}) 
     }
   }
   if (prior) {
+    // A legacy receipt proves the write, not that a subsequently strengthened local check passes.
+    // Re-check x against the current source gloss before treating a read-only probe as successful.
+    if (!requireNonce) {
+      const invalid = selected.flatMap(({ row, item, candidate }) => {
+        const checked = checkOneDecision(checkpoint, item, candidate, row.decision, 'decision', [],
+          { glossContext: baseline.glossContext });
+        const problems = checked.problems.filter((problem) => problem.condition === 'gloss_named');
+        return problems.length ? [{ candidate_key: repairKey(row), problems, unevaluated: [] }] : [];
+      });
+      if (invalid.length) return { ok: false, already_applied: true, repaired: 0, request_id: requestId,
+        supervisor_nonce: prior.supervisor_nonce, candidate_keys: prior.candidate_keys, normalized: [], invalid_candidates: invalid };
+    }
     const expectedKeys = selected.map(({ row }) => repairKey(row)).sort();
     if (!sameJson(prior.candidate_keys, expectedKeys)) {
       throw new Error('repair receipt exists but its candidate set does not match; refusing replay');
@@ -3248,7 +3267,7 @@ function checkRepair(checkpoint, input, baseline, { requireNonce = true } = {}) 
     } else {
       if (row.additional_relations !== null) throw new Error(`${row.source_sense_id}/${row.candidate}: regular candidate cannot contain optional links`);
       const result = checkOneDecision(checkpoint, item, candidate, row.decision, 'decision', normalizedLog,
-        { allowSupervisorFailureDrop: fallbackKeys.has(repairKey(row)) });
+        { allowSupervisorFailureDrop: fallbackKeys.has(repairKey(row)), glossContext: baseline.glossContext });
       problems.push(...result.problems);
       unevaluated.push(...result.unevaluated);
       current.decision = result.decision;
@@ -3288,7 +3307,18 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root, { check 
   if (Array.isArray(input?.supervisor_fallback) && input.supervisor_fallback.length) {
     await assertSupervisorFallbackProcess(await supervisorStateDirectory(root));
   }
-  const { next, ...result } = checkRepair(checkpoint, input, { ...ready, actualRelations, actualDrops }, { requireNonce: !check });
+  // Use the same source-bound gloss check as preflight, including orthographic aliases. Only
+  // x decisions (or fallback evidence for one) need the canonical index.
+  const needsGloss = (Array.isArray(input?.decisions) && input.decisions.some((row) => row?.decision?.disposition === 'drop' && row.decision.reason === 'x'))
+    || (Array.isArray(input?.supervisor_fallback) && input.supervisor_fallback.some((row) => row?.evidence?.current_row?.decision?.disposition === 'drop'
+      && row.evidence.current_row.decision.reason === 'x'));
+  let glossContext;
+  if (needsGloss) {
+    const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
+    const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part, checkpoint.shard);
+    glossContext = { scopeRows: scoped.scopeRows, index: loaded.index };
+  }
+  const { next, ...result } = checkRepair(checkpoint, input, { ...ready, actualRelations, actualDrops, glossContext }, { requireNonce: !check });
   if (!result.ok || check || result.already_applied) return result;
   await writeJsonAtomically(checkpointPath, next);
   return result;

@@ -5537,24 +5537,50 @@ class Supervisor:
         if fingerprint in seen:
             plan = self._stage2_duplicate_pair_fallback_plan(report)
             if plan is None:
-                self._fail(b, "ERROR", f"Stage 2 repair made no preflight progress (repeated fingerprint {fingerprint[:12]}); evidence is preserved")
-                return True
-            try:
-                self._stage2_apply_duplicate_pair_fallback(b, state, plan)
-                after = self.git.stage2_preflight(Path(b["worktree"]), b["shard"], bb, pp)
-            except TRANSIENT:
-                raise
-            except Exception as error:
-                self._fail(b, "ERROR", f"Stage 2 deterministic duplicate-pair fallback failed; checkpoint and prior repairs are preserved: {error}")
-                return True
-            if isinstance(after, dict) and after.get("fingerprint") == fingerprint and after.get("ok") is not True:
-                fallback = state["current"].get("duplicate_pair_fallback", {})
-                fallback["status"] = "applied_unresolved"
-                fallback["postflight_fingerprint"] = fingerprint
-                self._save_stage2_repair_state(b, state)
-                self._fail(b, "ERROR", "Stage 2 deterministic duplicate-pair fallback was applied but the exact preflight conflict remains; evidence is preserved")
-                return True
-            return self._stage2_preflight_repair(b, checkpoint, after)
+                # A formerly accepted x may now be rejected by the official local check. Permit one
+                # bounded fresh round only when that check identifies every repeated gloss conflict;
+                # the normal correction/fallback proof still applies to the new response.
+                groups = report["problems"]
+                probe = {"fingerprint": fingerprint, "groups": groups, "cursor": 0}
+                rows = [{"source_sense_id": c["source_sense_id"], "candidate": c["candidate"], "decision": c["decision"]}
+                        for g in groups for c in g.get("candidates", []) if not c.get("already_accounted")]
+                keys = sorted({key for g in groups for key in g.get("candidate_keys", [])})
+                eligible = (len(groups) <= stage2.REPAIR_GROUPS_PER_RUN and keys and
+                            all(g.get("drop_gloss") and not g.get("conflicts") for g in groups) and
+                            sorted(f"{r['source_sense_id']}\0{r['candidate']}" for r in rows) == keys and
+                            fingerprint not in state.get("gloss_rechecks", []))
+                if eligible:
+                    try:
+                        checked = self._stage2_repair_check(b, probe, rows, [])
+                        invalid = checked["invalid_candidates"]
+                        eligible = (checked["ok"] is False and sorted(x["candidate_key"] for x in invalid) == keys and
+                                    all(any(p["field_path"] == "decision.reason" and p["condition"] == "gloss_named"
+                                            for p in x["problems"]) for x in invalid))
+                    except TRANSIENT:
+                        raise
+                    except (OSError, ValueError, TypeError, KeyError, GitError):
+                        eligible = False
+                if not eligible:
+                    self._fail(b, "ERROR", f"Stage 2 repair made no preflight progress (repeated fingerprint {fingerprint[:12]}); evidence is preserved")
+                    return True
+                state.setdefault("gloss_rechecks", []).append(fingerprint)
+            else:
+                try:
+                    self._stage2_apply_duplicate_pair_fallback(b, state, plan)
+                    after = self.git.stage2_preflight(Path(b["worktree"]), b["shard"], bb, pp)
+                except TRANSIENT:
+                    raise
+                except Exception as error:
+                    self._fail(b, "ERROR", f"Stage 2 deterministic duplicate-pair fallback failed; checkpoint and prior repairs are preserved: {error}")
+                    return True
+                if isinstance(after, dict) and after.get("fingerprint") == fingerprint and after.get("ok") is not True:
+                    fallback = state["current"].get("duplicate_pair_fallback", {})
+                    fallback["status"] = "applied_unresolved"
+                    fallback["postflight_fingerprint"] = fingerprint
+                    self._save_stage2_repair_state(b, state)
+                    self._fail(b, "ERROR", "Stage 2 deterministic duplicate-pair fallback was applied but the exact preflight conflict remains; evidence is preserved")
+                    return True
+                return self._stage2_preflight_repair(b, checkpoint, after)
         if state.get("rounds_used", 0) >= stage2.MAX_REPAIR_ROUNDS:
             self._fail(b, "ERROR", f"Stage 2 automatic repair round limit ({stage2.MAX_REPAIR_ROUNDS}) reached; checkpoint and successful earlier repairs are preserved")
             return True
