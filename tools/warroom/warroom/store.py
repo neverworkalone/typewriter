@@ -189,6 +189,9 @@ class Store:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._conn() as c:
+            mode = c.execute("PRAGMA journal_mode=WAL").fetchone()
+            if mode is None or str(mode[0]).lower() != "wal":
+                raise sqlite3.OperationalError("War Room database did not enter WAL mode")
             c.executescript(SCHEMA)
             if c.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
                 self._migrate(c)
@@ -285,7 +288,6 @@ class Store:
     def _conn(self):
         conn = sqlite3.connect(self.path, timeout=30)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
         try:
             with conn:
                 yield conn
