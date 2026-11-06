@@ -37,7 +37,7 @@ S2도 같은 쿼리를 사용합니다. `b.method='s2'`, `b.batch='BB-PP'`(예: 
 
 설정 변경: `tools/warroom/.local/config.json` 수정 후 TUI에서 `r`을 눌러 리로드합니다. 실행 중인 AI run의 프로필·세션은 바뀌지 않습니다. **Python 코드 수정은 설정 리로드만으로 적용되지 않습니다.**
 
-Supervisor 수정 코드를 배포했다면 운영 메인 checkout에서 `./war`를 실행합니다. 별도 restart controller가 보존된 요청(`.git/typewriter-supervisor/restart-requests/`)을 확인하고, **worker 종료·운영 루트 및 worktree 소유권·Stop/Drain/Clear/hold** 등의 조건이 안전할 때만 Supervisor를 교체합니다. 불확실하면 기존 작업을 중단하지 않고 대기합니다. 코드가 실제로 로드된 SHA와 원 생산 task의 공식 저장 진전은 별개로 확인합니다.
+Supervisor 수정 코드를 배포했다면 운영 메인 checkout에서 `./war`를 실행합니다. 별도 restart controller가 보존된 요청(`.git/typewriter-supervisor/restart-requests/`)을 확인하고, **worker 종료·운영 루트 및 worktree 소유권·Stop/Clear/hold** 등의 조건이 안전할 때만 Supervisor를 교체합니다. Line Drain과 Drain All은 Restart를 막지 않으며 새 Supervisor에도 유지되어 해당 Line의 후속 배치를 차단합니다. 불확실하면 기존 작업을 중단하지 않고 대기합니다. 코드가 실제로 로드된 SHA와 원 생산 task의 공식 저장 진전은 별개로 확인합니다.
 
 incident와 무관한 코드 수정의 명시적 재시작 요청:
 

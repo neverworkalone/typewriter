@@ -170,10 +170,7 @@ def request_identity(paths: Paths, loaded_sha: str | None = None) -> str:
 
 
 def policy_blocker(store: Store) -> str | None:
-    """Policy that forbids (or revokes) a restart even when no work is live: an operator Drain or a defect hold."""
-    for line in store.lines():
-        if line["drain"]:
-            return f"operator Drain is active on {line['model']}/{line['method']}"
+    """Policy that forbids (or revokes) a restart even when no work is live."""
     for batch in store.incomplete_batches():
         if store.get(f"defect_hold_{batch['id']}"):
             return f"defect hold is active on batch {batch['id']}"
@@ -235,8 +232,8 @@ def _live_work_or_controls(store: Store, *, recovering_stopped_supervisor: bool 
     for line in store.lines():
         # A dead Supervisor must be allowed to consume pending Stop requests, after all workers above are
         # proven finished. The Stop flag stays set; the restarted Supervisor remains responsible for it.
-        if line["drain"] or (line["force_stop"] and not recovering_stopped_supervisor):
-            return f"operator Stop/Drain is active on {line['model']}/{line['method']}"
+        if line["force_stop"] and not recovering_stopped_supervisor:
+            return f"operator Stop is active on {line['model']}/{line['method']}"
         # A stopped Supervisor must be able to consume a previously requested Clear after every worker is
         # proven finished. Its ordinary Clear path still validates ownership and preserves blocked requests.
         if store.clear_request(line["model"], line["method"]) is not None and not recovering_stopped_supervisor:
