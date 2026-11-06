@@ -5,6 +5,11 @@ import os
 import unittest
 
 
+class SuccessfulCase(unittest.TestCase):
+    def test_success(self):
+        self.assertEqual(2 + 2, 4)
+
+
 class IntentionalFailure(unittest.TestCase):
     def test_failure(self):
         print("intentional worker stdout")

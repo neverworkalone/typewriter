@@ -15,6 +15,14 @@ ENV = dict(os.environ, PYTHONPATH=str(ROOT), PYTHONDONTWRITEBYTECODE="1")
 
 
 class ParallelRunnerContract(unittest.TestCase):
+    def test_successful_class_reports_all_executed_ids(self):
+        test_id = "tests.runner_fixtures.SuccessfulCase.test_success"
+        group = {"class_id": "tests.runner_fixtures.SuccessfulCase", "test_ids": [test_id], "order": 0}
+        with tempfile.TemporaryDirectory() as td:
+            result = run_class(ROOT, group, Path(td), ENV, sys.executable)
+        self.assertEqual(result["returncode"], 0)
+        self.assertEqual(result["report"]["ids"], [test_id])
+
     def test_id_multiset_mismatch_fails_closed(self):
         group = {"class_id": "tests.fixture.Example", "test_ids": ["tests.fixture.Example.test_a",
                                                                        "tests.fixture.Example.test_b"], "order": 0}
