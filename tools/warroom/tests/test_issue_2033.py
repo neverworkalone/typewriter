@@ -1,7 +1,6 @@
 """Issue #2033 (PR 1): per-run usage measurement, unknown-not-zero, no double counting, optional pricing."""
 import json
 import tempfile
-import contextlib
 import unittest
 from pathlib import Path
 
@@ -128,9 +127,9 @@ class UsageParsing(unittest.TestCase):
 
 class StoreRecordsUsage(unittest.TestCase):
     def test_finish_runs_records_each_run_only_from_its_own_log(self):
-        with tempfile.TemporaryDirectory() as d, contextlib.ExitStack() as stack:
+        with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            store = stack.enter_context(contextlib.closing(Store(d / "w.db")))
+            store = Store(d / "w.db")
             first, resumed, opencode = d / "1.log", d / "2.log", d / "3.log"
             first.write_text(jl({"type": "turn.started"}, cmd(1, SUBMIT, 2), codex_usage(inp=100, cached=60, out=20, reason=5)))
             resumed.write_text(jl({"type": "turn.started"}, cmd(1, "ls"), codex_usage(inp=300, cached=250, out=30, reason=9)))

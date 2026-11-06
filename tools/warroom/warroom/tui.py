@@ -47,11 +47,7 @@ def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
         return "starting", None  # another TUI is checking/starting the shared session
     try:
         from .restart_controller import handle_pending_restart
-        restart_store = Store(paths.db)
-        try:
-            restart = handle_pending_restart(paths, restart_store)
-        finally:
-            restart_store.close()
+        restart = handle_pending_restart(paths, Store(paths.db))
         if restart is not None:
             return restart
         supervisor_lock = acquire_lock(paths.lock)
@@ -1038,11 +1034,7 @@ def main() -> None:
         check_runtime_root()
     except RootError as e:
         raise SystemExit(f"[war] 시작 거부: {e}")
-    app = WarRoom()
-    try:
-        app.run()
-    finally:
-        app.store.close()
+    WarRoom().run()
 
 
 if __name__ == "__main__":

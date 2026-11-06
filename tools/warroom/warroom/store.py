@@ -5,7 +5,6 @@ import json
 import re
 import sqlite3
 import time
-import weakref
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -189,34 +188,10 @@ class Store:
     def __init__(self, path: Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._anchor = None
-        self._anchor_finalizer = None
-        self._require_wal()   # fail closed before any schema work: a DB that cannot enter WAL is never used
         with self._conn() as c:
             c.executescript(SCHEMA)
             if c.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
                 self._migrate(c)
-        # Idle anchor (#3801): one connection that never runs a query or transaction. While it is open, every per-call
-        # connection in _conn() closes as a non-last connection, so SQLite skips the WAL checkpoint and the -wal/-shm
-        # delete + re-create on each close. The per-call connect/BEGIN IMMEDIATE/commit/close contract is unchanged.
-        anchor = sqlite3.connect(self.path, timeout=30, check_same_thread=False)
-        self._anchor = anchor
-        self._anchor_finalizer = weakref.finalize(self, anchor.close)   # leak backstop only; close() is the real path
-
-    def close(self) -> None:
-        """Release the idle anchor. Idempotent; the Store stays usable (each call still opens its own connection)."""
-        finalizer, self._anchor, self._anchor_finalizer = self._anchor_finalizer, None, None
-        if finalizer is not None:
-            finalizer()
-
-    def _require_wal(self) -> None:
-        conn = sqlite3.connect(self.path, timeout=30)
-        try:
-            mode = conn.execute("PRAGMA journal_mode=WAL").fetchone()
-        finally:
-            conn.close()
-        if not mode or str(mode[0]).lower() != "wal":
-            raise RuntimeError(f"SQLite journal_mode=WAL를 켤 수 없습니다 ({mode[0] if mode else None}): {self.path}")
 
     @staticmethod
     def _migrate(c) -> None:

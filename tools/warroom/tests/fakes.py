@@ -999,33 +999,9 @@ class FakeGh:
     def commit_time(self, sha): return self.commit_ts
 
 
-class _WorldTmp(tempfile.TemporaryDirectory):
-    """World's tmp dir: every exit path (tearDown, addCleanup, a test's own cleanup(), `with`) closes the World's Stores
-    (their idle anchors) before the directory is deleted (#3801)."""
-
-    def __init__(self):
-        super().__init__()
-        self.stores = []
-
-    def cleanup(self):
-        for store in self.stores:
-            store.close()
-        super().cleanup()
-
-
 class World:
-    @property
-    def store(self):
-        return self._store
-
-    @store.setter
-    def store(self, store):   # a test re-creating the Store must still get it closed on cleanup
-        self._store = store
-        if store not in self.tmp.stores:
-            self.tmp.stores.append(store)
-
     def __init__(self, models=None):
-        self.tmp = _WorldTmp()
+        self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
         self.paths = Paths(repo_root=root, local=root / "local")
         self.paths.ensure()

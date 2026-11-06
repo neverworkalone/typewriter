@@ -3,12 +3,8 @@
 Fake AI/git: this proves the Supervisor state machine around the Admission task API (whose own contract is covered by
 admission-cli.test.mjs), not a real model run.
 """
-import contextlib
 import json
-import sqlite3
-import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
 
 from tests.fakes import FakeAdapter
@@ -16,7 +12,7 @@ from tests.test_issue_1684 import S2, s2_world
 from warroom.adapters import classify_codex_failure
 from warroom import control, stage2
 from warroom.config import DEFAULTS, config_problem
-from warroom.store import SCHEMA, SCHEMA_VERSION, Store
+from warroom.store import SCHEMA_VERSION, Store
 
 PREFIX = "001-01-01"
 
@@ -366,8 +362,8 @@ class ConfigAndMigration(unittest.TestCase):
 
     def test_additive_migration_creates_task_state(self):
         import tempfile
-        with tempfile.TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
-            store = stack.enter_context(contextlib.closing(Store(Path(tmp) / "w.db")))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(Path(tmp) / "w.db")
             with store._conn() as c:
                 tables = {r["name"] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
                 runs = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
@@ -375,65 +371,6 @@ class ConfigAndMigration(unittest.TestCase):
         self.assertIn("s2_tasks", tables)
         self.assertIn("task", runs)
         self.assertEqual(version, SCHEMA_VERSION)
-
-
-class StoreWalAndAnchor(unittest.TestCase):
-    """Store contract (#3801): WAL is mandatory (fail closed), and an idle anchor connection lives until close()."""
-
-    def test_existing_delete_mode_db_is_switched_to_wal_and_kept(self):
-        with tempfile.TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
-            db = Path(tmp) / "w.db"
-            c = sqlite3.connect(db)
-            self.assertEqual(c.execute("PRAGMA journal_mode").fetchone()[0], "delete")
-            c.executescript(SCHEMA)
-            c.execute("INSERT INTO kv VALUES('run','1')")
-            c.commit()
-            c.close()
-            store = stack.enter_context(contextlib.closing(Store(db)))
-            self.assertEqual(store.get("run"), "1")
-            with store._conn() as conn:
-                self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0], "wal")
-
-    def test_a_db_that_cannot_enter_wal_fails_closed_before_any_schema_work(self):
-        real_connect = sqlite3.connect
-
-        class NoWal(sqlite3.Connection):
-            def execute(self, sql, *args):
-                if sql.strip().lower() == "pragma journal_mode=wal":
-                    return super().execute("PRAGMA journal_mode")   # the switch is refused: still "delete"
-                return super().execute(sql, *args)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            db = Path(tmp) / "w.db"
-            opened = []
-
-            def connect(*a, **kw):
-                opened.append(a)
-                return real_connect(*a, **{**kw, "factory": NoWal})
-
-            with mock.patch.object(sqlite3, "connect", connect):
-                with self.assertRaises(RuntimeError):
-                    Store(db)
-            self.assertEqual(len(opened), 1, "no schema connection and no anchor after a refused WAL switch")
-            c = real_connect(db)
-            try:
-                self.assertEqual(c.execute("SELECT count(*) FROM sqlite_master").fetchone()[0], 0)
-            finally:
-                c.close()
-
-    def test_close_releases_the_anchor_and_is_idempotent(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            db = Path(tmp) / "w.db"
-            store = Store(db)
-            store.set("k", "v")
-            anchor = store._anchor
-            self.assertIsNotNone(anchor)
-            store.close()
-            store.close()
-            self.assertIsNone(store._anchor)
-            with self.assertRaises(sqlite3.ProgrammingError):
-                anchor.execute("SELECT 1")   # the anchor connection is really closed
-            self.assertEqual(store.get("k"), "v")   # still usable: each call opens its own connection
 
 
 if __name__ == "__main__":

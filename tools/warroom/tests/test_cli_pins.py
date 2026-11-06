@@ -3,7 +3,6 @@ import itertools
 import json
 import sqlite3
 import tempfile
-import contextlib
 import unittest
 from pathlib import Path
 
@@ -268,7 +267,7 @@ class PinnedLaunches(unittest.TestCase):
 
 class StoreV3(unittest.TestCase):
     def test_v2_database_gains_run_pin_columns_and_keeps_old_runs(self):
-        with tempfile.TemporaryDirectory() as d, contextlib.ExitStack() as stack:
+        with tempfile.TemporaryDirectory() as d:
             db = Path(d) / "warroom.db"
             c = sqlite3.connect(db)
             c.executescript(SCHEMA + SCHEMA_V2)
@@ -278,7 +277,7 @@ class StoreV3(unittest.TestCase):
             c.execute("INSERT INTO runs(batch_id,kind,started_at) VALUES(1,'legacy',1)")
             c.commit()
             c.close()
-            store = stack.enter_context(contextlib.closing(Store(db)))
+            store = Store(db)
             with store._conn() as c:
                 cols = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
             self.assertTrue({"model", "effort", "fast_mode"} <= cols)
@@ -288,8 +287,8 @@ class StoreV3(unittest.TestCase):
             self.assertIsNone(run["fast_mode"])
 
     def test_add_run_round_trips_the_pin(self):
-        with tempfile.TemporaryDirectory() as d, contextlib.ExitStack() as stack:
-            store = stack.enter_context(contextlib.closing(Store(Path(d) / "warroom.db")))
+        with tempfile.TemporaryDirectory() as d:
+            store = Store(Path(d) / "warroom.db")
             bid = store.create_batch(method="a", producer="claude", shard="001", batch="01", branch="b",
                                      worktree="/w")
             store.add_run(bid, "produce", None, 1, "l.log", "l.exit", model="gpt-6-luna", effort="xhigh",

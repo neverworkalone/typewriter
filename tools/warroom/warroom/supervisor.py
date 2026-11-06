@@ -9910,16 +9910,13 @@ def main() -> int:
     workers = sup.cfg["supervisor_workers"]
     # Order (#3774): lock -> instance -> fence scan (above) -> startup checks (build) -> this instance's phase and runtime
     # record, naming the workers it ACTUALLY runs -> the first Coordinator/Line dispatch.
-    try:
-        sup.begin_instance()
-        record_runtime(paths, sup.code_sha, configured_workers=workers, workers=workers, instance=sup.phase_instance)
-        sup.store.log(None, f"supervisor 시작 (workers={workers}, instance={sup.phase_instance[:8]})")
-        if workers > 1:
-            sup.run_parallel(stop_event=threading.Event())
-        else:
-            sup.run_forever()   # workers=1: the serial regression/fallback path
-    finally:
-        sup.store.close()
+    sup.begin_instance()
+    record_runtime(paths, sup.code_sha, configured_workers=workers, workers=workers, instance=sup.phase_instance)
+    sup.store.log(None, f"supervisor 시작 (workers={workers}, instance={sup.phase_instance[:8]})")
+    if workers > 1:
+        sup.run_parallel(stop_event=threading.Event())
+    else:
+        sup.run_forever()   # workers=1: the serial regression/fallback path
     return 0
 
 

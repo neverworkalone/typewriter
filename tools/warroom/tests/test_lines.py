@@ -2,7 +2,6 @@
 import sqlite3
 import tempfile
 import threading
-import contextlib
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -663,10 +662,10 @@ class Migration(unittest.TestCase):
             ("stop on finished batch is moot", {"run": "1", "force_stop": "1"}, "COMPLETE", (0, 0, 0, None)),
         ]
         for name, kv, state, want in cases:
-            with self.subTest(name), tempfile.TemporaryDirectory() as d, contextlib.ExitStack() as stack:
+            with self.subTest(name), tempfile.TemporaryDirectory() as d:
                 db = self.legacy_db(Path(d), kv, [(state, "01")])
                 for _ in range(2):                              # idempotent re-open
-                    ln = stack.enter_context(contextlib.closing(Store(db))).line("deepseek", "a")
+                    ln = Store(db).line("deepseek", "a")
                     self.assertEqual((ln["run"], ln["drain"], ln["force_stop"], ln["retry_batch"]), want)
 
     def test_migrated_pending_stop_is_executed_and_pid_kept_until_exit(self):
@@ -685,7 +684,7 @@ class Migration(unittest.TestCase):
         w.tmp.cleanup()
 
     def test_legacy_db_is_migrated_without_loss_and_idempotently(self):
-        with tempfile.TemporaryDirectory() as d, contextlib.ExitStack() as stack:
+        with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             logs = d / "logs"
             logs.mkdir()
@@ -707,7 +706,7 @@ class Migration(unittest.TestCase):
             c.commit()
             c.close()
             for _ in range(2):                                      # second open must change nothing
-                s = stack.enter_context(contextlib.closing(Store(db)))
+                s = Store(db)
                 self.assertEqual([b["state"] for b in s.all_batches()], ["COMPLETE", "PAUSED"])
                 paused = s.all_batches()[1]
                 self.assertEqual((paused["pause_reason"], paused["defect_id"]), ("", None))
