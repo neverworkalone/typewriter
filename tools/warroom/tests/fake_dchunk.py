@@ -68,7 +68,11 @@ class FakeDChunkCli:
         command = argv[2]
         if command == "states":
             number = int(self.opt(argv, "--chunk"))
-            active = json.loads((Path(cwd) / D_DIR / f"active-{number:03d}.json").read_text("utf-8"))
+            scratch = Path(self.opt(argv, "--dir") or Path(cwd) / ".warroom-scratch")
+            matches = list(scratch.glob(f"d-???_0[12]/active-{number:03d}.json"))
+            if len(matches) != 1:
+                return Result(1, "", "active D chunk is missing or ambiguous")
+            active = json.loads(matches[0].read_text("utf-8"))
             return Result(0, json.dumps({"chunk_no": number, "view_sha256": active["view_sha256"], "states": []}))
         if command == "inspect":
             return Result(0, json.dumps(self.inspection or {"status": "VALID"}))
