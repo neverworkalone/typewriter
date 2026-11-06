@@ -835,11 +835,68 @@ class ParallelC:
         if run["id"] != row["run_id"] or run["task"] != row["task"]:
             return {"status": "task_or_run_mismatch"}
         start = data.get("run_start")
+        checked_rec = rec
+        if isinstance(start, dict) and rec is not None and start.get("head") != rec.get("git_head"):
+            old, head = start.get("head"), rec.get("git_head")
+            try:
+                base = baseline(self.store, b)
+                if (run["batch_id"] != b["id"] or run["ended_at"] is None
+                        or not isinstance(base, dict) or base.get("head") != head
+                        or self.sup.git.head(self._wt(b)) != head
+                        or literary.names(b).canonical in self.sup.git.changed_between(old, head)
+                        or not self.sup.maint._released_integration_proof(b, old, head)):
+                    return {"status": "checkpoint_or_chunk_mismatch"}
+                checked_rec = dict(rec, git_head=old)
+            except Exception:
+                return {"status": "checkpoint_or_chunk_mismatch"}
         log = Path(run["log_file"]) if run["log_file"] else None
         return literary.no_submission_result(
-            self._wt(b), b, rec, dict(run), start, pending,
+            self._wt(b), b, checked_rec, dict(run), start, pending,
             final_answer=self._final_answer(log), submit_call_count=submit_attempts(log) if log else None,
             task_session=row["session_id"], own_state_now=literary.own_state(self._wt(b), b, rec["sense_ids"]))
+
+    def auto_recover_integrated_no_submission(self, b) -> bool:
+        """Reclassify one preserved failure only after its own approved integration is proven."""
+        if (b["state"] != "ERROR" or b["method"] != literary.METHOD or b["run_kind"] != RUN_KIND
+                or b["pid"] is not None or b["pr_number"] is not None or b["pause_reason"] == "shared_defect"):
+            return False
+        failed = [r for r in self.store.task_rows(b["id"]) if r["state"] == "FAILED"]
+        if len(failed) != 1:
+            return False
+        row = failed[0]
+        data = _data(row)
+        guard = data.get("guard")
+        if (not isinstance(guard, dict) or guard.get("reason_codes") != ["checkpoint_or_chunk_mismatch"]
+                or data.get("recovery") or not isinstance(guard.get("baseline"), dict)):
+            return False
+        try:
+            run = self.store.run(row["run_id"]) if row["run_id"] is not None else None
+            rec = literary.read_active(self._wt(b), b, int(row["task"]))
+            saved = guard["baseline"]
+            if (run is None or rec is None or not row["session_id"]
+                    or not isinstance(data.get("run_start"), dict)
+                    or data["run_start"].get("head") == rec.get("git_head")
+                    or not literary.task_retry_unchanged(self._wt(b), b, int(row["task"]), saved,
+                                                        session_available=True)):
+                return False
+            pending = self._pending(b, rec)
+            if pending != saved.get("pending_sense_ids"):
+                return False
+            outcome = self._no_submission(b, row, data, rec, run, pending)
+            if outcome.get("status") not in ("no_submission", "shown_only_progress"):
+                return False
+        except _ERRORS:
+            return False
+        data["recovery"] = {"source_run_id": run["id"], "pending_sense_ids": list(pending)}
+        data["kind"] = "recovery"
+        for key in ("ack", "error", "guard", "progress_retry"):
+            data.pop(key, None)
+        self._set(b, row["task"], data, state="FIXQ", run_id=None)
+        self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
+        self.store.update(b["id"], state="PRODUCING", error=None, retries=0, retry_after=None,
+                          pause_reason="", defect_id=None)
+        self.store.log(b["id"], f"[{row['task']}] 승인 통합과 기존 무제출 증거를 확인해 해당 task만 한 번 복구합니다.", "warn")
+        return True
 
     @staticmethod
     def _final_answer(log):
