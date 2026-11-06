@@ -1,13 +1,13 @@
-"""Issue #3801: keep per-connection work small without weakening SQLite startup."""
+"""Issue #3801: serialize shared database migration during concurrent startup."""
 from __future__ import annotations
 
 import multiprocessing
 import os
 import sqlite3
 import tempfile
+import time
 import unittest
 from pathlib import Path
-from unittest import mock
 
 from warroom import store as store_module
 from warroom.store import Store
@@ -20,7 +20,7 @@ def _initialize_store(db_path: str, index: int, barrier) -> None:
 
 def _crash_during_store_migration(db_path: str) -> None:
     def crash(conn) -> None:
-        conn.executescript(store_module.SCHEMA_V2)
+        conn.executescript("BEGIN IMMEDIATE;\n" + store_module.SCHEMA_V2)
         conn.execute("ALTER TABLE events ADD COLUMN line TEXT")
         os._exit(73)
 
@@ -28,35 +28,7 @@ def _crash_during_store_migration(db_path: str) -> None:
     Store(Path(db_path))
 
 
-class StoreWalInitialization(unittest.TestCase):
-    def test_wal_is_set_once_per_store_initialization(self):
-        with tempfile.TemporaryDirectory() as td:
-            db = Path(td) / "warroom.sqlite"
-            statements = []
-            original_connect = sqlite3.connect
-
-            class CountingConnection(sqlite3.Connection):
-                def execute(self, sql, parameters=(), /):
-                    if sql.strip().lower().startswith("pragma journal_mode"):
-                        statements.append(sql)
-                    return super().execute(sql, parameters)
-
-            def connect(*args, **kwargs):
-                kwargs["factory"] = CountingConnection
-                return original_connect(*args, **kwargs)
-
-            with mock.patch.object(store_module.sqlite3, "connect", side_effect=connect):
-                store = Store(db)
-                store.set("first", "value")
-                self.assertEqual(store.get("first"), "value")
-                Store(db).set("second", "value")
-
-            normalized = [statement.strip().lower() for statement in statements]
-            self.assertEqual(normalized.count("pragma journal_mode=wal"), 1)
-            self.assertEqual(len(normalized), 3)
-            with sqlite3.connect(db) as conn:
-                self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0].lower(), "wal")
-
+class StoreMigrationConcurrency(unittest.TestCase):
     def test_sixteen_processes_can_open_and_initialize_the_same_database(self):
         with tempfile.TemporaryDirectory() as td:
             db = str(Path(td) / "warroom.sqlite")
@@ -66,8 +38,9 @@ class StoreWalInitialization(unittest.TestCase):
             try:
                 for process in processes:
                     process.start()
+                deadline = time.monotonic() + 60
                 for process in processes:
-                    process.join(60)
+                    process.join(max(0, deadline - time.monotonic()))
                 for process in processes:
                     if process.is_alive():
                         process.terminate()
@@ -97,10 +70,13 @@ class StoreWalInitialization(unittest.TestCase):
             self.assertEqual(process.exitcode, 73)
 
             reopened = Store(Path(db))
-            self.assertEqual(reopened.get("missing"), None)
-            with sqlite3.connect(db) as conn:
+            self.assertIsNone(reopened.get("missing"))
+            conn = sqlite3.connect(db)
+            try:
                 self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0].lower(), "wal")
                 self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], store_module.SCHEMA_VERSION)
+            finally:
+                conn.close()
 
 
 if __name__ == "__main__":

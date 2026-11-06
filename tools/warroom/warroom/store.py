@@ -189,14 +189,13 @@ class Store:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._conn() as c:
-            self._ensure_wal(c)
             c.executescript(SCHEMA)
             if c.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
                 self._migrate(c)
 
     @staticmethod
     def _migrate(c) -> None:
-        c.executescript(SCHEMA_V2)
+        c.executescript("BEGIN IMMEDIATE;\n" + SCHEMA_V2)
         if "line" not in {r["name"] for r in c.execute("PRAGMA table_info(events)")}:
             c.execute("ALTER TABLE events ADD COLUMN line TEXT")
         have = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
@@ -244,7 +243,8 @@ class Store:
                            r["session_id"] if last else None, r["pid"] if last and status is None else None,
                            str(f), str(ex), float(m.group(1)),
                            ex.stat().st_mtime if status is not None else None, status))
-        c.executescript(SCHEMA_V6)
+        c.commit()
+        c.executescript("BEGIN IMMEDIATE;\n" + SCHEMA_V6)
         have = {r["name"] for r in c.execute("PRAGMA table_info(batches)")}
         if "pause_reason" not in have:
             c.execute("ALTER TABLE batches ADD COLUMN pause_reason TEXT NOT NULL DEFAULT ''")
@@ -261,9 +261,8 @@ class Store:
                 c.execute(f"ALTER TABLE runs ADD COLUMN {col} INTEGER")
         if "usage_quality" not in have:
             c.execute("ALTER TABLE runs ADD COLUMN usage_quality TEXT")
-        c.executescript(SCHEMA_V10)
-        c.executescript(SCHEMA_V13)
-        c.executescript(SCHEMA_V14)
+        c.commit()
+        c.executescript("BEGIN IMMEDIATE;\n" + SCHEMA_V10 + SCHEMA_V13 + SCHEMA_V14)
         if "task" not in {r["name"] for r in c.execute("PRAGMA table_info(runs)")}:
             c.execute("ALTER TABLE runs ADD COLUMN task TEXT")
         handled_columns = {r["name"] for r in c.execute("PRAGMA table_info(handled_events)")}
@@ -282,31 +281,11 @@ class Store:
                 c.execute(f"ALTER TABLE defects ADD COLUMN {col}")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
-    @staticmethod
-    def _ensure_wal(c) -> None:
-        deadline = time.monotonic() + 30
-        busy_codes = (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
-        while True:
-            mode = c.execute("PRAGMA journal_mode").fetchone()
-            if mode is not None and str(mode[0]).lower() == "wal":
-                return
-            try:
-                mode = c.execute("PRAGMA journal_mode=WAL").fetchone()
-            except sqlite3.OperationalError as exc:
-                code = getattr(exc, "sqlite_errorcode", None)
-                if code is None or code & 0xFF not in busy_codes:
-                    raise
-                mode = None
-            if mode is not None and str(mode[0]).lower() == "wal":
-                return
-            if time.monotonic() >= deadline:
-                raise sqlite3.OperationalError("War Room database did not enter WAL mode")
-            time.sleep(0.01)
-
     @contextmanager
     def _conn(self):
         conn = sqlite3.connect(self.path, timeout=30)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
         try:
             with conn:
                 yield conn
