@@ -28,7 +28,7 @@ from .store import MAINTENANCE_DIAGNOSIS_HOLD_PREFIX, MAINTENANCE_METHOD, STAGE2
 _NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` regression files wherever they live (AGENTS.md)
 _PY_TEST = re.compile(r"tools/warroom/tests/test_[^/]+\.py")
 _TESTISH = re.compile(r"(?:^|/)(?:tests?|__tests__)/|\.(?:test|spec)\.|(?:^|/)test_[^/]+\.py$")
-_SUPPORT_FILE = re.compile(r"(?:^|/)(?:fixtures?|helpers?)/|(?:^|/)(?:fakes|fake_runner|__init__)\.py$")   # test support, not a test
+_SUPPORT_FILE = re.compile(r"(?:^|/)(?:fixtures?|helpers?)/|(?:^|/)(?:fakes|fake_runner|__init__)\.py$|^tools/warroom/tests/fake_[^/]+\.py$")   # test support, not a test
 _DOC = re.compile(r"\.md$|^docs/|^tools/warroom/prompts/")
 VERIFY_TIMEOUT = 900
 OPEN_DEFECT = ("REPORTED", "LINKED", "FIX_MERGED", "HELD", "RECOVERING")

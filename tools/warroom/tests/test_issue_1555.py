@@ -463,7 +463,9 @@ class FailClosed(unittest.TestCase):
             (wt / rel).parent.mkdir(parents=True, exist_ok=True)
             (wt / rel).write_text("")
         ok = lambda: None
-        cases = [   # (name, changed files, configured, expected command prefix or None, verified?)
+        cases = [
+            ("War Room fake helper with its Python regression", ["tools/warroom/warroom/s.py", "tools/warroom/tests/fake_example.py", "tools/warroom/tests/test_x.py"], [], ["node", "tools/warroom/run-tests.mjs"], True),
+            ("fake helper alone cannot verify a code fix", ["tools/warroom/warroom/s.py", "tools/warroom/tests/fake_example.py"], [], None, False),   # (name, changed files, configured, expected command prefix or None, verified?)
             ("python tests run War Room's suite", ["tools/warroom/warroom/s.py", "tools/warroom/tests/test_x.py"], [], ["node", "tools/warroom/run-tests.mjs"], True),
             ("node tests run node --test", ["scripts/v.mjs", "tests/y.test.mjs"], [], ["node", "--test", "tests/y.test.mjs"], True),
             ("shared producer fix beside its scripts/** node test", ["scripts/relation/candidate-workbench.mjs", "scripts/relation/candidate-workbench.test.mjs"], [],
