@@ -1225,6 +1225,8 @@ withWorld('single and batch reread return context without changing evidence or d
   });
   assert.equal(singleReread.result.status, 'REREAD');
   assert.equal(singleReread.result.search_status, 'LIMITED');
+  assert.equal(singleReread.result.recorded_status, 'COMPLETE');
+  assert.match(singleReread.text, /reread sample only/u);
   assert.equal(singleReread.result.items.length, 1);
   assert.equal(singleReread.result.next_cursor, null, 'unrecorded reread cursor is not exposed');
   assert.equal(singleReread.decision_state.state, cached.decision_state.state);
@@ -1235,6 +1237,11 @@ withWorld('single and batch reread return context without changing evidence or d
     databasePath: world.options.databasePath, root: world.root,
   });
   assert.equal(batchReread.results[0].status, 'REREAD');
+  assert.equal(batchReread.results[0].search_status, 'LIMITED');
+  assert.equal(batchReread.results[0].recorded_status, 'COMPLETE');
+  assert.equal(batchReread.results[0].recorded_hits, 2);
+  const afterReread = await searchActive({ ref: 's1', forms: ['새벽안개'], cursor: 'next', databasePath: world.options.databasePath, root: world.root });
+  assert.equal(afterReread.result.status, 'ALREADY_COMPLETE');
   assert.equal(batchReread.requests[0].decision_state.state, cached.decision_state.state);
   assert.equal(await readFile(searchesPath, 'utf8'), before, 'batch reread writes no evidence');
 });

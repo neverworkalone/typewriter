@@ -88,3 +88,5 @@ node "$TYPEWRITER_D_CHUNK_CLI" save --chunk {{chunk_no}} --in "$TYPEWRITER_D_SCR
 제공된 현재 청크 view의 Sense·Record 결속과 CLI 응답까지 대조했는데도 **공유 계층(검색 CLI·검증기·생산 프롬프트 등)의 결함이 실제로 재현된 경우에만** `cat tools/warroom/prompts/shared-defect.md`로 **해당 문서 하나를 1회 읽고** 그 규약대로 보고한다. 정상적인 청크 작업에서는 이 문서를 열지 않는다. 단순한 예상 불일치, Sense/Record 결속 오판, 정상적인 검색 결과 공유, 근거 부족은 공통 결함으로 보고하지 않는다.
 
 보고 파일은 일반 기본 경로가 아닌 **상단 `session_note`가 지정한 이 청크 전용 경로**에 기록하고 즉시 작업을 멈춘다. 다른 파일이나 다른 청크의 보고 경로는 사용하지 않는다.
+
+재열람의 `search_status=LIMITED`는 새 표본 호출의 한계이며 기록된 완료 상태를 바꾸지 않는다. `recorded_status`가 완료이면 `cursor:next`로 재열람을 이어가지 않는다. 이때 `ALREADY_COMPLETE`는 정상이다.

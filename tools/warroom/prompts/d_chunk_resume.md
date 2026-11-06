@@ -13,3 +13,5 @@
 {{chunk_input}}
 
 Supervisor가 제공한 현재 검색 상태는 이 청크의 보존 증거를 공식 CLI로 계산한 결과다. 각 `sense`와 `record_id`를 정확히 맞춰 읽고 이전 응답에 대한 기억과 다르면 이 상태를 사용한다. 재개 후 새 검색을 실행하면 그 record의 최신 응답이 이 스냅샷보다 우선한다. 상태는 검색 범위의 기계적 허용만 나타내며, 검색형 충분성 판단이나 실제 문맥 판독을 대신하지 않는다.
+
+재열람의 `search_status=LIMITED`는 새 표본 호출의 한계이며 기록된 완료 상태를 바꾸지 않는다. `recorded_status`가 완료이면 `cursor:next`로 재열람을 이어가지 않는다. 이때 `ALREADY_COMPLETE`는 정상이다.

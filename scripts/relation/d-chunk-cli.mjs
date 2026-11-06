@@ -901,7 +901,8 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
       cursor_out: group.mode === 'reread' ? null : result.next_cursor ?? null,
       contexts_limit: group.contexts,
       status: outputStatus,
-      ...(group.mode === 'reread' ? { search_status: result.status, context_source: 'reread' } : {}),
+      ...(group.mode === 'reread' ? { search_status: result.status, recorded_status: group.condition.recorded_status,
+        recorded_hits: group.condition.recorded_hits, context_source: 'reread' } : {}),
       hits: result.items.length,
       scanned_rows: result.scanned_rows ?? 0,
       ...(result.error ? { error: [...String(result.error)].slice(0, 200).join('') } : {}),
@@ -1025,8 +1026,8 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
   if (reread) {
     const searchStatus = result.status;
     result = { ...result, status: searchStatus === 'SEARCH_FAILED' ? 'SEARCH_FAILED' : 'REREAD',
-      search_status: searchStatus, next_cursor: null };
-    const text = `${renderContexts(result)}\nsearch_status=${searchStatus}\ncontext_source=reread\nReread adds no search evidence; hit totals and decision state are unchanged.`;
+      search_status: searchStatus, recorded_status: condition.recorded_status, recorded_hits: condition.recorded_hits, next_cursor: null };
+    const text = `${renderContexts(result)}\nsearch_status=${searchStatus} (reread sample only)\nrecorded_status=${condition.recorded_status} recorded_hits=${condition.recorded_hits}\ncontext_source=reread\nReread adds no search evidence; hit totals and decision state are unchanged. Do not continue the reread sample with cursor next.`;
     return { result, text, decision_state: currentDecisionState(), context_source: 'reread' };
   }
   const exactRequestKey = requestKey(list, boundary, options);
