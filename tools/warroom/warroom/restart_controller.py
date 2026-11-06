@@ -14,6 +14,7 @@ import shlex
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from .config import Paths, ROOT_ENV
@@ -39,6 +40,31 @@ def _read_json(path: Path) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
+@contextmanager
+def _decision(paths: Paths):
+    """The one atomic boundary between request-file changes (new, cancelled, superseded) and the Controller's STOPPING
+    approval: both happen under this lock, so a withdrawal either lands before the approval (which then sees it) or after
+    it (too late by definition). Never nest it: flock on a second descriptor of the same process would block."""
+    paths.restart_requests.mkdir(parents=True, exist_ok=True)
+    with (paths.restart_requests / ".decision.lock").open("a+") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+
+
+def _write_live(path: Path, fields: dict) -> bool:
+    """Controller write onto the CURRENT file, never onto a copy read earlier: a request cancelled or finished meanwhile is
+    left exactly as it is. Caller holds the decision lock."""
+    current = _read_json(path)
+    if current is None or current.get("state") in TERMINAL_REQUEST_STATES:
+        return False
+    current.update(fields)
+    _atomic_json(path, current)
+    return True
+
+
 def request_path(paths: Paths, defect_id: int) -> Path:
     return paths.restart_requests / f"restart-{defect_id}.json"
 
@@ -56,7 +82,8 @@ def write_restart_request(paths: Paths, defect: dict, loaded_code_sha: str | Non
     if current and all(current.get(k) == request.get(k) for k in
                        ("version", "runtime_root", "defect_id", "issue", "batch_id", "merge_sha")):
         return path
-    _atomic_json(path, request)
+    with _decision(paths):
+        _atomic_json(path, request)
     return path
 
 
@@ -75,19 +102,21 @@ def request_operator_restart(paths: Paths, code_sha: str) -> Path:
         if current.get("merge_sha") == code_sha:
             return path
         raise ValueError("another operator code reload is pending")
-    _atomic_json(path, {"version": 1, "state": "requested", "kind": "operator_code_reload",
-                        "runtime_root": str(root), "defect_id": 0, "issue": None, "batch_id": None,
-                        "merge_sha": code_sha, "loaded_code_sha": None})
+    with _decision(paths):
+        _atomic_json(path, {"version": 1, "state": "requested", "kind": "operator_code_reload",
+                            "runtime_root": str(root), "defect_id": 0, "issue": None, "batch_id": None,
+                            "merge_sha": code_sha, "loaded_code_sha": None})
     return path
 
 
 def update_restart_request(paths: Paths, defect_id: int, state: str, **fields) -> bool:
     path = request_path(paths, defect_id)
-    request = _read_json(path)
-    if request is None or request.get("defect_id") != defect_id:
-        return False
-    request.update(fields, state=state, updated_at=time.time())
-    _atomic_json(path, request)
+    with _decision(paths):
+        request = _read_json(path)
+        if request is None or request.get("defect_id") != defect_id:
+            return False
+        request.update(fields, state=state, updated_at=time.time())
+        _atomic_json(path, request)
     return True
 
 
@@ -328,8 +357,9 @@ def _tmux(command: list[str], timeout=5) -> subprocess.CompletedProcess:
 
 
 def _set_waiting(paths: Paths, request: dict, reason: str) -> tuple[str, str]:
-    request.update(state="waiting", blocker=reason, checked_at=time.time())
-    _atomic_json(request_path(paths, int(request["defect_id"])), request)
+    with _decision(paths):
+        _write_live(request_path(paths, int(request["defect_id"])),
+                    {"state": "waiting", "blocker": reason, "checked_at": time.time()})
     return "starting", None
 
 
@@ -354,8 +384,9 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         runtime = _read_json(paths.runtime_record_file)
         if (runtime and runtime.get("runtime_root") == str(root)
                 and _ancestor(root, request["merge_sha"], runtime.get("loaded_code_sha", ""))):
-            request.update(state="loaded", loaded_code_sha=runtime.get("loaded_code_sha"), checked_at=time.time())
-            _atomic_json(path, request)
+            with _decision(paths):
+                _write_live(path, {"state": "loaded", "loaded_code_sha": runtime.get("loaded_code_sha"),
+                                   "checked_at": time.time()})
             continue
 
     pending = [(path, request) for path, request in requests
@@ -419,17 +450,27 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         if not same_pane:
             return _set_waiting(paths, pending[0][1], "Supervisor lock owner differs from the owned tmux pane")
 
-    if parallel_live:
-        # The single decision point: only the Controller turns READY into STOPPING, and only if nothing (a cancel, a new
-        # request, a policy change) won the CAS first. STOPPING is never reverted, so a failed kill is simply retried.
-        again = policy_blocker(store)
-        if again or not _to_stopping(store, ready):
-            return _set_waiting(paths, pending[0][1], again or "READY was cancelled or superseded before STOPPING")
     old_runtime = runtime_now
     restart_mark = time.time()
-    for path, request in pending:
-        request.update(state="restarting", blocker=None, requested_restart_at=restart_mark)
-        _atomic_json(path, request)
+    denied = None
+    with _decision(paths):
+        # The single decision point. Request files are re-read HERE, under the same lock every withdrawal/new request
+        # takes: a cancel or a changed request set that landed after the READY check is seen now, and one that lands later
+        # is too late. Only then the Controller turns READY into STOPPING (never reverted; a failed kill is retried).
+        if parallel_live:
+            loaded_sha = runtime_now.get("loaded_code_sha") if isinstance(runtime_now, dict) else None
+            if request_identity(paths, loaded_sha) != (ready or {}).get("request"):
+                denied = "restart request was withdrawn or changed after READY"
+            else:
+                denied = policy_blocker(store) or (None if _to_stopping(store, ready)
+                                                   else "READY was cancelled or superseded before STOPPING")
+        if denied is None:
+            written = [_write_live(path, {"state": "restarting", "blocker": None, "requested_restart_at": restart_mark})
+                       for path, _ in pending]
+            if not any(written):
+                denied = "restart request was withdrawn before the restart"
+    if denied:
+        return _set_waiting(paths, pending[0][1], denied)
 
     # Only the Supervisor session is replaced. The separate TUI/controller and production worker processes are preserved.
     if _tmux(["has-session", "-t", TMUX_SUP]).returncode == 0:
@@ -467,10 +508,10 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
             return _set_waiting(paths, pending[0][1], "updated Supervisor is starting (fence recovery may still be running); "
                                 "it is not recorded as loaded until its own runtime record verifies")
         return _set_waiting(paths, pending[0][1], "updated Supervisor runtime root/loaded code SHA did not verify")
-    for path, request in pending:
-        request.update(state="loaded", loaded_code_sha=loaded.get("loaded_code_sha"),
-                       supervisor_pid=loaded.get("pid"), loaded_at=time.time(), blocker=None)
-        _atomic_json(path, request)
+    with _decision(paths):
+        for path, _request in pending:
+            _write_live(path, {"state": "loaded", "loaded_code_sha": loaded.get("loaded_code_sha"),
+                               "supervisor_pid": loaded.get("pid"), "loaded_at": time.time(), "blocker": None})
     return "starting", None
 
 

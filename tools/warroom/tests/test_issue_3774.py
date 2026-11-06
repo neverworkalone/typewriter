@@ -118,8 +118,38 @@ class DrainCollectsThenReady(RestartWorld, unittest.TestCase):
         killed = self.controller(w)
         self.assertEqual((killed["kill"], self.phase(w)), (1, "STOPPING"))
 
+    def ready_world(self):
+        w = self.world(records=25)
+        self.plan_all(w, [1])
+        w.start("single", "deepseek", "d")
+        self.drive.cycle()
+        self.finish_task(w, "001")
+        self.request(w)
+        self.drive.cycles(4)
+        self.assertEqual(self.phase(w), "READY")
+        return w
+
+    def test_a_withdrawal_or_new_request_right_after_the_ready_check_stops_the_kill(self):
+        for name, race in (("withdrawn", lambda w: rc.update_restart_request(w.paths, 91, "cancelled")),
+                           ("changed set", lambda w: self.request(w, defect=92))):
+            with self.subTest(name):
+                w = self.ready_world()
+                self.fence_ok = True
+                fired = []
+
+                def ownership(*a, **k):      # runs after _ready_problem() read the identity, before the decision
+                    if not fired:
+                        fired.append(1)
+                        race(w)
+                state = self.controller(w, ownership)
+                self.assertEqual((state["kill"], self.phase(w)), (0, "READY"))     # no STOPPING, no kill
+                if name == "withdrawn":
+                    self.assertEqual(json.loads(self.request(w).read_text())["state"], "cancelled")   # not overwritten
+                self.drive.cycle()                                                # the Coordinator then decides on its own
+                self.assertIn(self.phase(w), ("RUNNING", "READY"))
+
     # -- the real Controller against the real phase/fence/runtime files, with only tmux/Git/ps mocked ------------------
-    def controller(self, w):
+    def controller(self, w, ownership=None):
         paths, store = w.paths, w.store
         rc.record_runtime(paths, HEAD2, configured_workers=16, workers=16, instance=w.sup.phase_instance)
         paths.runtime_root_file.write_text(str(paths.repo_root.resolve()), "utf-8")
@@ -140,7 +170,7 @@ class DrainCollectsThenReady(RestartWorld, unittest.TestCase):
         head = mock.Mock(returncode=0, stdout=HEAD1)
         with mock.patch.object(rc, "_git", return_value=head), \
              mock.patch.object(rc, "_ancestor", side_effect=lambda root, older, newer: newer == HEAD1), \
-             mock.patch.object(rc, "_worktree_ownership_problem", return_value=None), \
+             mock.patch.object(rc, "_worktree_ownership_problem", side_effect=ownership or (lambda *a, **k: None)), \
              mock.patch.object(rc, "_lock_held", side_effect=lock_held), \
              mock.patch.object(rc, "_pid_alive", return_value=True), \
              mock.patch.object(rc, "STARTUP_TIMEOUT", 2), \
