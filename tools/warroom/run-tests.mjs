@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const venvPython = path.join(root, '.local', 'venv', 'bin', 'python');
 const python = existsSync(venvPython) ? venvPython : process.platform === 'win32' ? 'python' : 'python3';
-const result = spawnSync(python, ['-m', 'unittest', 'discover', '-s', 'tests', '-t', '.'], {
+// Class-level parallel runner by default (#3801); WARROOM_TEST_JOBS=1 keeps the plain serial discover path.
+const serial = process.env.WARROOM_TEST_JOBS === '1';
+const args = serial ? ['-m', 'unittest', 'discover', '-s', 'tests', '-t', '.'] : ['-m', 'tests.parallel_runner'];
+const result = spawnSync(python, args, {
   cwd: root,
   stdio: 'inherit',
   env: { ...process.env, PYTHONPATH: root, PYTHONDONTWRITEBYTECODE: '1' },
