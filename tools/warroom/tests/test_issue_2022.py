@@ -187,6 +187,30 @@ class MaintainerControls(World2022):
         self.assertEqual(maintainer_row(w)["state"], "PRODUCING")
         self.assertEqual(len([x for x in w.store.all_batches() if x["method"] == "m"]), 1)
 
+    def test_retry_uses_the_selected_issue_batch_when_a_newer_attempt_exists(self):
+        w = self.w
+        _, first = start_maintainer(w)
+        first_run = w.store.runs(first["id"])[0]
+        w.store.finish_run(first_run["id"], 0)
+        w.store.update(first["id"], state="ERROR", paused_from="PRODUCING", pid=None,
+                       error="first issue failed")
+
+        w.gh.issues[202] = {"state": "open", "labels": ["urgent"], "title": "Issue 202", "body": "diagnosis"}
+        w.store.ensure_maintenance(202)
+        second_id = w.store.claim_maintenance(
+            202, "sonnet", "maint-202", str(w.paths.worktrees / "maint-202"),
+        )
+        self.assertIsNotNone(second_id)
+        w.store.update(second_id, state="PRODUCING", pid=12345, paused_from="PRODUCING")
+        self.assertFalse(control.retry_maintainer(w.store, 101, first["id"]))
+        self.assertIsNone(w.store.line("sonnet", "m")["retry_batch"])
+
+        w.store.update(second_id, state="ERROR", pid=None, error="second issue failed")
+        self.assertEqual(w.store.active_batch("sonnet", "m")["id"], second_id)
+        self.assertTrue(control.retry_maintainer(w.store, 101, first["id"]))
+        self.assertEqual(w.store.line("sonnet", "m")["retry_batch"], first["id"])
+        self.assertEqual(w.store.batch(second_id)["state"], "ERROR")
+
     def test_stop_bound_to_a_finished_issue_never_stops_the_next_one(self):
         w = self.w
         b, m = start_maintainer(w)
