@@ -1010,14 +1010,16 @@ class _WorldTmp(tempfile.TemporaryDirectory):
 
     def cleanup(self):
         anchors, self.anchors = self.anchors, []
-        for conn in anchors:
-            conn.close()
-        super().cleanup()
+        try:
+            for conn in anchors:
+                conn.close()
+        finally:
+            super().cleanup()
 
 
 class World:
-    # Test-only speed-up (#3801): an idle sqlite3 connection (never queried) on the Store's DB, so the per-call
-    # connections of Store._conn() are not the last close (no WAL checkpoint/-wal delete on each).
+    # Test-only speed-up (#3801): an idle sqlite3 connection on the Store's DB, so per-call connections are not the
+    # last close. Only the read-only journal_mode check runs on the anchor; no application query or transaction does.
 
     @property
     def store(self):
@@ -1027,25 +1029,35 @@ class World:
     def store(self, store):   # a test re-creating the Store gets its own anchor, all closed before tmp is deleted
         self._store = store
         anchor = sqlite3.connect(store.path, timeout=30, check_same_thread=False)
-        anchor.execute("PRAGMA journal_mode=WAL")   # joins the WAL (opens -shm); no query or transaction ever runs
+        try:
+            mode = anchor.execute("PRAGMA journal_mode").fetchone()
+            if mode is None or str(mode[0]).lower() != "wal":
+                raise sqlite3.OperationalError("World database is not in WAL mode")
+        except BaseException:
+            anchor.close()
+            raise
         self.tmp.anchors.append(anchor)
 
     def __init__(self, models=None):
         self.tmp = _WorldTmp()
         root = Path(self.tmp.name)
-        self.paths = Paths(repo_root=root, local=root / "local")
-        self.paths.ensure()
-        self.cfg = json.loads(json.dumps(DEFAULTS))
-        self.cfg["poll_seconds"] = 0
-        self.cfg["ab_chunk_sessions"] = False   # legacy A/B tests drive the long session; test_issue_2035 enables chunks
-        self.cfg["models"] = models or {"free": "p/free-x-free", "go": "p/go"}
-        self.cfg["rate_limit_backoff_seconds"] = 10
-        self.store = Store(self.paths.db)
-        self.adapter, self.git, self.gh = FakeAdapter(), FakeGit(self.paths.worktrees), FakeGh()
-        self.gh.git = self.git
-        self.now = 1_000_000.0
-        self.sup = self.make_sup()
-        self.sup_runner_ok()
+        try:
+            self.paths = Paths(repo_root=root, local=root / "local")
+            self.paths.ensure()
+            self.cfg = json.loads(json.dumps(DEFAULTS))
+            self.cfg["poll_seconds"] = 0
+            self.cfg["ab_chunk_sessions"] = False   # legacy A/B tests drive the long session; test_issue_2035 enables chunks
+            self.cfg["models"] = models or {"free": "p/free-x-free", "go": "p/go"}
+            self.cfg["rate_limit_backoff_seconds"] = 10
+            self.store = Store(self.paths.db)
+            self.adapter, self.git, self.gh = FakeAdapter(), FakeGit(self.paths.worktrees), FakeGh()
+            self.gh.git = self.git
+            self.now = 1_000_000.0
+            self.sup = self.make_sup()
+            self.sup_runner_ok()
+        except BaseException:
+            self.tmp.cleanup()
+            raise
 
     parallel_s2 = False   # the serial Stage 2 path stays covered; test_issue_3047 turns the parallel path on
     parallel_s3 = False   # likewise the serial Stage 3 path; test_issue_3149 turns the parallel path on

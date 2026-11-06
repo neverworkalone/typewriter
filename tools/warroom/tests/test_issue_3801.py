@@ -14,40 +14,34 @@ class TestWorldAnchor(unittest.TestCase):
     def test_anchor_stays_idle_and_cleanup_closes_it_before_removal(self):
         world = World()
         db = world.paths.db
-        anchor = world.anchor
-        self.assertIsNotNone(anchor)
+        self.assertEqual(len(world.tmp.anchors), 1)
+        anchor = world.tmp.anchors[0]
         self.assertFalse(anchor.in_transaction)
         world.store.set("first", "value")
         self.assertEqual(world.store.get("first"), "value")
         self.assertFalse(anchor.in_transaction)
 
         world.tmp.cleanup()
-        self.assertIsNone(world.anchor)
+        self.assertEqual(world.tmp.anchors, [])
         self.assertFalse(db.exists())
         with self.assertRaises(sqlite3.ProgrammingError):
             anchor.execute("SELECT 1")
 
-    def test_anchors_are_per_world_and_opt_out_is_available(self):
+    def test_anchors_are_per_world(self):
         first, second = World(), World()
-        first_anchor = first.anchor
+        first_anchor, second_anchor = first.tmp.anchors[0], second.tmp.anchors[0]
         try:
-            self.assertIsNot(first_anchor, second.anchor)
+            self.assertIsNot(first_anchor, second_anchor)
             self.assertNotEqual(first.paths.db, second.paths.db)
             self.assertNotEqual(first.paths.worktrees, second.paths.worktrees)
             self.assertFalse(first_anchor.in_transaction)
-            first.close()
-            self.assertFalse(second.anchor.in_transaction)
+            first.tmp.cleanup()
+            self.assertFalse(second_anchor.in_transaction)
             with self.assertRaises(sqlite3.ProgrammingError):
                 first_anchor.execute("SELECT 1")
         finally:
             first.tmp.cleanup()
             second.tmp.cleanup()
-
-        legacy = World(anchor=False)
-        try:
-            self.assertIsNone(legacy.anchor)
-        finally:
-            legacy.tmp.cleanup()
 
     def test_non_wal_anchor_fails_closed_and_cleans_up(self):
         class ModeCursor:
@@ -63,7 +57,7 @@ class TestWorldAnchor(unittest.TestCase):
 
         anchors, temporary_dirs = [], []
         original_connect = sqlite3.connect
-        original_temporary_directory = fakes._WorldTemporaryDirectory
+        original_temporary_directory = fakes._WorldTmp
 
         def connect(*args, **kwargs):
             if kwargs.get("check_same_thread") is False:
