@@ -156,6 +156,11 @@ class Paths:
         return self.local / "logs"
 
     @property
+    def children(self) -> Path:
+        """Per-instance journals of synchronous Git/Node children (#3773): `children/<instance>/`."""
+        return self.supervisor_state / "children"
+
+    @property
     def lock(self) -> Path:
         return self.supervisor_state / "supervisor.lock"
 

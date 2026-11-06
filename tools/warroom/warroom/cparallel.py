@@ -472,6 +472,8 @@ class ParallelC:
                 literary.init_checkpoint(self.sup.runner, self._env(b), wt, b, self.sup._c_db())
             elif problem := self.sup._c_head_problem(b, wt):
                 return self.sup._fail(b, "ERROR", problem + " worktree를 보존합니다.")
+        except TRANSIENT:
+            raise
         except _ERRORS + (GitError,) as error:
             return self.sup._fail(b, "ERROR", f"Method C 상태 확인 실패: {error}. worktree를 보존합니다.")
         self.store.update(b["id"], state="PRODUCING", run_kind=RUN_KIND, pid=None, session_id=None,

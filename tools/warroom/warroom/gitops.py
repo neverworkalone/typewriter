@@ -23,6 +23,13 @@ class GitTransient(GitError):
     """A remote git call failed in a way asking again can fix (timeout, network); nothing was decided."""
 
 
+class ResourceFenced(GitTransient):
+    """A resource is protected by an unresolved earlier Git/Node child (#3773): ask again on a later tick.
+
+    Never converted into ERROR/PAUSED, a Retry-budget spend or a fake result: handlers that catch GitError re-raise it.
+    """
+
+
 class FastForwardRace(GitTransient):
     """The PR or remote branch moved while a safe PR-head fast-forward was being checked."""
 
@@ -73,24 +80,37 @@ def parse_verify_failure(code: int, out: str) -> dict | None:
 SCRATCH_DIR = ".warroom-scratch"   # the AI's throw-away files; never part of a batch and never blocks a worktree check
 
 
+_RESOURCE = {"repo_lock": "repo", "verify_lock": "verify"}
+
+
 def _locked(name):
     """Hold a shared resource over the whole operation, not individual Git commands."""
     def decorate(fn):
         @wraps(fn)
         def wrapped(self, *args, **kwargs):
+            resource = _RESOURCE[name]
+            self._fence_gate(resource)       # a fenced resource defers the work to the next tick before waiting on a lock
             with getattr(self, name):
+                self._fence_gate(resource)   # a fence can appear while this thread waited for the lock
                 return fn(self, *args, **kwargs)
         return wrapped
     return decorate
 
 
 class Git:
-    def __init__(self, runner: Runner, repo_root: Path, env: dict, worktrees_dir: Path):
+    fence = None   # crash fence (#3773); stays None for a Git built without it
+
+    def __init__(self, runner: Runner, repo_root: Path, env: dict, worktrees_dir: Path, fence=None):
         self.r, self.root, self.env = runner, Path(repo_root), env
+        self.fence = fence   # crash fence (#3773); None keeps the pre-fence behaviour exactly
         self.worktrees_dir = Path(worktrees_dir)
-        self.repo_lock = OrderedLock(4, reentrant=True)
-        self.verify_lock = OrderedLock(3)
+        self.repo_lock = OrderedLock(4, reentrant=True, name="repo")
+        self.verify_lock = OrderedLock(3, name="verify")
         self._bin = resolve_git(env)   # never the (cache-poisonable) xcrun stub
+
+    def _fence_gate(self, resource: str) -> None:
+        if self.fence is not None:
+            self.fence.check({resource})   # ResourceFenced(GitTransient): re-evaluated on a later tick
 
     @property
     def bin(self) -> str:
@@ -305,6 +325,8 @@ class Git:
             raise FastForwardBlocked(f"worktree가 소유 브랜치 {branch!r}로 등록되어 있지 않습니다")
         try:
             self.worktree_gitdir(path)
+        except ResourceFenced:
+            raise
         except GitError as e:
             raise FastForwardBlocked(str(e)) from e
         if (dirty := self.dirty(path)).strip():
@@ -758,6 +780,8 @@ class Git:
             raise CleanupBlocked(f"worktree가 소유 브랜치 {branch}로 등록되어 있지 않습니다 (등록: {reg!r})")
         try:
             self.worktree_gitdir(path)
+        except ResourceFenced:
+            raise
         except GitError as e:
             raise CleanupBlocked(str(e))
         return True
@@ -1005,6 +1029,8 @@ class Git:
                 raise IntegrationBlocked(f"worktree가 소유 브랜치 {branch!r}로 등록되어 있지 않습니다")
             try:
                 self.worktree_gitdir(path)
+            except ResourceFenced:
+                raise
             except GitError as e:
                 raise IntegrationBlocked(str(e)) from e
             current = self.head(path)
