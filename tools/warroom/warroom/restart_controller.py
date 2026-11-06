@@ -407,7 +407,8 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
                                          request["requested_restart_at"]))):
             with _decision(paths):
                 _write_live(path, {"state": "loaded", "loaded_code_sha": runtime.get("loaded_code_sha"),
-                                   "checked_at": time.time()})
+                                   "supervisor_pid": runtime.get("pid"), "supervisor_instance": runtime.get("instance"),
+                                   "checked_at": time.time(), "blocker": None})
             continue
 
     pending = [(path, request) for path, request in requests

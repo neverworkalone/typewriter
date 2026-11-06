@@ -440,6 +440,30 @@ class MaintainerDrainBoundary(unittest.TestCase):
                                      (HEAD1, "new", os.getpid()))
 
 
+    def test_startup_timeout_then_next_call_records_verified_owner(self):
+        from tests.test_issue_1555 import world
+        w = world()
+        self.addCleanup(w.tmp.cleanup)
+        request = rc.write_restart_request(w.paths, {"id": 91, "merge_sha": HEAD1}, None)
+        rc.update_restart_request(w.paths, 91, "waiting", requested_restart_at=100.0,
+                                  previous_instance="old", blocker="starting")
+        w.store.begin_restart_phase("new")
+        rc.record_runtime(w.paths, HEAD1, instance="new")
+        def tmux(args, **kw):
+            return mock.Mock(returncode=0, stdout="0" if "#{pane_dead}" in args else str(os.getpid()))
+        with mock.patch.object(rc, "_git", return_value=mock.Mock(returncode=0, stdout=HEAD1)), \
+             mock.patch.object(rc, "_ancestor", return_value=True), \
+             mock.patch.object(rc, "_lock_held", return_value=True), \
+             mock.patch.object(rc, "_pid_alive", return_value=True), \
+             mock.patch.object(rc, "owner_state", return_value="alive"), \
+             mock.patch.object(rc, "_tmux", side_effect=tmux):
+            rc.handle_pending_restart(w.paths, w.store)
+        result = json.loads(request.read_text())
+        self.assertEqual((result["state"], result["loaded_code_sha"], result["supervisor_pid"],
+                          result["supervisor_instance"], result["blocker"]),
+                         ("loaded", HEAD1, os.getpid(), "new", None))
+
+
 class CoordinatorDetails(RestartWorld, unittest.TestCase):
     def test_draining_never_selects_a_new_batch_or_runs_the_maintainer_step(self):
         w = self.world(records=25)
