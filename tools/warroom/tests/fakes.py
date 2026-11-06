@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import re
+import sqlite3
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -19,20 +20,6 @@ from warroom.supervisor import Supervisor
 import json
 
 HEAD1, HEAD2 = "a" * 40, "b" * 40
-
-
-class _WorldTemporaryDirectory(tempfile.TemporaryDirectory):
-    def __init__(self):
-        self.before_cleanup = None
-        super().__init__()
-
-    def cleanup(self):
-        before_cleanup, self.before_cleanup = self.before_cleanup, None
-        try:
-            if before_cleanup is not None:
-                before_cleanup()
-        finally:
-            super().cleanup()
 
 
 class FakeAdapter(AgentAdapter):
@@ -1054,7 +1041,6 @@ class World:
         self.cfg["models"] = models or {"free": "p/free-x-free", "go": "p/go"}
         self.cfg["rate_limit_backoff_seconds"] = 10
         self.store = Store(self.paths.db)
-        self.tmp.before_cleanup = self.store.close
         self.adapter, self.git, self.gh = FakeAdapter(), FakeGit(self.paths.worktrees), FakeGh()
         self.gh.git = self.git
         self.now = 1_000_000.0

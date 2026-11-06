@@ -55,18 +55,8 @@ class WebServer(ThreadingHTTPServer):
         self.paths = paths
         self.store = Store(paths.db)
         self.allow_hosts = {h.lower() for h in allow_hosts}
-        try:
-            super().__init__((host, port), Handler)
-        except BaseException:
-            self.store.close()
-            raise
+        super().__init__((host, port), Handler)
         self.port = self.server_address[1]
-
-    def server_close(self) -> None:
-        try:
-            super().server_close()
-        finally:
-            self.store.close()
 
     def host_ok(self, value: str | None, default_port: int | None = None) -> bool:
         """Loopback names only on OUR port; a tailnet host name only when the owner listed it."""

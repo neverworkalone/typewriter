@@ -1,19 +1,12 @@
-"""SQLite persistent state: one idle WAL anchor plus short-lived connections."""
+"""SQLite persistent state. Short-lived connections: TUI and Supervisor share the file."""
 from __future__ import annotations
 
 import json
-import os
 import re
 import sqlite3
 import time
-import weakref
 from contextlib import contextmanager
 from pathlib import Path
-
-try:
-    import fcntl
-except ImportError:  # pragma: no cover - Windows uses the sidecar lock below.
-    fcntl = None
 
 from .usage import parse_usage
 
@@ -183,42 +176,6 @@ class DuplicateBatch(LineBusy):
 SHARED_QUEUE_METHODS = ("c", "d")   # one queue across all models; A/B keep a queue per model
 
 
-def _closed_store_connection():
-    raise RuntimeError("Store is closed")
-
-
-@contextmanager
-def _store_initialization_lock(path: Path):
-    """Serialize only first-open/schema setup; Worker connections remain short-lived and independent."""
-    lock_path = path.with_name(path.name + ".init.lock")
-    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o666)
-    if fcntl is not None:
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-        finally:
-            os.close(fd)
-        return
-
-    # Windows has no fcntl.flock. The persistent sidecar gives msvcrt a byte range to lock.
-    try:
-        if os.fstat(fd).st_size == 0:
-            os.write(fd, b"\0")
-        os.lseek(fd, 0, os.SEEK_SET)
-        import msvcrt
-        msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
-        try:
-            yield
-        finally:
-            os.lseek(fd, 0, os.SEEK_SET)
-            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-    finally:
-        os.close(fd)
-
-
 VERDICT_OUTCOME_FIELDS = frozenset({"state", "retries", "retry_after"})
 
 
@@ -231,24 +188,10 @@ class Store:
     def __init__(self, path: Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with _store_initialization_lock(self.path):
-            with self._conn() as c:
-                c.executescript(SCHEMA)
-                if c.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
-                    self._migrate(c)
-            anchor = None
-            try:
-                anchor = sqlite3.connect(self.path, timeout=30, check_same_thread=False)
-                mode = anchor.execute("PRAGMA journal_mode").fetchone()
-                if mode is None or str(mode[0]).lower() != "wal":
-                    raise sqlite3.OperationalError("War Room database is not in WAL mode")
-                self._closed = False
-                self._anchor = anchor
-                self._anchor_finalizer = weakref.finalize(self, sqlite3.Connection.close, anchor)
-            except BaseException:
-                if anchor is not None:
-                    anchor.close()
-                raise
+        with self._conn() as c:
+            c.executescript(SCHEMA)
+            if c.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
+                self._migrate(c)
 
     @staticmethod
     def _migrate(c) -> None:
@@ -348,23 +291,6 @@ class Store:
                 yield conn
         finally:
             conn.close()
-
-    def close(self) -> None:
-        """Close the idle WAL anchor; repeated calls are harmless and later use fails closed."""
-        if self._closed:
-            return
-        self._closed = True
-        # Keep the shared connection lifecycle unchanged while making this instance fail before another connect.
-        self._conn = _closed_store_connection
-        self._anchor_finalizer()
-
-    def __enter__(self):
-        if self._closed:
-            raise RuntimeError("Store is closed")
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        self.close()
 
     # --- key/value (operator controls, supervisor heartbeat) ---
     def get(self, key: str, default: str | None = None) -> str | None:

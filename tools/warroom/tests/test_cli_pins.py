@@ -277,24 +277,24 @@ class StoreV3(unittest.TestCase):
             c.execute("INSERT INTO runs(batch_id,kind,started_at) VALUES(1,'legacy',1)")
             c.commit()
             c.close()
-            with Store(db) as store:
-                with store._conn() as c:
-                    cols = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
-                self.assertTrue({"model", "effort", "fast_mode"} <= cols)
-                run = store.runs(1)[0]
-                self.assertIsNone(run["model"])
-                self.assertIsNone(run["effort"])
-                self.assertIsNone(run["fast_mode"])
+            store = Store(db)
+            with store._conn() as c:
+                cols = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
+            self.assertTrue({"model", "effort", "fast_mode"} <= cols)
+            run = store.runs(1)[0]
+            self.assertIsNone(run["model"])
+            self.assertIsNone(run["effort"])
+            self.assertIsNone(run["fast_mode"])
 
     def test_add_run_round_trips_the_pin(self):
         with tempfile.TemporaryDirectory() as d:
-            with Store(Path(d) / "warroom.db") as store:
-                bid = store.create_batch(method="a", producer="claude", shard="001", batch="01", branch="b",
-                                         worktree="/w")
-                store.add_run(bid, "produce", None, 1, "l.log", "l.exit", model="gpt-6-luna", effort="xhigh",
-                              fast_mode=True)
-                run = store.runs(bid)[0]
-                self.assertEqual((run["model"], run["effort"], run["fast_mode"]), ("gpt-6-luna", "xhigh", 1))
+            store = Store(Path(d) / "warroom.db")
+            bid = store.create_batch(method="a", producer="claude", shard="001", batch="01", branch="b",
+                                     worktree="/w")
+            store.add_run(bid, "produce", None, 1, "l.log", "l.exit", model="gpt-6-luna", effort="xhigh",
+                          fast_mode=True)
+            run = store.runs(bid)[0]
+            self.assertEqual((run["model"], run["effort"], run["fast_mode"]), ("gpt-6-luna", "xhigh", 1))
 
 
 class RelaunchSettings(unittest.TestCase):

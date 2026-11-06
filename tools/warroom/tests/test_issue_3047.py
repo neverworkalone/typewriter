@@ -363,11 +363,11 @@ class ConfigAndMigration(unittest.TestCase):
     def test_additive_migration_creates_task_state(self):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
-            with Store(Path(tmp) / "w.db") as store:
-                with store._conn() as c:
-                    tables = {r["name"] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-                    runs = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
-                    version = c.execute("PRAGMA user_version").fetchone()[0]
+            store = Store(Path(tmp) / "w.db")
+            with store._conn() as c:
+                tables = {r["name"] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                runs = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
+                version = c.execute("PRAGMA user_version").fetchone()[0]
         self.assertIn("s2_tasks", tables)
         self.assertIn("task", runs)
         self.assertEqual(version, SCHEMA_VERSION)

@@ -553,11 +553,7 @@ def main() -> int:
             request_operator_restart(paths, sys.argv[2])
         elif len(sys.argv) != 1:
             raise SystemExit("usage: python -m warroom.restart_controller [--request-code-sha FULL_SHA]")
-        store = Store(paths.db)
-        try:
-            handle_pending_restart(paths, store)
-        finally:
-            store.close()
+        handle_pending_restart(paths, Store(paths.db))
     finally:
         lock.close()
     return 0

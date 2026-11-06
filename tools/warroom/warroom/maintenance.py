@@ -1082,7 +1082,6 @@ class Maintenance:
                 obs[name] = fn()
             except Exception as e:   # a failed lookup is `unknown`, never a blocked intake
                 obs[name] = unknown(e)
-
         wt_exists = Path(b["worktree"]).is_dir()
         put("runs", lambda: (ok("ok", [{"id": r["id"], "kind": r["kind"], "exit_status": r["exit_status"], "log_file": r["log_file"]}
                                        for r in self.store.runs(b["id"])[:20]]) if self.store.runs(b["id"]) else missing()))

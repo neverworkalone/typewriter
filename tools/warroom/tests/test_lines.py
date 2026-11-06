@@ -665,9 +665,8 @@ class Migration(unittest.TestCase):
             with self.subTest(name), tempfile.TemporaryDirectory() as d:
                 db = self.legacy_db(Path(d), kv, [(state, "01")])
                 for _ in range(2):                              # idempotent re-open
-                    with Store(db) as store:
-                        ln = store.line("deepseek", "a")
-                        self.assertEqual((ln["run"], ln["drain"], ln["force_stop"], ln["retry_batch"]), want)
+                    ln = Store(db).line("deepseek", "a")
+                    self.assertEqual((ln["run"], ln["drain"], ln["force_stop"], ln["retry_batch"]), want)
 
     def test_migrated_pending_stop_is_executed_and_pid_kept_until_exit(self):
         w = multi_world()
@@ -707,24 +706,24 @@ class Migration(unittest.TestCase):
             c.commit()
             c.close()
             for _ in range(2):                                      # second open must change nothing
-                with Store(db) as s:
-                    self.assertEqual([b["state"] for b in s.all_batches()], ["COMPLETE", "PAUSED"])
-                    paused = s.all_batches()[1]
-                    self.assertEqual((paused["pause_reason"], paused["defect_id"]), ("", None))
-                    ln = s.line("deepseek", "a")
-                    self.assertEqual((ln["mode"], ln["run"], ln["drain"]), ("continuous", 1, 1))
-                    self.assertEqual(ln["shard_pin"], "")
-                    runs = s.line_runs("deepseek", "a")
-                    self.assertEqual(len(runs), 2)
-                    old = [r for r in runs if r["started_at"] == 100][0]
-                    self.assertEqual((old["exit_status"], old["kind"]), ("0", "legacy"))
-                    self.assertEqual(len(s.line_events("deepseek", "a")), 1)
-                    self.assertEqual(s.get("heartbeat"), "5")
-                    self.assertEqual(s.active_batch("deepseek", "a")["batch"], "02")
+                s = Store(db)
+                self.assertEqual([b["state"] for b in s.all_batches()], ["COMPLETE", "PAUSED"])
+                paused = s.all_batches()[1]
+                self.assertEqual((paused["pause_reason"], paused["defect_id"]), ("", None))
+                ln = s.line("deepseek", "a")
+                self.assertEqual((ln["mode"], ln["run"], ln["drain"]), ("continuous", 1, 1))
+                self.assertEqual(ln["shard_pin"], "")
+                runs = s.line_runs("deepseek", "a")
+                self.assertEqual(len(runs), 2)
+                old = [r for r in runs if r["started_at"] == 100][0]
+                self.assertEqual((old["exit_status"], old["kind"]), ("0", "legacy"))
+                self.assertEqual(len(s.line_events("deepseek", "a")), 1)
+                self.assertEqual(s.get("heartbeat"), "5")
             with sqlite3.connect(db) as migrated:
                 self.assertEqual(migrated.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
                 tables = {r[0] for r in migrated.execute("SELECT name FROM sqlite_master WHERE type='table'")}
                 self.assertTrue({"drain_schedules", "defects", "maintenance"} <= tables)
+            self.assertEqual(s.active_batch("deepseek", "a")["batch"], "02")
 
 
 class TailTests(unittest.TestCase):
