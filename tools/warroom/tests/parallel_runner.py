@@ -279,14 +279,15 @@ def main(argv=None) -> int:
         temp = Path(td)
         parallel_groups = [group for group in ordered if not group["exclusive"]]
         exclusive_groups = [group for group in ordered if group["exclusive"]]
+        # Process-table assertions must see the suite's baseline before other workers create child processes.
+        for group in exclusive_groups:
+            results.append(run_class(root, group, temp, env))
+            print(".", end="", flush=True)
         with ThreadPoolExecutor(max_workers=jobs, thread_name_prefix="warroom-test-class") as pool:
             futures = {pool.submit(run_class, root, group, temp, env): group for group in parallel_groups}
             for future in as_completed(futures):
                 results.append(future.result())
                 print(".", end="", flush=True)
-        for group in exclusive_groups:
-            results.append(run_class(root, group, temp, env))
-            print(".", end="", flush=True)
         print()
         errors = audit_results(groups, results, expected_skips, expected_failures)
         if errors:
