@@ -1401,7 +1401,8 @@ class Maintenance:
 
     @staticmethod
     def _batch_investigation_scope(source, tasks) -> bool:
-        batch_steps = {(STAGE2_METHOD, "s2_repair_new"), (literary.METHOD, "c_finalize"),
+        batch_steps = {(STAGE2_METHOD, "fix_new"), (STAGE2_METHOD, "fix_resume"),
+                       (STAGE2_METHOD, "s2_repair_new"), (literary.METHOD, "c_finalize"),
                        (dchunk.METHOD, "d_finalize"), (STAGE2_METHOD, "s2_deterministic_finalize"),
                        (STAGE3_METHOD, "s3_finalize")}
         return (not tasks or ((source["method"], source["run_kind"]) in batch_steps

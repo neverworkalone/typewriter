@@ -310,6 +310,15 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertTrue(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}]))
         self.assertFalse(Maintenance._batch_investigation_scope(source, [{"state": "FAILED"}]))
         self.assertFalse(Maintenance._batch_investigation_scope({"method": "c", "run_kind": "s2_repair_new"}, [{"state": "SAVED"}]))
+    def test_s2_review_fix_investigation_requires_all_tasks_saved(self):
+        from warroom.maintenance import Maintenance
+        for kind in ("fix_new", "fix_resume"):
+            with self.subTest(kind=kind):
+                source = {"method": "s2", "run_kind": kind}
+                self.assertTrue(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}]))
+                self.assertFalse(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}, {"state": "FAILED"}]))
+                self.assertFalse(Maintenance._batch_investigation_scope({"method": "c", "run_kind": kind}, [{"state": "SAVED"}]))
+
     def test_c_finalize_investigation_requires_all_tasks_saved(self):
         from warroom.maintenance import Maintenance
         source = {"method": "c", "run_kind": "c_finalize"}
