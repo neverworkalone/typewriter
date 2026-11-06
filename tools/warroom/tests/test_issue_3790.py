@@ -141,6 +141,63 @@ class ExitVerdictSurvives(unittest.TestCase):
                 self.assertEqual((state, w.row()["state"], len(w.adapter.launches)), ("ERROR", "ERROR", 1))
 
 
+class DeathBeforeTheVerdict(unittest.TestCase):
+    def die_then_restart(self, w):
+        w.sup._apply_exit_verdict_do = lambda *a, **k: (_ for _ in ()).throw(Died())
+        with self.assertRaises(Died):
+            w.tick()
+        restart(w)
+        w.tick()
+
+    def test_zero_exit_and_missing_status_keep_their_original_error_after_death(self):
+        for name, code in (("exit0", 0), ("missing", None)):
+            with self.subTest(name):
+                w = World()
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single")
+                w.adapter.plan.append({"code": 0, "text": ""})
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                if code is None:
+                    next(iter(w.paths.logs.glob("*.exit"))).unlink()
+                self.die_then_restart(w)
+                self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("ERROR", 1))
+                self.assertIsNone(w.store.get(exit_verdict_key(w.row()["id"])))
+
+    def test_ab_partial_begin_response_is_corrected_in_its_session_after_death(self):
+        w = ABWorld()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, end=False), session="ses_1")
+        w.ai(w.block(1), session="ses_1")
+        w.tick()
+        w.finish_last()
+        self.die_then_restart(w)
+        last = w.adapter.launches[-1]
+        self.assertEqual((len(w.adapter.launches), last["kind"], last["session"]), (2, "resume", "ses_1"))
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry"])
+
+    def test_ab_death_after_the_official_save_accepts_the_saved_file_without_an_ai(self):
+        w = ABWorld()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1), session="ses_1")
+        w.ai(w.block(2), session="ses_2")
+        w.tick()
+        w.finish_last()
+        bid = w.row_()["id"]
+        orig = w.sup._ab_accept
+        w.sup._ab_accept = lambda *a, **k: (_ for _ in ()).throw(Died())     # dies right after stage1ab.save
+        with self.assertRaises(Died):
+            w.tick()
+        self.assertIsNotNone(w.store.get(exit_verdict_key(bid)))
+        restart(w)
+        w.tick()
+        self.assertIsNotNone(w.store.get(f"ab_sha_{bid}_1"))
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_new"])           # chunk 2 is the only extra run
+        self.assertEqual(len(w.adapter.launches), 2)
+
+
 class SavedOutputIsAcceptedWithAClosedGate(unittest.TestCase):
     def test_ab_chunk_save_is_accepted_but_the_next_run_waits_for_admission(self):
         w = ABWorld()

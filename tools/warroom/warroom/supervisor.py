@@ -2748,12 +2748,24 @@ class Supervisor:
                 self._adopt_pr_while_running(b)
             return
         code = ad.exit_code(Path(b["exit_file"]))
-        # One transaction: pid=None, the run's exit status and, for a non-zero exit, the "outcome not yet committed" marker
-        # (#3790). Until a state/backoff/new-run write clears it, a new Supervisor re-derives this exact failure verdict.
-        # Exit 0 / missing status keep their saved-output-evidence recovery (`_relaunch_*`), which accepts exact saved files.
-        self.store.finish_runs(b["id"], code, clear_pid=True, verdict=code not in (None, 0))
+        # One transaction: pid=None, the run's exit status and the "outcome not yet committed" marker (#3790), for every
+        # exit (0, non-zero, missing). Until a state/backoff/new-run write clears it, a new Supervisor re-derives this exact
+        # verdict, unless the run's own official save already happened (see `_reapply_exit_verdict`).
+        self.store.finish_runs(b["id"], code, clear_pid=True, verdict=True)
         b = self.store.batch(b["id"])
         self._apply_exit_verdict(b, code, policy_chunk, policy_refusal)
+
+    def _exit_output_saved(self, b) -> bool:
+        """The exact output of the run that just ended is already officially saved (bound to its start baseline)."""
+        try:
+            if self._ab_chunk_run(b):
+                baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "")
+                wt = Path(b["worktree"])
+                chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(wt, b), baseline["chunk_no"])
+                return bool(stage1ab.chunk_saved(wt, b, chunk))
+            return bool(self._saved_chunk_for_run(b))
+        except Exception:   # unknown is not saved: the verdict is re-derived, never skipped
+            return False
 
     def _reapply_exit_verdict(self, b) -> bool:
         """Re-derive the verdict of the last run from its exact evidence when no outcome was committed. True: handled."""
@@ -2770,6 +2782,11 @@ class Supervisor:
         except (TypeError, ValueError, KeyError) as e:
             self._fail(b, "ERROR", f"종료 판정 재진입 증거가 일치하지 않아 AI 재실행 없이 보존합니다: {e}")
             return True
+        if self._exit_output_saved(b):
+            # The run's own official save already completed: the saved file is the authoritative effect, so the existing
+            # run-baseline-bound saved-output recovery (`_relaunch_*`) accepts it instead of re-judging a changed tree.
+            self.store.delete(exit_verdict_key(b["id"]))
+            return False
         self.store.log(b["id"], f"run #{run_id}의 종료 판정이 확정되기 전에 중단되어 같은 증거로 판정을 다시 적용합니다 (AI 재실행 없음).", "warn")
         policy_chunk = self._ab_policy_skip_chunk(b)
         policy_refusal = (self._adapter(b["producer"]).confirmed_prompt_refusal(Path(b["log_file"]))
@@ -8996,10 +9013,8 @@ class Supervisor:
         return False
 
     def _accept_stored_output(self, accept, b) -> None:
-        """A non-zero exit that left this run's exact stored output is a success route: its verdict is the saved-output
-        evidence itself, so the exit marker is committed first and a re-entry uses the existing run-baseline-bound
-        saved-output recovery (`_relaunch_*`) instead of re-deriving a failure class from a half-cleaned baseline."""
-        self.store.delete(exit_verdict_key(b["id"]))
+        """A non-zero exit that left this run's stored output is judged by the success route. The exit marker is kept until
+        an outcome commits; once the official save exists, re-entry accepts that saved file (`_reapply_exit_verdict`)."""
         return accept(b)
 
     def _run_failed(self, b, code: int) -> None:
