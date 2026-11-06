@@ -324,6 +324,23 @@ def _is_new_instance(runtime: dict, old: dict | None, since: float) -> bool:
     return previous is None or runtime.get("instance") != previous
 
 
+def _live_runtime_owner(paths: Paths, store: Store, runtime: dict) -> bool:
+    """Bind the recorded process to the current Supervisor instance and its live owned session."""
+    instance = runtime.get("instance")
+    phase = store.restart_phase()
+    if (not isinstance(instance, str) or not instance or not phase or phase.get("instance") != instance
+            or not _pid_alive(runtime.get("pid")) or not _lock_held(paths.lock)
+            or owner_state(paths.children / instance) != "alive"):
+        return False
+    pane = _tmux(["display-message", "-p", "-t", TMUX_SUP, "#{pane_dead}"], timeout=2)
+    pid = _tmux(["display-message", "-p", "-t", TMUX_SUP, "#{pane_pid}"], timeout=2)
+    try:
+        return (pane.returncode == 0 and pane.stdout.strip() == "0" and pid.returncode == 0
+                and os.getpgid(int(pid.stdout.strip())) == os.getpgid(runtime["pid"]))
+    except (OSError, TypeError, ValueError):
+        return False
+
+
 def _ready_problem(paths: Paths, store: Store, runtime: dict | None, pending) -> tuple[str | None, dict | None]:
     """Why a live parallel Supervisor may not be stopped yet (None: its current instance is READY, or already STOPPING
     for this very request set after a failed kill)."""
@@ -383,10 +400,15 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
             return _set_waiting(paths, request, "operating checkout does not contain the requested merge")
         runtime = _read_json(paths.runtime_record_file)
         if (runtime and runtime.get("runtime_root") == str(root)
-                and _ancestor(root, request["merge_sha"], runtime.get("loaded_code_sha", ""))):
+                and _ancestor(root, request["merge_sha"], runtime.get("loaded_code_sha", ""))
+                and _live_runtime_owner(paths, store, runtime)
+                and (request.get("requested_restart_at") is None
+                     or _is_new_instance(runtime, {"instance": request.get("previous_instance")},
+                                         request["requested_restart_at"]))):
             with _decision(paths):
                 _write_live(path, {"state": "loaded", "loaded_code_sha": runtime.get("loaded_code_sha"),
-                                   "checked_at": time.time()})
+                                   "supervisor_pid": runtime.get("pid"), "supervisor_instance": runtime.get("instance"),
+                                   "checked_at": time.time(), "blocker": None})
             continue
 
     pending = [(path, request) for path, request in requests
@@ -465,7 +487,8 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
                 denied = policy_blocker(store) or (None if _to_stopping(store, ready)
                                                    else "READY was cancelled or superseded before STOPPING")
         if denied is None:
-            written = [_write_live(path, {"state": "restarting", "blocker": None, "requested_restart_at": restart_mark})
+            written = [_write_live(path, {"state": "restarting", "blocker": None, "requested_restart_at": restart_mark,
+                                         "previous_instance": (old_runtime or {}).get("instance")})
                        for path, _ in pending]
             if not any(written):
                 denied = "restart request was withdrawn before the restart"
@@ -498,7 +521,8 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         runtime = _read_json(paths.runtime_record_file)
         if (runtime and runtime.get("runtime_root") == str(root)
                 and _is_new_instance(runtime, old_runtime, restart_mark)
-                and all(_ancestor(root, req["merge_sha"], runtime.get("loaded_code_sha", "")) for _, req in pending)):
+                and all(_ancestor(root, req["merge_sha"], runtime.get("loaded_code_sha", "")) for _, req in pending)
+                and _live_runtime_owner(paths, store, runtime)):
             loaded = runtime
             break
         time.sleep(1)
@@ -511,7 +535,8 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
     with _decision(paths):
         for path, _request in pending:
             _write_live(path, {"state": "loaded", "loaded_code_sha": loaded.get("loaded_code_sha"),
-                               "supervisor_pid": loaded.get("pid"), "loaded_at": time.time(), "blocker": None})
+                               "supervisor_pid": loaded.get("pid"), "supervisor_instance": loaded.get("instance"),
+                               "loaded_at": time.time(), "blocker": None})
     return "starting", None
 
 

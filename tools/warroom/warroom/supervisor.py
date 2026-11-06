@@ -490,7 +490,7 @@ class Supervisor:
             return self._watch(b, allow_fix=allow_maintenance_fix)
         handler(b)
 
-    def _tick_maintenance(self) -> None:
+    def _tick_maintenance(self, *, collection_only: bool = False) -> None:
         """Run one Maintainer AI task while continuing every issue's independent PR lifecycle.
 
         Review feedback discovered during another issue's AI run stays attached to its own WAITING_REVIEW batch. It is
@@ -539,7 +539,7 @@ class Supervisor:
             return self.store.set_line(model, MAINTENANCE_METHOD, run=0)
 
         just_ticked = current[0]["id"] if current else None
-        if current:
+        if current and (not collection_only or self._batch_has_open_work(current[0])):
             pending_diagnosis = (current[0]["method"] == MAINTENANCE_METHOD
                                  and current[0]["state"] == "PRODUCING"
                                  and current[0]["pid"] is None
@@ -547,8 +547,13 @@ class Supervisor:
             if not pending_diagnosis:
                 self._tick_batch(current[0])
 
+        if collection_only or self._drain.is_set():
+            return
+
         # Review/merge/cleanup work does not use the Maintainer AI slot. Keep every owned PR attached and progressing.
         for b in self.store.maintenance_batches():
+            if self._drain.is_set():
+                return
             if b["id"] == just_ticked:
                 continue   # a batch that just reached WAITING_REVIEW is watched on the next tick
             if b["state"] not in ("WAITING_REVIEW", "MERGED", "CLEANUP"):
@@ -556,6 +561,8 @@ class Supervisor:
             self._tick_batch(b, allow_maintenance_fix=not self.store.maintenance_batch_open())
 
         # A Retry is pinned to its issue attempt. Parked failures without an explicit Retry never claim or run AI.
+        if self._drain.is_set():
+            return
         retry_id = self.store.line(model, MAINTENANCE_METHOD)["retry_batch"]
         if retry_id is not None:
             target = self.store.batch(retry_id)
@@ -2980,7 +2987,7 @@ class Supervisor:
                 ad.stop(b["pid"])
             return self._fail(b, state, msg)
         if ad.alive(b["pid"]):
-            if b["state"] == "PRODUCING" and not (b["method"] == STAGE3_METHOD and
+            if not (self._drain.is_set() and b["method"] == MAINTENANCE_METHOD) and b["state"] == "PRODUCING" and not (b["method"] == STAGE3_METHOD and
                     str(b["run_kind"] or "").startswith("s3_chunk_")) and not self._c_chunk_run(b) and not self._d_chunk_run(b) \
                     and not self._ab_chunk_run(b):
                 self._adopt_pr_while_running(b)
@@ -9740,7 +9747,7 @@ class Supervisor:
         # The Maintainer owns a distinct lane; it may non-blockingly acquire a production L1.
         with self._maintenance_lane:
             try:
-                self._tick_maintenance()
+                self._tick_maintenance(collection_only=self._drain.is_set())
             except Exception:
                 self.store.log(None, "Maintainer 실행/PR 감시 예외:\n" + traceback.format_exc()[-800:],
                                "error", line="maintainer")
