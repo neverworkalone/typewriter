@@ -325,6 +325,16 @@ class Store:
             row = c.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
         return row["value"] if row else default
 
+    def get_many(self, keys: list[str]) -> dict[str, str]:
+        """Read a related set of operator/evidence values from one database snapshot."""
+        keys = list(dict.fromkeys(keys))
+        if not keys:
+            return {}
+        placeholders = ",".join("?" for _ in keys)
+        with self._conn() as c:
+            rows = c.execute(f"SELECT key,value FROM kv WHERE key IN ({placeholders})", keys).fetchall()
+        return {row["key"]: row["value"] for row in rows}
+
     def set(self, key: str, value: str) -> None:
         with self._conn() as c:
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) "

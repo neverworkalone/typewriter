@@ -30,6 +30,15 @@ def _crash_during_store_migration(db_path: str) -> None:
 
 
 class StoreMigrationConcurrency(unittest.TestCase):
+    def test_get_many_returns_present_values_from_one_independent_key_set(self):
+        with tempfile.TemporaryDirectory() as td:
+            store = Store(Path(td) / "warroom.sqlite")
+            store.set("first", "one")
+            store.set("second", "two")
+            self.assertEqual(store.get_many(["first", "missing", "second", "first"]),
+                             {"first": "one", "second": "two"})
+            self.assertEqual(store.get_many([]), {})
+
     def test_worlds_keep_independent_empty_database_copies(self):
         first, second = World(), World()
         try:
