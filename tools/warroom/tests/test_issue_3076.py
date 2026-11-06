@@ -2,10 +2,12 @@
 import hashlib
 import json
 import unittest
+from unittest import mock
 
 from pathlib import Path
 
 from tests.test_issue_2033_c import CP_NAME, CWorld
+from tests.fakes import HEAD1, HEAD2
 from warroom.adapters import classify_codex_failure
 from warroom import control, cparallel, literary, taskruns
 from warroom.shell import Result
@@ -468,6 +470,59 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
         kinds = [r["kind"] for r in w.store.runs(self.b(w)["id"])]
         self.assertEqual(kinds.count("c_chunk_recovery"), 1)
         self.assertEqual(self.tasks(w)["001"]["state"], "RUNNING")
+
+
+class IntegratedNoSubmission(Helpers, unittest.TestCase):
+    def test_approved_integration_reclassifies_only_bound_ended_task_once(self):
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        run = self.open_runs(w)[0]
+        task = run["task"]
+        info = w.adapter.running.pop(run["pid"])
+        sid = info["session"]
+        info["log"].write_text("".join(json.dumps(e) + "\n" for e in [
+            {"type": "thread.started", "thread_id": sid},
+            {"type": "item.completed", "item": {"id": "answer", "type": "agent_message", "text": "Done without submit."}},
+            {"type": "turn.completed", "usage": {"input_tokens": 1, "output_tokens": 1}}]))
+        info["ex"].write_text("0")
+        w.store.set_run_session_by_id(run["id"], sid)
+        w.store.update_task(b["id"], task, session_id=sid)
+        w.store.finish_run(run["id"], "0")
+        row = w.store.task_row(b["id"], task)
+        data = self.data(w, task)
+        active = w.wt() / f".warroom-scratch/c-active-{task}.json"
+        rec = json.loads(active.read_text())
+        old = data["run_start"]["head"]
+        self.assertEqual(old, HEAD1)
+        rec["git_head"] = HEAD2
+        active.write_text(json.dumps(rec))
+        base_key = literary.run_start_key(b["id"])
+        base = json.loads(w.store.get(base_key))
+        base["head"] = HEAD2
+        w.store.set(base_key, json.dumps(base))
+        pending = w.sup.cp._pending(b, rec)
+        state = literary.retry_state(w.wt(), b, rec, pending, session_available=True, task_state=True)
+        data["guard"] = {"baseline": state, "reason_codes": ["checkpoint_or_chunk_mismatch"]}
+        w.store.update_task(b["id"], task, state="FAILED", data=json.dumps(data))
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING")
+        b = w.store.batch(b["id"])
+        row = w.store.task_row(b["id"], task)
+        run = w.store.run(run["id"])
+        with mock.patch.object(w.git, "head", return_value=HEAD2), \
+             mock.patch.object(w.git, "changed_between", return_value=[]), \
+             mock.patch.object(w.sup.maint, "_released_integration_proof", return_value=True):
+            bad = dict(rec, view_sha256="0" * 64)
+            self.assertEqual(w.sup.cp._no_submission(b, row, data, bad, run, pending)["status"], "checkpoint_or_chunk_mismatch")
+            with mock.patch.object(w.sup.maint, "_released_integration_proof", return_value=False):
+                self.assertFalse(w.sup.cp.auto_recover_integrated_no_submission(b))
+            with mock.patch.object(w.git, "changed_between", return_value=[literary.names(b).canonical]):
+                self.assertFalse(w.sup.cp.auto_recover_integrated_no_submission(b))
+            self.assertTrue(w.sup.cp.auto_recover_integrated_no_submission(b))
+            self.assertFalse(w.sup.cp.auto_recover_integrated_no_submission(w.store.batch(b["id"])))
+        self.assertEqual(w.store.task_row(b["id"], task)["state"], "FIXQ")
+        self.assertEqual(self.data(w, task)["recovery"]["source_run_id"], run["id"])
 
 
 class ParallelCBoundary(Helpers, unittest.TestCase):

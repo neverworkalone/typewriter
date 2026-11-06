@@ -1097,6 +1097,10 @@ class Supervisor:
                 and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND
                 and self.cp.auto_recover_legacy_scope_error(b)):
             return
+        if (ln["retry_batch"] != b["id"] and b["state"] == "ERROR"
+                and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND
+                and self.cp.auto_recover_integrated_no_submission(b)):
+            return
         if ln["retry_batch"] == b["id"]:
             if b["state"] == "ERROR" and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:
                 self.cp.operator_retry(b)   # exactly one epoch per consumed operator Retry (Stop/auto release grant nothing)
