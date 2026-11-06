@@ -211,6 +211,28 @@ class MaintainerControls(World2022):
         self.assertEqual(w.store.line("sonnet", "m")["retry_batch"], first["id"])
         self.assertEqual(w.store.batch(second_id)["state"], "ERROR")
 
+    def test_retry_recovers_maintainer_code_pr_without_candidate_claim(self):
+        w = self.w
+        _, m = start_maintainer(w)
+        run_id = w.store.runs(m["id"])[0]["id"]
+        w.adapter.finish(m["pid"])
+        w.tick()
+        self.assertEqual(maintainer_row(w)["state"], "ERROR")
+        self.assertEqual(w.store.get("verified_completion_run_" + str(m["id"])), str(run_id))
+
+        open_pr(w)
+        w.gh.files[50] = [{"path": "tools/warroom/prompts/m.md"}]
+        launches = len(w.adapter.launches)
+        self.assertTrue(control.retry_maintainer(w.store, 101, m["id"]))
+        w.tick()
+        self.assertEqual(maintainer_row(w)["state"], "PRODUCING")
+        w.tick()
+
+        recovered = maintainer_row(w)
+        self.assertEqual((recovered["state"], recovered["pr_number"], recovered["head_sha"]),
+                         ("WAITING_REVIEW", 50, HEAD1))
+        self.assertEqual(len(w.adapter.launches), launches)
+
     def test_stop_bound_to_a_finished_issue_never_stops_the_next_one(self):
         w = self.w
         b, m = start_maintainer(w)

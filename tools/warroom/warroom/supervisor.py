@@ -1343,6 +1343,9 @@ class Supervisor:
 
     def _find_recovery_pr(self, b):
         """Find one existing PR and prove its branch/candidate claim belongs to this batch before handoff."""
+        if b["method"] == MAINTENANCE_METHOD:
+            # Maintainer PRs change code/prompts and carry no Stage 1 Candidate claim.
+            return self._find_pr(b)
         prs = self.gh.prs_for_branch(b["branch"])
         if not isinstance(prs, list):
             raise RecoveryBlocked("소유 브랜치 PR 조회 결과 형식이 잘못되었습니다")
