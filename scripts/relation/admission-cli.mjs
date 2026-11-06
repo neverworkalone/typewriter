@@ -1005,7 +1005,7 @@ function parseArgs(argv) {
   }
   if (options.optional && (options.sourceSenseId !== null || options.candidateText !== null)) throw new Error(`--optional cannot be combined with a source candidate filter\n${USAGE}`);
   if (command === 'prepare' && options.part && options.out) throw new Error('Part prepare writes its checkpoint; use --checkpoint instead of --out');
-  if (options.out && !['plan-chunks', 'inspect', 'read-chunk'].includes(command)) throw new Error(`--out is only valid for plan-chunks/inspect/read-chunk\n${USAGE}`);
+  if (options.out && !['plan-chunks', 'inspect', 'read-chunk', 'preflight'].includes(command)) throw new Error(`--out is only valid for plan-chunks/inspect/read-chunk/preflight\n${USAGE}`);
   return options;
 }
 
@@ -1080,8 +1080,11 @@ async function runCommand(options, root, timing) {
 
   if (options.command === 'preflight') {
     const checkpoint = await readCheckpoint(checkpointPath);
-    const payload = await preflightCheckpoint(checkpoint, checkpointPath, repositoryRoot, options.limit, options.offset);
-    console.log(JSON.stringify(payload));
+    const payload = await preflightCheckpoint(checkpoint, checkpointPath, repositoryRoot, options.limit, options.offset, Boolean(options.out));
+    if (options.out) {
+      const destination = resolveRootPath(repositoryRoot, options.out);
+      await writeFile(destination, `${JSON.stringify(payload)}\n`);
+    } else console.log(JSON.stringify(payload));
     return payload;
   }
   if (options.command === 'prepare-merge') {
@@ -2906,7 +2909,7 @@ function candidateKeyParts(key) {
   return at < 0 ? [key, ''] : [key.slice(0, at), key.slice(at + 1)];
 }
 
-async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20, offset = 0) {
+async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20, offset = 0, fileOutput = false) {
   assertPrimaryComplete(checkpoint);
   assertOptionalComplete(checkpoint);
   validateCheckpointDecisions(checkpoint);
@@ -3085,7 +3088,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
     problems: page,
   };
   const text = JSON.stringify(payload);
-  if (Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS) {
+  if (!fileOutput && (Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS)) {
     throw new Error(`preflight page exceeds its output limit (${Buffer.byteLength(text, 'utf8')} bytes, ${text.length} characters); retry with a smaller --limit`);
   }
   return payload;

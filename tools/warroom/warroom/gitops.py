@@ -1413,6 +1413,17 @@ class Git:
             if not res.ok and "preflight page exceeds its output limit" in (res.err or output) and limit > 1:
                 limit = max(1, limit // 2)
                 continue
+            if not res.ok and "preflight page exceeds its output limit" in (res.err or output) and limit == 1:
+                report_path = Path(worktree) / ".warroom-scratch" / "s2-preflight-page.json"
+                report_path.unlink(missing_ok=True)
+                res = self.r.run(args + ["--out", ".warroom-scratch/s2-preflight-page.json"],
+                                 cwd=worktree, env=self.env, timeout=timeout)
+                try:
+                    output = report_path.read_text("utf-8") if res.code in (0, 2) else ""
+                except OSError:
+                    output = ""
+                finally:
+                    report_path.unlink(missing_ok=True)
             try:
                 payload = json.loads(output.splitlines()[-1])
             except (ValueError, IndexError):
