@@ -2385,8 +2385,7 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        if (b["method"] == STAGE3_METHOD or (b["method"] in ("a", "b", "c", "d") and
-                                              self._tiered(b["producer"]))) and kind.endswith("_resume"):
+        if b["method"] == STAGE3_METHOD and kind.endswith("_resume"):
             recorded = self._recorded_run(b)
             if recorded is None:
                 return self._fail(b, "ERROR", "Stage 3 기존 세션의 model/effort/permission_profile/fast 기록이 없어 재개하지 않습니다. "
@@ -2433,6 +2432,17 @@ class Supervisor:
                 extra["git_dir"] = self.git.worktree_gitdir(Path(wt))
             except Exception as e:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
+        def resume_checked(session, *args, **kwargs):
+            if b["method"] in ("a", "b", "c", "d") and self._tiered(b["producer"]):
+                recorded = next((r for r in self.store.runs(b["id"])
+                                 if r["session_id"] == session and r["model"]), None)
+                pinned = (RunSpec(recorded["model"], recorded["effort"], recorded["permission_profile"] or "",
+                                  fast=None if recorded["fast_mode"] is None else bool(recorded["fast_mode"]))
+                          if recorded else None)
+                if pinned != run:
+                    raise prompts.PromptError("기존 세션의 모델·effort·권한 핀이 현재 설정과 다르거나 확인되지 않아 재개하지 않습니다")
+            return ad.resume(session, *args, **kwargs)
+
         try:
             run_env = self._launch_env(b, kind, agent_env)
             remote = "?"
@@ -2456,7 +2466,7 @@ class Supervisor:
                 self.store.set(stage3.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                 title = f"Stage 3 {b['shard']} chunk {chunk}"
                 if kind == "s3_chunk_resume":
-                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
@@ -2500,7 +2510,7 @@ class Supervisor:
                             if file_state != "current":
                                 raise prompts.PromptError("부분 수정에는 현재 pending 청크의 기존 판정 파일이 필요합니다")
                             prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail, checkpoint)
-                        h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                        h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                     else:
                         if kind == "s2_chunk_resume":
                             if not checkpoint["pending_chunk"]:
@@ -2517,7 +2527,7 @@ class Supervisor:
                                     "checkpoint_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()}
                         self.store.set(stage2.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                         if kind.endswith("_resume"):
-                            h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                            h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                         else:
                             h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
                 elif kind in ("s2_links_new", "s2_links_fix"):
@@ -2562,7 +2572,7 @@ class Supervisor:
                         if not re.fullmatch(r"[a-f0-9]{64}", baseline.get("digest", "")):
                             raise prompts.PromptError("optional-link 수정 digest 기준이 없습니다")
                         prompt = prompts.stage2_links_fix(baseline["digest"], detail, checkpoint)
-                        h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                        h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 elif kind == "s2_repair_new":
                     state = self._stage2_repair_state(b, required=True)
                     current = state.get("current")
@@ -2612,7 +2622,7 @@ class Supervisor:
                     c_recovery_marker_key = literary.no_submission_recovery_key(b["id"], baseline["chunk_id"])
                 title = f"C {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
                 if kind == "c_chunk_resume":
-                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     if kind == "c_chunk_recovery":
                         self._c_begin_recovery_launch(b, c_recovery_marker_key, log)
@@ -2628,13 +2638,13 @@ class Supervisor:
                 if not sid or diag is None:
                     raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
                 prompt = prompts.d_chunk_fix(b, rec["chunk_no"], dchunk.fix_problem(diag))
-                h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
             elif b["method"] == dchunk.METHOD and kind in ("d_chunk_new", "d_chunk_resume"):
                 prompt, baseline = self._d_chunk_prompt(b, kind, remote)
                 self.store.set(dchunk.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                 title = f"D {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
                 if kind == "d_chunk_resume":
-                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif b["method"] in stage1ab.METHODS and kind in ("ab_chunk_new", "ab_chunk_retry"):
@@ -2642,7 +2652,7 @@ class Supervisor:
                 self.store.set(stage1ab.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                 title = f"{b['method'].upper()} {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
                 if resume:
-                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif kind == "produce":
@@ -2650,7 +2660,7 @@ class Supervisor:
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
-                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
+                h = resume_checked(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             elif kind == "produce_recover":
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
                 h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run,
@@ -2662,7 +2672,7 @@ class Supervisor:
                 source_context = ""
                 if b["method"] in ("a", "b", "c", "d"):
                     source_context, fix_context_digests = self._producer_fix_context(b, events, session_id=sid)
-                h = ad.resume(sid, prompts.fix(b, events, True, source_context=source_context,
+                h = resume_checked(sid, prompts.fix(b, events, True, source_context=source_context,
                                                checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
                 context = ""
