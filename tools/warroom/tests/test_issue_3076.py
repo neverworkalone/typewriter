@@ -9,7 +9,7 @@ from pathlib import Path
 from tests.test_issue_2033_c import CP_NAME, CWorld
 from tests.fakes import HEAD1, HEAD2
 from warroom.adapters import classify_codex_failure
-from warroom import control, cparallel, literary, taskruns
+from warroom import control, cparallel, literary, prompts, taskruns
 from warroom.shell import Result
 
 
@@ -200,6 +200,19 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
         self.assertEqual(self.data(w, "001").get("completed_fix_runs", []), [])
         self.assertEqual(self.tasks(w)["001"]["state"], "FAILED")
         self.assertEqual(len([r for r in w.store.runs(self.b(w)["id"]) if r["kind"] == "c_chunk_fix"]), 1)
+
+    def test_rejected_context_key_fix_receives_source_bound_recovery(self):
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        self._finish_rejected(w, "001", submits=1)
+        with mock.patch.object(prompts, "prompt_dir", return_value=prompts.PROMPT_DIR):
+            w.tick()
+        prompt = w.adapter.launches[-1]["prompt"]
+        self.assertIn("context_key_too_short", prompt)
+        self.assertIn("chunk --sense-ids <id> --contexts 16 --format text --chunk 001", prompt)
+        self.assertIn("같은 문맥을 확인할 수 있을 때만", prompt)
+        self.assertIn("유사한 키 하나라는 사실만으로", prompt)
 
     def test_complete_unshown_empty_sample_is_resubmitted_by_scoped_supervisor_cli(self):
         w = self.world(senses=24)
