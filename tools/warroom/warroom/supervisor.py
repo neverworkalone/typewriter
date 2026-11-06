@@ -201,10 +201,20 @@ class Supervisor:
         """An AI/task still running, or a recorded outcome not yet collected and saved."""
         if b["pid"] is not None or self.store.open_task_runs(b["id"]):
             return True
-        if any(r["ended_at"] is None for r in self.store.runs(b["id"])):
+        runs = self.store.runs(b["id"])
+        if any(r["ended_at"] is None for r in runs):
             return True
-        if any(r["state"] in ("RUNNING", "RESPONDED", "FIXING") for r in self.store.task_rows(b["id"])):
-            return True   # a task whose exit/answer is recorded but not yet judged and officially saved
+        tasks = [r for r in self.store.task_rows(b["id"]) if r["state"] in ("RUNNING", "RESPONDED", "FIXING")]
+        if tasks:
+            if b["state"] != "PAUSED" or b["pause_reason"] != "shared_defect":
+                return True   # an active batch still needs this result officially collected
+            by_id = {r["id"]: r for r in runs}
+            for task in tasks:
+                run = by_id.get(task["run_id"]) if task["run_id"] is not None else None
+                if run is None or run["batch_id"] != b["id"] or run["task"] != task["task"]:
+                    return True   # defer only task evidence bound to a confirmed, ended run
+            # The shared-defect pause intentionally prevents collection until Maintenance releases the batch. Preserve
+            # these completed run/task rows for the next instance instead of resubmitting an unproductive Line forever.
         return self.store.get(exit_verdict_key(b["id"])) is not None
 
     def _lane_has_drain_work(self, key) -> bool:
