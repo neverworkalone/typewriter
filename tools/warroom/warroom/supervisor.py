@@ -2771,6 +2771,25 @@ class Supervisor:
         except Exception:   # unknown is not saved: the verdict is re-derived, never skipped
             return False
 
+    def _saved_exit_acceptable(self, b, code) -> bool:
+        """The checks the normal path applies before it accepts stored output: blocking failure class, identity, completion."""
+        try:
+            ad = self._adapter(b["producer"])
+            if code not in (None, 0) and self._classify_run(b["producer"], b["log_file"]) in (
+                    "effort", "auth", "usage_limit", "free_quota", "fast_unavailable"):
+                return False
+            if self._saved_chunk_identity_problem(b):
+                return False
+            if code in (None, 0):
+                problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                                b["worktree"], self.env)
+                if problem and not ad.completion_incomplete(Path(b["log_file"]), self._recorded_run(b),
+                                                            b["session_id"], b["worktree"], self.env):
+                    return False
+            return True
+        except Exception:
+            return False
+
     def _reapply_exit_verdict(self, b) -> bool:
         """Re-derive the verdict of the last run from its exact evidence when no outcome was committed. True: handled."""
         raw = self.store.get(exit_verdict_key(b["id"]))
@@ -2786,9 +2805,10 @@ class Supervisor:
         except (TypeError, ValueError, KeyError) as e:
             self._fail(b, "ERROR", f"종료 판정 재진입 증거가 일치하지 않아 AI 재실행 없이 보존합니다: {e}")
             return True
-        if self._exit_output_saved(b):
-            # The run's own official save already completed: the saved file is the authoritative effect, so the existing
-            # run-baseline-bound saved-output recovery (`_relaunch_*`) accepts it instead of re-judging a changed tree.
+        if self._exit_output_saved(b) and self._saved_exit_acceptable(b, code):
+            # The run's own official save already completed and the original classification / identity checks pass: the
+            # saved file is the authoritative effect, so the run-baseline-bound recovery (`_relaunch_*`) accepts it
+            # instead of re-judging a tree the save itself changed. Anything else re-applies the full verdict below.
             self.store.delete(exit_verdict_key(b["id"]))
             return False
         self.store.log(b["id"], f"run #{run_id}의 종료 판정이 확정되기 전에 중단되어 같은 증거로 판정을 다시 적용합니다 (AI 재실행 없음).", "warn")

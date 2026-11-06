@@ -198,6 +198,21 @@ class DeathBeforeTheVerdict(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 2)
 
 
+class SavedOutputStillGetsItsFailureVerdict(unittest.TestCase):
+    def test_auth_failure_after_an_official_save_is_paused_on_normal_and_restart_paths(self):
+        for mode in ("normal", "death"):
+            with self.subTest(mode):
+                w = DWorld()
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", "d")
+                w.ai(code=1)
+                w.adapter.plan[-1]["text"] = "401 unauthorized: please login"
+                w.tick()
+                w.finish_last()
+                settle(w, mode)
+                self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PAUSED", 1))
+
+
 class SavedOutputIsAcceptedWithAClosedGate(unittest.TestCase):
     def test_ab_chunk_save_is_accepted_but_the_next_run_waits_for_admission(self):
         w = ABWorld()
