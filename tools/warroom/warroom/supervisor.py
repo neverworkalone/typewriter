@@ -7846,6 +7846,14 @@ class Supervisor:
                     f"{chunk_files.decisions}와 {chunk_files.searches}의 기존 판정·검색 증거를 읽고 보존한다. "
                     "이미 완성된 판정을 다시 만들거나 검색 기록을 삭제하지 말고, 미완료 Sense만 이어서 처리한다.\n")
         if kind == "d_chunk_resume":
+            try:
+                states = dchunk._json(dchunk.cli(self.runner, self._d_env(b), wt, "states", "--chunk", str(rec["chunk_no"]),
+                                                "--dir", str(wt / ".warroom-scratch"), "--canonical-root", str(wt)),
+                                      "D current search states")
+                if states.get("chunk_no") != rec["chunk_no"] or states.get("view_sha256") != rec["view_sha256"] or not isinstance(states.get("states"), list):
+                    raise dchunk.DChunkError("D current search states do not match the active chunk")
+            except (dchunk.DChunkError, OSError, ValueError) as error:
+                raise prompts.PromptError(f"D 검색 상태를 확인하지 못했습니다: {error}") from error
             card = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
                                           searches=chunk_files.searches)
             if dchunk.delivery(len(card.encode("utf-8")), view) == "inline":
@@ -7857,6 +7865,7 @@ class Supervisor:
                                "\n".join(f"cat {path}" for path in pages))
             prompt = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
                                             searches=chunk_files.searches, chunk_input=chunk_input)
+            prompt += "\n\n## Supervisor가 확인한 현재 검색 상태\n" + json.dumps(states, ensure_ascii=False) + "\n"
         else:
             card_bytes = len(prompts.d_chunk(b, rec["chunk_no"], view="", note=note).encode("utf-8"))
             if dchunk.delivery(card_bytes, view) == "inline":

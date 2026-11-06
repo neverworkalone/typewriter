@@ -902,6 +902,28 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
   return { output, evidence };
 }
 
+/** Current per-sense mechanical state, read without changing search evidence or decisions. */
+export async function currentActiveStates({ root, canonicalRoot, chunkNumber }) {
+  const { directory, meta } = await findActive(root, chunkNumber);
+  const canonicalPath = canonicalRoot === undefined ? path.resolve(meta.canonical)
+    : resolveInsideRoot(canonicalRoot, meta.canonical, 'active Canonical path');
+  const records = chunkRecords(await loadBatchRecords(canonicalPath, meta.shard, meta.batch), meta.chunk_no);
+  if (JSON.stringify(records.map((record) => [record.id, record.lemma, record.senses.map((sense) => sense.id)]))
+    !== JSON.stringify(meta.records.map((record) => [record.record_id, record.lemma, record.sense_ids]))) {
+    fail('the Canonical records of this chunk changed since prepare');
+  }
+  const owners = canonicalSenseIndex(records);
+  const entries = await readEntries(directory, meta);
+  const states = meta.senses.filter((sense) => !sense.auto).map((sense) => {
+    const { record } = canonicalOwnerForActiveSense(sense, owners, sense.ref);
+    if (sense.record_id !== record.id) fail(`${sense.ref} has an inconsistent record identity`);
+    return { sense: sense.ref, record_id: record.id, sense_id: sense.sense_id,
+      decision_state: decisionState(recordEvidence(entries, record.id)) };
+  });
+  if (states.some((item) => item.decision_state.state === 'SEARCH_FAILED')) fail('recorded search failed; preserving evidence');
+  return { chunk_no: meta.chunk_no, view_sha256: meta.view_sha256, states };
+}
+
 export async function searchBatchActive({ requests, databasePath, root = '.warroom-scratch', chunkNumber, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
   const { directory, meta } = await findActive(root, chunkNumber);
   const rows = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
@@ -1308,6 +1330,13 @@ async function main(argv) {
     only(options, 'in', 'dir', 'canonical-root', 'chunk');
     if (positional.length) fail('save takes options only');
     console.log(JSON.stringify(await saveActive({ inputPath: need(options, 'in'), root: options.dir, chunkNumber: optionalChunk(options),
+      canonicalRoot: options['canonical-root'] === undefined ? undefined : path.resolve(options['canonical-root']) })));
+    return 0;
+  }
+  if (command === 'states') {
+    only(options, 'dir', 'canonical-root', 'chunk');
+    if (positional.length) fail('states takes options only');
+    console.log(JSON.stringify(await currentActiveStates({ root: options.dir, chunkNumber: optionalChunk(options),
       canonicalRoot: options['canonical-root'] === undefined ? undefined : path.resolve(options['canonical-root']) })));
     return 0;
   }
