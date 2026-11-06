@@ -2158,20 +2158,37 @@ class Maintenance:
             # Finalization has no in-flight AI run to retarget. Require its own HEAD, completed
             # repair page and unchanged owner boundary before moving the finalization baseline.
             try:
-                state = self.sup._stage2_repair_state(b, required=True)
-                current = state["current"]
-                identity = state["identity"]
-                finalize_remote = identity["remote_head"]
-                if (old_first != self.sup.git.head(wt) or identity["base_head"] != old_first
-                        or identity["branch"] != b["branch"] or identity["worktree"] != str(wt)
-                        or self.sup.git.registered(wt) != b["branch"]
-                        or self.sup.git.remote_head(b["branch"]) != finalize_remote
-                        or self.sup.git.dirty(wt).strip() or self._workers_running(b)
-                        or not isinstance(current.get("groups"), list)
-                        or current.get("cursor") != len(current["groups"])
-                        or current.get("pending_answer") is not None or current.get("apply_intent") is not None
-                        or self.sup._stage2_repair_correction(current) is not None):
-                    return self._hold_unprovable(d, b, "완료된 S2 repair 및 finalize 소유 경계를 증명할 수 없습니다")
+                state = self.sup._stage2_repair_state(b)
+                finalize_remote = self.sup.git.remote_head(b["branch"])
+                if (old_first != self.sup.git.head(wt) or self.sup.git.registered(wt) != b["branch"]
+                        or self.sup.git.dirty(wt).strip() or self._workers_running(b)):
+                    return self._hold_unprovable(d, b, "S2 finalize 소유 경계를 증명할 수 없습니다")
+                if state is None:
+                    # A read-only preflight can fail before any Repair state exists. Only accept that
+                    # boundary when no persisted Repair activity contradicts it; _preserved above
+                    # has already bound the checkpoint, remote and runs to the incident envelope.
+                    checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
+                    if (not str(env.get("error", "")).startswith("Stage 2 read-only preflight failed:")
+                            or checkpoint is None or not checkpoint["complete"] or checkpoint["merged"]
+                            or checkpoint["pending_chunk"] is not None
+                            or checkpoint["decided"] != checkpoint["total"]
+                            or not checkpoint["optional_review_complete"]
+                            or not isinstance(checkpoint.get("premerge"), dict)
+                            or checkpoint["premerge"].get("status") != "ready"
+                            or checkpoint["repair_receipts"] != 0
+                            or self.store.get(stage2.repair_run_start_key(b["id"])) is not None
+                            or any(r["kind"] == "s2_repair_new" for r in self.store.runs(b["id"]))):
+                        return self._hold_unprovable(d, b, "S2 preflight 이전 repair 부재를 증명할 수 없습니다")
+                else:
+                    current = state["current"]
+                    identity = state["identity"]
+                    if (identity["base_head"] != old_first or identity["branch"] != b["branch"]
+                            or identity["worktree"] != str(wt) or identity["remote_head"] != finalize_remote
+                            or not isinstance(current.get("groups"), list)
+                            or current.get("cursor") != len(current["groups"])
+                            or current.get("pending_answer") is not None or current.get("apply_intent") is not None
+                            or self.sup._stage2_repair_correction(current) is not None):
+                        return self._hold_unprovable(d, b, "완료된 S2 repair 및 finalize 소유 경계를 증명할 수 없습니다")
             except (KeyError, ValueError, TypeError, OSError):
                 return self._hold_unprovable(d, b, "S2 finalize 기준 또는 repair 증거가 손상되었습니다")
         head, run_start = self._apply(d, b)
