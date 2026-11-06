@@ -30,6 +30,10 @@ sys.path.insert(0, sys.argv[1])
 from pathlib import Path
 from warroom.fence import Fence
 from warroom.shell import FencedRunner, Runner
+
+from tests.fakes import no_anchor_module
+
+setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
 root, point, script = sys.argv[2], sys.argv[3], sys.argv[4]
 fence = Fence(Path(root) / "children").open()
 def hook(p):

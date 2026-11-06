@@ -6,6 +6,10 @@ from tests.fakes import World
 from warroom import adapters, cparallel, dparallel, s2parallel, s3parallel
 from warroom.launch_gate import LaunchDenied, LaunchGate, task_launch_scope
 
+from tests.fakes import no_anchor_module
+
+setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
+
 LAUNCHERS = [(s2parallel.ParallelStage2, '_launch_task'), (dparallel.ParallelD, '_launch'),
              (cparallel.ParallelC, '_launch'), (s3parallel.ParallelStage3, '_launch_task')]
 

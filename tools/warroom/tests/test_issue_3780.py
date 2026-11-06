@@ -6,6 +6,10 @@ from unittest.mock import patch
 from tests.test_issue_1555 import world, make_batch, break_batch, incidents
 from warroom.lanes import Lanes, OrderedLock
 
+from tests.fakes import no_anchor_module
+
+setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
+
 
 class LaneMaintenance(unittest.TestCase):
     def setUp(self):

@@ -6,6 +6,10 @@ from tests.fakes import HEAD1, World
 from warroom import control
 from warroom.config import RESTART_KEYS, load_config, reload_problem
 
+from tests.fakes import no_anchor_module
+
+setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
+
 DS = {"label": "DeepSeek", "adapter": "opencode", "effort": "high",
       "models": {"free": "p/free-x-free", "go": "p/go"}}
 SONNET = {"label": "Sonnet", "adapter": "claude", "model": "sonnet", "effort": "medium"}

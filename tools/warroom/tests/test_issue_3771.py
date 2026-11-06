@@ -10,6 +10,10 @@ from warroom.config import config_problem
 from warroom.restart_controller import record_runtime
 from warroom.store import LineBusy
 
+from tests.fakes import no_anchor_module
+
+setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
+
 
 class ManualTicks:
     def __init__(self):
