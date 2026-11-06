@@ -1,11 +1,14 @@
 """Issue #2307: Stage 2 preflight and bounded local repair before PR creation."""
 import json
 import unittest
+import tempfile
 from pathlib import Path
 
 from tests.test_issue_1684 import S2
 from tests.test_issue_1908 import s2_world
 from warroom import control, stage2
+from warroom.gitops import Git
+from warroom.shell import Result
 
 
 def answer(text):
@@ -71,6 +74,33 @@ def start_repair(testcase, reports, candidate_count=3):
     w.adapter.finish(links["pid"])
     w.tick()
     return w, w.store.batch(batch["id"])
+
+
+class PreflightLargePage(unittest.TestCase):
+    def test_single_oversized_group_uses_file_and_keeps_page_cursor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".warroom-scratch").mkdir()
+            class FakeRunner:
+                def __init__(self):
+                    self.calls = []
+                def run(self, args, **kwargs):
+                    self.calls.append(args)
+                    limit = int(args[args.index("--limit") + 1])
+                    offset = int(args[args.index("--offset") + 1])
+                    if "--out" not in args:
+                        return Result(1, err="preflight page exceeds its output limit")
+                    report = {"version": 1, "ok": False, "repairable": True, "total": 1,
+                              "offset": offset, "limit": limit, "next_offset": None,
+                              "problems": [{"candidate_keys": ["s\u0000c"], "candidates": ["가" * 20000]}]}
+                    (root / args[-1]).write_text(json.dumps(report), "utf-8")
+                    return Result(2)
+            runner = FakeRunner()
+            git = Git(runner, root, {}, root)
+            report = git.stage2_preflight(root, "001", "01", "01")
+            self.assertEqual(report["problems"][0]["candidates"], ["가" * 20000])
+            self.assertEqual([int(c[c.index("--limit") + 1]) for c in runner.calls], [20, 10, 5, 2, 1, 1])
+            self.assertFalse((root / ".warroom-scratch/s2-preflight-page.json").exists())
 
 
 class Stage2PreflightRepair(unittest.TestCase):

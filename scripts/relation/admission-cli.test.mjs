@@ -2047,6 +2047,20 @@ test('preflight repair accepts Supervisor sorted-state round-trip and remains st
   await completeOptionalForTest(root, checkpoint);
   await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
 
+  // A single repair group can exceed the stdout bound even at limit 1.
+  const checkpointPath = path.join(root, checkpoint);
+  const originalCheckpoint = await readFile(checkpointPath, 'utf8');
+  const largeCheckpoint = JSON.parse(originalCheckpoint);
+  largeCheckpoint.items[0].approved_peers = [{ text: '가'.repeat(20000) }];
+  await writeFile(checkpointPath, JSON.stringify(largeCheckpoint));
+  await assert.rejects(() => quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json', '--limit', '1'], { root })),
+    /preflight page exceeds its output limit/u);
+  const pagePath = '.warroom-scratch/large-preflight.json';
+  const largePage = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json', '--limit', '1', '--out', pagePath], { root }));
+  assert.deepEqual(JSON.parse(await readFile(path.join(root, pagePath), 'utf8')), largePage);
+  assert.equal(largePage.next_offset, 1);
+  await writeFile(checkpointPath, originalCheckpoint);
+
   const watched = [
     path.join(root, checkpoint),
     path.join(root, 'data/relations/relation-001.jsonl'),
