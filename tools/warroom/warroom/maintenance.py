@@ -2203,13 +2203,23 @@ class Maintenance:
         """Fail closed: a fix that changed the Supervisor's own code is applied only when the running process PROVABLY
         loaded it. Unknown (no recorded code_sha, dirty runtime source, a failed lookup) waits."""
         try:
-            runtime = any(f.startswith("tools/warroom/warroom/") for f in self.sup.git.changed_files(d["merge_sha"]))
+            files = self.sup.git.changed_files(d["merge_sha"])
+            batch = self.store.batch(d["batch_id"])
+            # D's official CLI and its imports run from the Supervisor checkout, even when the
+            # same fix is also integrated into the producer worktree. Both copies must carry it.
+            d_modules = {"scripts/relation/d-chunk-cli.mjs", "scripts/relation/corpus-utility.mjs",
+                         "scripts/relation/candidate-contract.mjs", "scripts/relation/literary-context.mjs"}
+            d_runtime = batch is not None and batch["method"] == dchunk.METHOD and bool(d_modules.intersection(files))
+            runtime = any(f.startswith("tools/warroom/warroom/") for f in files) or d_runtime
             if not runtime:
                 return False
             code = getattr(self.sup, "code_sha", None)
-            if code and self.sup.git.is_ancestor(d["merge_sha"], code, path=self.sup.code_root):
+            head = self.sup.git.head(self.sup.code_root) if d_runtime else code
+            clean = not d_runtime or self.sup.prompt_checkout_clean(sorted(d_modules))
+            if (code and head and clean and self.sup.git.is_ancestor(d["merge_sha"], code, path=self.sup.code_root)
+                    and self.sup.git.is_ancestor(d["merge_sha"], head, path=self.sup.code_root)):
                 return False
-            reason = "실행 중인 코드 SHA를 증명할 수 없거나 수정이 포함되지 않았습니다"
+            reason = "실행 중인 코드 SHA 또는 clean 운영 CLI에 수정이 포함된 것을 증명할 수 없습니다"
         except Exception as e:
             reason = f"로드 여부를 확인하지 못했습니다: {e}"
         key = f"restart_needed_{d['id']}"
