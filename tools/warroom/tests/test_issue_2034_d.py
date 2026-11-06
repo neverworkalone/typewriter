@@ -1112,6 +1112,24 @@ class Prompts(unittest.TestCase):
                 self.assertNotIn("다시 읽거나 요청하지 않는다", prompt)
                 self.assertIn('"state": "Z_ALLOWED"', prompt)
 
+    def test_resume_reports_decision_file_presence_without_requiring_a_missing_file(self):
+        from types import SimpleNamespace
+        from warroom.supervisor import Supervisor
+        b = {"shard": "001", "batch": "01", "branch": "d-x-001-01", "worktree": "/tmp", "producer": "codex"}
+        rec = {"chunk_no": 3, "view_sha256": "a" * 64}
+        owner = SimpleNamespace(git=SimpleNamespace(head=lambda wt: HEAD1), runner=None, _d_env=lambda b: {})
+        for exists in (False, True):
+            with self.subTest(exists=exists), mock.patch.object(prompts, "prompt_dir", return_value=Path(__file__).resolve().parents[1] / "prompts"), \
+                 mock.patch.object(Path, "is_file", return_value=exists), \
+                 mock.patch.object(dchunk, "cli", return_value=None), \
+                 mock.patch.object(dchunk, "_json", return_value={"chunk_no": 3, "view_sha256": "a" * 64, "states": []}), \
+                 mock.patch.object(dchunk, "read_view", return_value="view"), \
+                 mock.patch.object(dchunk, "delivery", return_value="inline"):
+                prompt, _ = Supervisor._d_chunk_prompt(owner, b, "d_chunk_resume", remote=None, rec=rec)
+                self.assertIn(f"상태: `{'exists' if exists else 'missing'}`", prompt)
+                self.assertIn("파일을 읽으려고 중단하지 말고", prompt)
+                self.assertIn("기존 파일을 읽고 판정을 보존한다", prompt)
+
     def test_d_worker_prompts_keep_prepare_supervisor_only(self):
         b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
         prompts_to_check = (

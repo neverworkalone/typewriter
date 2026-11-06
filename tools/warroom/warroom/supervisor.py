@@ -7926,7 +7926,7 @@ class Supervisor:
             continued = bool(kind == "d_chunk_new" and self.store.get(dchunk.run_start_key(b["id"])))
         if kind == "d_chunk_new" and continued:
             note = extra_note + ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. "
-                    f"{chunk_files.decisions}와 {chunk_files.searches}의 기존 판정·검색 증거를 읽고 보존한다. "
+                    f"{chunk_files.decisions}가 있으면 기존 판정을 읽고 보존하며, 없으면 정상적인 미작성 상태다. {chunk_files.searches}의 검색 증거를 보존한다. "
                     "이미 완성된 판정을 다시 만들거나 검색 기록을 삭제하지 말고, 미완료 Sense만 이어서 처리한다.\n")
         if kind == "d_chunk_resume":
             try:
@@ -7937,8 +7937,9 @@ class Supervisor:
                     raise dchunk.DChunkError("D current search states do not match the active chunk")
             except (dchunk.DChunkError, OSError, ValueError) as error:
                 raise prompts.PromptError(f"D 검색 상태를 확인하지 못했습니다: {error}") from error
+            decision_status = "exists" if (wt / chunk_files.decisions).is_file() else "missing"
             card = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
-                                          searches=chunk_files.searches)
+                                          searches=chunk_files.searches, decision_status=decision_status)
             state_text = "\n\n## Supervisor가 확인한 현재 검색 상태\n" + json.dumps(states, ensure_ascii=False) + "\n"
             if dchunk.delivery(len((card + state_text).encode("utf-8")), view) == "inline":
                 chunk_input = view
@@ -7948,7 +7949,7 @@ class Supervisor:
                                "(Codex max_output_tokens: 10000). 누락 또는 잘림이 있으면 저장하지 않는다.\n" +
                                "\n".join(f"cat {path}" for path in pages))
             prompt = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
-                                            searches=chunk_files.searches, chunk_input=chunk_input)
+                                            searches=chunk_files.searches, chunk_input=chunk_input, decision_status=decision_status)
             prompt += state_text
         else:
             card_bytes = len(prompts.d_chunk(b, rec["chunk_no"], view="", note=note).encode("utf-8"))
