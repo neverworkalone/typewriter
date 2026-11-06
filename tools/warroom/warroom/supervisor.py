@@ -32,7 +32,7 @@ from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_clau
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
-from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
+from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked, ResourceFenced
 from .lanes import Lanes
 from .launch_gate import LaunchDenied, LaunchGate
 from .maintenance import Maintenance
@@ -113,8 +113,11 @@ def _single_launch_scope(fn):
 
 
 class Supervisor:
-    def __init__(self, paths, cfg, store, runner, adapter, gh, git, env, clock=time.time):
+    def __init__(self, paths, cfg, store, runner, adapter, gh, git, env, clock=time.time, fence=None):
         self.paths, self.cfg, self.store = paths, cfg, store
+        self.fence = fence   # crash fence (#3773); its instance id is the one #3774's record_runtime() reuses
+        if fence is not None:
+            fence.attach_log(lambda message: store.log(None, message, "warn"))
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
         self.lanes = Lanes()
@@ -138,6 +141,21 @@ class Supervisor:
         self.parallel_new_s3 = True   # False only lets a fixture exercise the serial Stage 3 path an already running shard keeps
         self.parallel_new_c = True   # False only lets a fixture exercise the serial path an already running batch keeps
         self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
+
+    @property
+    def instance_id(self) -> str | None:
+        return self.fence.instance if self.fence is not None else None
+
+    def active_children(self) -> list[dict]:
+        """Journalled Git/Node children of this instance not yet proven finished or non-executable (#3774 READY)."""
+        return self.fence.active_children() if self.fence is not None else []
+
+    def unresolved_fences(self) -> list[dict]:
+        """Unresolved fences left by earlier instances (#3774 READY must not treat them as clear)."""
+        return self.fence.previous_unresolved() if self.fence is not None else []
+
+    def _repo_fenced(self) -> bool:
+        return self.fence is not None and bool(self.fence.blocked({"repo"}))
 
     def _adapter(self, producer: str):
         """`adapter` is one AgentAdapter, or a {name: adapter} map resolved via the registry."""
@@ -166,7 +184,7 @@ class Supervisor:
                                + traceback.format_exc()[-800:], "error", line=f"{ln['model']}/{ln['method']}")
         with self._frozen_lock:
             maintenance_frozen = None in self._frozen_lanes
-        if not maintenance_frozen:
+        if not maintenance_frozen and not self._repo_fenced():
             try:
                 try:
                     self._tick_maintenance()
@@ -210,6 +228,8 @@ class Supervisor:
         with self._frozen_lock:
             if key in self._frozen_lanes:
                 return
+        if self._repo_fenced():
+            return   # every Line needs the repository: wait for the fence to clear without touching Line state
         with self.lanes.try_hold(model, method) as held:
             if held:
                 try:
@@ -1085,6 +1105,8 @@ class Supervisor:
             if self.git.registered(wt) != b["branch"]:
                 return prs
             current_head = self.git.head(wt)
+        except ResourceFenced:
+            raise
         except (GitError, OSError, ValueError):
             return prs
         known_heads = {current_head}
@@ -1224,6 +1246,8 @@ class Supervisor:
             b = self.store.batch(b["id"])
         try:
             merged = self._clear_teardown(b, req)
+        except ResourceFenced:
+            raise
         except (CleanupBlocked, GitError, RecoveryBlocked) as e:
             return self._clear_block(b, str(e))
         except Exception as e:
@@ -6571,6 +6595,8 @@ class Supervisor:
                 if not pure:
                     self.store.set(f"c_commit_head_{b['id']}", head)
                 return None
+        except ResourceFenced:
+            raise
         except GitError:
             pass
         return f"worktree HEAD {head[:10]}가 checkpoint 기준 HEAD {created[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
@@ -6617,6 +6643,8 @@ class Supervisor:
                 rec = literary.write_active(wt, b, view, ids, self.git.head(wt), self._c_next_no(b))
             if rec is None:
                 return self._fail(b, "ERROR", "chunk가 60번 연속 비어 진행하지 않습니다. 보존합니다.")
+        except ResourceFenced:
+            raise
         except (literary.LiteraryError, OSError, ValueError, GitError) as e:
             return self._fail(b, "ERROR", f"Method C 상태 확인 실패: {e}. worktree를 보존합니다.")
         resume = bool(b["session_id"]) and self.store.get(literary.run_start_key(b["id"])) is not None
@@ -7566,6 +7594,8 @@ class Supervisor:
                 rec = dchunk.read_active(wt, b)
                 if rec is None or rec["chunk_no"] != done + 1:
                     return self._fail(b, "ERROR", "prepare가 활성 청크를 만들지 못했습니다. 보존합니다.")
+        except ResourceFenced:
+            raise
         except (dchunk.DChunkError, OSError, ValueError, GitError) as e:
             return self._fail(b, "ERROR", f"Method D 상태 확인 실패: {e}. worktree를 보존합니다.")
         resume = bool(b["session_id"]) and self.store.get(dchunk.run_start_key(b["id"])) is not None
@@ -8079,6 +8109,8 @@ class Supervisor:
             if st["tries"] > max_tries:
                 return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 저장 거부가 정정 {max_tries}회 뒤에도 해소되지 않았습니다. "
                                   f"답변({stage1ab.answer_path(b, chunk['number'])})과 상태를 보존합니다.")
+        except ResourceFenced:
+            raise
         except (stage1ab.ABChunkError, OSError, ValueError, GitError) as e:
             return self._fail(b, "ERROR", f"Stage 1 A/B 상태 확인 실패: {e}. worktree를 보존합니다.")
         retry = st["tries"] > 0 or bool(repair)
@@ -9559,15 +9591,30 @@ class Supervisor:
             time.sleep(interval)
 
 
-def build(paths=None):
-    """Wire the production Supervisor."""
+def startup_refusal(fence, workers: int) -> str | None:
+    """workers=1 keeps the plain serial Runner, so an unresolved earlier child must stop the start instead of being ignored."""
+    if workers != 1 or fence is None:
+        return None
+    held = fence.unresolved()
+    if not held:
+        return None
+    lines = []
+    for item in held:
+        e = item["entry"] if isinstance(item["entry"], dict) else {}
+        lines.append(f"resource={','.join(item['resources'])} instance={item['instance']} pid={e.get('pid')} "
+                     f"pgid={e.get('pgid')} marker={item['path']} 판정={item['verdict'].state}: {item['verdict'].reason}")
+    return "이전 인스턴스의 Git/Node 자식이 해소되지 않아 시작할 수 없습니다 (기록 삭제는 안전 증명이 아님):\n  " + "\n  ".join(lines)
+
+
+def build(paths=None, fence=None):
+    """Wire the production Supervisor. `fence` (already scanned) protects git/node when several Workers run."""
     import os as _os
 
     from .adapters import ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter
     from .config import Paths, load_config
     from .gitops import Git
     from .github import GhClient
-    from .shell import Runner
+    from .shell import FencedRunner, Runner
     from .store import Store
     paths = paths or Paths()
     paths.ensure()
@@ -9576,12 +9623,18 @@ def build(paths=None):
     if problem:
         raise SystemExit(f"config.json 오류: {problem}")
     env = auth.build_env(dict(_os.environ), paths.gh_config, cfg["git_name"], cfg["git_email"])
+    refusal = startup_refusal(fence, cfg["supervisor_workers"])
+    if refusal:
+        raise SystemExit(refusal)
     runner = Runner()
+    plain = runner   # gh and every non-git/node command, and the whole serial (workers=1) path
+    if fence is not None and cfg["supervisor_workers"] > 1:
+        runner = FencedRunner(plain, fence, paths.worktrees)
     adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"]),
                 "codex": CodexCLIAdapter(cfg["codex_bin"])}
     return Supervisor(paths, cfg, Store(paths.db), runner, adapters,
                       GhClient(runner, env, cfg["repo"]),
-                      Git(runner, paths.repo_root, env, paths.worktrees), env)
+                      Git(runner, paths.repo_root, env, paths.worktrees, fence=fence), env, fence=fence)
 
 
 def main() -> int:
@@ -9600,7 +9653,16 @@ def main() -> int:
         print("War Room supervisor가 이미 실행 중입니다.")
         return 1
     paths.runtime_root_file.write_text(str(root), "utf-8")   # lets a launcher spot a live Supervisor from another checkout
-    sup = build(paths)
+    from .fence import Fence
+    fence = Fence(paths.children).open()
+    fence.scan_previous()   # before any Lane action or start log, whatever the Worker count (#3773)
+    try:
+        sup = build(paths, fence)
+    except SystemExit as refused:
+        for line in fence.drain_reports():
+            print(f"[supervisor] {line}", file=sys.stderr)
+        print(f"[supervisor] 시작 거부: {refused.code}", file=sys.stderr)
+        return 1
     from .restart_controller import record_runtime
     record_runtime(paths, sup.code_sha, configured_workers=sup.cfg["supervisor_workers"])
     sup.store.log(None, "supervisor 시작")

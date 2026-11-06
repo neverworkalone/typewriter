@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import batches
-from .gitops import GitError
+from .gitops import GitError, ResourceFenced
 from . import progress
 from . import prompts
 from .store import STAGE2_METHOD
@@ -162,6 +162,8 @@ def refresh_shard_success(shard: str, sha: str, *, kv, changed, relation_owners,
 
     try:
         paths = changed(old, sha) if changed is not None else None
+    except ResourceFenced:
+        raise
     except GitError:
         paths = None    # old commit unavailable or diff unknown: exact current-master verify is required
     relation_shards = None
@@ -990,6 +992,8 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
         if old not in diffs:
             try:
                 diffs[old] = changed(old, sha)
+            except ResourceFenced:
+                raise
             except GitError:
                 diffs[old] = None   # the old commit is unavailable: unknown, so verify again
         paths = diffs[old]
@@ -1014,6 +1018,8 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
         if old not in diffs:
             try:
                 diffs[old] = changed(old, sha) if changed is not None else None
+            except ResourceFenced:
+                raise
             except GitError:
                 diffs[old] = None
         paths = diffs[old]
@@ -1083,6 +1089,8 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
         for old in sorted(old_shas):
             try:
                 diffs[old] = changed(old, sha)
+            except ResourceFenced:
+                raise
             except GitError:
                 diffs[old] = None
             paths = diffs[old]
