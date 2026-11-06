@@ -87,7 +87,7 @@ DEFAULTS = {
     "rate_limit_retries": 3,
     "rate_limit_backoff_seconds": 120,
     "stage2_chunk_candidates": 250,   # #3047: target candidates per parallel Stage 2 primary task (applies to the next new Part's plan)
-    "supervisor_workers": 1,          # parallel coordinator remains isolated until #3774
+    "supervisor_workers": 16,         # parallel Line Workers (#3774). 1 = serial fallback / regression path only
     "stage3_max_parallel": 16,        # #3149: concurrent Stage 3 chunk sessions of a NEW shard (applies to the next assignment after reload)
     "stage2_max_parallel": 16,        # #3047: concurrent primary task sessions (applies to the next assignment after reload)
 }

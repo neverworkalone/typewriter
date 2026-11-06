@@ -6,6 +6,7 @@ It can restart only the operating-root Supervisor tmux session after durable req
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -16,6 +17,7 @@ import time
 from pathlib import Path
 
 from .config import Paths, ROOT_ENV
+from .fence import owner_state
 from .store import MAINTENANCE_METHOD, Store
 
 TMUX_SUP = "warroom-supervisor"
@@ -89,12 +91,64 @@ def update_restart_request(paths: Paths, defect_id: int, state: str, **fields) -
     return True
 
 
-def record_runtime(paths: Paths, code_sha: str | None, *, configured_workers: int = 1) -> None:
+def record_runtime(paths: Paths, code_sha: str | None, *, configured_workers: int = 1, workers: int | None = None,
+                   instance: str | None = None) -> None:
+    """`workers` is what this process actually runs (default: the configured count); `instance` ties the record to the
+    fence/restart_phase instance, so an earlier instance's record or READY never vouches for this one (#3774)."""
     _atomic_json(paths.runtime_record_file, {
         "version": 1, "runtime_root": str(paths.repo_root.resolve()), "loaded_code_sha": code_sha,
-        "pid": os.getpid(), "started_at": time.time(), "supervisor_workers": 1,
-        "configured_supervisor_workers": configured_workers,
+        "pid": os.getpid(), "started_at": time.time(),
+        "supervisor_workers": configured_workers if workers is None else workers,
+        "configured_supervisor_workers": configured_workers, "instance": instance,
     })
+
+
+TERMINAL_REQUEST_STATES = ("loaded", "progress_verified", "recovery_blocked", "cancelled")
+_ANCESTORS: set[tuple[str, str, str]] = set()   # (root, older, newer) proven ancestors; a Git ancestry never reverses
+
+
+def _loaded_already(root: Path, merge_sha, loaded_sha) -> bool:
+    key = (str(root), str(merge_sha), str(loaded_sha))
+    if key in _ANCESTORS:
+        return True
+    if _ancestor(root, merge_sha, loaded_sha):
+        _ANCESTORS.add(key)
+        return True
+    return False
+
+
+def pending_requests(paths: Paths, loaded_sha: str | None = None) -> list[dict]:
+    """Durable restart requests still waiting to be carried out, skipping any whose merge the loaded code already contains."""
+    out = []
+    root = paths.repo_root.resolve()
+    for path in sorted(paths.restart_requests.glob("restart-*.json")):
+        request = _read_json(path)
+        if request is None or request.get("state") in TERMINAL_REQUEST_STATES:
+            continue
+        if loaded_sha and _loaded_already(root, request.get("merge_sha"), loaded_sha):
+            continue
+        out.append(request)
+    return out
+
+
+def request_identity(paths: Paths, loaded_sha: str | None = None) -> str:
+    """Stable id of the pending request SET (sorted ids + target SHAs); "" when nothing is pending. Includes the reserved
+    operator code-reload id 0."""
+    items = sorted((int(r.get("defect_id") or 0), str(r.get("merge_sha"))) for r in pending_requests(paths, loaded_sha))
+    if not items:
+        return ""
+    return hashlib.sha256(json.dumps(items, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+
+
+def policy_blocker(store: Store) -> str | None:
+    """Policy that forbids (or revokes) a restart even when no work is live: an operator Drain or a defect hold."""
+    for line in store.lines():
+        if line["drain"]:
+            return f"operator Drain is active on {line['model']}/{line['method']}"
+    for batch in store.incomplete_batches():
+        if store.get(f"defect_hold_{batch['id']}"):
+            return f"defect hold is active on batch {batch['id']}"
+    return None
 
 
 def _git(args: list[str], root: Path, timeout: int = 10) -> subprocess.CompletedProcess:
@@ -227,6 +281,48 @@ def has_pending_restart(paths: Paths) -> bool:
                for path in paths.restart_requests.glob("restart-*.json"))
 
 
+def _is_serial_runtime(runtime: dict | None) -> bool:
+    return isinstance(runtime, dict) and runtime.get("supervisor_workers") == 1
+
+
+def _is_new_instance(runtime: dict, old: dict | None, since: float) -> bool:
+    """A restart succeeded only for a record written AFTER the kill by a different instance: the loaded SHA alone (or a
+    surviving earlier record) is not proof that the new Supervisor passed its own startup checks."""
+    started = runtime.get("started_at")
+    if not isinstance(started, (int, float)) or started < since:
+        return False
+    previous = old.get("instance") if isinstance(old, dict) else None
+    return previous is None or runtime.get("instance") != previous
+
+
+def _ready_problem(paths: Paths, store: Store, runtime: dict | None, pending) -> tuple[str | None, dict | None]:
+    """Why a live parallel Supervisor may not be stopped yet (None: its current instance is READY, or already STOPPING
+    for this very request set after a failed kill)."""
+    phase = store.restart_phase()
+    if phase is None:
+        return "Supervisor has not published a restart_phase (waiting for READY)", None
+    instance = phase.get("instance")
+    if not isinstance(instance, str) or owner_state(paths.children / instance) != "alive":
+        return "restart_phase belongs to an instance that is not running; it is no evidence about the live Supervisor", None
+    if isinstance(runtime, dict) and runtime.get("instance") not in (None, instance):
+        return "runtime record and restart_phase name different instances", None
+    loaded = runtime.get("loaded_code_sha") if isinstance(runtime, dict) else None
+    identity = request_identity(paths, loaded)
+    if not identity or phase.get("request") != identity:
+        return "restart_phase request identity differs from the pending request set", None
+    if phase.get("phase") in ("READY", "STOPPING"):
+        return None, phase
+    return f"Supervisor is {phase.get('phase')}; waiting for READY (in-flight Workers and AI runs finish first)", None
+
+
+def _to_stopping(store: Store, phase: dict | None) -> bool:
+    if phase is None:
+        return False
+    if phase.get("phase") == "STOPPING":
+        return True
+    return store.cas_restart_phase(phase, "STOPPING", phase["request"]) is not None
+
+
 def _tmux(command: list[str], timeout=5) -> subprocess.CompletedProcess:
     return subprocess.run(["tmux", *command], capture_output=True, text=True, timeout=timeout)
 
@@ -271,8 +367,17 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         return ("locked", None) if _lock_held(paths.lock) else None
 
     recovering = not _lock_held(paths.lock)
-    blocker = (_live_work_or_controls(store, recovering_stopped_supervisor=recovering)
-               or _worktree_ownership_problem(paths, store, recovering_stopped_supervisor=recovering))
+    runtime_now = _read_json(paths.runtime_record_file)
+    # A live parallel Supervisor is never judged by "no work is running": only its own READY proves that. A missing,
+    # damaged or inconsistent runtime record is not a reason to take the serial rule (workers must be proven 1 for that).
+    parallel_live = not recovering and not _is_serial_runtime(runtime_now)
+    ready = None
+    if parallel_live:
+        blocker, ready = _ready_problem(paths, store, runtime_now, pending)
+        blocker = blocker or policy_blocker(store) or _worktree_ownership_problem(paths, store)
+    else:
+        blocker = (_live_work_or_controls(store, recovering_stopped_supervisor=recovering)
+                   or _worktree_ownership_problem(paths, store, recovering_stopped_supervisor=recovering))
     if blocker:
         for path, request in pending:
             _set_waiting(paths, request, blocker)
@@ -286,7 +391,7 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
             return _set_waiting(paths, pending[0][1], "live TUI runtime root does not match the operating checkout")
 
     if _lock_held(paths.lock):
-        if blocker := _live_work_or_controls(store):
+        if not parallel_live and (blocker := _live_work_or_controls(store)):
             return _set_waiting(paths, pending[0][1], blocker)
         # The supervisor is live; it may only be replaced after the exact shared tmux session and operating root pass.
         try:
@@ -314,8 +419,16 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         if not same_pane:
             return _set_waiting(paths, pending[0][1], "Supervisor lock owner differs from the owned tmux pane")
 
+    if parallel_live:
+        # The single decision point: only the Controller turns READY into STOPPING, and only if nothing (a cancel, a new
+        # request, a policy change) won the CAS first. STOPPING is never reverted, so a failed kill is simply retried.
+        again = policy_blocker(store)
+        if again or not _to_stopping(store, ready):
+            return _set_waiting(paths, pending[0][1], again or "READY was cancelled or superseded before STOPPING")
+    old_runtime = runtime_now
+    restart_mark = time.time()
     for path, request in pending:
-        request.update(state="restarting", blocker=None, requested_restart_at=time.time())
+        request.update(state="restarting", blocker=None, requested_restart_at=restart_mark)
         _atomic_json(path, request)
 
     # Only the Supervisor session is replaced. The separate TUI/controller and production worker processes are preserved.
@@ -343,11 +456,16 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
     while time.monotonic() < deadline:
         runtime = _read_json(paths.runtime_record_file)
         if (runtime and runtime.get("runtime_root") == str(root)
+                and _is_new_instance(runtime, old_runtime, restart_mark)
                 and all(_ancestor(root, req["merge_sha"], runtime.get("loaded_code_sha", "")) for _, req in pending)):
             loaded = runtime
             break
         time.sleep(1)
     if loaded is None:
+        # Not a success record, and not necessarily a failure: a recovering instance records itself only after its fence scan.
+        if _lock_held(paths.lock):
+            return _set_waiting(paths, pending[0][1], "updated Supervisor is starting (fence recovery may still be running); "
+                                "it is not recorded as loaded until its own runtime record verifies")
         return _set_waiting(paths, pending[0][1], "updated Supervisor runtime root/loaded code SHA did not verify")
     for path, request in pending:
         request.update(state="loaded", loaded_code_sha=loaded.get("loaded_code_sha"),

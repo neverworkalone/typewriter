@@ -639,6 +639,8 @@ class ParallelStage3:
 
     def _finish(self, b) -> None:
         """Every chunk is SAVED and the checkpoint is complete: persist `closed` first, then finalize."""
+        if self.sup._finalization_held(b, "s3_plan_close"):
+            return   # Restart drain: nothing is written; the next instance re-enters here from the same facts
         tasks = self.store.task_rows(b["id"])
         if tasks and all(row["state"] == "SAVED" for row in tasks):
             total = len(tasks)

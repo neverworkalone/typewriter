@@ -46,4 +46,15 @@ TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" \
   tools/warroom/.local/venv/bin/python -m warroom.restart_controller --request-code-sha <FULL_SHA>
 ```
 
+### 병렬 Supervisor와 정상 Restart (#3774)
+
+`supervisor_workers`의 기본값은 **16**입니다(`config.example.json` 참고). 운영 `config.json`에 `1`을 override로 남기지 마세요. `1`은 직렬 회귀·장애 폴백 전용이며, 1→4→16 단계 확대는 하지 않습니다. 실제 기동 값은 `runtime`(`.git/typewriter-supervisor/`의 runtime 기록)의 `supervisor_workers`/`instance`로 확인합니다.
+
+workers>1 Supervisor의 모든 정상 Restart는 AI가 0개여도 `RUNNING → DRAINING → READY → STOPPING`을 거칩니다(Store `restart_phase`, `BEGIN IMMEDIATE` CAS).
+
+- Controller는 영속 Restart 요청만 기록합니다. Coordinator만 `RUNNING → DRAINING`을 수행하고 LaunchGate를 닫아 새 AI 시작·새 배치·새 Finalization·PR review-fix·Maintainer 새 작업을 막습니다. 이미 실행 중인 AI의 종료 수거·공식 저장, Stop/Clear 처리는 계속합니다.
+- 모든 Worker·AI·open run·Git/Node 자식 fence가 정리되면 Coordinator가 메모리에서 Worker 제출을 먼저 멈춘 뒤 `DRAINING → READY`로 전이합니다. READY/STOPPING에서는 Worker 제출이 0건입니다.
+- Controller는 현재 instance의 READY와 요청 identity를 확인하고 CAS `READY → STOPPING`에 성공한 경우에만 Supervisor tmux 세션을 종료합니다. 시간 초과만으로 자동 취소하지 않으며, 취소는 Coordinator만 `RUNNING`으로 되돌립니다(`STOPPING`에서는 복귀 불가).
+- READY 이후 접수된 Stop/Clear는 영속 요청으로 남아 새 Supervisor가 처리합니다. 수동 강제 종료·비정상 종료는 정상 Restart가 아니며, 새 instance가 시작 시 Git/Node fence 스캔으로 복구합니다.
+
 프롬프트·설정·Supervisor는 검증된 **운영 메인 checkout**에서만 읽습니다. 임시 worktree로 대체하지 않습니다. **`.local/` 삭제, DB 수동 초기화, 강제 프로세스 종료, 코드 리로드 목적의 Retry는 금지합니다.** 장애나 재시작 지연 사유는 TUI의 Supervisor 상태·Audit Log에서 확인합니다.

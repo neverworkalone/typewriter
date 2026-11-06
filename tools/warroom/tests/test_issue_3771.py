@@ -75,7 +75,7 @@ class ParallelCoordinator(unittest.TestCase):
         w.sup.clock = lambda: fake_time[0]
         with patch.object(w.sup, '_tick_line_locked', side_effect=line):
             thread = threading.Thread(target=w.sup.run_parallel, kwargs={
-                'interval': 5, 'stop_event': ticks, '_isolated_test': True})
+                'interval': 5, 'stop_event': ticks})
             thread.start()
             try:
                 self.assertTrue(ticks.wait_for_cycle(1))
@@ -96,19 +96,22 @@ class ParallelCoordinator(unittest.TestCase):
                 thread.join(5)
                 self.assertFalse(thread.is_alive())
 
-    def test_workers_and_disabled_operating_path(self):
+    def test_workers_default_and_runtime_records_actual_workers(self):
+        from warroom.config import DEFAULTS
         w = DWorld()
         self.addCleanup(w.tmp.cleanup)
+        self.assertEqual(DEFAULTS['supervisor_workers'], 16)
         for value in (0, 17, True, 1.5, '2'):
             w.cfg['supervisor_workers'] = value
             self.assertIn('supervisor_workers', config_problem(w.cfg))
         w.cfg['supervisor_workers'] = 1
         self.assertIsNone(config_problem(w.cfg))
-        with self.assertRaises(RuntimeError):
-            w.sup.run_parallel(stop_event=threading.Event())
-        record_runtime(w.paths, 'a' * 40, configured_workers=16)
+        record_runtime(w.paths, 'a' * 40, configured_workers=16, workers=16, instance='inst-1')
         runtime = json.loads(w.paths.runtime_record_file.read_text())
-        self.assertEqual((runtime['supervisor_workers'], runtime['configured_supervisor_workers']), (1, 16))
+        self.assertEqual((runtime['supervisor_workers'], runtime['configured_supervisor_workers'], runtime['instance']),
+                         (16, 16, 'inst-1'))
+        record_runtime(w.paths, 'a' * 40, configured_workers=16)   # never a hard-coded 1 beside a configured 16
+        self.assertEqual(json.loads(w.paths.runtime_record_file.read_text())['supervisor_workers'], 16)
 
     def test_competing_shared_claims_are_atomic(self):
         for methods in (('c', 'c'), ('d', 'd'), ('s2', 's2'), ('s3', 's3'), ('s2', 's3')):
