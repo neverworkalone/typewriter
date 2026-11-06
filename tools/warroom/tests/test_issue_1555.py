@@ -848,7 +848,7 @@ class AutonomousIncident(unittest.TestCase):
     def diagnose(self, valid=True, commit=False, outcome="undetermined", blocked=False,
                  unknown_observation="checkpoint", stale_marker=False, **extra):
         w = self.w
-        b, = self.released("deepseek")
+        b = make_batch(w)
         blocker = {"observation": unknown_observation,
                    "reason": f"접수 시 필수 관측 `{unknown_observation}`가 unknown이라 원본 증거 무결성을 검증할 수 없습니다"}
         if blocked:
@@ -858,10 +858,10 @@ class AutonomousIncident(unittest.TestCase):
                 result[unknown_observation] = {"status": "unknown", "value": "fixture read failure"}
                 return result
             w.sup.maint._observe = observed_with_unknown
-        w.sup._fail(b, "ERROR", self.rejected(b))
-        w.tick(4)   # Issue 102 -> its Maintainer starts
+        break_batch(w, b)
+        w.tick(4)   # Issue 101 -> its Maintainer starts
         m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
-        self.assertEqual((m["state"], m["batch"]), ("PRODUCING", "102"))
+        self.assertEqual((m["state"], m["batch"]), ("PRODUCING", "101"))
         wt = Path(m["worktree"])
         evidence = next((wt / ".warroom-scratch/incident").glob("*.json"))
         data = json.loads(evidence.read_text())
@@ -870,15 +870,15 @@ class AutonomousIncident(unittest.TestCase):
         if valid:
             summary = "접수 증거를 재검증하지 못했습니다"
             next_action = "운영자가 원본 evidence 접근과 hash를 확인한 뒤 Maintainer를 다시 실행합니다"
-            payload = {"version": 1, "issue": 102, "outcome": outcome, "summary": summary,
+            payload = {"version": 1, "issue": 101, "outcome": outcome, "summary": summary,
                        "blocker": blocker if blocked else None, "next_action": next_action, **extra}
             (wt / ".warroom-scratch/incident-diagnosis.json").write_text(json.dumps(payload))
         comment = "진단\n"
         if valid:
             comment += f"\n{summary}\n{blocker['reason'] if blocked else '차단 근거 미검증'}\n{next_action}\n"
         marker_attempt = data["maintainer_attempt"] - 1 if stale_marker else data["maintainer_attempt"]
-        w.gh.comment_issue(102, comment + "\n" + defects.marker(
-            defects.EVENT_MARK, f"incident-diagnosis-102-attempt-{marker_attempt}"))
+        w.gh.comment_issue(101, comment + "\n" + defects.marker(
+            defects.EVENT_MARK, f"incident-diagnosis-101-attempt-{marker_attempt}"))
         if commit:
             w.git.local_head = "9" * 40
         w.adapter.finish(w.adapter.launches[-1]["pid"])
@@ -888,7 +888,7 @@ class AutonomousIncident(unittest.TestCase):
     def test_proven_evidence_blocker_hands_off_but_does_not_resolve_production(self):
         w, m = self.diagnose(blocked=True)
         self.assertEqual(m["state"], "COMPLETE")
-        self.assertEqual(w.store.maintenance(102)["state"], "HELD")
+        self.assertEqual(w.store.maintenance(101)["state"], "HELD")
         self.assertEqual([d["state"] for d in incidents(w)], ["HELD"])
         row = w.store.batch(incidents(w)[0]["batch_id"])
         self.assertEqual((row["state"], row["pause_reason"]), ("PAUSED", "shared_defect"))
@@ -902,42 +902,42 @@ class AutonomousIncident(unittest.TestCase):
         w, first = self.diagnose(outcome="undetermined", blocked=True)
         d, = incidents(w)
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
-        self.assertTrue(w.store.maintenance_retryable(102))
+        self.assertTrue(w.store.maintenance_retryable(101))
         self.assertTrue(st["can_retry"])
-        self.assertTrue(control.retry_maintainer(w.store, 102))
-        self.assertFalse(control.retry_maintainer(w.store, 102))  # one explicit queue transition
-        self.assertEqual((w.store.maintenance(102)["state"], w.store.maintenance(102)["batch_id"]), ("QUEUED", None))
+        self.assertTrue(control.retry_maintainer(w.store, 101))
+        self.assertFalse(control.retry_maintainer(w.store, 101))  # one explicit queue transition
+        self.assertEqual((w.store.maintenance(101)["state"], w.store.maintenance(101)["batch_id"]), ("QUEUED", None))
         self.assertEqual((w.store.defect(d["id"])["state"], w.store.batch(d["batch_id"])["state"]),
                          ("LINKED", "PAUSED"))
 
         w.tick(4)
-        attempts = [b for b in w.store.all_batches() if b["method"] == "m" and b["batch"] == "102"]
+        attempts = [b for b in w.store.all_batches() if b["method"] == "m" and b["batch"] == "101"]
         second = attempts[-1]
         self.assertEqual(len(attempts), 2)
         self.assertNotEqual(second["id"], first["id"])
-        self.assertEqual((second["shard"], second["batch"]), ("issue-2", "102"))
-        self.assertEqual(w.store.maintenance(102)["batch_id"], second["id"])
+        self.assertEqual((second["shard"], second["batch"]), ("issue-2", "101"))
+        self.assertEqual(w.store.maintenance(101)["batch_id"], second["id"])
         self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED")
 
     def test_diagnosis_retry_requires_undetermined_outcome_and_unchanged_incident_state(self):
         w, _ = self.diagnose(outcome="external")
-        self.assertFalse(w.store.maintenance_retryable(102))
-        self.assertFalse(w.store.requeue_maintenance(102))
+        self.assertFalse(w.store.maintenance_retryable(101))
+        self.assertFalse(w.store.requeue_maintenance(101))
 
         self.tearDown()
         self.setUp()
         w, _ = self.diagnose(outcome="undetermined", blocked=True)
         d, = incidents(w)
         w.store.update(d["batch_id"], state="ERROR")
-        self.assertFalse(w.store.maintenance_retryable(102))
-        self.assertFalse(w.store.requeue_maintenance(102))
+        self.assertFalse(w.store.maintenance_retryable(101))
+        self.assertFalse(w.store.requeue_maintenance(101))
         self.assertEqual(w.store.defect(d["id"])["state"], "HELD")
 
     def test_retry_diagnosis_does_not_accept_a_previous_attempt_marker(self):
         w, first = self.diagnose(outcome="undetermined", blocked=True)
-        first_marker = f"incident-diagnosis-102-attempt-{first['id']}"
-        self.assertTrue(any(first_marker in c["body"] for c in w.gh.issue_comments_[102]))
-        self.assertTrue(control.retry_maintainer(w.store, 102))
+        first_marker = f"incident-diagnosis-101-attempt-{first['id']}"
+        self.assertTrue(any(first_marker in c["body"] for c in w.gh.issue_comments_[101]))
+        self.assertTrue(control.retry_maintainer(w.store, 101))
         w.tick(4)
         second = [b for b in w.store.all_batches() if b["method"] == "m"][-1]
         self.assertEqual(second["shard"], "issue-2")
@@ -950,16 +950,16 @@ class AutonomousIncident(unittest.TestCase):
         reason = f"접수 시 필수 관측 `{names}`가 unknown이라 원본 증거 무결성을 검증할 수 없습니다"
         summary = "접수 증거를 재검증하지 못했습니다"
         next_action = "운영자가 원본 evidence 접근과 hash를 확인한 뒤 Maintainer를 다시 실행합니다"
-        path.write_text(json.dumps({"version": 1, "issue": 102, "outcome": "undetermined", "summary": summary,
+        path.write_text(json.dumps({"version": 1, "issue": 101, "outcome": "undetermined", "summary": summary,
                                     "blocker": {"observation": names, "reason": reason}, "next_action": next_action}))
         # The existing Issue comment has only the prior attempt's marker.
-        current_marker = f"incident-diagnosis-102-attempt-{second['id']}"
-        self.assertFalse(any(current_marker in c["body"] for c in w.gh.issue_comments_[102]))
+        current_marker = f"incident-diagnosis-101-attempt-{second['id']}"
+        self.assertFalse(any(current_marker in c["body"] for c in w.gh.issue_comments_[101]))
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick(3)
         self.assertEqual(w.store.batch(second["id"])["state"], "ERROR")
         self.assertIsNone(w.store.get(f"m_diag_{second['id']}"))
-        self.assertEqual(w.store.maintenance(102)["batch_id"], second["id"])
+        self.assertEqual(w.store.maintenance(101)["batch_id"], second["id"])
 
     def test_classification_without_a_proven_blocker_keeps_the_maintainer_error(self):
         for i, outcome in enumerate(("no_code_fix", "external", "undetermined", "recurrence")):
@@ -968,7 +968,7 @@ class AutonomousIncident(unittest.TestCase):
                 self.setUp()
             w, m = self.diagnose(outcome=outcome)
             self.assertEqual(m["state"], "ERROR", outcome)
-            self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE", outcome)
+            self.assertEqual(w.store.maintenance(101)["state"], "ACTIVE", outcome)
             d, = incidents(w)
             self.assertEqual(d["state"], "LINKED", outcome)
             self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED", outcome)
@@ -976,7 +976,7 @@ class AutonomousIncident(unittest.TestCase):
     def test_a_fabricated_blocker_does_not_release_the_slot(self):
         w, m = self.diagnose(blocked=False, blocker={"observation": "checkpoint", "reason": "invented"})
         self.assertEqual(m["state"], "ERROR")
-        self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE")
+        self.assertEqual(w.store.maintenance(101)["state"], "ACTIVE")
         d, = incidents(w)
         self.assertEqual(d["state"], "LINKED")
         self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED")
@@ -984,12 +984,12 @@ class AutonomousIncident(unittest.TestCase):
     def test_noncritical_unknown_observation_does_not_prove_an_evidence_blocker(self):
         w, m = self.diagnose(blocked=True, unknown_observation="events")
         self.assertEqual(m["state"], "ERROR")
-        self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE")
+        self.assertEqual(w.store.maintenance(101)["state"], "ACTIVE")
 
     def test_prior_attempt_marker_cannot_authorize_a_new_handoff(self):
         w, m = self.diagnose(blocked=True, stale_marker=True)
         self.assertEqual(m["state"], "ERROR")
-        self.assertEqual(w.store.maintenance(102)["state"], "ACTIVE")
+        self.assertEqual(w.store.maintenance(101)["state"], "ACTIVE")
 
     def test_diagnosis_missing_or_with_a_commit_keeps_the_existing_error(self):
         for kwargs in ({"valid": False}, {"commit": True, "blocked": True}):
@@ -1057,7 +1057,6 @@ class AutonomousIncidentReview(unittest.TestCase):
         data = json.loads(files[0].read_text())
         self.assertIn(f"d_base_head_{b['id']}", data["kv"])
         self.assertIn(f"error_evidence_{b['id']}_1", data["kv"])
-        self.assertEqual(data["maintainer_attempt"], m["id"])
         self.assertEqual(data["maintainer_attempt"], m["id"])
         self.assertNotIn(f"unrelated_secret_{b['id']}", data["kv"])
         self.assertEqual(list(files[0].parent.glob("*.tmp")), [])
