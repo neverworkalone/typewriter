@@ -2114,6 +2114,15 @@ test('preflight repair accepts Supervisor sorted-state round-trip and remains st
   assert.equal(afterPair.total, 1);
   assert.equal(afterPair.problems[0].candidates[0].candidate, '버릴말');
   const drop = afterPair.problems[0].candidates[0];
+  const unchangedDrop = { version: 1, fingerprint: afterPair.fingerprint, decisions: [{
+    source_sense_id: drop.source_sense_id, candidate: drop.candidate,
+    expected_decision: drop.decision, expected_additional_relations: null,
+    decision: drop.decision, additional_relations: null,
+  }] };
+  await writeFile(path.join(root, repairPath), JSON.stringify(unchangedDrop));
+  const checkDrop = await quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairPath, '--json', '--check'], { root }));
+  assert.equal(checkDrop.ok, false, 'repair check must detect the same gloss-name conflict as preflight');
+  assert.equal(checkDrop.invalid_candidates[0].problems[0].condition, 'gloss_named');
   const repairedDrop = { source_sense_id: drop.source_sense_id, candidate: drop.candidate,
     disposition: 'relation', type: 'association', relevance: 4 };
   await writeFile(path.join(root, repairPath), JSON.stringify({ version: 1, fingerprint: afterPair.fingerprint,
@@ -2210,7 +2219,11 @@ test('repair --check normalizes a deterministic omission and reports every local
       .replace(/<target_record_id>/gu, 'w2').replace(/<target_sense_id>/gu, 'w2-s1')
       .replace('"<every supplied target sense id, once each>"', supplied.map((id) => JSON.stringify(id)).join(',')));
     const result = await request(name, filled.target_resolution === 'exact' ? exactWithReverse(filled) : filled);
-    assert.deepEqual(result.invalid_candidates, [], `prompt example ${JSON.stringify(example)} passes the official check`);
+    if (filled.disposition === 'drop' && filled.reason === 'x') {
+      assert.deepEqual(pathsOf(result), ['decision.reason:gloss_named']);
+    } else {
+      assert.deepEqual(result.invalid_candidates, [], `prompt example ${JSON.stringify(example)} passes the official check`);
+    }
   }
 
   const refused = await request('유일', exactWithReverse({ ...exact, type: 'nope' }), []);
