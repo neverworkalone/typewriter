@@ -1061,7 +1061,11 @@ withWorld('latest search state supersedes a ZERO_HITS prepare view and resumes i
   assert.deepEqual(current.states.find((item) => item.sense === target.ref).decision_state, first.requests[0].decision_state);
 
   const entriesPath = chunkPath(world, 'searches');
-  const entries = (await readFile(entriesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const intact = await readFile(entriesPath, 'utf8');
+  await writeFile(entriesPath, intact.replace(active.view_sha256, '0'.repeat(64)));
+  await assert.rejects(currentActiveStates({ root: world.root, chunkNumber: 1 }), /search evidence does not match/u);
+  await writeFile(entriesPath, intact);
+  const entries = intact.trim().split('\n').map(JSON.parse);
   const decisions = active.senses.filter((sense) => !sense.auto).map((sense) => {
     if (sense.ref === target.ref) return `${sense.ref} Z`;
     const evidence = recordEvidence(entries, sense.record_id);
