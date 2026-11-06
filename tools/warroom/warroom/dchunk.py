@@ -472,10 +472,11 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
 
 
 def refresh_stale_search_rejection(runner, env, worktree, b, rec: dict, *, limit_to_previous=False) -> dict | None:
-    """Reinspect a decision rejection invalidated solely by later search evidence.
+    """Reinspect a rejection invalidated by later search or correction evidence.
 
     Never turn an unbound, foreign or failed-search diagnostic into a correction. The official CLI
-    recomputes the rejection; the prior decision, active chunk and every input must remain unchanged.
+    recomputes the rejection. Changed decisions require an exhausted correction budget and
+    the fresh failures must remain within the original rejected senses.
     """
     folder = Path(worktree)
     n = chunk_names(b, rec["chunk_no"])
@@ -488,8 +489,9 @@ def refresh_stale_search_rejection(runner, env, worktree, b, rec: dict, *, limit
         if (not isinstance(old, dict) or old.get("diagnostic") != "save_rejected"
                 or old.get("repair_scope") != "decisions" or old.get("chunk_no") != rec["chunk_no"]
                 or old.get("view_sha256") != rec["view_sha256"] or old.get("git_head") != rec["git_head"]
-                or old.get("decisions_sha256") != sha256_bytes(decision)
-                or old.get("searches_sha256") == sha256_bytes(search)
+                or (old.get("decisions_sha256") != sha256_bytes(decision) and not limit_to_previous)
+                or (old.get("decisions_sha256") == sha256_bytes(decision)
+                    and old.get("searches_sha256") == sha256_bytes(search))
                 or has_search_failure(folder, b, rec["chunk_no"])):
             return None
         args = ["inspect", "--diagnostic", "--chunk", str(rec["chunk_no"]), "--in", str((folder / n.decisions).resolve()),

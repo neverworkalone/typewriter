@@ -267,6 +267,25 @@ class ParallelDCorrections(ParallelDHelpers, unittest.TestCase):
         self.assertIsNone(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec))
         self.assertEqual(path.read_bytes(), before)
 
+    def test_partial_correction_refreshes_only_original_failures(self):
+        w = self.world(records=25)
+        w.adapter.plan.append(self.rejecter(w, 1, "ses_1"))
+        w.start("single", "deepseek", "d")
+        w.tick()
+        self.finish_task(w, "001")
+        b, wt = w.row_(), w.wt()
+        rec = dchunk.read_active(wt, b, 1)
+        names = dchunk.chunk_names(b, 1)
+        path = wt / names.rejected
+        old = json.loads(path.read_text())
+        (wt / names.decisions).write_text("partial correction\n")
+        fresh = dict(old, decisions_sha256=dchunk.sha256_bytes((wt / names.decisions).read_bytes()))
+        w.inspect_rejection(fresh)
+        w.runner.dchunk.inspection["rejection"] = fresh
+        self.assertIsNone(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec))
+        self.assertEqual(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec,
+                                                               limit_to_previous=True), fresh)
+
     def test_search_failed_chunk_stops_new_launches_and_pauses_after_running_ones_finish(self):
         w = self.world(records=250)
         w.runner.dchunk.failed = {2}
