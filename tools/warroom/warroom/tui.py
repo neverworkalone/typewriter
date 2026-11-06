@@ -158,6 +158,38 @@ class Confirm(ModalScreen[bool]):
         self.dismiss(e.button.id == "yes")
 
 
+class TierChoice(ModalScreen[str | None]):
+    BINDINGS = [("escape", "cancel", "취소"), ("left", "focus_choice('go')", ""),
+                ("right", "focus_choice('api')", "")]
+
+    def __init__(self, api_available: bool):
+        super().__init__()
+        self.api_available = api_available
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="tier-choice"):
+            yield Static("DeepSeek 유료 모델 선택 (다음 실행부터 적용)")
+            with Horizontal():
+                yield Button("Go", id="go", variant="primary")
+                yield Button("API" if self.api_available else "API (미설정)", id="api", variant="error",
+                             disabled=not self.api_available)
+
+    def on_mount(self) -> None:
+        self.query_one("#go", Button).focus()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def action_focus_choice(self, choice: str) -> None:
+        button = self.query_one(f"#{choice}", Button)
+        if not button.disabled:
+            button.focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        self.dismiss(event.button.id)
+
+
 class Card(Static, can_focus=True):
     """One Line. Clicking (or Enter) only opens its detail; it never starts or changes work."""
     BINDINGS = [("enter", "open", "Open"), ("left", "move(0,-1)", ""), ("right", "move(0,1)", ""),
@@ -593,9 +625,11 @@ class LineDetail(Screen):
 class WarRoom(App):
     TITLE = "WAR ROOM / TYPEWRITER"
     CSS = """
-    Confirm { align: center middle; }
+    Confirm, TierChoice { align: center middle; }
     #confirm { width: 60; height: auto; padding: 0 2; border: thick $error; background: $surface; }
     #confirm > Horizontal { height: auto; align-horizontal: center; margin-top: 1; }
+    #tier-choice { width: 60; height: auto; padding: 0 2; border: thick $primary; background: $surface; }
+    #tier-choice > Horizontal { height: auto; align-horizontal: center; margin-top: 1; }
     #banner, #drain-note { height: auto; }
     #banner { color: $error; }
     #drain-note { color: $warning; }
@@ -623,7 +657,7 @@ class WarRoom(App):
     """
     BINDINGS = [("q", "quit", "Quit"),
                 Binding("S", "stop_all", "Stop All"),
-                ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go 전환"),
+                ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go/API 전환"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
                 Binding("shift+tab", "switch_region", "", show=False, priority=True)]
@@ -729,8 +763,8 @@ class WarRoom(App):
             return self.notify("DeepSeek의 Go 모델이 설정되어 있지 않습니다 (config의 models.go).", severity="warning")
         if target == "free":
             return self._apply_tier(True, "free")
-        self.push_screen(Confirm("DeepSeek 라인을 Go(유료) 모델로 전환합니다. 실행 중인 AI는 그대로이고 다음 실행부터 적용됩니다."),
-                         lambda yes: self._apply_tier(yes, "go"))
+        available = all(registry(self.cfg)[m]["models"].get("api") for m in control.go_models(self.cfg))
+        self.push_screen(TierChoice(available), lambda tier: self._apply_tier(True, tier) if tier else None)
 
     def action_reload_config(self) -> None:
         """r: ask the Supervisor to re-read config.json; the answer arrives through the shared DB (refresh_view)."""

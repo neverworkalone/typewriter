@@ -217,7 +217,8 @@ def registry(cfg: dict) -> dict[str, dict]:
                     "model": p.get("model") or "",
                     "effort": p["effort"] if "effort" in p else LEGACY_EFFORT.get(adapter, ""),
                     "permission_profile": p.get("permission_profile") or "", "fast": p.get("fast"), "governed": governed,
-                    "models": {"free": "", "go": "", **(p.get("models") or {})}}
+                    "models": {"free": "", "go": "", **(p.get("models") or {})},
+                    "tier_efforts": p.get("tier_efforts") or {}}
     return out
 
 
@@ -418,6 +419,11 @@ def _entry_problems(name: str, p: dict, fields: tuple[str, ...]) -> list[str]:
         bad.append(f"{name}.models는 객체여야 합니다")
     elif isinstance(m, dict):
         bad += [f"{name}.models.{k}는 문자열이어야 합니다" for k, v in m.items() if not isinstance(v, str)]
+    e = p.get("tier_efforts")
+    if e is not None and not isinstance(e, dict):
+        bad.append(f"{name}.tier_efforts는 객체여야 합니다")
+    elif isinstance(e, dict):
+        bad += [f"{name}.tier_efforts.{k}는 문자열이어야 합니다" for k, v in e.items() if not isinstance(v, str)]
     return bad
 
 
@@ -670,10 +676,13 @@ def run_spec(cfg: dict, producer: str, tier: str = "free", role: str = STAGE1) -
     model = p["models"].get(tier, "") if p["adapter"] in TIERED_ADAPTERS else p["model"]
     if not model:
         raise ValueError(f"{producer}: {tier if p['adapter'] in TIERED_ADAPTERS else 'model'} 모델 ID가 설정되지 않았습니다.")
-    problem = effort_problem(p["adapter"], p["effort"])
+    if not _MODEL_ID.match(model):
+        raise ValueError(f"{producer}: 모델 ID {model!r}의 형식이 올바르지 않습니다.")
+    effort = p.get("tier_efforts", {}).get(tier, p["effort"]) if p["adapter"] in TIERED_ADAPTERS else p["effort"]
+    problem = effort_problem(p["adapter"], effort)
     if problem:
         raise ValueError(f"{producer}: {problem}")
-    return RunSpec(model=model, effort=p["effort"], permission_profile=p["permission_profile"],
+    return RunSpec(model=model, effort=effort, permission_profile=p["permission_profile"],
                    fast=p.get("fast") if p["adapter"] == "codex" else None)
 
 

@@ -9,6 +9,19 @@ METHODS = ["a", "b", "c", "d"]
 
 
 class TierSwitch(unittest.TestCase):
+    def test_api_switch_and_missing_configuration(self):
+        w = multi_world()
+        with self.assertRaises(ValueError):
+            control.set_tier(w.store, w.cfg, METHODS, "api")
+        self.assertEqual(control.tier_state(w.store, w.cfg, METHODS), "free")
+        w.cfg["producers"]["deepseek"] = {**w.cfg["producers"]["deepseek"],
+            "models": {**w.cfg["producers"]["deepseek"]["models"], "api": "deepseek/deepseek-flash"}}
+        control.set_tier(w.store, w.cfg, METHODS, "api")
+        self.assertEqual(control.tier_state(w.store, w.cfg, METHODS), "api")
+        self.assertEqual(control.next_tier("api"), "free")
+        control.set_tier(w.store, w.cfg, METHODS, "free")
+        w.tmp.cleanup()
+
     def test_table(self):
         w = multi_world()           # deepseek has a Go model, sonnet does not
         cfg, st = w.cfg, w.store

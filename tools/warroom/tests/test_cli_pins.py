@@ -125,6 +125,16 @@ class RegistryValidation(unittest.TestCase):
 
 
 class RunPins(unittest.TestCase):
+    def test_api_effort_override_is_isolated(self):
+        entry = {**DEEPSEEK, "effort": "low", "models": {**DEEPSEEK["models"], "api": "deepseek/deepseek-flash"},
+                 "tier_efforts": {"api": "none"}}
+        cfg = cfg_with({"deepseek": entry})
+        self.assertEqual(run_spec(cfg, "deepseek", "api"), RunSpec("deepseek/deepseek-flash", "none"))
+        self.assertEqual(run_spec(cfg, "deepseek", "free").effort, "low")
+        self.assertEqual(run_spec(cfg, "deepseek", "go").effort, "low")
+        with self.assertRaises(ValueError):
+            run_spec(cfg_with({"deepseek": DEEPSEEK}), "deepseek", "api")
+
     def test_every_run_carries_its_model_and_effort(self):
         cfg = cfg_with({"claude": SONNET, "codex": LUNA, "deepseek": DEEPSEEK})
         self.assertEqual(run_spec(cfg, "claude"), RunSpec("sonnet", "medium"))
@@ -321,10 +331,11 @@ class RelaunchSettings(unittest.TestCase):
         w.cfg["producers"]["deepseek"]["effort"] = "low"
         w.sup._launch(self.batch(w), "produce_resume", [])
         self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]),
-                         ("p/free-x-free", "low"))
+                         ("p/free-x-free", "high"))
+        self.assertEqual(w.store.batch(bid)["state"], "ERROR")
         runs = w.store.runs(bid)
-        self.assertEqual((runs[0]["model"], runs[0]["effort"]), ("p/free-x-free", "low"))
-        self.assertEqual((runs[1]["model"], runs[1]["effort"]), ("p/free-x-free", "high"))
+        self.assertEqual(len(runs), 1)
+        self.assertEqual((runs[0]["model"], runs[0]["effort"]), ("p/free-x-free", "high"))
         w.tmp.cleanup()
 
     def test_retry_after_a_lost_session_uses_current_settings_and_preserves_old_run(self):

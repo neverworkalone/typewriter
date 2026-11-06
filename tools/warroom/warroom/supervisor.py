@@ -1786,7 +1786,7 @@ class Supervisor:
             return f"{adapter_label(name)} CLI 어댑터가 이 War Room 빌드에 없습니다 — 다른 CLI로 대신 실행하지 않습니다."
         return None
 
-    def _preflight(self, producer: str, method: str = "a") -> str | None:
+    def _preflight(self, producer: str, method: str = "a", tier: str | None = None) -> str | None:
         """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
         if method == STAGE3_METHOD and (problem := stage3_problem(self.cfg, producer)):
             return problem
@@ -1804,7 +1804,13 @@ class Supervisor:
             if not re.search(self.cfg.get("free_model_pattern", r"-free$"), free):
                 return f"models.free={free!r} 는 무료 모델 ID로 확인되지 않습니다 (패턴 {self.cfg.get('free_model_pattern', '-free$')})."
         try:
-            runs = self._pinned_runs(producer, role_of(method))
+            if self._tiered(producer):
+                selected = tier if tier is not None else self.store.peek_line(producer, method)["model_tier"]
+                runs = self._pinned_runs(producer, role_of(method))
+                if selected == "api":
+                    runs.append(run_spec(self.cfg, producer, selected, role_of(method)))
+            else:
+                runs = self._pinned_runs(producer, role_of(method))
         except ValueError as e:
             return str(e)
         return ad.preflight(self.runner, self.env, runs)
@@ -1879,8 +1885,8 @@ class Supervisor:
         """Every model/effort this producer may run with: both tiers of a tiered CLI (a configured Go model too)."""
         if not self._tiered(producer):
             return [run_spec(self.cfg, producer, role=role)]
-        go = registry(self.cfg)[producer]["models"].get("go")
-        return [run_spec(self.cfg, producer, "free", role)] + ([run_spec(self.cfg, producer, "go", role)] if go else [])
+        models = registry(self.cfg)[producer]["models"]
+        return [run_spec(self.cfg, producer, tier, role) for tier in ("free", "go") if tier == "free" or models.get(tier)]
 
     def _prepare_existing(self, b) -> None:
         if self._pending_gate(b):
@@ -2379,7 +2385,8 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        if b["method"] == STAGE3_METHOD and kind.endswith("_resume"):
+        if (b["method"] == STAGE3_METHOD or (b["method"] in ("a", "b", "c", "d") and
+                                              self._tiered(b["producer"]))) and kind.endswith("_resume"):
             recorded = self._recorded_run(b)
             if recorded is None:
                 return self._fail(b, "ERROR", "Stage 3 기존 세션의 model/effort/permission_profile/fast 기록이 없어 재개하지 않습니다. "
@@ -2397,7 +2404,7 @@ class Supervisor:
         if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD, MAINTENANCE_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
-        problem = self._preflight(b["producer"], b["method"])
+        problem = self._preflight(b["producer"], b["method"], b["model_tier"])
         if problem and problem.startswith(PREFLIGHT_PENDING):
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:

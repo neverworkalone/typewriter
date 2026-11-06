@@ -256,7 +256,7 @@ class NoCodeRecovery(unittest.TestCase):
                 "remote_head": None, "chunk_no": 1,
             }, sort_keys=True))
             run_id = w.store.add_run(batch_id, "d_chunk_new", "d-session-002", None,
-                                     run_log, run_log.with_suffix(".exit"))
+                                     run_log, run_log.with_suffix(".exit"), model="p/free-x-free", effort="high")
             w.store.finish_run(run_id, 0)
             w.store.update(batch_id, state="PAUSED", pause_reason="shared_defect", paused_from="PRODUCING",
                            defect_id=defect_id, session_id="d-session-002", pid=None)
