@@ -213,6 +213,21 @@ class SavedOutputStillGetsItsFailureVerdict(unittest.TestCase):
                 self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PAUSED", 1))
 
 
+class SavedOutputWithADenial(unittest.TestCase):
+    def test_denial_after_an_official_save_is_paused_on_normal_and_restart_paths(self):
+        for mode in ("normal", "death"):
+            with self.subTest(mode):
+                w = DWorld()
+                self.addCleanup(w.tmp.cleanup)
+                w.adapter.denied_actions = lambda log: [{"tool_name": "Bash", "tool_input": {"command": "git push"}}]
+                w.start("single", "deepseek", "d")
+                w.ai()
+                w.tick()
+                w.finish_last()
+                settle(w, mode)
+                self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PAUSED", 1))
+
+
 class SavedOutputIsAcceptedWithAClosedGate(unittest.TestCase):
     def test_ab_chunk_save_is_accepted_but_the_next_run_waits_for_admission(self):
         w = ABWorld()

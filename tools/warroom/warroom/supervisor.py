@@ -2806,6 +2806,8 @@ class Supervisor:
             self._fail(b, "ERROR", f"종료 판정 재진입 증거가 일치하지 않아 AI 재실행 없이 보존합니다: {e}")
             return True
         if self._exit_output_saved(b) and self._saved_exit_acceptable(b, code):
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return True   # the same permission-denial verdict as the normal path (PAUSED) is already committed
             # The run's own official save already completed and the original classification / identity checks pass: the
             # saved file is the authoritative effect, so the run-baseline-bound recovery (`_relaunch_*`) accepts it
             # instead of re-judging a tree the save itself changed. Anything else re-applies the full verdict below.
