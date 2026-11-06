@@ -12,9 +12,12 @@ from unittest import mock
 
 from tests.fakes import HEAD1, HEAD2
 from tests.test_issue_3074 import ParallelDHelpers
+from tests.test_issue_3076 import Helpers as ParallelCHelpers
+from tests.test_issue_2033_c import CP_NAME
 from warroom import restart_controller as rc
 from warroom.fence import Fence
 from warroom.launch_gate import LaunchDenied, LaunchGate
+from warroom.supervisor import Supervisor
 
 LINE = ("deepseek", "d")
 
@@ -179,6 +182,76 @@ class DrainCollectsThenReady(RestartWorld, unittest.TestCase):
              mock.patch.object(rc.time, "sleep"):
             rc.handle_pending_restart(paths, store)
         return state
+
+
+class SharedDefectTaskDeferral(ParallelCHelpers, unittest.TestCase):
+    def test_ended_task_on_shared_defect_pause_is_deferred_and_saved_by_next_instance(self):
+        w = self.world(senses=12)
+        drive = Drive(w)
+        self.addCleanup(drive.close)
+        fence = Fence(w.paths.children, instance=w.sup.phase_instance).open()
+        self.addCleanup(fence.close)
+        w.sup.begin_instance()
+
+        w.start("single", "deepseek", "c")
+        drive.cycle()  # one task run starts
+        b = w.row("deepseek", "c")
+        bid = b["id"]
+        run = next(r for r in self.open_runs(w) if r["task"] == "001")
+        did = w.store.report_defect(bid, "shared-defect-c-task", "report", "c-chunk-008-cli",
+                                    "LINKED", "{}", "shared_defect", "paused")
+        self.assertIsNotNone(did)
+        self.assertTrue(w.sup._batch_has_open_work(w.store.batch(bid)))  # a live task remains a blocker
+
+        self.finish(w, "001", save=True)
+        w.store.finish_run(run["id"], "0")
+        b = w.store.batch(bid)
+        row_before = dict(w.store.task_row(bid, "001"))
+        run_before = dict(w.store.run(run["id"]))
+        checkpoint = w.wt() / ".warroom-scratch" / CP_NAME
+        checkpoint_before = checkpoint.read_bytes()
+        self.assertEqual((b["state"], b["pause_reason"]), ("PAUSED", "shared_defect"))
+        self.assertFalse(w.sup._batch_has_open_work(b))  # the ended result is durable for the successor
+
+        launches_before = len(w.adapter.launches)
+        entered, release = threading.Event(), threading.Event()
+        wait_operator = w.sup._wait_operator
+
+        def hold_current_worker(batch):
+            entered.set()
+            if not release.wait(10):
+                raise AssertionError("paused C worker did not receive its release")
+            wait_operator(batch)
+
+        with mock.patch.object(w.sup, "_wait_operator", side_effect=hold_current_worker):
+            drive.cycle(wait_workers=False)  # keep one pre-drain C Worker outstanding
+            self.assertTrue(entered.wait(5))
+            rc.write_restart_request(w.paths, {"id": 91, "merge_sha": HEAD1}, None)
+            drive.cycle(wait_workers=False)
+            self.assertEqual((w.store.restart_phase() or {}).get("phase"), "DRAINING")
+            release.set()
+            wait(list(drive.pending.values()), timeout=10)
+            drive.cycle()
+            self.assertEqual((w.store.restart_phase() or {}).get("phase"), "READY")
+
+        self.assertEqual(dict(w.store.task_row(bid, "001")), row_before)
+        self.assertEqual(dict(w.store.run(run["id"])), run_before)
+        self.assertEqual(checkpoint.read_bytes(), checkpoint_before)
+        self.assertEqual(len(w.adapter.launches), launches_before)  # no new AI during DRAINING
+        self.assertEqual(w.store.batch(bid)["state"], "PAUSED")
+
+        rc.update_restart_request(w.paths, 91, "loaded", loaded_code_sha=HEAD2)
+        w.store.update_defect(did, state="FIX_MERGED", merge_sha=HEAD2)
+        self.assertTrue(w.store.release_defect(did, bid, None, None, force_run=False,
+                                              fix_kind="runtime", applied_code_sha=HEAD2))
+        w.sup = Supervisor(w.paths, w.cfg, w.store, w.runner, w.adapter, w.gh, w.git,
+                           {"GH_CONFIG_DIR": "x"}, clock=lambda: w.now)
+        w.sup.parallel_new_c = True
+        next_drive = Drive(w)
+        self.addCleanup(next_drive.close)
+        w.sup.begin_instance()
+        next_drive.cycle()
+        self.assertEqual(w.store.task_row(bid, "001")["state"], "SAVED")
 
 
 class FrozenLaneDoesNotBlockOtherTasks(RestartWorld, unittest.TestCase):
