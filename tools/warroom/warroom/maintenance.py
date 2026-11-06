@@ -1083,15 +1083,9 @@ class Maintenance:
             except Exception as e:   # a failed lookup is `unknown`, never a blocked intake
                 obs[name] = unknown(e)
 
-        def observed_runs():
-            runs = self.store.runs(b["id"])
-            if not runs:
-                return missing()
-            return ok("ok", [{"id": r["id"], "kind": r["kind"], "exit_status": r["exit_status"],
-                              "log_file": r["log_file"]} for r in runs[:20]])
-
         wt_exists = Path(b["worktree"]).is_dir()
-        put("runs", observed_runs)
+        put("runs", lambda: (ok("ok", [{"id": r["id"], "kind": r["kind"], "exit_status": r["exit_status"], "log_file": r["log_file"]}
+                                       for r in self.store.runs(b["id"])[:20]]) if self.store.runs(b["id"]) else missing()))
         put("log_file", lambda: ok("ok", {"path": b["log_file"], "size": Path(b["log_file"]).stat().st_size})
             if b["log_file"] and Path(b["log_file"]).is_file() else missing())
         put("events", lambda: ok("ok", [{"ts": e["ts"], "level": e["level"], "msg": e["msg"][:300]}
@@ -1267,7 +1261,6 @@ class Maintenance:
                               for row in self.store.task_rows(ob["id"])]
                 task_report_path = self.store.get(f"s2_defect_path_{ob['id']}")
                 task_report = self._task_report_scope(d, ob)
-                evidence_kv = self.store.get_many(self._evidence_keys(ob))
                 data = {
                     "version": 2,
                     "defect": {"id": d["id"], "event_key": d["event_key"], "source": d["source"],
@@ -1278,7 +1271,7 @@ class Maintenance:
                                for e in self.store.batch_events(ob["id"])[-50:]],
                     "runs": [{"id": r["id"], "kind": r["kind"], "log_file": r["log_file"], "exit_status": r["exit_status"]}
                              for r in self.store.runs(ob["id"])[:20]],
-                    "kv": {k: value[:2000] for k, value in evidence_kv.items()},
+                    "kv": {k: (self.store.get(k) or "")[:2000] for k in self._evidence_keys(ob) if self.store.get(k) is not None},
                     "envelope": self._envelope_of(d),
                     "observation": observation,
                     "task_scope": task_scope,

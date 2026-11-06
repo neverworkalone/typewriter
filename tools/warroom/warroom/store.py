@@ -1,12 +1,19 @@
-"""SQLite persistent state. Short-lived connections: TUI and Supervisor share the file."""
+"""SQLite persistent state: one idle WAL anchor plus short-lived connections."""
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 import time
+import weakref
 from contextlib import contextmanager
 from pathlib import Path
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows uses the sidecar lock below.
+    fcntl = None
 
 from .usage import parse_usage
 
@@ -176,6 +183,43 @@ class DuplicateBatch(LineBusy):
 SHARED_QUEUE_METHODS = ("c", "d")   # one queue across all models; A/B keep a queue per model
 
 
+def _closed_store_connection():
+    raise RuntimeError("Store is closed")
+
+
+@contextmanager
+def _store_initialization_lock(path: Path):
+    """Serialize only first-open/schema setup; Worker connections remain short-lived and independent."""
+    if fcntl is not None:
+        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o666)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+        return
+
+    # Windows has no fcntl.flock. A persistent one-byte sidecar preserves the same auto-released process lock.
+    lock_path = path.with_name(path.name + ".init.lock")
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o666)
+    try:
+        if os.fstat(fd).st_size == 0:
+            os.write(fd, b"\0")
+        os.lseek(fd, 0, os.SEEK_SET)
+        import msvcrt
+        msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+        try:
+            yield
+        finally:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    finally:
+        os.close(fd)
+
+
 VERDICT_OUTCOME_FIELDS = frozenset({"state", "retries", "retry_after"})
 
 
@@ -188,14 +232,28 @@ class Store:
     def __init__(self, path: Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self._conn() as c:
-            c.executescript(SCHEMA)
-            if c.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
-                self._migrate(c)
+        with _store_initialization_lock(self.path):
+            with self._conn() as c:
+                c.executescript(SCHEMA)
+                if c.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
+                    self._migrate(c)
+            anchor = None
+            try:
+                anchor = sqlite3.connect(self.path, timeout=30, check_same_thread=False)
+                mode = anchor.execute("PRAGMA journal_mode").fetchone()
+                if mode is None or str(mode[0]).lower() != "wal":
+                    raise sqlite3.OperationalError("War Room database is not in WAL mode")
+                self._closed = False
+                self._anchor = anchor
+                self._anchor_finalizer = weakref.finalize(self, sqlite3.Connection.close, anchor)
+            except BaseException:
+                if anchor is not None:
+                    anchor.close()
+                raise
 
     @staticmethod
     def _migrate(c) -> None:
-        c.executescript("BEGIN IMMEDIATE;\n" + SCHEMA_V2)
+        c.executescript(SCHEMA_V2)
         if "line" not in {r["name"] for r in c.execute("PRAGMA table_info(events)")}:
             c.execute("ALTER TABLE events ADD COLUMN line TEXT")
         have = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
@@ -243,8 +301,7 @@ class Store:
                            r["session_id"] if last else None, r["pid"] if last and status is None else None,
                            str(f), str(ex), float(m.group(1)),
                            ex.stat().st_mtime if status is not None else None, status))
-        c.commit()
-        c.executescript("BEGIN IMMEDIATE;\n" + SCHEMA_V6)
+        c.executescript(SCHEMA_V6)
         have = {r["name"] for r in c.execute("PRAGMA table_info(batches)")}
         if "pause_reason" not in have:
             c.execute("ALTER TABLE batches ADD COLUMN pause_reason TEXT NOT NULL DEFAULT ''")
@@ -261,8 +318,9 @@ class Store:
                 c.execute(f"ALTER TABLE runs ADD COLUMN {col} INTEGER")
         if "usage_quality" not in have:
             c.execute("ALTER TABLE runs ADD COLUMN usage_quality TEXT")
-        c.commit()
-        c.executescript("BEGIN IMMEDIATE;\n" + SCHEMA_V10 + SCHEMA_V13 + SCHEMA_V14)
+        c.executescript(SCHEMA_V10)
+        c.executescript(SCHEMA_V13)
+        c.executescript(SCHEMA_V14)
         if "task" not in {r["name"] for r in c.execute("PRAGMA table_info(runs)")}:
             c.execute("ALTER TABLE runs ADD COLUMN task TEXT")
         handled_columns = {r["name"] for r in c.execute("PRAGMA table_info(handled_events)")}
@@ -281,59 +339,39 @@ class Store:
                 c.execute(f"ALTER TABLE defects ADD COLUMN {col}")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
-    @staticmethod
-    def _ensure_wal(conn) -> None:
-        busy_codes = (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
-        try:
-            mode = conn.execute("PRAGMA journal_mode=WAL").fetchone()
-        except sqlite3.OperationalError as exc:
-            code = getattr(exc, "sqlite_errorcode", None)
-            if code is None or (code & 0xFF) not in busy_codes:
-                raise
-            mode = None
-        if mode is not None and str(mode[0]).lower() == "wal":
-            return
-
-        deadline = time.monotonic() + 30
-        while time.monotonic() < deadline:
-            time.sleep(0.01)
-            try:
-                mode = conn.execute("PRAGMA journal_mode=WAL").fetchone()
-            except sqlite3.OperationalError as exc:
-                code = getattr(exc, "sqlite_errorcode", None)
-                if code is None or (code & 0xFF) not in busy_codes:
-                    raise
-                continue
-            if mode is not None and str(mode[0]).lower() == "wal":
-                return
-        raise sqlite3.OperationalError("War Room database did not enter WAL mode")
-
     @contextmanager
     def _conn(self):
         conn = sqlite3.connect(self.path, timeout=30)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
         try:
-            self._ensure_wal(conn)
             with conn:
                 yield conn
         finally:
             conn.close()
+
+    def close(self) -> None:
+        """Close the idle WAL anchor; repeated calls are harmless and later use fails closed."""
+        if self._closed:
+            return
+        self._closed = True
+        # Keep the shared connection lifecycle unchanged while making this instance fail before another connect.
+        self._conn = _closed_store_connection
+        self._anchor_finalizer()
+
+    def __enter__(self):
+        if self._closed:
+            raise RuntimeError("Store is closed")
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
 
     # --- key/value (operator controls, supervisor heartbeat) ---
     def get(self, key: str, default: str | None = None) -> str | None:
         with self._conn() as c:
             row = c.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
         return row["value"] if row else default
-
-    def get_many(self, keys: list[str]) -> dict[str, str]:
-        """Read a related set of operator/evidence values from one database snapshot."""
-        keys = list(dict.fromkeys(keys))
-        if not keys:
-            return {}
-        placeholders = ",".join("?" for _ in keys)
-        with self._conn() as c:
-            rows = c.execute(f"SELECT key,value FROM kv WHERE key IN ({placeholders})", keys).fetchall()
-        return {row["key"]: row["value"] for row in rows}
 
     def set(self, key: str, value: str) -> None:
         with self._conn() as c:

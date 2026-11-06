@@ -129,34 +129,33 @@ class StoreRecordsUsage(unittest.TestCase):
     def test_finish_runs_records_each_run_only_from_its_own_log(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            store = Store(d / "w.db")
-            first, resumed, opencode = d / "1.log", d / "2.log", d / "3.log"
-            first.write_text(jl({"type": "turn.started"}, cmd(1, SUBMIT, 2), codex_usage(inp=100, cached=60, out=20, reason=5)))
-            resumed.write_text(jl({"type": "turn.started"}, cmd(1, "ls"), codex_usage(inp=300, cached=250, out=30, reason=9)))
-            opencode.write_text(jl({"type": "step_finish"}))
-            b = 7
-            ids = []
-            for log in (first, resumed):
-                ids.append(store.add_run(b, "c", None, 1, log, d / "x.exit"))
+            with Store(d / "w.db") as store:
+                first, resumed, opencode = d / "1.log", d / "2.log", d / "3.log"
+                first.write_text(jl({"type": "turn.started"}, cmd(1, SUBMIT, 2), codex_usage(inp=100, cached=60, out=20, reason=5)))
+                resumed.write_text(jl({"type": "turn.started"}, cmd(1, "ls"), codex_usage(inp=300, cached=250, out=30, reason=9)))
+                opencode.write_text(jl({"type": "step_finish"}))
+                b = 7
+                for log in (first, resumed):
+                    store.add_run(b, "c", None, 1, log, d / "x.exit")
+                    store.finish_runs(b, 0)
+                store.add_run(8, "c", None, 1, opencode, d / "x.exit")
+                store.finish_runs(8, 0)
+                store.add_run(9, "c", None, 1, d / "missing.log", d / "x.exit")
+                store.finish_runs(9, None)
+                r1, r2 = (store.runs(b)[1], store.runs(b)[0])
+                self.assertEqual((r1["input_tokens"], r1["submit_failures"], r1["tool_calls"]), (100, 1, 1))
+                self.assertEqual((r2["input_tokens"], r2["submit_failures"], r2["tool_calls"]), (300, 0, 1))
+                total = sum_usage(store.runs(b))
+                self.assertEqual((total["input_tokens"], total["output_tokens"], total["reasoning_output_tokens"]),
+                                 (400, 50, 14))
+                self.assertEqual(total["partial"], [])
+                for batch in (8, 9):   # unmeasured stays NULL, never 0
+                    run = store.runs(batch)[0]
+                    self.assertTrue(all(run[k] is None for k in ("input_tokens", "tool_calls", "submit_failures")))
+                # finishing again does not re-measure or overwrite a finished run
+                first.write_text("")
                 store.finish_runs(b, 0)
-            ids.append(store.add_run(8, "c", None, 1, opencode, d / "x.exit"))
-            store.finish_runs(8, 0)
-            ids.append(store.add_run(9, "c", None, 1, d / "missing.log", d / "x.exit"))
-            store.finish_runs(9, None)
-            r1, r2 = (store.runs(b)[1], store.runs(b)[0])
-            self.assertEqual((r1["input_tokens"], r1["submit_failures"], r1["tool_calls"]), (100, 1, 1))
-            self.assertEqual((r2["input_tokens"], r2["submit_failures"], r2["tool_calls"]), (300, 0, 1))
-            total = sum_usage(store.runs(b))
-            self.assertEqual((total["input_tokens"], total["output_tokens"], total["reasoning_output_tokens"]),
-                             (400, 50, 14))
-            self.assertEqual(total["partial"], [])
-            for batch in (8, 9):   # unmeasured stays NULL, never 0
-                run = store.runs(batch)[0]
-                self.assertTrue(all(run[k] is None for k in ("input_tokens", "tool_calls", "submit_failures")))
-            # closing again does not re-measure or overwrite a finished run
-            first.write_text("")
-            store.finish_runs(b, 0)
-            self.assertEqual(store.runs(b)[1]["input_tokens"], 100)
+                self.assertEqual(store.runs(b)[1]["input_tokens"], 100)
 
 class SubmitAttemptParsing(unittest.TestCase):
     def count(self, *events):

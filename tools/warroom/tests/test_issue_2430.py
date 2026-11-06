@@ -5,7 +5,6 @@ from pathlib import Path
 
 from tests.fakes import World
 from warroom import control
-from warroom.store import Store
 
 
 def local_time(year, month, day, hour, minute=0):
@@ -44,12 +43,12 @@ class DrainSchedules(unittest.TestCase):
         store, now = self.w.store, self.w.now
         ok, msg = control.schedule_drain_all(store, "23", now)
         self.assertTrue(ok, msg)
-        scheduled = Store(self.w.paths.db).drain_schedule("all")
+        scheduled = self.w.store.drain_schedule("all")
         self.assertIsNotNone(scheduled)
         self.assertEqual(scheduled["due_at"], control.next_drain_due("23", now))
         self.assertEqual(store.peek_line("deepseek", "a")["drain"], 0)
         self.assertTrue(control.cancel_drain_schedule(store, "all"))
-        self.assertIsNone(Store(self.w.paths.db).drain_schedule("all"))
+        self.assertIsNone(self.w.store.drain_schedule("all"))
         self.assertEqual(store.peek_line("deepseek", "a")["drain"], 0)
 
     def test_supervisor_fires_board_and_batch_reservations_once(self):

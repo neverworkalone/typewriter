@@ -9890,9 +9890,14 @@ def build(paths=None, fence=None):
         runner = FencedRunner(plain, fence, paths.worktrees)
     adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"]),
                 "codex": CodexCLIAdapter(cfg["codex_bin"])}
-    return Supervisor(paths, cfg, Store(paths.db), runner, adapters,
-                      GhClient(runner, env, cfg["repo"]),
-                      Git(runner, paths.repo_root, env, paths.worktrees, fence=fence), env, fence=fence)
+    store = Store(paths.db)
+    try:
+        return Supervisor(paths, cfg, store, runner, adapters,
+                          GhClient(runner, env, cfg["repo"]),
+                          Git(runner, paths.repo_root, env, paths.worktrees, fence=fence), env, fence=fence)
+    except BaseException:
+        store.close()
+        raise
 
 
 def main() -> int:
@@ -9925,14 +9930,17 @@ def main() -> int:
     workers = sup.cfg["supervisor_workers"]
     # Order (#3774): lock -> instance -> fence scan (above) -> startup checks (build) -> this instance's phase and runtime
     # record, naming the workers it ACTUALLY runs -> the first Coordinator/Line dispatch.
-    sup.begin_instance()
-    record_runtime(paths, sup.code_sha, configured_workers=workers, workers=workers, instance=sup.phase_instance)
-    sup.store.log(None, f"supervisor 시작 (workers={workers}, instance={sup.phase_instance[:8]})")
-    if workers > 1:
-        sup.run_parallel(stop_event=threading.Event())
-    else:
-        sup.run_forever()   # workers=1: the serial regression/fallback path
-    return 0
+    try:
+        sup.begin_instance()
+        record_runtime(paths, sup.code_sha, configured_workers=workers, workers=workers, instance=sup.phase_instance)
+        sup.store.log(None, f"supervisor 시작 (workers={workers}, instance={sup.phase_instance[:8]})")
+        if workers > 1:
+            sup.run_parallel(stop_event=threading.Event())
+        else:
+            sup.run_forever()   # workers=1: the serial regression/fallback path
+        return 0
+    finally:
+        sup.store.close()
 
 
 if __name__ == "__main__":
