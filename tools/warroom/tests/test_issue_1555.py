@@ -1562,6 +1562,26 @@ class IncidentRecoveryProof(unittest.TestCase):
             row = w.store.task_row(b["id"], task)
             self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
 
+    def test_parallel_c_retry_predicts_the_actual_correction_prompt(self):
+        from unittest import mock
+        from warroom import literary, cparallel
+
+        w = self.w
+        b = make_batch(w, "c", run_kind="c_parallel")
+        w.store.add_tasks(b["id"], [("004", "004")])
+        w.store.update_task(b["id"], "004", state="FAILED", session_id="ses_1",
+                            data=json.dumps({"ack": True, "completed_fix_runs": []}))
+        with mock.patch.object(literary, "read_active", return_value={"chunk_no": 4}), \
+             mock.patch.object(literary, "submit_retryable", return_value=True):
+            self.assertEqual(w.sup.resume_prompt_names(b), {"c_chunk_resume"})
+            round_ = cparallel._Round(w.sup.cp, b)
+            w.sup.cp._reset_acknowledged_failures(b, round_)
+            row = w.store.task_row(b["id"], "004")
+            self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
+        with mock.patch.object(literary, "read_active", return_value=None):
+            w.store.update_task(b["id"], "004", state="FAILED", data=json.dumps({"ack": True}))
+            self.assertIsNone(w.sup.resume_prompt_names(b))
+
     def test_a_held_incident_is_reproved_after_the_code_checkout_changes(self):
         from unittest import mock
         from pathlib import Path
