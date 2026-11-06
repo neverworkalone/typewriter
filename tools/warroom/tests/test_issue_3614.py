@@ -199,6 +199,17 @@ class MaintainerQueue(unittest.TestCase):
 
 
 class NoCodeRecovery(unittest.TestCase):
+    def test_batch_investigation_allows_saved_tasks_at_finalize_only(self):
+        from warroom.maintenance import Maintenance
+        for method, kind in (("c", "c_finalize"), ("d", "d_finalize"),
+                             ("s2", "s2_deterministic_finalize"), ("s3", "s3_finalize")):
+            with self.subTest(method=method):
+                source = {"method": method, "run_kind": kind}
+                self.assertTrue(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}]))
+                self.assertFalse(Maintenance._batch_investigation_scope(source, [{"state": "FAILED"}]))
+                self.assertFalse(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}, {"state": "RUNNING"}]))
+        self.assertFalse(Maintenance._batch_investigation_scope({"method": "c", "run_kind": "d_finalize"}, [{"state": "SAVED"}]))
+
     def test_batch_investigation_allows_saved_s2_tasks_only_for_repair(self):
         from warroom.maintenance import Maintenance
         source = {"method": "s2", "run_kind": "s2_repair_new"}
