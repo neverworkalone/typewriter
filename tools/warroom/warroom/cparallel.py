@@ -874,6 +874,8 @@ class ParallelC:
             rec = literary.read_active(self._wt(b), b, int(row["task"]))
             saved = guard["baseline"]
             if (run is None or rec is None or not row["session_id"]
+                    or not isinstance(data.get("run_start"), dict)
+                    or data["run_start"].get("head") == rec.get("git_head")
                     or not literary.task_retry_unchanged(self._wt(b), b, int(row["task"]), saved,
                                                         session_available=True)):
                 return False

@@ -519,6 +519,10 @@ class IntegratedNoSubmission(Helpers, unittest.TestCase):
                 self.assertFalse(w.sup.cp.auto_recover_integrated_no_submission(b))
             with mock.patch.object(w.git, "changed_between", return_value=[literary.names(b).canonical]):
                 self.assertFalse(w.sup.cp.auto_recover_integrated_no_submission(b))
+            same = dict(data, run_start=dict(data["run_start"], head=HEAD2))
+            w.store.update_task(b["id"], task, data=json.dumps(same))
+            self.assertFalse(w.sup.cp.auto_recover_integrated_no_submission(b))
+            w.store.update_task(b["id"], task, data=json.dumps(data))
             self.assertTrue(w.sup.cp.auto_recover_integrated_no_submission(b))
             self.assertFalse(w.sup.cp.auto_recover_integrated_no_submission(w.store.batch(b["id"])))
         self.assertEqual(w.store.task_row(b["id"], task)["state"], "FIXQ")
