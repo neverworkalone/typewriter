@@ -470,6 +470,70 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
     return diag
 
 
+
+def refresh_stale_search_rejection(runner, env, worktree, b, rec: dict, *, limit_to_previous=False) -> dict | None:
+    """Reinspect a decision rejection invalidated solely by later search evidence.
+
+    Never turn an unbound, foreign or failed-search diagnostic into a correction. The official CLI
+    recomputes the rejection; the prior decision, active chunk and every input must remain unchanged.
+    """
+    folder = Path(worktree)
+    n = chunk_names(b, rec["chunk_no"])
+    rejected = folder / n.rejected
+    try:
+        old_bytes = rejected.read_bytes()
+        old = json.loads(old_bytes)
+        decision = (folder / n.decisions).read_bytes()
+        search = (folder / n.searches).read_bytes()
+        if (not isinstance(old, dict) or old.get("diagnostic") != "save_rejected"
+                or old.get("repair_scope") != "decisions" or old.get("chunk_no") != rec["chunk_no"]
+                or old.get("view_sha256") != rec["view_sha256"] or old.get("git_head") != rec["git_head"]
+                or old.get("decisions_sha256") != sha256_bytes(decision)
+                or old.get("searches_sha256") == sha256_bytes(search)
+                or has_search_failure(folder, b, rec["chunk_no"])):
+            return None
+        args = ["inspect", "--diagnostic", "--chunk", str(rec["chunk_no"]), "--in", str((folder / n.decisions).resolve()),
+                "--dir", str((folder / SCRATCH).resolve()), "--canonical-root", str(folder.resolve())]
+        inspected = _json(cli(runner, env, folder, *args), "D current rejection inspection")
+        fresh = inspected.get("rejection")
+        if (inspected.get("status") != "REJECTED" or inspected.get("repair_scope") != "decisions"
+                or inspected.get("search_failed") is not False or inspected.get("errors_complete") is not True
+                or not isinstance(fresh, dict) or fresh.get("diagnostic") != "save_rejected"
+                or fresh.get("repair_scope") != "decisions" or fresh.get("chunk_no") != rec["chunk_no"]
+                or fresh.get("view_sha256") != rec["view_sha256"] or fresh.get("git_head") != rec["git_head"]
+                or fresh.get("decisions_sha256") != sha256_bytes(decision)
+                or fresh.get("searches_sha256") != sha256_bytes(search)
+                or _json_sha(fresh.get("errors")) != inspected.get("errors_sha256")
+                or _json_sha(fresh.get("failed_records")) != inspected.get("failed_records_sha256")):
+            return None
+        members = {r["record_id"]: set(r["sense_ids"]) for r in rec["records"]}
+        if not fresh.get("failed_records") or any(
+                not isinstance(item, dict) or item.get("record_id") not in members
+                or not isinstance(item.get("failed_sense_ids"), list) or not item["failed_sense_ids"]
+                or not set(item["failed_sense_ids"]).issubset(members[item["record_id"]])
+                for item in fresh["failed_records"]):
+            return None
+        if limit_to_previous:
+            previous = old.get("failed_records")
+            if not isinstance(previous, list) or not previous or any(
+                    not isinstance(item, dict) or not isinstance(item.get("record_id"), str)
+                    or not isinstance(item.get("failed_sense_ids"), list) for item in previous):
+                return None
+            old_pairs = {(item["record_id"], sense) for item in previous for sense in item["failed_sense_ids"]}
+            new_pairs = {(item["record_id"], sense) for item in fresh["failed_records"] for sense in item["failed_sense_ids"]}
+            if not new_pairs.issubset(old_pairs):
+                return None
+        if (rejected.read_bytes() != old_bytes or read_active(folder, b, rec["chunk_no"]) != rec
+                or (folder / n.decisions).read_bytes() != decision or (folder / n.searches).read_bytes() != search):
+            return None
+        temp = rejected.with_name(rejected.name + ".tmp")
+        with temp.open("x", encoding="utf-8") as stream:
+            json.dump(fresh, stream, ensure_ascii=False, separators=(",", ":"))
+        os.replace(temp, rejected)
+        return read_rejection(folder, b, rec)
+    except (DChunkError, OSError, ValueError, KeyError, TypeError):
+        return None
+
 def _json_sha(value) -> str:
     return sha256_bytes(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 

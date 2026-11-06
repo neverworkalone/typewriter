@@ -99,6 +99,7 @@ class FakeDChunkCli:
             "shard": self.opt(argv, "--shard"), "batch": self.opt(argv, "--batch"), "model": self.opt(argv, "--model"),
             "git_head": self.opt(argv, "--head"), "chunk_no": number, "view_sha256": hashlib.sha256(view.encode()).hexdigest(),
             "view_bytes": len(view.encode()),
+            "records": [{"record_id": r["id"], "sense_ids": [s["id"] for s in r["senses"]]} for r in self.chunk(number)],
             "senses": senses}))
         return Result(0, json.dumps({"status": "READY", "ai_senses": len(senses), **base}))
 

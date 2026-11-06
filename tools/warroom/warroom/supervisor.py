@@ -8043,6 +8043,10 @@ class Supervisor:
         try:
             rec = dchunk.read_active(wt, b)
             diag = dchunk.read_rejection(wt, b, rec) if rec else None
+            if rec is not None and diag is None and b["session_id"]:
+                diag = dchunk.refresh_stale_search_rejection(
+                    self.runner, self._d_env(b), wt, b, rec,
+                    limit_to_previous=int(self.store.get(dchunk.fix_key(b["id"], rec["chunk_no"])) or 0) >= dchunk.MAX_FIXES)
             has_decisions = (wt / dchunk.chunk_names(b, rec["chunk_no"]).decisions).is_file() if rec else False
         except (dchunk.DChunkError, OSError, ValueError):
             return False

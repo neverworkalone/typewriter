@@ -947,6 +947,11 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   assert.deepEqual([rejected.diagnostic, rejected.chunk_no, rejected.view_sha256, rejected.repair_scope],
     ['save_rejected', 1, saved.view_sha256, 'decisions']);
   assert.ok(rejected.senses.includes(ref('w005-s1')) && rejected.errors.some((line) => /Z needs/u.test(line)));
+  const inspected = await inspectRejectionForSupervisor({ inputPath: decisionsFile, root: world.root,
+    diagnostic: true });
+  assert.deepEqual(inspected.rejection, rejected);
+  assert.equal(await readFile(chunkPath(world, 'rejected'), 'utf8'), JSON.stringify(rejected));
+
 
   // a recorded SEARCH_FAILED makes even a hit-free rejection non-repairable; without it the same rejection stays repairable
   const zeroHitRef = saved.senses.find((item) => !item.auto && !item.sense_id.startsWith('w001') && !item.sense_id.startsWith('w005')).ref;

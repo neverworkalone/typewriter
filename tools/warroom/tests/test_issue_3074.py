@@ -208,6 +208,65 @@ class ParallelDCorrections(ParallelDHelpers, unittest.TestCase):
         self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
         self.assertEqual(w.store.get(dchunk.fix_key(bid, 1)), "1")   # history kept; nothing re-granted without a Retry
 
+    def test_search_after_rejection_refreshes_only_that_task_and_keeps_sibling(self):
+        w = self.world(records=50)
+        initial = self.rejecter(w, 1, "ses_1")
+        original_effect = initial["effect"]
+        def reject_then_search():
+            original_effect()
+            b, wt = w.row_(), w.wt()
+            names = dchunk.chunk_names(b, 1)
+            old = json.loads((wt / names.rejected).read_text())
+            (wt / names.searches).write_text("\n")
+            fresh = dict(old, searches_sha256=dchunk.sha256_bytes((wt / names.searches).read_bytes()))
+            w.inspect_rejection(fresh)
+            w.runner.dchunk.inspection["rejection"] = fresh
+        initial["effect"] = reject_then_search
+        w.adapter.plan += [initial, self.saver(w, 2), self.saver(w, 1, "ses_1")]
+        w.start("single", "deepseek", "d")
+        w.tick()
+        self.finish_task(w, "001")
+        self.finish_task(w, "002")
+        w.tick()
+        self.assertEqual(self.tasks(w)["002"]["state"], "SAVED")
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["session"]), ("resume", "ses_1"))
+        self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
+        self.finish_task(w, "001")
+        w.tick()
+        self.assertEqual(self.tasks(w)["001"]["state"], "SAVED")
+
+    def test_stale_rejection_never_refreshes_failed_or_foreign_evidence(self):
+        w = self.world(records=25)
+        w.adapter.plan.append(self.rejecter(w, 1, "ses_1"))
+        w.start("single", "deepseek", "d")
+        w.tick()
+        self.finish_task(w, "001")
+        b, wt = w.row_(), w.wt()
+        rec = dchunk.read_active(wt, b, 1)
+        names = dchunk.chunk_names(b, 1)
+        path = wt / names.rejected
+        old = json.loads(path.read_text())
+        (wt / names.searches).write_text("\n")
+        fresh = dict(old, searches_sha256=dchunk.sha256_bytes((wt / names.searches).read_bytes()))
+        w.inspect_rejection(fresh, search_failed=True)
+        w.runner.dchunk.inspection["rejection"] = fresh
+        before = path.read_bytes()
+        self.assertIsNone(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec))
+        self.assertEqual(path.read_bytes(), before)
+        new_sense = rec["records"][1]
+        fresh["failed_records"] = [{"record_id": new_sense["record_id"], "failed_sense_ids": new_sense["sense_ids"],
+                                    "errors": ["s2: rejected"]}]
+        w.inspect_rejection(fresh)
+        w.runner.dchunk.inspection["rejection"] = fresh
+        self.assertIsNone(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec,
+                                                                limit_to_previous=True))
+        self.assertEqual(path.read_bytes(), before)
+        fresh["failed_records"][0]["failed_sense_ids"] = ["foreign-s1"]
+        w.inspect_rejection(fresh)
+        w.runner.dchunk.inspection["rejection"] = fresh
+        self.assertIsNone(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec))
+        self.assertEqual(path.read_bytes(), before)
+
     def test_search_failed_chunk_stops_new_launches_and_pauses_after_running_ones_finish(self):
         w = self.world(records=250)
         w.runner.dchunk.failed = {2}

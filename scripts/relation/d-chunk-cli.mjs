@@ -1236,7 +1236,7 @@ export async function inspectActiveForSupervisor({ inputPath, root, canonicalRoo
  * A compact, read-only save inspection for the Supervisor. It binds the current active chunk and Canonical lemmas but
  * returns only hashes and IDs, never candidate text, corpus contexts, or raw validation messages.
  */
-export async function inspectRejectionForSupervisor({ inputPath, root, canonicalRoot, chunkNumber }) {
+export async function inspectRejectionForSupervisor({ inputPath, root, canonicalRoot, chunkNumber, diagnostic = false }) {
   const result = await saveActiveInternal({ inputPath, root, canonicalRoot, chunkNumber, readOnly: true,
     requireCanonicalLemmaBinding: true });
   if (result.status !== 'REJECTED') {
@@ -1247,6 +1247,7 @@ export async function inspectRejectionForSupervisor({ inputPath, root, canonical
   const failedRecords = rejection.failed_records;
   return {
     status: 'REJECTED',
+    ...(diagnostic ? { rejection } : {}),
     diagnostic: rejection.diagnostic,
     repair_scope: rejection.repair_scope,
     chunk_no: rejection.chunk_no,
@@ -1273,7 +1274,7 @@ export async function inspectRejectionForSupervisor({ inputPath, root, canonical
 function parseArguments(args) {
   const options = {};
   const positional = [];
-  const booleanOptions = new Set(['hada-prefetch', 'reread']);
+  const booleanOptions = new Set(['hada-prefetch', 'reread', 'diagnostic']);
   for (let index = 0; index < args.length; index += 1) {
     const item = args[index];
     if (!item.startsWith('--')) {
@@ -1371,9 +1372,9 @@ async function main(argv) {
     return 0;
   }
   if (command === 'inspect') {
-    only(options, 'in', 'dir', 'canonical-root', 'chunk');
+    only(options, 'in', 'dir', 'canonical-root', 'chunk', 'diagnostic');
     if (positional.length) fail('inspect takes options only');
-    const result = await inspectRejectionForSupervisor({ inputPath: need(options, 'in'), root: options.dir, chunkNumber: optionalChunk(options),
+    const result = await inspectRejectionForSupervisor({ inputPath: need(options, 'in'), root: options.dir, chunkNumber: optionalChunk(options), diagnostic: options.diagnostic === true,
       canonicalRoot: options['canonical-root'] === undefined ? process.cwd() : path.resolve(options['canonical-root']) });
     console.log(JSON.stringify(result));
     return 0;
