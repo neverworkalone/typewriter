@@ -622,6 +622,10 @@ class ParallelD:
             try:
                 rec = dchunk.read_active(self._wt(b), b, n)
                 diag = dchunk.read_rejection(self._wt(b), b, rec) if rec else None
+                if rec is not None and diag is None and fresh["session_id"] and used:
+                    diag = dchunk.refresh_stale_search_rejection(
+                        self.sup.runner, self.sup._d_env(b), self._wt(b), b, rec,
+                        limit_to_previous=used >= dchunk.MAX_FIXES)
             except (dchunk.DChunkError, OSError, ValueError):
                 continue   # prepare/launch will report the damaged scratch
             if rec is not None and diag is not None and fresh["session_id"] and used:

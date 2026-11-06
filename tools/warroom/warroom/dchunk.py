@@ -471,7 +471,7 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
 
 
 
-def refresh_stale_search_rejection(runner, env, worktree, b, rec: dict, *, limit_to_previous=False) -> dict | None:
+def refresh_stale_search_rejection(runner, env, worktree, b, rec: dict, *, limit_to_previous=False, dry_run=False) -> dict | None:
     """Reinspect a rejection invalidated by later search or correction evidence.
 
     Never turn an unbound, foreign or failed-search diagnostic into a correction. The official CLI
@@ -528,6 +528,8 @@ def refresh_stale_search_rejection(runner, env, worktree, b, rec: dict, *, limit
         if (rejected.read_bytes() != old_bytes or read_active(folder, b, rec["chunk_no"]) != rec
                 or (folder / n.decisions).read_bytes() != decision or (folder / n.searches).read_bytes() != search):
             return None
+        if dry_run:
+            return fresh
         temp = rejected.with_name(rejected.name + ".tmp")
         with temp.open("x", encoding="utf-8") as stream:
             json.dump(fresh, stream, ensure_ascii=False, separators=(",", ":"))
