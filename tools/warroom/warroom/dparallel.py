@@ -351,6 +351,10 @@ class ParallelD:
         try:
             rec = dchunk.read_active(wt, b, n)
             diag = dchunk.read_rejection(wt, b, rec) if rec else None
+            if rec is not None and diag is None and sid:
+                diag = dchunk.refresh_stale_search_rejection(
+                    self.sup.runner, self.sup._d_env(b), wt, b, rec,
+                    limit_to_previous=int(self.store.get(dchunk.fix_key(b["id"], n)) or 0) >= dchunk.MAX_FIXES)
             names = dchunk.chunk_names(b, n)
             has_decisions = rec is not None and (wt / names.decisions).is_file()
             searching_failed = rec is not None and dchunk.has_search_failure(wt, b, n)
