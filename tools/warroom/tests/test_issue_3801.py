@@ -9,6 +9,7 @@ import time
 import unittest
 from pathlib import Path
 
+from tests.fakes import World
 from warroom import store as store_module
 from warroom.store import Store
 
@@ -29,6 +30,16 @@ def _crash_during_store_migration(db_path: str) -> None:
 
 
 class StoreMigrationConcurrency(unittest.TestCase):
+    def test_worlds_keep_independent_empty_database_copies(self):
+        first, second = World(), World()
+        try:
+            first.store.set("isolated", "first")
+            self.assertNotEqual(first.paths.db, second.paths.db)
+            self.assertIsNone(second.store.get("isolated"))
+        finally:
+            first.tmp.cleanup()
+            second.tmp.cleanup()
+
     def test_sixteen_processes_can_open_and_initialize_the_same_database(self):
         with tempfile.TemporaryDirectory() as td:
             db = str(Path(td) / "warroom.sqlite")

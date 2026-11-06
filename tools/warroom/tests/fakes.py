@@ -4,6 +4,7 @@ import itertools
 import re
 import sqlite3
 import tempfile
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +21,27 @@ from warroom.supervisor import Supervisor
 import json
 
 HEAD1, HEAD2 = "a" * 40, "b" * 40
+
+_SCHEMA_TEMPLATE_LOCK = threading.Lock()
+_SCHEMA_TEMPLATE_TMP = None
+_SCHEMA_TEMPLATE_DB = None
+
+
+def _seed_world_database(path: Path) -> None:
+    """Copy the immutable empty current schema, then let each World open its own Store."""
+    global _SCHEMA_TEMPLATE_TMP, _SCHEMA_TEMPLATE_DB
+    with _SCHEMA_TEMPLATE_LOCK:
+        if _SCHEMA_TEMPLATE_TMP is None:
+            _SCHEMA_TEMPLATE_TMP = tempfile.TemporaryDirectory(prefix="warroom-schema-template-")
+            _SCHEMA_TEMPLATE_DB = Path(_SCHEMA_TEMPLATE_TMP.name) / "warroom.sqlite"
+            Store(_SCHEMA_TEMPLATE_DB)
+        source = sqlite3.connect(_SCHEMA_TEMPLATE_DB)
+        target = sqlite3.connect(path)
+        try:
+            source.backup(target)
+        finally:
+            target.close()
+            source.close()
 
 
 class FakeAdapter(AgentAdapter):
@@ -1040,6 +1062,7 @@ class World:
         self.cfg["ab_chunk_sessions"] = False   # legacy A/B tests drive the long session; test_issue_2035 enables chunks
         self.cfg["models"] = models or {"free": "p/free-x-free", "go": "p/go"}
         self.cfg["rate_limit_backoff_seconds"] = 10
+        _seed_world_database(self.paths.db)
         self.store = Store(self.paths.db)
         self.adapter, self.git, self.gh = FakeAdapter(), FakeGit(self.paths.worktrees), FakeGh()
         self.gh.git = self.git
