@@ -7856,7 +7856,8 @@ class Supervisor:
                 raise prompts.PromptError(f"D 검색 상태를 확인하지 못했습니다: {error}") from error
             card = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
                                           searches=chunk_files.searches)
-            if dchunk.delivery(len(card.encode("utf-8")), view) == "inline":
+            state_text = "\n\n## Supervisor가 확인한 현재 검색 상태\n" + json.dumps(states, ensure_ascii=False) + "\n"
+            if dchunk.delivery(len((card + state_text).encode("utf-8")), view) == "inline":
                 chunk_input = view
             else:
                 pages = dchunk.write_pages(wt, b, view, rec["chunk_no"])
@@ -7865,7 +7866,7 @@ class Supervisor:
                                "\n".join(f"cat {path}" for path in pages))
             prompt = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
                                             searches=chunk_files.searches, chunk_input=chunk_input)
-            prompt += "\n\n## Supervisor가 확인한 현재 검색 상태\n" + json.dumps(states, ensure_ascii=False) + "\n"
+            prompt += state_text
         else:
             card_bytes = len(prompts.d_chunk(b, rec["chunk_no"], view="", note=note).encode("utf-8"))
             if dchunk.delivery(card_bytes, view) == "inline":
