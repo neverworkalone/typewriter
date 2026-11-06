@@ -175,6 +175,14 @@ class DuplicateBatch(LineBusy):
 SHARED_QUEUE_METHODS = ("c", "d")   # one queue across all models; A/B keep a queue per model
 
 
+VERDICT_OUTCOME_FIELDS = frozenset({"state", "retries", "retry_after"})
+
+
+def exit_verdict_key(batch_id: int) -> str:
+    """kv key of the uncommitted exit verdict of a batch's last run (present only until its outcome is committed)."""
+    return f"exit_verdict_{batch_id}"
+
+
 class Store:
     def __init__(self, path: Path):
         self.path = Path(path)
@@ -432,6 +440,8 @@ class Store:
             params += [now, None if fields.get("error") is None else str(fields["error"])]
         with self._conn() as c:
             c.execute(f"UPDATE batches SET {', '.join(sets)} WHERE id=?", (*params, batch_id))
+            if VERDICT_OUTCOME_FIELDS & fields.keys():   # the outcome and its committed marker are one transaction
+                c.execute("DELETE FROM kv WHERE key=?", (exit_verdict_key(batch_id),))
 
     def complete_batch(self, batch_id: int) -> None:
         """Mark a batch complete and apply its Line's completion policy atomically with Drain requests."""
@@ -1203,6 +1213,7 @@ class Store:
                 fast_mode: bool | None = None) -> int:
         """Record a launch with the settings it was pinned to (what the CLI was asked for)."""
         with self._conn() as c:
+            c.execute("DELETE FROM kv WHERE key=?", (exit_verdict_key(batch_id),))   # a new run is a committed outcome
             return c.execute("INSERT INTO runs(batch_id,kind,session_id,pid,log_file,exit_file,started_at,model,effort,"
                              "permission_profile,task,fast_mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                              (batch_id, kind, session_id, pid, str(log_file), str(exit_file), time.time(),
@@ -1279,10 +1290,14 @@ class Store:
             c.execute("UPDATE runs SET session_id=? WHERE id=(SELECT MAX(id) FROM runs WHERE batch_id=?)",
                       (session_id, batch_id))
 
-    def finish_runs(self, batch_id: int, status) -> None:
+    def finish_runs(self, batch_id: int, status, *, clear_pid: bool = False, verdict: bool = False) -> None:
         """Close the batch's open run(s) with an exit status (None -> 'unknown') and record each run's own usage.
 
-        Measuring never affects the run's outcome: an unreadable or unrecognised log leaves the usage NULL."""
+        Measuring never affects the run's outcome: an unreadable or unrecognised log leaves the usage NULL.
+
+        `clear_pid=True` clears the batch PID in the same transaction. `verdict=True` (single-run non-zero exit, #3790) also
+        stores an exact run-ID-bound "exit verdict not yet committed" marker, so a crash or a denied launch can never leave
+        a failed run without either its committed outcome or the evidence to re-derive it."""
         with self._conn() as c:
             open_runs = c.execute("SELECT id, log_file FROM runs WHERE batch_id=? AND ended_at IS NULL", (batch_id,)).fetchall()
         measured = []
@@ -1299,6 +1314,12 @@ class Store:
                           (*[u.get(k) for k in (*RUN_USAGE_COLUMNS_V9, "usage_quality")], rid))
             c.execute("UPDATE runs SET ended_at=?, exit_status=? WHERE batch_id=? AND ended_at IS NULL",
                       (time.time(), "unknown" if status is None else str(status), batch_id))
+            if clear_pid:
+                c.execute("UPDATE batches SET pid=NULL, updated_at=? WHERE id=?", (time.time(), batch_id))
+            if verdict and measured:
+                c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                          (exit_verdict_key(batch_id), json.dumps({"run_id": max(rid for rid, _ in measured),
+                                                                   "code": status}, sort_keys=True)))
 
     def add_submit_failure(self, batch_id: int, run_id: int | None = None) -> None:
         """One rejected `save-chunk` of the AI run's own answer (the run already closed, so its CLI log cannot show it).
