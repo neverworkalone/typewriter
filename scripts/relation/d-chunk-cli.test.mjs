@@ -14,6 +14,7 @@ import {
   buildChunk,
   buildSearchBatch,
   checkDecisions,
+  currentActiveStates,
   hadaPrefetchForms,
   inspectActiveForSupervisor,
   inspectRejectionForSupervisor,
@@ -1040,6 +1041,9 @@ withWorld('latest search state supersedes a ZERO_HITS prepare view and resumes i
   await prepareChunk({ ...world.options, chunkNumber: 1 });
   const active = await meta(world);
   const target = active.senses.find((sense) => sense.record_id === 'w003');
+  const initialStates = await currentActiveStates({ root: world.root, chunkNumber: 1 });
+  assert.equal(initialStates.states.find((item) => item.sense === target.ref).decision_state.state, 'Z_ALLOWED');
+  assert.ok(initialStates.states.some((item) => item.decision_state.state === 'V_N_ALLOWED'));
   assert.match(await view(world), /## w003 달리다[\s\S]*?ZERO_HITS shown=0/u,
     'the immutable prepare view contains a complete zero-hit search for the Canonical form');
 
@@ -1053,8 +1057,15 @@ withWorld('latest search state supersedes a ZERO_HITS prepare view and resumes i
     state: 'V_N_ALLOWED', searches: 2, recorded_hits: 4, all_complete: false,
   });
 
+  const current = await currentActiveStates({ root: world.root, chunkNumber: 1 });
+  assert.deepEqual(current.states.find((item) => item.sense === target.ref).decision_state, first.requests[0].decision_state);
+
   const entriesPath = chunkPath(world, 'searches');
-  const entries = (await readFile(entriesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const intact = await readFile(entriesPath, 'utf8');
+  await writeFile(entriesPath, intact.replace(active.view_sha256, '0'.repeat(64)));
+  await assert.rejects(currentActiveStates({ root: world.root, chunkNumber: 1 }), /search evidence does not match/u);
+  await writeFile(entriesPath, intact);
+  const entries = intact.trim().split('\n').map(JSON.parse);
   const decisions = active.senses.filter((sense) => !sense.auto).map((sense) => {
     if (sense.ref === target.ref) return `${sense.ref} Z`;
     const evidence = recordEvidence(entries, sense.record_id);

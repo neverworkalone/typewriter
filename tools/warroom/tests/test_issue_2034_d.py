@@ -1094,10 +1094,12 @@ class Prompts(unittest.TestCase):
         from types import SimpleNamespace
         from warroom.supervisor import Supervisor
         b = {"shard": "001", "batch": "01", "branch": "d-x-001-01", "worktree": "/tmp", "producer": "codex"}
-        rec = {"chunk_no": 3}
-        owner = SimpleNamespace(git=SimpleNamespace(head=lambda wt: HEAD1))
+        rec = {"chunk_no": 3, "view_sha256": "a" * 64}
+        owner = SimpleNamespace(git=SimpleNamespace(head=lambda wt: HEAD1), runner=None, _d_env=lambda b: {})
         for mode in ("inline", "pages"):
             with self.subTest(mode=mode), mock.patch.object(prompts, "prompt_dir", return_value=Path(__file__).resolve().parents[1] / "prompts"), \
+                 mock.patch.object(dchunk, "cli", return_value=None), \
+                 mock.patch.object(dchunk, "_json", return_value={"chunk_no": 3, "view_sha256": "a" * 64, "states": [{"sense": "s22", "decision_state": {"state": "Z_ALLOWED"}}]}), \
                  mock.patch.object(dchunk, "read_view", return_value="s22 [record=w1] w1-s1 gloss"), \
                  mock.patch.object(dchunk, "delivery", return_value=mode), \
                  mock.patch.object(dchunk, "write_pages", return_value=["page-1", "page-2"]):
@@ -1108,6 +1110,7 @@ class Prompts(unittest.TestCase):
                     self.assertIn("cat page-1", prompt)
                     self.assertIn("cat page-2", prompt)
                 self.assertNotIn("다시 읽거나 요청하지 않는다", prompt)
+                self.assertIn('"state": "Z_ALLOWED"', prompt)
 
     def test_d_worker_prompts_keep_prepare_supervisor_only(self):
         b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
