@@ -558,6 +558,28 @@ test('recorded cursors require the exact active record, search and unconsumed LI
   });
 });
 
+test('independent completed zero-hit evidence is reusable but conflicting chains still fail closed', () => {
+  const base = { ...cursorEvidence('w1', ['조건'], 'both', null), status: 'ZERO_HITS', hits: 0,
+    complete: true, request_key: 'contexts-2' };
+  const duplicate = { ...base, request_key: 'contexts-4' };
+  assert.deepEqual(evidenceSummary([base, duplicate], 'w1'), { searches: 1, hits: 0, allComplete: true });
+  assert.throws(() => recordEvidence([base, { ...duplicate, status: 'COMPLETE', hits: 1 }], 'w1'),
+    /multiple successful cursor chains/u);
+});
+
+withWorld('overlapping searches preserve valid evidence for the same condition', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const active = await meta(world);
+  const ref = active.senses.find((sense) => sense.sense_id === 'w003-s1').ref;
+  const run = (contexts) => searchBatchActive({ requests: [{ sense: ref, forms: ['없는검색어'], boundary: 'both', contexts }],
+    databasePath: world.options.databasePath, root: world.root });
+  const results = await Promise.allSettled([run(2), run(4)]);
+  assert.ok(results.some((result) => result.status === 'fulfilled'));
+  const entries = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(recordEvidence(entries, 'w003').failed, false);
+  assert.ok(results.every((result) => result.status === 'fulfilled' || /busy|multiple successful/u.test(result.reason.message)));
+});
+
 test('search-batch shares identical search work across homonym records and keeps distinct options separate', () => {
   const records = [rec('w1', '난주', [['noun', '첫 뜻.'], ['noun', '둘째 뜻.']]), rec('w2', '난주', [['noun', '다른 표제 record.']])];
   const metaValue = { senses: [

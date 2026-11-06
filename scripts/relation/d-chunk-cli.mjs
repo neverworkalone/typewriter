@@ -12,7 +12,7 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { appendFile, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rename, rmdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -295,6 +295,10 @@ export function recordedCondition({ recordId, forms, boundary, entries, ref = 's
       }
       byRequest.set(entry.request_key, fingerprint);
     }
+    // Concurrent historical searches can independently prove the same zero-hit condition.
+    // Their context limits differ, but neither has a cursor or any hits to reconcile.
+    if (entry.status === 'ZERO_HITS' && unique.some((row) => row.status === 'ZERO_HITS'
+      && evidenceFields(row) === fingerprint)) continue;
     unique.push(entry);
   }
 
@@ -684,21 +688,47 @@ function validateRequestedCursor(database, cursor, forms, boundary, ref) {
 }
 
 /** Append one source-sense-independent evidence row per record and exact successful request. */
-async function appendSearchEvidence(directory, meta, entries, priorEntries = undefined) {
+async function appendSearchEvidence(directory, meta, entries) {
   if (entries.length === 0) return 0;
   const files = chunkPaths(directory, meta.chunk_no);
-  const prior = priorEntries ?? await readEntries(directory, meta);
-  const seen = new Set(prior.filter((entry) => entry.request_key !== undefined && entry.status !== 'SEARCH_FAILED')
-    .map((entry) => JSON.stringify([entry.record_id, entry.request_key])));
-  const append = [];
-  for (const entry of entries) {
-    const identity = JSON.stringify([entry.record_id, entry.request_key]);
-    if (entry.status !== 'SEARCH_FAILED' && seen.has(identity)) continue;
-    append.push({ ...entry, chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 });
-    if (entry.status !== 'SEARCH_FAILED') seen.add(identity);
+  // Serialize the short read/validate/append transaction across CLI processes for this chunk.
+  // A crashed writer leaves a lock that fails closed rather than guessing whether evidence was written.
+  const lock = `${files.searches}.lock`;
+  try {
+    await mkdir(lock);
+  } catch (error) {
+    if (error.code === 'EEXIST') fail('search evidence is busy or its lock remains after interruption; preserve it and report');
+    throw error;
   }
-  if (append.length > 0) await appendFile(files.searches, `${append.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
-  return append.length;
+  try {
+    const prior = await readEntries(directory, meta);
+    const seen = new Set(prior.filter((entry) => entry.request_key !== undefined && entry.status !== 'SEARCH_FAILED')
+      .map((entry) => JSON.stringify([entry.record_id, entry.request_key])));
+    try {
+      for (const entry of entries) {
+        if (entry.status === 'SEARCH_FAILED') {
+          if (entry.cursor_in !== null) resolveRecordedCursor({ cursor: entry.cursor_in, recordId: entry.record_id,
+            forms: entry.forms, boundary: entry.boundary, entries: prior, ref: entry.record_id });
+        } else {
+          recordedCondition({ recordId: entry.record_id, forms: entry.forms, boundary: entry.boundary,
+            entries: [...prior, ...entries], ref: entry.record_id });
+        }
+      }
+    } catch (error) {
+      throw new Error(`search evidence changed or conflicts after search; no evidence recorded: ${error.message}`);
+    }
+    const append = [];
+    for (const entry of entries) {
+      const identity = JSON.stringify([entry.record_id, entry.request_key]);
+      if (entry.status !== 'SEARCH_FAILED' && seen.has(identity)) continue;
+      append.push({ ...entry, chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 });
+      if (entry.status !== 'SEARCH_FAILED') seen.add(identity);
+    }
+    if (append.length > 0) await appendFile(files.searches, `${append.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+    return append.length;
+  } finally {
+    await rmdir(lock);
+  }
 }
 
 const normalizedSearchForms = (forms) => [...new Set(forms
@@ -941,7 +971,7 @@ export async function searchBatchActive({ requests, databasePath, root = '.warro
   } finally {
     database.close?.();
   }
-  await appendSearchEvidence(directory, meta, batch.evidence, priorEntries);
+  await appendSearchEvidence(directory, meta, batch.evidence);
   return batch.output;
 }
 
@@ -1002,7 +1032,7 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
   const exactRequestKey = requestKey(list, boundary, options);
   const evidence = { ...entryOf(record.id, list, boundary, result, 'search', cursorIn, exactRequestKey),
     chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 };
-  await appendSearchEvidence(directory, meta, [evidence], priorEntries);
+  await appendSearchEvidence(directory, meta, [evidence]);
   return { result, text: renderContexts(result), decision_state: decisionStateAfterSearch(priorEntries, [evidence], record.id) };
 }
 
