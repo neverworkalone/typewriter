@@ -501,6 +501,7 @@ class RestartHandoff(unittest.TestCase):
         result = mock.Mock(returncode=0, stdout=HEAD1)
         with mock.patch("warroom.restart_controller._git", return_value=result), \
              mock.patch("warroom.restart_controller._ancestor", return_value=True), \
+             mock.patch("warroom.restart_controller._live_runtime_owner", return_value=True), \
              mock.patch("warroom.restart_controller._lock_held", return_value=True):
             self.assertEqual(handle_pending_restart(w.paths, w.store), ("locked", None))
         with mock.patch("warroom.restart_controller._git", return_value=result), \
@@ -539,7 +540,7 @@ class RestartHandoff(unittest.TestCase):
 
         def tmux(args, **kwargs):
             if args[0] == "new-session":
-                record_runtime(w.paths, HEAD1)
+                record_runtime(w.paths, HEAD1, instance="new-instance")
                 w.sup._tick_maintenance()
                 return result
             return absent
@@ -549,6 +550,7 @@ class RestartHandoff(unittest.TestCase):
              mock.patch("warroom.restart_controller._worktree_ownership_problem", return_value=None), \
              mock.patch("warroom.restart_controller._pid_alive", return_value=False), \
              mock.patch("warroom.restart_controller._lock_held", return_value=False), \
+             mock.patch("warroom.restart_controller._live_runtime_owner", return_value=True), \
              mock.patch("warroom.restart_controller._tmux", side_effect=tmux) as launch:
             handle_pending_restart(w.paths, store)
             self.assertIn("unclosed run", json.loads(request.read_text())["blocker"])

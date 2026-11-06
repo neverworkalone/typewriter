@@ -566,12 +566,13 @@ class ClearRealGit(unittest.TestCase):
         absent = mock.Mock(returncode=1, stdout="")
         def tmux(args, **kwargs):
             if args[0] == "new-session":
-                record_runtime(w.paths, head)
+                record_runtime(w.paths, head, instance="new-instance")
                 git._git("branch", branch, head)  # another actor recreates the ref after the restart gate
                 w.sup._clear(w.store.batch(bid))
                 return mock.Mock(returncode=0, stdout="")
             return absent
         with mock.patch("warroom.restart_controller._lock_held", return_value=False), \
+             mock.patch("warroom.restart_controller._live_runtime_owner", return_value=True), \
              mock.patch("warroom.restart_controller._tmux", side_effect=tmux):
             handle_pending_restart(w.paths, w.store)
         self.assertEqual(json.loads(request.read_text())["state"], "loaded")

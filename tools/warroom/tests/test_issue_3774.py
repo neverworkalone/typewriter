@@ -349,6 +349,97 @@ class RestartPhaseCas(RestartWorld, unittest.TestCase):
         self.assertTrue(rc._is_new_instance({"instance": "b", "started_at": 200.0}, old, 150.0))
 
 
+class MaintainerDrainBoundary(unittest.TestCase):
+    def test_collects_running_batch_without_advancing_other_prs_then_resumes(self):
+        from tests.test_issue_1555 import world, produce_and_report, maintainer_row
+        w = world()
+        self.addCleanup(w.tmp.cleanup)
+        produce_and_report(w)
+        w.tick()
+        a = maintainer_row(w)
+        self.assertEqual(a["state"], "PRODUCING")
+        with w.store._conn() as db:
+            b_id = db.execute(
+                "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,model_tier,created_at,updated_at) "
+                "SELECT method,producer,shard,'102','maint-102',worktree,'MERGED',model_tier,created_at,updated_at "
+                "FROM batches WHERE id=?", (a["id"],)).lastrowid
+        w.pr_info(50, HEAD1, head_ref="maint-101")
+        w.gh.by_branch["maint-101"] = [{"number": 50, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.finish(a["pid"])
+        launches = len(w.adapter.launches)
+        w.sup._drain.set()
+        with mock.patch.object(w.sup, "_to_cleanup", wraps=w.sup._to_cleanup) as cleanup, \
+             mock.patch.object(w.sup, "_watch", wraps=w.sup._watch) as watch:
+            w.sup._parallel_maintenance()
+            self.assertEqual(w.store.batch(a["id"])["state"], "WAITING_REVIEW")
+            self.assertEqual(w.store.batch(b_id)["state"], "MERGED")
+            self.assertFalse(cleanup.called or watch.called)
+            self.assertEqual(len(w.adapter.launches), launches)
+            self.assertFalse(w.sup._lane_has_drain_work(None))
+        w.sup = w.make_sup()
+        with mock.patch.object(w.sup, "_to_cleanup") as cleanup:
+            w.sup._tick_maintenance()
+            cleanup.assert_called_once()
+            self.assertEqual(cleanup.call_args.args[0]["id"], b_id)
+
+    def test_runtime_confirmation_requires_live_coherent_owner(self):
+        from tests.test_issue_1555 import world
+        w = world()
+        self.addCleanup(w.tmp.cleanup)
+        runtime = {"instance": "new", "pid": 123, "started_at": 200.0, "loaded_code_sha": HEAD1}
+        old = {"instance": "old", "started_at": 100.0}
+        w.store.begin_restart_phase("new")
+        pane = lambda args, **kw: mock.Mock(returncode=0, stdout="0" if "#{pane_dead}" in args else "123")
+        with mock.patch.object(rc, "_lock_held", return_value=True), \
+             mock.patch.object(rc, "owner_state", return_value="alive"), \
+             mock.patch.object(rc, "_tmux", side_effect=pane), \
+             mock.patch.object(rc.os, "getpgid", return_value=123), \
+             mock.patch.object(rc, "_pid_alive", return_value=True) as alive:
+            self.assertTrue(rc._is_new_instance(runtime, old, 150.0))
+            self.assertTrue(rc._live_runtime_owner(w.paths, w.store, runtime))
+            alive.return_value = False
+            self.assertFalse(rc._live_runtime_owner(w.paths, w.store, runtime))
+            alive.return_value = True
+            w.store.begin_restart_phase("other")
+            self.assertFalse(rc._live_runtime_owner(w.paths, w.store, runtime))
+            self.assertFalse(rc._is_new_instance({**runtime, "instance": "old"}, old, 150.0))
+
+
+    def test_controller_confirms_only_fresh_live_instance(self):
+        from tests.test_issue_1555 import world
+        for case in ("live", "dead", "old"):
+            with self.subTest(case=case):
+                w = world()
+                self.addCleanup(w.tmp.cleanup)
+                rc.record_runtime(w.paths, HEAD2, instance="old")
+                request = rc.write_restart_request(w.paths, {"id": 91, "merge_sha": HEAD1}, None)
+                launched = []
+                def tmux(args, **kw):
+                    if args[0] == "new-session":
+                        launched.append(True)
+                        instance = "old" if case == "old" else "new"
+                        w.store.begin_restart_phase(instance)
+                        rc.record_runtime(w.paths, HEAD1, instance=instance)
+                    if args[0] in ("show-environment", "has-session"):
+                        return mock.Mock(returncode=1, stdout="")
+                    return mock.Mock(returncode=0, stdout="0" if "#{pane_dead}" in args else str(os.getpid()))
+                with mock.patch.object(rc, "_git", return_value=mock.Mock(returncode=0, stdout=HEAD1)), \
+                     mock.patch.object(rc, "_ancestor", side_effect=lambda root, older, newer: newer == HEAD1), \
+                     mock.patch.object(rc, "_worktree_ownership_problem", return_value=None), \
+                     mock.patch.object(rc, "_lock_held", side_effect=lambda _: bool(launched) and case != "dead"), \
+                     mock.patch.object(rc, "_pid_alive", return_value=case != "dead"), \
+                     mock.patch.object(rc, "owner_state", return_value="alive"), \
+                     mock.patch.object(rc, "_tmux", side_effect=tmux), \
+                     mock.patch.object(rc, "STARTUP_TIMEOUT", 0.01), \
+                     mock.patch.object(rc.time, "sleep"):
+                    rc.handle_pending_restart(w.paths, w.store)
+                result = json.loads(request.read_text())
+                self.assertEqual(result["state"], "loaded" if case == "live" else "waiting")
+                if case == "live":
+                    self.assertEqual((result["loaded_code_sha"], result["supervisor_instance"], result["supervisor_pid"]),
+                                     (HEAD1, "new", os.getpid()))
+
+
 class CoordinatorDetails(RestartWorld, unittest.TestCase):
     def test_draining_never_selects_a_new_batch_or_runs_the_maintainer_step(self):
         w = self.world(records=25)
