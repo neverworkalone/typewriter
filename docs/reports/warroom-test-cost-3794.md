@@ -4,15 +4,15 @@
 
 이번 감사는 이슈의 8개 후보 파일만 조사했다. 현재 unittest discovery 모집단은 **306개 메서드**다. 각 메서드를 한 번 실행해 기능과 시간을 확인하고, 고유한 현재 불변식을 지키는 **301개 메서드는 유지**로 분류했다. 별도 상세 평가가 필요한 후보는 5개다.
 
-제안 조치는 통합 2건, 경량화 2건, 제거 검토 1건이다. 제안한 작업이 후속 PR에서 모두 채택될 경우의 절감은 한 번의 전체 War Room Python 실행에서 **약 1.9–2.4초**로 추정한다. 이 수치는 메서드 실측 시간에 기반한 전망이며, 이번 감사에서 변경 전후 개선을 측정하거나 주장하지 않는다.
+첫 5개 상세 후보의 조치는 통합 2건, 경량화 2건, 제거 검토 1건이다. 제안한 작업이 모두 채택될 경우 한 번의 전체 War Room Python 실행에서 **약 1.9–2.4초**를 절감할 것으로 추정한다. 추가 #1555 보완 감사에서는 고유 assertion을 유지하는 fixture 재사용 3건(추가 0.23–0.30초)과 보류 중인 tick 경량화 가능성(0.10–0.19초 상한 추정)을 확인했다. 모든 수치는 전망이며 변경 전후 개선으로 측정하거나 주장하지 않는다.
 
 이슈가 제공한 후보 스위트 합계 85.01초와 비교할 때 이번 checkout에서는 8개 스위트가 77.40초 걸렸다. 실행 환경과 현재 코드의 차이가 포함되므로 이 차이를 최적화 효과로 해석하지 않는다. 후보 파일 외부의 전체 Python suite는 실행하지 않았다. 이슈에 제공된 전체 228초 기준선은 프로세스 관련 6개 테스트가 실패한 상태이므로 녹색 기준선이 아니다.
 
 ## 범위와 실행 조건
 
 - 기준: 최신 remote master와 일치한 HEAD **db30a5bbc93d9bdab572b347b35ef7a0d22c42e7**.
-- 환경: macOS 26.6.2 arm64, Python 3.11.10, Node 24.19.0, Git 2.53.0.
-- 선택 방식: Python unittest의 현재 모듈 discovery 순서를 유지한 직렬 실행. 환경은 PYTHONPATH=tools/warroom, PYTHONDONTWRITEBYTECODE=1이며 대상 8개 모듈을 한 Python 프로세스에서 실행했다. 시간은 startTest부터 stopTest까지 측정하여 메서드의 setUp, 본문, tearDown을 포함한다. 모듈 import와 클래스 단위 fixture 시간은 메서드 값에서 제외된다. 스위트 시간은 해당 모듈의 unittest suite 실행 구간이다.
+- 환경: macOS 26.6.2 arm64, Python 3.15.0, Node 24.19.0, Git 2.53.0. War Room 경로에서 python3는 /opt/homebrew/bin/python3로 해석되며 .local/venv는 없었다.
+- 선택 방식: 작업 디렉터리 tools/warroom에서 Python unittest의 현재 모듈 discovery 순서를 유지한 직렬 실행. PYTHONDONTWRITEBYTECODE=1로 대상 8개 모듈을 한 Python 프로세스에서 실행했다. 이 디렉터리의 python3 선택은 run-tests.mjs와 같고, Python의 현재 작업 디렉터리에서 모듈을 import했다. 초기 계측에서 report body에 적힌 Python 3.11.10은 저장소 루트에서 별도로 확인한 값이라 잘못 표기됐고, 여기서 정정한다. 모든 테스트 계측은 War Room 경로의 Python 3.15.0으로 실행됐다. 시간은 startTest부터 stopTest까지 측정하여 메서드의 setUp, 본문, tearDown을 포함한다. 모듈 import와 클래스 단위 fixture 시간은 메서드 값에서 제외된다. 스위트 시간은 해당 모듈의 unittest suite 실행 구간이다.
 - 반복: 306개 모집단은 1회 전체 측정했다. 상세 후보 5개와 대표적인 core 대조군 3개를 3회 더 실행했다. 총 330회 실행에서 실패와 오류는 없었다. 반복 후보의 표준편차 대신 최소/중앙/최대값을 기록한다.
 - 저장소 변경: 코드, 테스트, CI는 수정하지 않았다. node tools/warroom/run-tests.mjs 전체 suite의 통과를 주장하지 않는다.
 
@@ -409,3 +409,33 @@
 - Issue3129.test_unsaved_legacy_scope_recovery_is_not_started_twice
 
 </details>
+
+## test_issue_1555.py 상위 비용 메서드 보완 감사
+
+검토 요청에 따라 test_issue_1555.py를 따로 직렬 실행했다. 98/98 메서드 통과, suite wall time 35.977초였다. 상위 15개 메서드는 그 실행 1회와 isolated 재실행 3회로 n=4를 구성했다. 시간은 각 호출의 setup/body/teardown을 포함한다. 각 행은 제거 권고가 아니라 비용과 현재 assertion의 필요성을 검토한 결과다.
+
+| 순위 / Class.test_method | 실행시간 n=4: 중앙값 [최소, 최대] (s) | 현재 불변식 / 구체적 확인 | 비용 원인, 중복 근거, 결정·절감 |
+|---:|---|---|---|
+| 1. IncidentRecoveryProof.test_changed_or_unobserved_state_holds | 1.2091 [1.1734, 1.5258] | HEAD 이동, remote ref 이동, checkpoint 변경, Git 관측 불능은 재개를 HELD/PAUSED로 막고 “재개 증명 불가”를 남긴다. | 네 증거 상태는 별도다. test_a_held_incident_is_reproved_after_the_code_checkout_changes는 반대 방향의 재증명만 다룬다. 계측된 setUp 5회/0.237초 중 첫 loop의 reset이 unittest의 초기 World를 버린다. 첫 case에 초기 fixture를 쓰고 세 번만 다시 만들면 assertion을 모두 보존해 약 0.04–0.05초 절감한다. 삭제 금지. |
+| 2. AutonomousIncident.test_classification_without_a_proven_blocker_keeps_the_maintainer_error | 1.0160 [1.0030, 1.1839] | no_code_fix, external, undetermined, recurrence 모두 Maintainer ERROR/ACTIVE와 원 batch PAUSED 유지. | 네 diagnose lifecycle, setUp 4회/0.172초. test_a_fabricated_blocker_does_not_release_the_slot, test_noncritical_unknown_observation_does_not_prove_an_evidence_blocker, test_prior_attempt_marker_cannot_authorize_a_new_handoff는 서로 다른 위조·증거 경계다. 네 결과 분류를 직접 대체할 순수 함수가 없어 유지, 절감 0초. |
+| 3. RealGitIntegration.test_supervisor_resumes_a_paused_batch_on_a_real_worktree_after_the_real_integration | 0.7539 [0.7496, 0.8253] | 실제 Git merge 후 Supervisor가 paused producer를 풀고 한 번 재시작하며 partial.jsonl과 integrated HEAD를 보존. | setup 11 Git 호출/0.34초, 본문 21/0.40초. SharedDefectFlow.test_report_to_single_retry_after_merge_and_cleanup은 fake Git, test_fix_is_merged_and_partial_output_and_commits_survive는 low-level Git 경계다. 둘 다 실제 Supervisor 진입점을 대체하지 못한다. 유지. |
+| 4. FailClosed.test_wrong_head_branch_or_missing_merge_commit_holds_the_issue_task | 0.7774 [0.7551, 0.8482] | Maintainer PR의 다른 branch 또는 merge SHA 없음은 통합을 일으키지 않고 ACTIVE/HELD로 보류. | test_pr_head_mismatch_holds는 producer PR의 HEAD 검사라 다른 gate다. setUp에서 이미 report/World를 준비하지만 body가 같은 준비를 두 번 새로 한다. 첫 variant에 self.w/self.b를 재사용하면 나머지 variant assertion을 지키며 약 0.15–0.20초 절감 가능. |
+| 5. RealGitIntegration.test_fix_is_merged_and_partial_output_and_commits_survive | 0.7508 [0.7234, 1.0549] | exact merge commit의 ancestry, 작업 파일, partial output, 추가 commit 부재를 확인. | setup 11 Git 호출/0.35초, 본문 27/0.52초. test_supervisor_resumes_a_paused_batch_on_a_real_worktree_after_the_real_integration도 partial 파일을 확인하지만 Git.integrate의 commit graph를 직접 검사하는 assertion은 고유하다. 유지; 공유 setup 절감은 격리 clone 비용을 재측정하기 전 0초로 계산. |
+| 6. RealGitIntegration.test_only_commits_on_the_base_branch_foreign_or_unregistered_paths_are_accepted | 0.7621 [0.6903, 0.8690] | 허용된 base branch 변경만 적용하고 foreign/unregistered path는 거부. | setup 11 Git 호출/0.34초, 본문 15/0.52초. 다른 RealGit 사례는 이 path ownership assertion을 대신하지 않는다. 독립 clone/worktree를 유지한다. 예상 절감 0초. |
+| 7. IncidentRecoveryProof.test_waiting_review_resumes_on_an_open_owned_pr_and_holds_on_an_unmerged_close | 0.6691 [0.6125, 0.7264] | WAITING_REVIEW에서 open owned PR은 release, merged=false closed PR은 HELD/PAUSED. | 두 경우를 모두 새 World로 실행하며 setUp 3회/0.145초. test_unmerged_close_of_the_maintainer_pr_never_releases는 Maintainer PR gate라 다르다. 초기 self.w를 첫 경우에 쓰고 두 번째만 재설정하면 양쪽 assertion을 지키며 약 0.04–0.05초 절감. |
+| 8. AutonomousIncidentReview.test_outcomes_are_reported_once_per_phase | 0.6886 [0.6512, 0.8433] | review, complete, stopped-error outcome marker가 각 한 번만 게시됨. | 세 marker의 exact-once assertion을 대신하는 테스트는 없다. 한 profiling 실행에서 setup 후 23 logical tick, tick wall 0.895초였다. phase별 처리와 stable repeat를 유지한 채 각 tick(3)을 2회, 마지막 반복을 1회로 줄이면 약 0.10–0.19초 가능성이 있으나 idempotence gate 재검증 전에는 보류한다. |
+| 9. RealGitIntegration.test_conflict_is_aborted_and_leaves_the_worktree_untouched | 0.6824 [0.6201, 0.7748] | merge conflict 뒤 HEAD, 파일 내용, dirty state, MERGE_HEAD 부재를 보존. | setup 11 Git 호출/0.34초, 본문 19/0.40초. test_uncommitted_change_in_a_file_the_fix_touches_is_refused_not_overwritten는 merge 전 dirty 파일 거부라 다른 시점이다. 둘 다 유지. |
+| 10. AutonomousIncident.test_two_batches_are_two_issues_never_merged_by_class | 0.7175 [0.6565, 0.9182] | 같은 defect class의 두 batch가 두 Issue로 남고 Issue 수/서로 다른 class count를 확인. | World/SQLite 준비 약 0.041초, 두 producer batch를 같은 sweep으로 처리. SerialMaintainer.test_one_maintainer_at_a_time_in_issue_order는 다른 Issue queue 순서를 보지만 같은 class의 batch 분리를 검사하지 않는다. 유지, 절감 0초. |
+| 11. AutonomousIncidentReview.test_diagnosis_cleanup_survives_a_crash_before_the_state_transaction | 0.6621 [0.6331, 0.8630] | diagnosis proof 저장과 cleanup 사이에 crash가 나도 재진입이 같은 diagnosis를 한 번 완료. | JSON/SQLite evidence 작성, crash injection 및 재진입 tick. test_evidence_write_failure_does_not_start_the_maintainer는 launch 전 failure, legacy marker test는 다른 persisted format이다. 유지, 절감 0초. |
+| 12. SharedDefectFlow.test_report_to_single_retry_after_merge_and_cleanup | 0.6556 [0.6368, 0.7877] | report, hidden Maintainer, open/green 미해제, cleanup failure, merge 후 같은 producer session 한 번 재개. | 한 World/SQLite와 24 logical tick. SerialMaintainer.test_one_fix_releases_every_batch_of_its_issue_once_each는 다수 producer batch를 보지만 dirty cleanup blocker, open/green 미해제, same-session retry를 검사하지 않는다. 단계별 경계 때문에 유지. |
+| 13. RealGitIntegration.test_uncommitted_change_in_a_file_the_fix_touches_is_refused_not_overwritten | 0.5911 [0.5561, 0.7705] | fix가 덮어쓸 파일에 기존 변경이 있으면 integration을 거부하고 HEAD와 내용을 보존. | setup 11 Git 호출/0.34초, 본문 15/0.29초. conflict test는 merge 도중 충돌이라 dirty-before-merge를 대체하지 않는다. 유지. |
+| 14. AutonomousIncident.test_approved_integration_error_keeps_its_evidence_and_is_received_by_the_sweep_once | 0.6583 [0.5529, 0.7467] | approved integration BoundaryProblem의 receipt를 보존하고 sweep/restart 뒤 Issue를 한 번만 접수. | World/SQLite evidence 및 restart. IncidentNumberAndIntake.test_error_evidence_of_an_event_keeps_its_first_record는 duplicate write의 first receipt, test_one_sweep_receives_c_d_stage2_stage3_through_any_error_path는 method routing이다. 둘 다 source-bound approved integration 접수를 대신하지 않는다. 유지. |
+| 15. SerialMaintainer.test_one_fix_releases_every_batch_of_its_issue_once_each | 0.6479 [0.5985, 0.7709] | 한 Issue에 속한 두 producer batch가 한 Maintainer fix 뒤 각각 한 번만 resume. | unittest setUp은 없고 body에서 World/SQLite, report 두 건, merge와 반복 tick 생성. test_one_maintainer_at_a_time_in_issue_order는 서로 다른 Issue의 queue라 grouping assertion이 다르다. 유지, 절감 0초. |
+
+### #1555에서 얻은 결정
+
+- 상위 15개는 모두 현재 기능·저장물·소유권·exact-once 또는 real Git 경계를 확인한다. 테스트 메서드 전체를 삭제할 안전한 후보는 0개다.
+- fixture만 재사용할 수 있는 구체적 기회 3개는 test_changed_or_unobserved_state_holds의 첫 setUp, test_waiting_review_resumes...의 첫 setUp, FailClosed.test_wrong_head_branch...의 첫 case World다. 모든 scenario assertion을 유지하는 조건에서 약 **0.23–0.30초**를 예상한다.
+- outcomes exact-once 메서드의 반복 tick 축소는 추가로 약 0.10–0.19초 가능성이 있지만 보류한다. 안정 반복 assertion을 남기고 후속 실행에서 확인해야 한다.
+- 상위의 RealGitIntegration 5개는 매번 11 Git subprocess로 seed repo/worktree를 준비해 setup 0.28–0.35초를 쓴다. 다섯 fixture bootstrap 합계는 약 1.6–1.7초지만 gross setup 합계이지 순절감액이 아니다. body에서도 각기 15–27 Git 명령으로 고유 경계를 검증한다. class-level template를 공유하려면 disposable clone/worktree 격리와 clone 비용을 포함해 실제 비교해야 하므로 지금 절감액은 0초로 둔다.
+- 기존 5개 후보의 판정과 계측은 그대로 유지한다. 위 fixture/tick 절감은 core assertion을 보존하는 추가 가능성이다. 이번 보완도 코드, 테스트, CI는 바꾸지 않았고 변경 전후 성능 개선을 주장하지 않는다.
