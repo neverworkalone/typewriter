@@ -525,8 +525,14 @@ class IntegratedNoSubmission(Helpers, unittest.TestCase):
             w.store.update_task(b["id"], task, data=json.dumps(data))
             self.assertTrue(w.sup.cp.auto_recover_integrated_no_submission(b))
             self.assertFalse(w.sup.cp.auto_recover_integrated_no_submission(w.store.batch(b["id"])))
-        self.assertEqual(w.store.task_row(b["id"], task)["state"], "FIXQ")
-        self.assertEqual(self.data(w, task)["recovery"]["source_run_id"], run["id"])
+            self.assertEqual(w.store.task_row(b["id"], task)["state"], "FIXQ")
+            self.assertEqual(self.data(w, task)["recovery"]["source_run_id"], run["id"])
+            w.tick()
+            resumed = next(r for r in self.open_runs(w) if r["task"] == task)
+            self.assertEqual(resumed["kind"], "c_chunk_recovery")
+            self.finish(w, task)
+            w.tick()
+            self.assertEqual(w.store.task_row(b["id"], task)["state"], "SAVED")
 
 
 class ParallelCBoundary(Helpers, unittest.TestCase):
