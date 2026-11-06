@@ -8853,6 +8853,14 @@ class Supervisor:
                     or run["ended_at"] is None or str(run["exit_status"]) != "0"
                     or self.store.get(f"verified_completion_run_{b['id']}") != str(run["id"])):
                 return "수정 완료 증거가 현재 PR/HEAD에 배정된 fix 실행과 일치하지 않습니다. 리뷰 이벤트는 미완료로 보존했습니다."
+            conflict_keys = [key for key in claim["event_keys"] if key.startswith("conflict:")]
+            if conflict_keys:
+                if (maintainer_info is None or len(conflict_keys) != 1
+                        or not re.fullmatch(r"conflict:[a-f0-9]{40}", conflict_keys[0])
+                        or maintainer_info.get("head_sha") == claim["head_sha"]
+                        or not self.git.contains(Path(b["worktree"]), claim["head_sha"])
+                        or not self.git.contains(Path(b["worktree"]), conflict_keys[0].split(":", 1)[1])):
+                    return "충돌 수정 HEAD가 원래 PR HEAD와 기준 커밋을 모두 포함하지 않습니다. worktree와 이벤트를 보존합니다."
             replies = []
             for comment in self.gh.issue_comments(b["pr_number"]):
                 user = comment.get("user") if isinstance(comment.get("user"), dict) else {}
@@ -8866,11 +8874,12 @@ class Supervisor:
             for comment in replies:
                 body_lines = {line.strip() for line in str(comment.get("body") or "").splitlines()}
                 for key in claim["event_keys"]:
-                    marker = "WarRoom-CI-Event" if key.startswith("ci:") else "WarRoom-Review-Event"
+                    marker = ("WarRoom-CI-Event" if key.startswith("ci:") else
+                              "WarRoom-Conflict-Event" if key.startswith("conflict:") else "WarRoom-Review-Event")
                     if (f"{marker}: {key}" in body_lines
-                            and (not key.startswith("ci:") or (maintainer_info is not None
+                            and (not key.startswith(("ci:", "conflict:")) or (maintainer_info is not None
                                  and maintainer_info.get("head_sha") != claim["head_sha"]
-                                 and f"WarRoom-CI-Fix-Head: {maintainer_info.get('head_sha')}" in body_lines))):
+                                 and f"WarRoom-{'CI' if key.startswith('ci:') else 'Conflict'}-Fix-Head: {maintainer_info.get('head_sha')}" in body_lines))):
                         comment_id = int(comment["id"])
                         old = event_replies.get(key)
                         if old is None or (reviews._ts(comment.get("created_at")), comment_id) > old[0]:
@@ -9187,6 +9196,12 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"수정 후 PR 재조회가 확정적으로 실패했습니다: {e}. worktree·원격 브랜치를 보존합니다.")
         if self._check_fix_head(b, info) == "ok":
+            if b["method"] == MAINTENANCE_METHOD:
+                if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
+                        or info.get("state") != "open" or info.get("merged")):
+                    return self._fail(b, "ERROR", "수정 완료 PR 소유권 또는 상태가 바뀌었습니다. 보존합니다.")
+                if problem := self._complete_producer_fix_events(b, info):
+                    return self._fail(b, "ERROR", problem)
             if b["method"] == STAGE2_METHOD:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)
@@ -9600,6 +9615,13 @@ class Supervisor:
                                 or current.get("merged")):
                             return self.store.log(b["id"], "CI 조회 중 PR이 변경되어 다음 감시에서 재확인합니다.", "warn")
                         evs.append(ci)
+                    if info.get("mergeable") is False:
+                        base_sha = info.get("base_sha")
+                        if (info.get("base_ref") != self.cfg["base_branch"] or
+                                not isinstance(base_sha, str) or not re.fullmatch(r"[a-f0-9]{40}", base_sha)):
+                            return self._fail(b, "ERROR", "충돌 PR의 기준 브랜치 또는 SHA가 유효하지 않습니다. 보존합니다.")
+                        evs.append({"kind": "conflict", "author": "Supervisor", "key": f"conflict:{base_sha}",
+                                    "body": f"소유 PR HEAD {info['head_sha']}와 기준 {info['base_ref']} {base_sha}의 충돌을 해결한다."})
                 fresh = [e for e in evs if not self.store.is_handled(b["id"], b["pr_number"], info["head_sha"], e["key"])]
                 if fresh and live:
                     # Never run two AI processes in one worktree: stop the old one, confirm exit
@@ -9656,6 +9678,20 @@ class Supervisor:
                             if event.get("kind") == "ci":
                                 event["body"] += "\n" + self.gh.maintainer_ci_diagnostic(event)
                     with self.launch_gate.permit():
+                        if b["method"] == MAINTENANCE_METHOD and any(e.get("kind") == "conflict" for e in fresh):
+                            wt = Path(b["worktree"])
+                            if (self.git.registered(wt) != b["branch"] or self.git.dirty(wt).strip()
+                                    or self.git.remote_head(b["branch"]) != info["head_sha"]):
+                                return self._fail(b, "ERROR", "충돌 수정 전 worktree/브랜치/원격 HEAD 확인 실패. 보존합니다.")
+                            fetched = self.git.fetch_base(info["base_ref"])
+                            current = self.gh.pull(b["pr_number"])
+                            if (fetched != info["base_sha"] or current.get("base_sha") != fetched
+                                    or current.get("head_sha") != info["head_sha"]
+                                    or current.get("head_ref") != b["branch"] or current.get("number") != b["pr_number"]
+                                    or current.get("base_ref") != info["base_ref"] or current.get("state") != "open"
+                                    or current.get("merged") or current.get("mergeable") is not False):
+                                self.store.set(f"last_poll_{b['id']}", "0")
+                                return self.store.log(b["id"], "충돌 확인 중 PR 또는 기준이 바뀌어 다시 감시합니다.", "warn")
                         self.store.delete(f"maintenance_review_pending_{b['id']}")
                         self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
                         self._launch(b, self._fix_kind(b), fresh)

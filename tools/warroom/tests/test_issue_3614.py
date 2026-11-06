@@ -148,6 +148,62 @@ class MaintainerQueue(unittest.TestCase):
         self.assertIn("Issue #101", fix["prompt"])
         self.assertTrue(w.store.maintenance_batch_open())
 
+    def conflict_pr(self):
+        w = self.w
+        produce_and_report(w)
+        w.tick()
+        first = self.open_pr_for(101, 50)
+        base = "c" * 40
+        w.git.base_sha = base
+        w.git.remote[first["branch"]] = HEAD1
+        w.gh.prs[50].update(base_ref=w.cfg["base_branch"], base_sha=base, mergeable=False)
+        w.store.delete(f"last_poll_{first['id']}")
+        return first, base
+
+    def test_conflict_is_combined_with_review_and_ci_in_owned_slot(self):
+        w = self.w
+        first, base = self.conflict_pr()
+        w.gh.reviews_ = [review(71, HEAD1, "-1 correct the issue-scoped fix")]
+        w.gh.ci_failure = {"kind": "ci", "author": "GitHub Actions", "key": "ci:42:1", "body": "failed"}
+        w.tick()
+        self.assertEqual(w.store.batch(first["id"])["state"], "FIXING")
+        prompt = w.adapter.launches[-1]["prompt"]
+        self.assertIn("conflict:" + base, prompt)
+        self.assertIn("ci:42:1", prompt)
+        self.assertIn("review:71", prompt)
+        for key in ("conflict:" + base, "ci:42:1", "review:71"):
+            self.assertEqual(w.store.handled_event(first["id"], 50, HEAD1, key)["status"], "CLAIMED")
+
+    def test_conflict_waits_for_slot_and_dirty_or_moved_checkout_never_launches(self):
+        w = self.w
+        first, base = self.conflict_pr()
+        w.sup._watch(first, allow_fix=False)
+        self.assertEqual(w.store.batch(first["id"])["state"], "WAITING_REVIEW")
+        self.assertIsNotNone(w.store.get(f"maintenance_review_pending_{first['id']}"))
+        w.store.delete(f"last_poll_{first['id']}")
+        w.git.dirty_text = " M existing-file"
+        w.sup._watch(w.store.batch(first["id"]))
+        self.assertEqual(w.store.batch(first["id"])["state"], "ERROR")
+        self.assertEqual(w.git.dirty_text, " M existing-file")
+
+    def test_conflict_completion_requires_both_ancestors_and_exact_reply(self):
+        w = self.w
+        first, base = self.conflict_pr()
+        w.tick()
+        batch = w.store.batch(first["id"])
+        run = w.store.runs(first["id"])[0]
+        w.store.finish_run(run["id"], 0)
+        w.store.set(f"verified_completion_run_{first['id']}", str(run["id"]))
+        new_head = "b" * 40
+        w.gh.issue_comments_[50] = [{"id": 88, "user": {"login": w.cfg["expected_account"]},
+            "body": f"resolved and tested\nWarRoom-Conflict-Event: conflict:{base}\nWarRoom-Conflict-Fix-Head: {new_head}",
+            "created_at": "2099-01-01T00:00:00Z"}]
+        info = {"head_sha": new_head}
+        self.assertIsNotNone(w.sup._complete_producer_fix_events(batch, info))
+        w.git.integrated.extend([(str(first["worktree"]), HEAD1), (str(first["worktree"]), base)])
+        self.assertIsNone(w.sup._complete_producer_fix_events(batch, info))
+        self.assertEqual(w.store.handled_event(first["id"], 50, HEAD1, "conflict:" + base)["status"], "HANDLED")
+
     def test_ci_failure_uses_single_slot_and_claims_without_completing(self):
         w = self.w
         produce_and_report(w)

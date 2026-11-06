@@ -86,7 +86,8 @@ class GhClient:
                 "head_sha": d["head"]["sha"], "head_ref": self._owned_ref(d["head"]),
                 "url": d.get("html_url", ""), "merge_commit_sha": d.get("merge_commit_sha") or "",
                 "title": d.get("title") or "", "body": d.get("body") or "",
-                "base_ref": (d.get("base") or {}).get("ref")}
+                "base_ref": (d.get("base") or {}).get("ref"),
+                "base_sha": (d.get("base") or {}).get("sha"), "mergeable": d.get("mergeable")}
 
     # ---- Issues (Issue #1555: shared-defect urgent Issues) --------------------------------------------------------
     def issue(self, n: int) -> dict:
