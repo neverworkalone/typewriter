@@ -1401,8 +1401,10 @@ class Maintenance:
 
     @staticmethod
     def _batch_investigation_scope(source, tasks) -> bool:
-        return (not tasks or (source["method"] == STAGE2_METHOD and source["run_kind"] == "s2_repair_new"
-                              and all(isinstance(t, dict) and t.get("state") == "SAVED" for t in tasks)))
+        saved_batch_scope = ((source["method"] == STAGE2_METHOD and source["run_kind"] == "s2_repair_new")
+                             or (source["method"] == literary.METHOD and source["run_kind"] == "c_finalize"))
+        return not tasks or (saved_batch_scope
+                             and all(isinstance(t, dict) and t.get("state") == "SAVED" for t in tasks))
 
     def _finish_structured_diagnosis(self, b, d, data: dict, base: str) -> bool:
         """Re-check the exact source event and evidence bundle before accepting a no-PR result."""
