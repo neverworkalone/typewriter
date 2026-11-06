@@ -9,10 +9,6 @@ from tests.test_issue_1555 import make_batch
 from warroom.launch_gate import LaunchDenied
 from warroom.adapters import ProcessAdapter
 
-from tests.fakes import no_anchor_module
-
-setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
-
 
 class SingleLaunchPermit(unittest.TestCase):
     def setUp(self):

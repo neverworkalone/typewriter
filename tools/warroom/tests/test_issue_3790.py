@@ -13,10 +13,6 @@ from tests.test_supervisor import QUOTA_LINE
 from warroom import dchunk, stage1ab
 from warroom.store import exit_verdict_key
 
-from tests.fakes import no_anchor_module
-
-setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
-
 
 class Died(BaseException):
     """A process death: not an Exception, so no tick handler can absorb it."""

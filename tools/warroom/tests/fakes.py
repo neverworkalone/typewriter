@@ -1015,23 +1015,9 @@ class _WorldTmp(tempfile.TemporaryDirectory):
         super().cleanup()
 
 
-def no_anchor_module():
-    """setUpModule/tearDownModule pair: suites about Store/WAL/migration, restart/crash fence and real concurrency run
-    without the test-only anchor, so every close stays the production 'last connection' close."""
-    saved = []
-
-    def up():
-        saved.append(World.anchor)
-        World.anchor = False
-
-    def down():
-        World.anchor = saved.pop()
-    return up, down
-
-
 class World:
-    anchor = True   # test-only speed-up: an idle sqlite3 connection (never queried) on the Store's DB, so the per-call
-    #                 connections of Store._conn() are not the last close (no WAL checkpoint/-wal delete on each). #3801
+    # Test-only speed-up (#3801): an idle sqlite3 connection (never queried) on the Store's DB, so the per-call
+    # connections of Store._conn() are not the last close (no WAL checkpoint/-wal delete on each).
 
     @property
     def store(self):
@@ -1040,10 +1026,9 @@ class World:
     @store.setter
     def store(self, store):   # a test re-creating the Store gets its own anchor, all closed before tmp is deleted
         self._store = store
-        if self.anchor:
-            anchor = sqlite3.connect(store.path, timeout=30, check_same_thread=False)
-            anchor.execute("PRAGMA journal_mode=WAL")   # joins the WAL (opens -shm); no query or transaction ever runs
-            self.tmp.anchors.append(anchor)
+        anchor = sqlite3.connect(store.path, timeout=30, check_same_thread=False)
+        anchor.execute("PRAGMA journal_mode=WAL")   # joins the WAL (opens -shm); no query or transaction ever runs
+        self.tmp.anchors.append(anchor)
 
     def __init__(self, models=None):
         self.tmp = _WorldTmp()

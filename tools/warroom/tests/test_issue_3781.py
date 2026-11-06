@@ -7,10 +7,6 @@ from unittest.mock import patch
 from tests import test_issue_3614 as fixtures
 from tests.test_issue_1555 import make_batch
 
-from tests.fakes import no_anchor_module
-
-setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
-
 
 class RecoveryLaneTests(unittest.TestCase):
     def producer(self, sup, action):

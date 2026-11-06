@@ -15,10 +15,6 @@ from warroom import control, stage2, taskruns
 from warroom.launch_gate import LaunchDenied
 from warroom.store import STAGE3_METHOD
 
-from tests.fakes import no_anchor_module
-
-setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
-
 
 def snapshot(w):
     """Every DB row (except the per-tick heartbeat) and every file below the world's root, byte for byte."""

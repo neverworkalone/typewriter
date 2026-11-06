@@ -16,10 +16,6 @@ from warroom import restart_controller as rc
 from warroom.fence import Fence
 from warroom.launch_gate import LaunchDenied, LaunchGate
 
-from tests.fakes import no_anchor_module
-
-setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
-
 LINE = ("deepseek", "d")
 
 

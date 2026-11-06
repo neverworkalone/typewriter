@@ -6,10 +6,6 @@ import unittest
 
 from warroom.launch_gate import LaunchDenied, LaunchGate
 
-from tests.fakes import no_anchor_module
-
-setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
-
 
 class LaunchGateTest(unittest.TestCase):
     def test_close_waits_for_active_permit_and_rejects_future_entries(self):

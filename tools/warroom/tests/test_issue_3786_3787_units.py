@@ -9,10 +9,6 @@ from pathlib import Path
 from tests.fakes import World
 from warroom import control, stage2, taskruns
 
-from tests.fakes import no_anchor_module
-
-setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
-
 
 def db_lines(w):
     conn = sqlite3.connect(w.store.path)

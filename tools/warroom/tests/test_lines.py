@@ -17,10 +17,6 @@ from warroom.supervisor import DuplicateClaim
 from warroom.timing import elapsed_seconds
 from warroom.web import api
 
-from tests.fakes import no_anchor_module
-
-setUpModule, tearDownModule = no_anchor_module()   # #3801: runs without the test-only Store anchor
-
 PRODUCERS = {
     "deepseek": {"adapter": "opencode", "models": {"free": "p/free-x-free", "go": "p/go"}},
     "sonnet": {"adapter": "opencode", "models": {"free": "p/sonnet-free", "go": ""}},
