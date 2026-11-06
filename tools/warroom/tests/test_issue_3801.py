@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import multiprocessing
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -15,6 +16,16 @@ from warroom.store import Store
 def _initialize_store(db_path: str, index: int, barrier) -> None:
     barrier.wait(timeout=30)
     Store(Path(db_path)).set(f"worker-{index}", "ready")
+
+
+def _crash_during_store_migration(db_path: str) -> None:
+    def crash(conn) -> None:
+        conn.executescript(store_module.SCHEMA_V2)
+        conn.execute("ALTER TABLE events ADD COLUMN line TEXT")
+        os._exit(73)
+
+    store_module.Store._migrate = staticmethod(crash)
+    Store(Path(db_path))
 
 
 class StoreWalInitialization(unittest.TestCase):
@@ -40,7 +51,9 @@ class StoreWalInitialization(unittest.TestCase):
                 self.assertEqual(store.get("first"), "value")
                 Store(db).set("second", "value")
 
-            self.assertEqual(len(statements), 2)
+            normalized = [statement.strip().lower() for statement in statements]
+            self.assertEqual(normalized.count("pragma journal_mode=wal"), 1)
+            self.assertEqual(len(normalized), 3)
             with sqlite3.connect(db) as conn:
                 self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0].lower(), "wal")
 
@@ -70,6 +83,24 @@ class StoreWalInitialization(unittest.TestCase):
                     if process.is_alive():
                         process.terminate()
                         process.join(5)
+
+    def test_store_recovers_after_process_dies_during_migration(self):
+        with tempfile.TemporaryDirectory() as td:
+            db = str(Path(td) / "warroom.sqlite")
+            ctx = multiprocessing.get_context("spawn")
+            process = ctx.Process(target=_crash_during_store_migration, args=(db,))
+            process.start()
+            process.join(30)
+            if process.is_alive():
+                process.terminate()
+                process.join(5)
+            self.assertEqual(process.exitcode, 73)
+
+            reopened = Store(Path(db))
+            self.assertEqual(reopened.get("missing"), None)
+            with sqlite3.connect(db) as conn:
+                self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0].lower(), "wal")
+                self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], store_module.SCHEMA_VERSION)
 
 
 if __name__ == "__main__":

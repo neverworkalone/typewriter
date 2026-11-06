@@ -189,9 +189,7 @@ class Store:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._conn() as c:
-            mode = c.execute("PRAGMA journal_mode=WAL").fetchone()
-            if mode is None or str(mode[0]).lower() != "wal":
-                raise sqlite3.OperationalError("War Room database did not enter WAL mode")
+            self._ensure_wal(c)
             c.executescript(SCHEMA)
             if c.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
                 self._migrate(c)
@@ -283,6 +281,27 @@ class Store:
             if col.split()[0] not in have:
                 c.execute(f"ALTER TABLE defects ADD COLUMN {col}")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+
+    @staticmethod
+    def _ensure_wal(c) -> None:
+        deadline = time.monotonic() + 30
+        busy_codes = (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+        while True:
+            mode = c.execute("PRAGMA journal_mode").fetchone()
+            if mode is not None and str(mode[0]).lower() == "wal":
+                return
+            try:
+                mode = c.execute("PRAGMA journal_mode=WAL").fetchone()
+            except sqlite3.OperationalError as exc:
+                code = getattr(exc, "sqlite_errorcode", None)
+                if code is None or code & 0xFF not in busy_codes:
+                    raise
+                mode = None
+            if mode is not None and str(mode[0]).lower() == "wal":
+                return
+            if time.monotonic() >= deadline:
+                raise sqlite3.OperationalError("War Room database did not enter WAL mode")
+            time.sleep(0.01)
 
     @contextmanager
     def _conn(self):
