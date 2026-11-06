@@ -8855,7 +8855,17 @@ class Supervisor:
                 return "수정 완료 증거가 현재 PR/HEAD에 배정된 fix 실행과 일치하지 않습니다. 리뷰 이벤트는 미완료로 보존했습니다."
             conflict_keys = [key for key in claim["event_keys"] if key.startswith("conflict:")]
             if conflict_keys:
-                if (maintainer_info is None or len(conflict_keys) != 1
+                current = self.gh.pull(b["pr_number"])
+                if (maintainer_info is None or current.get("number") != b["pr_number"]
+                        or current.get("state") != "open" or current.get("merged")
+                        or current.get("head_ref") != b["branch"]
+                        or current.get("base_ref") != self.cfg["base_branch"]
+                        or current.get("head_sha") != maintainer_info.get("head_sha")
+                        or self.git.registered(Path(b["worktree"])) != b["branch"]
+                        or self.git.head(Path(b["worktree"])) != current.get("head_sha")
+                        or self.git.remote_head(b["branch"]) != current.get("head_sha")):
+                    return "충돌 수정 완료 시 PR/worktree/원격 소유 HEAD가 일치하지 않습니다. 보존합니다."
+                if (len(conflict_keys) != 1
                         or not re.fullmatch(r"conflict:[a-f0-9]{40}", conflict_keys[0])
                         or maintainer_info.get("head_sha") == claim["head_sha"]
                         or not self.git.contains(Path(b["worktree"]), claim["head_sha"])

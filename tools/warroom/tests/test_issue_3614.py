@@ -234,6 +234,9 @@ class MaintainerQueue(unittest.TestCase):
             "body": f"resolved and tested\nWarRoom-Conflict-Event: conflict:{base}\nWarRoom-Conflict-Fix-Head: {new_head}",
             "created_at": "2099-01-01T00:00:00Z"}]
         info = {"head_sha": new_head}
+        w.git.local_head = new_head
+        w.git.remote[first["branch"]] = new_head
+        w.gh.prs[50]["head_sha"] = new_head
         self.assertIsNotNone(w.sup._complete_producer_fix_events(batch, info))
         w.git.integrated.extend([(str(first["worktree"]), HEAD1), (str(first["worktree"]), base)])
         self.assertIsNone(w.sup._complete_producer_fix_events(batch, info))
