@@ -69,6 +69,12 @@ def _decorated(test, attr):
     return bool(getattr(test, attr, False) or getattr(type(test), attr, False) or getattr(method, attr, False))
 
 
+def _uses_process_inventory(test):
+    method = getattr(type(test), test._testMethodName)
+    code = getattr(method, "__code__", None)
+    return bool(code and "ps_table" in code.co_names)
+
+
 def discover(root: Path):
     root = root.resolve()
     if str(root) not in sys.path:
@@ -83,6 +89,7 @@ def discover(root: Path):
         raise RunnerError("unittest discovery returned no TestCase instances")
 
     groups = {}
+    process_inventory_classes = set()
     seen = set()
     expected_skips, expected_failures = [], []
     for test in tests:
@@ -96,12 +103,15 @@ def discover(root: Path):
         cls = type(test)
         class_id = f"{cls.__module__}.{cls.__qualname__}"
         groups.setdefault(class_id, []).append(test_id)
+        if _uses_process_inventory(test):
+            process_inventory_classes.add(class_id)
         if _decorated(test, "__unittest_skip__"):
             expected_skips.append(test_id)
         if _decorated(test, "__unittest_expecting_failure__"):
             expected_failures.append(test_id)
 
-    return ([{"class_id": name, "test_ids": ids, "order": order}
+    return ([{"class_id": name, "test_ids": ids, "order": order,
+              "exclusive": name in process_inventory_classes}
              for order, (name, ids) in enumerate(groups.items())],
             expected_skips, expected_failures)
 
@@ -267,11 +277,16 @@ def main(argv=None) -> int:
     results = []
     with tempfile.TemporaryDirectory(prefix="warroom-test-workers-") as td:
         temp = Path(td)
+        parallel_groups = [group for group in ordered if not group["exclusive"]]
+        exclusive_groups = [group for group in ordered if group["exclusive"]]
         with ThreadPoolExecutor(max_workers=jobs, thread_name_prefix="warroom-test-class") as pool:
-            futures = {pool.submit(run_class, root, group, temp, env): group for group in ordered}
+            futures = {pool.submit(run_class, root, group, temp, env): group for group in parallel_groups}
             for future in as_completed(futures):
                 results.append(future.result())
                 print(".", end="", flush=True)
+        for group in exclusive_groups:
+            results.append(run_class(root, group, temp, env))
+            print(".", end="", flush=True)
         print()
         errors = audit_results(groups, results, expected_skips, expected_failures)
         if errors:

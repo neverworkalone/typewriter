@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 
-from tests.parallel_runner import audit_results, run_class
+from tests.parallel_runner import audit_results, discover, run_class
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +15,12 @@ ENV = dict(os.environ, PYTHONPATH=str(ROOT), PYTHONDONTWRITEBYTECODE="1")
 
 
 class ParallelRunnerContract(unittest.TestCase):
+    def test_global_process_inventory_classes_run_exclusively(self):
+        groups, _, _ = discover(ROOT)
+        by_class = {group["class_id"]: group for group in groups}
+        self.assertTrue(by_class["tests.test_issue_3773.RunnerContractTests"]["exclusive"])
+        self.assertFalse(by_class["tests.test_parallel_runner.ParallelRunnerContract"]["exclusive"])
+
     def test_successful_class_reports_all_executed_ids(self):
         test_id = "tests.runner_fixtures.SuccessfulCase.test_success"
         group = {"class_id": "tests.runner_fixtures.SuccessfulCase", "test_ids": [test_id], "order": 0}
