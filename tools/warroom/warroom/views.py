@@ -269,7 +269,7 @@ def maintainer_card_text(card: dict) -> str:
 
 TIER_FOOTER = {
     "free": ("Free", "b green"),
-    "go": ("Go", "b blue"),
+    "go": ("Go", "b yellow"),
     "api": ("API", "b red"),
     "mixed": ("혼합", "b yellow"),
     "none": ("DeepSeek Go 모델 미설정", "dim"),

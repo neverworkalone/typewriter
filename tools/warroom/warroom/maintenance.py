@@ -1407,6 +1407,7 @@ class Maintenance:
         return (not tasks or ((source["method"], source["run_kind"]) in batch_steps
                               and all(isinstance(t, dict) and t.get("state") == "SAVED" for t in tasks)))
 
+
     def _finish_structured_diagnosis(self, b, d, data: dict, base: str) -> bool:
         """Re-check the exact source event and evidence bundle before accepting a no-PR result."""
         required = {"version", "issue", "attempt", "round", "defect_id", "event_key", "batch_id", "source_head",

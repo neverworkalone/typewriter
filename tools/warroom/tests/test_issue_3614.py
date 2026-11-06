@@ -216,6 +216,13 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertTrue(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}]))
         self.assertFalse(Maintenance._batch_investigation_scope(source, [{"state": "FAILED"}]))
         self.assertFalse(Maintenance._batch_investigation_scope({"method": "c", "run_kind": "s2_repair_new"}, [{"state": "SAVED"}]))
+    def test_c_finalize_investigation_requires_all_tasks_saved(self):
+        from warroom.maintenance import Maintenance
+        source = {"method": "c", "run_kind": "c_finalize"}
+        self.assertTrue(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}, {"state": "SAVED"}]))
+        self.assertFalse(Maintenance._batch_investigation_scope(source, [{"state": "SAVED"}, {"state": "FAILED"}]))
+        self.assertFalse(Maintenance._batch_investigation_scope({"method": "c", "run_kind": "c_parallel"}, [{"state": "SAVED"}]))
+
     def setUp(self):
         self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
