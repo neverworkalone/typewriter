@@ -64,6 +64,37 @@ class RestartWorld(ParallelDHelpers):
 
 
 class DrainCollectsThenReady(RestartWorld, unittest.TestCase):
+    def test_operator_drains_survive_restart_before_and_after_draining(self):
+        for initially_drained in (1, 2, 3):
+            with self.subTest(initially_drained=initially_drained):
+                w = self.world(records=25)
+                lines = [("idle1", "a"), ("idle2", "b"), ("idle3", "c")]
+                for line in lines:
+                    w.store.line(*line)
+                for line in lines[:initially_drained]:
+                    w.store.request_drain(*line, True)
+                request = self.request(w)
+                self.drive.cycle()
+                self.assertEqual(self.phase(w), "DRAINING")
+                w.store.request_drain(*lines[-1], True)
+                self.drive.cycles(2)
+                self.assertEqual(self.phase(w), "READY")
+                state = self.controller(w)
+                self.assertEqual((state["kill"], self.phase(w)), (1, "STOPPING"))
+                self.assertEqual(json.loads(request.read_text())["state"], "loaded")
+                self.assertTrue(all(w.store.line(*line)["drain"] for line in lines[:initially_drained]))
+                self.assertTrue(w.store.line(*lines[-1])["drain"])
+
+    def test_serial_and_stopped_paths_keep_safety_controls_with_drain(self):
+        w = self.world(records=25)
+        w.store.line(*LINE)
+        w.store.request_drain(*LINE, True)
+        self.assertIsNone(rc._live_work_or_controls(w.store))
+        self.assertIsNone(rc._live_work_or_controls(w.store, recovering_stopped_supervisor=True))
+        w.store.set_line(*LINE, force_stop=1)
+        self.assertIn("Stop", rc._live_work_or_controls(w.store))
+        self.assertIsNone(rc._live_work_or_controls(w.store, recovering_stopped_supervisor=True))
+
     def test_running_ai_is_collected_and_saved_while_draining_then_ready_with_no_new_spawn(self):
         w = self.world()
         self.plan_all(w, range(1, 11))
@@ -167,6 +198,7 @@ class DrainCollectsThenReady(RestartWorld, unittest.TestCase):
                 state["alive"] = False
             if args[0] == "new-session":
                 rc.record_runtime(paths, HEAD1, configured_workers=16, workers=16, instance="next-instance")
+                state["alive"] = True
             out = {"display-message": str(os.getpid()) if "#{pane_pid}" in args else "0"}.get(args[0], "")
             return mock.Mock(returncode=1 if args[0] == "show-environment" else 0, stdout=out)
 
@@ -176,6 +208,7 @@ class DrainCollectsThenReady(RestartWorld, unittest.TestCase):
              mock.patch.object(rc, "_worktree_ownership_problem", side_effect=ownership or (lambda *a, **k: None)), \
              mock.patch.object(rc, "_lock_held", side_effect=lock_held), \
              mock.patch.object(rc, "_pid_alive", return_value=True), \
+             mock.patch.object(rc, "_live_runtime_owner", return_value=True), \
              mock.patch.object(rc, "STARTUP_TIMEOUT", 2), \
              mock.patch.object(rc.os, "getpgid", return_value=1), \
              mock.patch.object(rc, "_tmux", side_effect=tmux), \
@@ -363,14 +396,20 @@ class RestartPhaseCas(RestartWorld, unittest.TestCase):
         self.assertTrue(w.sup.launch_gate.is_open and w.sup.accepting_new_work())
         self.assertFalse(w.sup._submit_hold)
 
-    def test_a_new_operator_drain_or_defect_hold_cancels_instead_of_waiting_forever(self):
-        for revoke in (lambda w: w.store.request_drain(*LINE, True),
-                       lambda w: w.store.set(f"defect_hold_{w.row_()['id']}", "1")):
-            w = self.world(records=25)
-            self.ready(w)
-            revoke(w)
-            self.drive.cycle()
-            self.assertEqual(self.phase(w), "RUNNING")
+    def test_a_new_operator_drain_does_not_cancel_ready(self):
+        w = self.world(records=25)
+        self.ready(w)
+        w.store.request_drain(*LINE, True)
+        self.drive.cycle()
+        self.assertEqual(self.phase(w), "READY")
+        self.assertTrue(w.store.line(*LINE)["drain"])
+
+    def test_a_new_defect_hold_cancels_ready(self):
+        w = self.world(records=25)
+        self.ready(w)
+        w.store.set(f"defect_hold_{w.row_()['id']}", "1")
+        self.drive.cycle()
+        self.assertEqual(self.phase(w), "RUNNING")
 
     def test_stop_before_ready_is_processed_and_stop_after_ready_is_handed_to_the_next_supervisor(self):
         w = self.world(records=25)
