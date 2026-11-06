@@ -72,8 +72,9 @@ class ReloadTable(unittest.TestCase):
                 else:   # fail-closed: the old config stays, and the reason is in the event log
                     self.assertEqual(self.w.sup.cfg, before)
                     self.assertIn("리로드 거부", self.w.store.recent_events(limit=1)[0]["msg"])
-                self.w.paths.config_file.write_text(json.dumps({"producers": {"deepseek": DS}, "ab_chunk_sessions": False}), "utf-8")
-                reload(self.w)
+                if ok:
+                    self.w.paths.config_file.write_text(json.dumps({"producers": {"deepseek": DS}, "ab_chunk_sessions": False}), "utf-8")
+                    reload(self.w)
 
     def test_reload_problem_is_pure_and_covers_restart_keys(self):
         base = load_config(self.w.paths)
@@ -187,8 +188,9 @@ class RuntimeValueTypes(unittest.TestCase):
                 got, msg = reload(self.w)
                 self.assertEqual(got, ok, msg)
                 self.assertEqual(self.w.sup.cfg[key] == value, ok) if ok else self.assertEqual(self.w.sup.cfg, before)
-                write(self.w, {"deepseek": DS, "claude": SONNET})
-                reload(self.w)
+                if ok:
+                    write(self.w, {"deepseek": DS, "claude": SONNET})
+                    reload(self.w)
 
     def test_nested_producer_entries(self):
         cases = [  # name, producers, accepted
@@ -213,8 +215,9 @@ class RuntimeValueTypes(unittest.TestCase):
                     self.assertEqual(self.w.sup.cfg, before)
                     from warroom.config import config_problem
                     self.assertIsNotNone(config_problem(load_config(self.w.paths)))   # Start refuses it too
-                write(self.w, {"deepseek": DS, "claude": SONNET})
-                reload(self.w)
+                if ok:
+                    write(self.w, {"deepseek": DS, "claude": SONNET})
+                    reload(self.w)
 
     def test_consumers_keep_working_after_a_rejected_reload(self):
         # (a) WAITING_REVIEW keeps being watched; (c) a rate-limit failure keeps its bounded backoff
