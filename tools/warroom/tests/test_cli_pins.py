@@ -125,10 +125,13 @@ class RegistryValidation(unittest.TestCase):
 
 
 class RunPins(unittest.TestCase):
-    def test_session_pins_allow_only_verified_go_to_api(self):
+    def test_session_pins_allow_configured_tier_transitions(self):
         w = World()
         go = RunSpec("opencode-go/deepseek-v4.1-flash", "low")
         api = RunSpec("deepseek/deepseek-flash", "none")
+        w.cfg["producers"] = {"deepseek": {"adapter": "opencode", "effort": "low",
+            "models": {"free": "p/free-x-free", "go": go.model, "api": api.model},
+            "tier_efforts": {"api": "none"}}}
         for method in ("a", "b", "c", "d"):
             bid = w.store.create_batch(method=method, producer="deepseek", shard="001", batch="01",
                                        branch=f"branch-{method}", worktree=f"/{method}")
@@ -136,10 +139,13 @@ class RunPins(unittest.TestCase):
             b = w.store.batch(bid)
             w.sup._check_session_pin(b, "session", go)
             w.sup._check_session_pin(b, "session", api)
+            w.sup._check_session_pin(b, "session", RunSpec("p/free-x-free", "low"))
             with self.assertRaises(Exception):
                 w.sup._check_session_pin(b, "session", RunSpec(api.model, "high"))
             with self.assertRaises(Exception):
                 w.sup._check_session_pin(b, "unknown", api)
+            w.store.add_run(bid, "resume", "session", None, "api.log", "api.exit", model=api.model, effort=api.effort)
+            w.sup._check_session_pin(b, "session", RunSpec("p/free-x-free", "low"))
         w.tmp.cleanup()
 
     def test_api_effort_override_is_isolated(self):

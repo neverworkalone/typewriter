@@ -2362,15 +2362,21 @@ class Supervisor:
                        fast=None if r["fast_mode"] is None else bool(r["fast_mode"])) if r else None
 
     def _check_session_pin(self, b, session, run):
-        """Prove the session pin; permit the owner-verified OpenCode Go -> API transition only."""
+        """Prove the session pin and permit configured tier transitions with unchanged permissions."""
         if b["method"] not in ("a", "b", "c", "d") or not self._tiered(b["producer"]):
             return
         row = next((r for r in self.store.runs(b["id"]) if r["session_id"] == session and r["model"]), None)
         pinned = (RunSpec(row["model"], row["effort"], row["permission_profile"] or "",
                           fast=None if row["fast_mode"] is None else bool(row["fast_mode"])) if row else None)
-        verified_go = RunSpec("opencode-go/deepseek-v4.1-flash", "low")
-        verified_api = RunSpec("deepseek/deepseek-flash", "none")
-        if pinned != run and not (pinned == verified_go and run == verified_api):
+        configured = []
+        for tier in ("free", "go", "api"):
+            try:
+                configured.append(run_spec(self.cfg, b["producer"], tier, role_of(b["method"])))
+            except ValueError:
+                continue
+        compatible = (pinned in configured and run in configured and pinned is not None and
+                      pinned.permission_profile == run.permission_profile and pinned.fast == run.fast)
+        if pinned != run and not compatible:
             raise prompts.PromptError("기존 세션의 모델·effort·권한 핀이 현재 설정과 다르거나 확인되지 않아 재개하지 않습니다")
 
     def _agent_env(self) -> dict:
