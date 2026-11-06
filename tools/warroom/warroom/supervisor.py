@@ -1342,10 +1342,7 @@ class Supervisor:
         )]
 
     def _find_recovery_pr(self, b):
-        """Find one existing PR and prove its branch/candidate claim belongs to this batch before handoff."""
-        if b["method"] == MAINTENANCE_METHOD:
-            # Maintainer PRs change code/prompts and carry no Stage 1 Candidate claim.
-            return self._find_pr(b)
+        """Find one owned-branch PR; data batches must also prove their Candidate or shard claim."""
         prs = self.gh.prs_for_branch(b["branch"])
         if not isinstance(prs, list):
             raise RecoveryBlocked("소유 브랜치 PR 조회 결과 형식이 잘못되었습니다")
@@ -1361,20 +1358,21 @@ class Supervisor:
         info = self.gh.pull(number)
         if info.get("number") != number or info.get("head_ref") != b["branch"]:
             raise RecoveryBlocked(f"PR #{number}의 head 브랜치가 배치 소유 브랜치와 다릅니다")
-        files = self.gh.pull_files(number)
-        if b["method"] == STAGE3_METHOD:
-            try:
-                shard = stage3.validate_pr(info, files)
-            except stage3.Stage3Error as error:
-                raise RecoveryBlocked(str(error)) from error
-            if shard != b["shard"]:
-                raise RecoveryBlocked(f"PR #{number}가 Stage 3 소유 샤드 {b['shard']}와 다릅니다 ({shard})")
-        candidates = batches.pr_claims(b, {"number": number, "files": files})
-        expected = batches.expected_claim(b)
-        stage3_empty_diff = b["method"] == STAGE3_METHOD and files == []
-        if not stage3_empty_diff and (candidates.count(expected) != 1 or any(item != expected for item in candidates)):
-            raise RecoveryBlocked(f"PR #{number}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
-                                  f"(기대 {expected}, 확인 {candidates})")
+        if b["method"] != MAINTENANCE_METHOD:
+            files = self.gh.pull_files(number)
+            if b["method"] == STAGE3_METHOD:
+                try:
+                    shard = stage3.validate_pr(info, files)
+                except stage3.Stage3Error as error:
+                    raise RecoveryBlocked(str(error)) from error
+                if shard != b["shard"]:
+                    raise RecoveryBlocked(f"PR #{number}가 Stage 3 소유 샤드 {b['shard']}와 다릅니다 ({shard})")
+            candidates = batches.pr_claims(b, {"number": number, "files": files})
+            expected = batches.expected_claim(b)
+            stage3_empty_diff = b["method"] == STAGE3_METHOD and files == []
+            if not stage3_empty_diff and (candidates.count(expected) != 1 or any(item != expected for item in candidates)):
+                raise RecoveryBlocked(f"PR #{number}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
+                                      f"(기대 {expected}, 확인 {candidates})")
         dup = self._duplicate_claim(b, number)
         if dup:
             raise RecoveryBlocked(f"같은 배치를 다른 열린 PR #{dup}이 점유 — 복구를 중단합니다")

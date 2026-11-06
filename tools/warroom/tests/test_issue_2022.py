@@ -233,6 +233,63 @@ class MaintainerControls(World2022):
                          ("WAITING_REVIEW", 50, HEAD1))
         self.assertEqual(len(w.adapter.launches), launches)
 
+    def test_retry_recovers_merged_maintainer_code_pr_through_cleanup_without_ai(self):
+        w = self.w
+        source, m = start_maintainer(w)
+        run_id = w.store.runs(m["id"])[0]["id"]
+        w.adapter.finish(m["pid"])
+        w.tick()
+        self.assertEqual(maintainer_row(w)["state"], "ERROR")
+        self.assertEqual(w.store.get("verified_completion_run_" + str(m["id"])), str(run_id))
+
+        w.pr_info(50, HEAD1, state="closed", merged=True, head_ref="maint-101", merge_sha=MERGE)
+        w.gh.by_branch["maint-101"] = [{
+            "number": 50, "state": "CLOSED", "headRefOid": HEAD1, "mergedAt": "2026-11-06T07:00:00Z",
+        }]
+        w.gh.files[50] = [{"path": "tools/warroom/prompts/m.md"}]
+        launches = len(w.adapter.launches)
+        self.assertTrue(control.retry_maintainer(w.store, 101, m["id"]))
+        w.tick()
+        w.tick()
+
+        with w.sup.lanes.try_hold(source["producer"], source["method"]) as held:
+            self.assertTrue(held)
+            w.tick(5)
+            self.assertEqual(maintainer_row(w)["state"], "COMPLETE")
+            self.assertEqual(w.store.maintenance(101)["state"], "DONE")
+            defect, = w.store.defects()
+            self.assertEqual(defect["state"], "FIX_MERGED")
+            self.assertEqual(w.store.batch(source["id"])["state"], "PAUSED")
+        self.assertEqual(len(w.adapter.launches), launches)
+
+    def test_retry_fails_closed_when_multiple_maintainer_prs_share_the_owned_branch(self):
+        w = self.w
+        _, m = start_maintainer(w)
+        run_id = w.store.runs(m["id"])[0]["id"]
+        w.adapter.finish(m["pid"])
+        w.tick()
+        self.assertEqual(maintainer_row(w)["state"], "ERROR")
+        self.assertEqual(w.store.get("verified_completion_run_" + str(m["id"])), str(run_id))
+
+        for number in (50, 51):
+            w.pr_info(number, HEAD1, head_ref="maint-101")
+            w.gh.files[number] = [{"path": "tools/warroom/prompts/m.md"}]
+        w.gh.by_branch["maint-101"] = [
+            {"number": 50, "state": "OPEN", "headRefOid": HEAD1},
+            {"number": 51, "state": "OPEN", "headRefOid": HEAD1},
+        ]
+        launches = len(w.adapter.launches)
+        self.assertTrue(control.retry_maintainer(w.store, 101, m["id"]))
+        w.tick()
+        w.tick()
+
+        current = maintainer_row(w)
+        self.assertEqual(current["state"], "ERROR")
+        self.assertIsNone(current["pr_number"])
+        self.assertIn("PR이 여러 개 있습니다", current["error"])
+        self.assertTrue(Path(m["worktree"]).exists())
+        self.assertEqual(len(w.adapter.launches), launches)
+
     def test_stop_bound_to_a_finished_issue_never_stops_the_next_one(self):
         w = self.w
         b, m = start_maintainer(w)
