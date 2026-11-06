@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
 from pathlib import Path
+import random
 import subprocess
 import sys
 import tempfile
@@ -256,7 +257,12 @@ def main(argv=None) -> int:
         return 1
 
     started = time.monotonic()
-    ordered = sorted(groups, key=lambda group: (-len(group["test_ids"]), group["order"]))
+    shuffle_seed = os.environ.get("WARROOM_TEST_SHUFFLE")
+    if shuffle_seed:
+        ordered = list(groups)
+        random.Random(shuffle_seed).shuffle(ordered)
+    else:
+        ordered = sorted(groups, key=lambda group: (-len(group["test_ids"]), group["order"]))
     env = dict(os.environ, PYTHONPATH=str(root), PYTHONDONTWRITEBYTECODE="1")
     results = []
     with tempfile.TemporaryDirectory(prefix="warroom-test-workers-") as td:

@@ -1027,7 +1027,6 @@ class World:
 
     @store.setter
     def store(self, store):   # a test re-creating the Store gets its own anchor, all closed before tmp is deleted
-        self._store = store
         anchor = sqlite3.connect(store.path, timeout=30, check_same_thread=False)
         try:
             mode = anchor.execute("PRAGMA journal_mode").fetchone()
@@ -1036,6 +1035,7 @@ class World:
         except BaseException:
             anchor.close()
             raise
+        self._store = store
         self.tmp.anchors.append(anchor)
 
     def __init__(self, models=None):

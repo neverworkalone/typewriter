@@ -72,7 +72,7 @@ class TestWorldAnchor(unittest.TestCase):
             temporary_dirs.append(tmp)
             return tmp
 
-        with mock.patch.object(fakes, "_WorldTemporaryDirectory", side_effect=temporary_directory), \
+        with mock.patch.object(fakes, "_WorldTmp", side_effect=temporary_directory), \
              mock.patch.object(fakes.sqlite3, "connect", side_effect=connect):
             with self.assertRaisesRegex(sqlite3.OperationalError, "not in WAL mode"):
                 World()
