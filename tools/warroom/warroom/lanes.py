@@ -5,9 +5,15 @@ import threading
 _local = threading.local()
 
 
+def held_names() -> frozenset:
+    """Names of the named locks (e.g. L3 `verify`, L4 `repo`) the calling thread holds right now."""
+    return frozenset(lock.name for lock in getattr(_local, "held", []) if lock.name)
+
+
 class OrderedLock:
-    def __init__(self, rank, *, reentrant=False):
+    def __init__(self, rank, *, reentrant=False, name=None):
         self.rank = rank
+        self.name = name
         self._lock = threading.RLock() if reentrant else threading.Lock()
 
     def acquire(self, blocking=True):

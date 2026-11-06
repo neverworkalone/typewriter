@@ -22,7 +22,7 @@ from pathlib import Path
 
 from . import auth, cparallel, dchunk, defects, dparallel, literary, progress, stage2, stage3
 from .config import maintainer_id, maintainer_problem
-from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked
+from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked, ResourceFenced
 from .store import MAINTENANCE_DIAGNOSIS_HOLD_PREFIX, MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
 
 _NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` regression files wherever they live (AGENTS.md)
@@ -601,6 +601,8 @@ class Maintenance:
         except IntegrationBlocked as e:
             self._hold(d, b, str(e))
             return
+        except ResourceFenced:
+            raise
         except GitError as e:
             self.store.log(b["id"], f"수정 반영 중 Git 오류(재시도 예정): {e}", "warn")
             return
@@ -2341,6 +2343,8 @@ class Maintenance:
         if initial_pr is not None:
             try:
                 protected = self.sup._pr_protected_paths(b, initial_pr)
+            except ResourceFenced:
+                raise
             except (FastForwardBlocked, GitError) as e:
                 raise IntegrationBlocked(f"기존 PR의 보호 산출물 소유권을 확인할 수 없습니다: {e}") from e
             if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
