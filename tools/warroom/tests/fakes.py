@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import re
+import sqlite3
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -999,9 +1000,38 @@ class FakeGh:
     def commit_time(self, sha): return self.commit_ts
 
 
+class _WorldTmp(tempfile.TemporaryDirectory):
+    """World's tmp dir: every exit path (tearDown, addCleanup, a test's own cleanup(), `with`) closes the World's idle
+    anchors before the directory is deleted."""
+
+    def __init__(self):
+        super().__init__()
+        self.anchors = []
+
+    def cleanup(self):
+        anchors, self.anchors = self.anchors, []
+        for conn in anchors:
+            conn.close()
+        super().cleanup()
+
+
 class World:
+    # Test-only speed-up (#3801): an idle sqlite3 connection (never queried) on the Store's DB, so the per-call
+    # connections of Store._conn() are not the last close (no WAL checkpoint/-wal delete on each).
+
+    @property
+    def store(self):
+        return self._store
+
+    @store.setter
+    def store(self, store):   # a test re-creating the Store gets its own anchor, all closed before tmp is deleted
+        self._store = store
+        anchor = sqlite3.connect(store.path, timeout=30, check_same_thread=False)
+        anchor.execute("PRAGMA journal_mode=WAL")   # joins the WAL (opens -shm); no query or transaction ever runs
+        self.tmp.anchors.append(anchor)
+
     def __init__(self, models=None):
-        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp = _WorldTmp()
         root = Path(self.tmp.name)
         self.paths = Paths(repo_root=root, local=root / "local")
         self.paths.ensure()
