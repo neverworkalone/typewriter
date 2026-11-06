@@ -1539,6 +1539,29 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertEqual(launch["prompt"], prompts.d_chunk_fix(b, 1, "fixture rejection"))
         self.assertEqual(w.store.runs(b["id"])[0]["kind"], "d_chunk_fix")
 
+    def test_parallel_d_stale_rejection_is_proved_without_writing_then_refreshed_for_retry(self):
+        from unittest import mock
+        w = self.w
+        b = make_batch(w, "d", run_kind="d_parallel")
+        task = "001"
+        w.store.add_tasks(b["id"], [(task, task)])
+        w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
+                            data=json.dumps({"ack": True, "kind": "fix"}))
+        w.store.set(dchunk.fix_key(b["id"], 1), "1")
+        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
+        rejection = {"errors": ["remaining rejected sense"]}
+        with mock.patch.object(dchunk, "read_active", return_value=active), \
+             mock.patch.object(dchunk, "read_rejection", return_value=None), \
+             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=rejection) as refresh:
+            self.assertEqual(w.sup.resume_prompt_names(b), {"d_chunk_fix"})
+            self.assertTrue(refresh.call_args.kwargs["dry_run"])
+            self.assertTrue(refresh.call_args.kwargs["limit_to_previous"])
+            round_ = dparallel._Round(w.sup.dp, b)
+            w.sup.dp._reset_acknowledged_failures(b, round_)
+            self.assertNotIn("dry_run", refresh.call_args.kwargs)
+            row = w.store.task_row(b["id"], task)
+            self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
+
     def test_a_held_incident_is_reproved_after_the_code_checkout_changes(self):
         from unittest import mock
         from pathlib import Path

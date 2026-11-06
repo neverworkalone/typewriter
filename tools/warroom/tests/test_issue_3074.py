@@ -283,6 +283,10 @@ class ParallelDCorrections(ParallelDHelpers, unittest.TestCase):
         w.inspect_rejection(fresh)
         w.runner.dchunk.inspection["rejection"] = fresh
         self.assertIsNone(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec))
+        before = path.read_bytes()
+        self.assertEqual(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec,
+                                                               limit_to_previous=True, dry_run=True), fresh)
+        self.assertEqual(path.read_bytes(), before)
         self.assertEqual(dchunk.refresh_stale_search_rejection(w.runner, w.sup._d_env(b), wt, b, rec,
                                                                limit_to_previous=True), fresh)
 

@@ -667,6 +667,10 @@ class Supervisor:
                 rec = dchunk.read_active(wt, b, task)
                 used = int(self.store.get(dchunk.fix_key(b["id"], task)) or 0)
                 diag = dchunk.read_rejection(wt, b, rec) if rec is not None else None
+                if rec is not None and diag is None and row["session_id"] and used:
+                    diag = dchunk.refresh_stale_search_rejection(
+                        self.runner, self._d_env(b), wt, b, rec,
+                        limit_to_previous=used >= dchunk.MAX_FIXES, dry_run=True)
             except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError):
                 return None
 
