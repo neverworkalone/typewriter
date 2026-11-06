@@ -2,10 +2,12 @@
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.test_issue_1684 import S2
 from tests.test_issue_1908 import s2_world, write_state
 from warroom import control, prbody, prompts, stage2, stage3
+from warroom.adapters import PREFLIGHT_PENDING
 from warroom.gitops import IntegrationBlocked
 
 
@@ -14,6 +16,104 @@ def answer(text):
 
 
 class Stage2Finalization(unittest.TestCase):
+    def test_unpushed_review_fix_resumes_only_the_proven_session_once(self):
+        w, b = self.start_optional_part()
+        head, local = "a" * 40, "b" * 40
+        w.store.update(b["id"], state="FIXING", run_kind="fix_new", session_id="fix-session", pr_number=7)
+        b = w.store.batch(b["id"])
+        w.store.set(f"s2_fix_start_{b['id']}", json.dumps({"branch": b["branch"],
+                    "worktree": b["worktree"], "head": head}))
+        w.pr_info(7, head, head_ref=b["branch"])
+        info = w.gh.pull(7)
+        w.git.local_head = local
+        w.git.remote[b["branch"]] = head
+        w.git.ancestor_pairs.add((head, local))
+        last = {"id": 42, "kind": "fix_new", "session_id": "fix-session"}
+        with patch.object(w.sup, "_verified_fix_exit", return_value=True), \
+             patch.object(w.sup, "_last_run", return_value=last), \
+             patch.object(w.sup, "_launch") as launch:
+            self.assertEqual(w.sup._check_fix_head(b, info), "stop")
+            launch.assert_called_once_with(b, "fix_resume", [], s2_resume_run_id=42)
+            w.store.set(f"s2_unpushed_fix_resume_{b['id']}", "42")
+            launch.reset_mock()
+            self.assertFalse(w.sup._resume_unpushed_stage2_fix(b, info, local))
+            launch.assert_not_called()
+            w.store.delete(f"s2_unpushed_fix_resume_{b['id']}")
+            w.git.ancestor_pairs.clear()
+            self.assertFalse(w.sup._resume_unpushed_stage2_fix(b, info, local))
+            launch.assert_not_called()
+            w.git.ancestor_pairs.add((head, local))
+            last["session_id"] = "other-session"
+            self.assertFalse(w.sup._resume_unpushed_stage2_fix(b, info, local))
+            last["session_id"] = "fix-session"
+            w.git.remote[b["branch"]] = "c" * 40
+            self.assertFalse(w.sup._resume_unpushed_stage2_fix(b, info, local))
+            launch.assert_not_called()
+
+    def test_unpushed_fix_preflight_wait_does_not_consume_resume(self):
+        w, b = self.start_optional_part()
+        head, local = "a" * 40, "b" * 40
+        w.store.update(b["id"], state="FIXING", run_kind="fix_new", session_id="fix-session", pr_number=7, pid=None)
+        b = w.store.batch(b["id"])
+        write_state(b, decided=2, merged=True)
+        w.store.set(f"s2_fix_start_{b['id']}", json.dumps({"branch": b["branch"],
+                    "worktree": b["worktree"], "head": head}))
+        w.pr_info(7, head, head_ref=b["branch"])
+        info = w.gh.pull(7)
+        w.git.local_head = local
+        w.git.remote[b["branch"]] = head
+        w.git.ancestor_pairs.add((head, local))
+        last = {"id": 42, "kind": "fix_new", "session_id": "fix-session"}
+        key = f"s2_unpushed_fix_resume_{b['id']}"
+        count = len(w.adapter.launches)
+        with patch.object(w.sup, "_verified_fix_exit", return_value=True), \
+             patch.object(w.sup, "_last_run", return_value=last), \
+             patch.object(w.sup, "_preflight", side_effect=[PREFLIGHT_PENDING + " checking", None]):
+            self.assertEqual(w.sup._check_fix_head(b, info), "stop")
+            self.assertIsNone(w.store.get(key))
+            self.assertEqual(len(w.adapter.launches), count)
+            w.sup._poll_run(w.store.batch(b["id"]))
+            self.assertEqual(len(w.adapter.launches), count + 1)
+            self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
+            self.assertEqual(w.adapter.launches[-1]["session"], "fix-session")
+            self.assertEqual(w.store.get(key), "42")
+            self.assertFalse(w.sup._resume_unpushed_stage2_fix(b, info, local))
+            self.assertEqual(len(w.adapter.launches), count + 1)
+
+    def test_unpushed_fix_spawn_failure_keeps_attempt_consumed(self):
+        w, b = self.start_optional_part()
+        head, local = "a" * 40, "b" * 40
+        w.store.update(b["id"], state="FIXING", run_kind="fix_new", session_id="fix-session", pr_number=7, pid=None)
+        b = w.store.batch(b["id"])
+        write_state(b, decided=2, merged=True)
+        w.store.set(f"s2_fix_start_{b['id']}", json.dumps({"branch": b["branch"],
+                    "worktree": b["worktree"], "head": head}))
+        w.pr_info(7, head, head_ref=b["branch"])
+        info = w.gh.pull(7)
+        w.git.local_head = local
+        w.git.remote[b["branch"]] = head
+        w.git.ancestor_pairs.add((head, local))
+        last = {"id": 42, "kind": "fix_new", "session_id": "fix-session"}
+        with patch.object(w.sup, "_verified_fix_exit", return_value=True), \
+             patch.object(w.sup, "_last_run", return_value=last), \
+             patch.object(w.sup, "_preflight", return_value=None), \
+             patch.object(w.adapter, "resume", side_effect=RuntimeError("spawn failed")) as resume:
+            self.assertEqual(w.sup._check_fix_head(b, info), "stop")
+            self.assertEqual(w.store.get(f"s2_unpushed_fix_resume_{b['id']}"), "42")
+            self.assertEqual(w.store.batch(b["id"])["state"], "ERROR")
+            self.assertFalse(w.sup._resume_unpushed_stage2_fix(b, info, local))
+            resume.assert_called_once()
+
+    def test_failed_review_fix_continuation_never_relaunches_on_network_error(self):
+        w, b = self.start_optional_part()
+        w.store.update(b["id"], state="FIXING", run_kind="fix_resume", log_file="unused")
+        b = w.store.batch(b["id"])
+        with patch.object(w.sup, "_classify_run", return_value="network"), \
+             patch.object(w.sup, "_launch") as launch:
+            w.sup._run_failed(b, 1)
+            self.assertEqual(w.store.batch(b["id"])["state"], "ERROR")
+            launch.assert_not_called()
+
     def start_optional_part(self, *plans, sense_id="source-sense"):
         w = s2_world(self)
         w.git.chunk_view_total = 1
