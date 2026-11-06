@@ -2763,6 +2763,10 @@ class Supervisor:
                 wt = Path(b["worktree"])
                 chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(wt, b), baseline["chunk_no"])
                 return bool(stage1ab.chunk_saved(wt, b, chunk))
+            if self._d_chunk_run(b) and dchunk.read_active(Path(b["worktree"]), b) is None:
+                # accepted and its active scratch already cleaned: the run's own baseline chunk is in the verified prefix
+                baseline = json.loads(self.store.get(dchunk.run_start_key(b["id"])) or "")
+                return dchunk.verified_prefix(Path(b["worktree"]), b)[0] >= int(baseline["chunk_no"])
             return bool(self._saved_chunk_for_run(b))
         except Exception:   # unknown is not saved: the verdict is re-derived, never skipped
             return False
