@@ -10,17 +10,18 @@ from warroom import prompts
 
 
 class MaintainerFixPrompt(unittest.TestCase):
-    def test_incident_handoff_prompt_preserves_exact_comment_fields(self):
-        prompt = prompts.produce(
-            {"method": "m", "batch": "3800", "branch": "maint-3800"},
-            directory=prompts.PROMPT_DIR,
-        )
-        for expected in (
+    def test_incident_handoff_prompt_paths_preserve_exact_comment_fields(self):
+        batch = {"method": "m", "batch": "3800", "branch": "maint-3800"}
+        expected_fields = (
             "`summary`, `cause`, `recovery.action`, `next_action`, `evidence_sha256`",
             "각 필드별로 원문 그대로",
             "완전히 일치하는 문자열",
-        ):
-            self.assertIn(expected, prompt)
+        )
+        for path, render in (("new", prompts.produce), ("resume", prompts.recovery)):
+            with self.subTest(path=path):
+                prompt = render(batch, directory=prompts.PROMPT_DIR)
+                for expected in expected_fields:
+                    self.assertIn(expected, prompt)
 
     def test_issue_scoped_prompt_renders_for_new_and_resumed_review(self):
         b = {
