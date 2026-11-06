@@ -177,6 +177,28 @@ class DeathBeforeTheVerdict(unittest.TestCase):
         self.assertEqual((len(w.adapter.launches), last["kind"], last["session"]), (2, "resume", "ses_1"))
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry"])
 
+    def test_ab_rejection_commits_before_interrupted_retry_and_resumes_once(self):
+        for method in ("a", "b"):
+            with self.subTest(method=method):
+                w = ABWorld(method=method)
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", method)
+                w.ai(w.block(1, end=False), session="ses_1")
+                w.ai(w.block(1), session="ses_1")
+                w.tick()
+                w.finish_last()
+                bid = w.row_()["id"]
+                w.sup._launch_ab_next = lambda *a, **k: (_ for _ in ()).throw(Died())
+                with self.assertRaises(Died):
+                    w.tick()
+                self.assertIsNone(w.store.get(exit_verdict_key(bid)))
+                self.assertIsNotNone(w.store.get(stage1ab.run_start_key(bid)))
+                restart(w)
+                w.tick()
+                self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry"])
+                self.assertEqual(w.adapter.launches[-1]["session"], "ses_1")
+                self.assertEqual(stage1ab.load_state(w.store, bid, 1)["tries"], 1)
+
     def test_ab_death_after_the_official_save_accepts_the_saved_file_without_an_ai(self):
         w = ABWorld()
         self.addCleanup(w.tmp.cleanup)

@@ -8574,9 +8574,12 @@ class Supervisor:
                 return self._fail(b, "ERROR", "후보 제거 후 save-chunk가 성공했지만 저장 파일이 chunk의 Canonical ID와 맞지 않습니다. 보존합니다.")
             return self._ab_accept(b, chunk, repair)
         st["tries"] += 1
-        stage1ab.save_state(self.store, b["id"], chunk["number"], st)
+        last = self._last_run(b)
+        if last is None or last["ended_at"] is None:
+            return self._fail(b, "ERROR", "A/B 정정 대상 종료 run을 확인할 수 없습니다. 보존합니다.")
+        st["rejected_run_id"] = last["id"]
+        self.store.commit_ab_rejection(b["id"], stage1ab.state_key(b["id"], chunk["number"]), json.dumps(st, sort_keys=True))
         self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장 거부 {st['tries']}회: {diag[:200]}", "warn")
-        self.store.delete(stage1ab.run_start_key(b["id"]))
         return self._launch_ab_next(self.store.batch(b["id"]))
 
     def _ab_chunk_response(self, b) -> bool:
@@ -8619,6 +8622,19 @@ class Supervisor:
                 saved = stage1ab.chunk_saved(wt, b, chunk)
             except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
                 return self._fail(b, "ERROR", f"A/B 청크 재개 전 저장 확인 실패: {e}. 보존합니다.")
+            # A rejection is a committed exit outcome even if the next launch was interrupted. Check its original
+            # boundary and saved prefix before resuming the correction; never apply the same answer a second time.
+            state_raw = self.store.get(stage1ab.state_key(b["id"], chunk["number"]))
+            try:
+                state = json.loads(state_raw or "{}")
+                last = self._last_run(b)
+                rejected = last is not None and state.get("rejected_run_id") == last["id"]
+                if rejected and stage1ab.saved_snapshot(wt, b, stage1ab.checkpoint(wt, b)) != baseline.get("saved"):
+                    return self._fail(b, "ERROR", "A/B 정정 대기 중 저장물이 변경됐습니다. 보존합니다.")
+            except (stage1ab.ABChunkError, OSError, ValueError, TypeError, AttributeError) as e:
+                return self._fail(b, "ERROR", f"A/B 정정 재개 증거 확인 실패: {e}. 보존합니다.")
+            if rejected:
+                return self._launch_ab_next(b)
             if saved:   # the exact file is already there: accept it, never ask the AI again
                 self.store.log(b["id"], "이전 실행의 A/B 청크 저장을 확인했습니다 — AI 재실행 없이 다음 단계로 진행합니다.")
                 return self._ab_accept(b, chunk, bool(baseline.get("repair")))
