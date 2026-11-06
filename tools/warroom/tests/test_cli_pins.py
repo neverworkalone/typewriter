@@ -125,6 +125,23 @@ class RegistryValidation(unittest.TestCase):
 
 
 class RunPins(unittest.TestCase):
+    def test_session_pins_allow_only_verified_go_to_api(self):
+        w = World()
+        go = RunSpec("opencode-go/deepseek-v4.1-flash", "low")
+        api = RunSpec("deepseek/deepseek-flash", "none")
+        for method in ("a", "b", "c", "d"):
+            bid = w.store.create_batch(method=method, producer="deepseek", shard="001", batch="01",
+                                       branch=f"branch-{method}", worktree=f"/{method}")
+            w.store.add_run(bid, "chunk", "session", None, "old.log", "old.exit", model=go.model, effort=go.effort)
+            b = w.store.batch(bid)
+            w.sup._check_session_pin(b, "session", go)
+            w.sup._check_session_pin(b, "session", api)
+            with self.assertRaises(Exception):
+                w.sup._check_session_pin(b, "session", RunSpec(api.model, "high"))
+            with self.assertRaises(Exception):
+                w.sup._check_session_pin(b, "unknown", api)
+        w.tmp.cleanup()
+
     def test_api_effort_override_is_isolated(self):
         entry = {**DEEPSEEK, "effort": "low", "models": {**DEEPSEEK["models"], "api": "deepseek/deepseek-flash"},
                  "tier_efforts": {"api": "none"}}

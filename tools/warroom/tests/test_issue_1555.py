@@ -1503,6 +1503,8 @@ class IncidentRecoveryProof(unittest.TestCase):
         w.store.add_tasks(b["id"], [(task, task)])
         w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
                             data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
+        w.store.add_run(b["id"], "d_chunk_new", "ses_1", None, "old.log", "old.exit",
+                        model="p/free-x-free", effort="high", task=task)
         w.store.set(dchunk.fix_key(b["id"], 1), "1")
         active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
         rejection = {"errors": ["fixture rejection"]}

@@ -2361,6 +2361,18 @@ class Supervisor:
         return RunSpec(r["model"], r["effort"], r["permission_profile"] or "",
                        fast=None if r["fast_mode"] is None else bool(r["fast_mode"])) if r else None
 
+    def _check_session_pin(self, b, session, run):
+        """Prove the session pin; permit the owner-verified OpenCode Go -> API transition only."""
+        if b["method"] not in ("a", "b", "c", "d") or not self._tiered(b["producer"]):
+            return
+        row = next((r for r in self.store.runs(b["id"]) if r["session_id"] == session and r["model"]), None)
+        pinned = (RunSpec(row["model"], row["effort"], row["permission_profile"] or "",
+                          fast=None if row["fast_mode"] is None else bool(row["fast_mode"])) if row else None)
+        verified_go = RunSpec("opencode-go/deepseek-v4.1-flash", "low")
+        verified_api = RunSpec("deepseek/deepseek-flash", "none")
+        if pinned != run and not (pinned == verified_go and run == verified_api):
+            raise prompts.PromptError("기존 세션의 모델·effort·권한 핀이 현재 설정과 다르거나 확인되지 않아 재개하지 않습니다")
+
     def _agent_env(self) -> dict:
         """Worker CLIs run with the normal environment (and normal Git). The Git binaries on PATH are only recorded so
         a Stage 2 chunk can have them blocked; with none found, only that chunk fails closed (`stage2_git_executables`)."""
@@ -2433,14 +2445,7 @@ class Supervisor:
             except Exception as e:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
         def resume_checked(session, *args, **kwargs):
-            if b["method"] in ("a", "b", "c", "d") and self._tiered(b["producer"]):
-                recorded = next((r for r in self.store.runs(b["id"])
-                                 if r["session_id"] == session and r["model"]), None)
-                pinned = (RunSpec(recorded["model"], recorded["effort"], recorded["permission_profile"] or "",
-                                  fast=None if recorded["fast_mode"] is None else bool(recorded["fast_mode"]))
-                          if recorded else None)
-                if pinned != run:
-                    raise prompts.PromptError("기존 세션의 모델·effort·권한 핀이 현재 설정과 다르거나 확인되지 않아 재개하지 않습니다")
+            self._check_session_pin(b, session, run)
             return ad.resume(session, *args, **kwargs)
 
         try:

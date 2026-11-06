@@ -70,7 +70,7 @@ class _Round:
 
     def preflight(self):
         if self._preflight is self._unset:
-            self._preflight = self.dp.sup._preflight(self.b["producer"], self.b["method"])
+            self._preflight = self.dp.sup._preflight(self.b["producer"], self.b["method"], self.b["model_tier"])
         return self._preflight
 
     def saved(self) -> set[int]:
@@ -550,6 +550,7 @@ class ParallelD:
                 diag = dchunk.read_rejection(wt, b, rec)
                 if not sid or diag is None:
                     raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
+                sup._check_session_pin(b, sid, run)
                 if int(self.store.get(dchunk.fix_key(b["id"], n)) or 0) < 1:
                     self.store.set(dchunk.fix_key(b["id"], n), "1")   # a restart between the decision and the launch
                 prompt = prompts.d_chunk_fix(b, n, dchunk.fix_problem(diag))
@@ -558,6 +559,7 @@ class ParallelD:
                 if not sid:
                     raise prompts.PromptError("이어가기 요청에 기존 세션이 필요합니다")
                 prompt, _ = sup._d_chunk_prompt(b, RESUME, round_.remote(), rec=rec, continued=True)
+                sup._check_session_pin(b, sid, run)
                 handle = ad.resume(sid, prompt, wt, env, run, log, ex, **extra)
             else:
                 prompt, _ = sup._d_chunk_prompt(b, NEW, round_.remote(), rec=rec,
