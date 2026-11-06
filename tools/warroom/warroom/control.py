@@ -148,9 +148,10 @@ def defect_locked(store: Store, b) -> bool:
     return b["pause_reason"] == "shared_defect" and not store.get(f"defect_hold_{b['id']}")
 
 
-def retry(store: Store, model: str, method: str) -> bool:
-    b = store.active_batch(model, method)
-    if (b is not None and store.clear_request(model, method) is None and b["state"] in ("PAUSED", "ERROR")
+def retry(store: Store, model: str, method: str, batch_id: int | None = None) -> bool:
+    b = store.batch(batch_id) if batch_id is not None else store.active_batch(model, method)
+    if (b is not None and b["producer"] == model and b["method"] == method
+            and store.clear_request(model, method) is None and b["state"] in ("PAUSED", "ERROR")
             and b["pid"] is None and not store.open_task_runs(b["id"]) and not defect_locked(store, b)):
         if method == literary.METHOD and b["state"] == "ERROR":
             reason = _c_retry_block_reason(store, b)
@@ -241,18 +242,38 @@ def retry_maintainer(store: Store, issue_number: int | None = None, batch_id: in
     """Retry the Maintainer: its PAUSED/ERROR execution, or (Detail only: `issue_number` given) an Issue the operator
     cleared and that therefore waits HELD with no execution. `issue_number`/`batch_id` pin what the operator saw: a
     screen that no longer matches retries nothing."""
-    for b in store.incomplete_batches():
-        if b["method"] == MAINTENANCE_METHOD:
-            if batch_id is not None and b["id"] != batch_id:
+    if issue_number is not None:
+        owner = store.maintenance(issue_number)
+        if owner is None:
+            return False
+        if owner["batch_id"] is None:
+            if batch_id is not None or any(b["method"] == MAINTENANCE_METHOD for b in store.incomplete_batches()):
                 return False
-            if issue_number is not None:
-                m = store.maintenance(issue_number)
-                if m is None or m["batch_id"] != b["id"]:
-                    return False
-            return retry(store, b["producer"], MAINTENANCE_METHOD)
-    if issue_number is not None and batch_id is None:
-        return store.requeue_maintenance(issue_number)
-    return False
+            return store.requeue_maintenance(issue_number)
+        if batch_id is not None and owner["batch_id"] != batch_id:
+            return False
+        target = store.batch(owner["batch_id"])
+        if target is None or target["state"] == "COMPLETE":
+            if batch_id is not None or any(b["method"] == MAINTENANCE_METHOD for b in store.incomplete_batches()):
+                return False
+            return store.requeue_maintenance(issue_number)
+    elif batch_id is not None:
+        target = store.batch(batch_id)
+    else:
+        target = next((b for b in store.incomplete_batches() if b["method"] == MAINTENANCE_METHOD), None)
+
+    if target is None or target["method"] != MAINTENANCE_METHOD:
+        return False
+    if batch_id is not None and target["id"] != batch_id:
+        return False
+    owner = next((m for m in store.maintenance_rows() if m["batch_id"] == target["id"]), None)
+    if owner is None or (issue_number is not None and owner["issue_number"] != issue_number):
+        return False
+    if any(b["id"] != target["id"] and (
+            b["state"] in ("PREPARE", "PRODUCING", "FIXING") or b["pid"] is not None
+            or store.open_task_runs(b["id"])) for b in store.maintenance_batches()):
+        return False
+    return retry(store, target["producer"], MAINTENANCE_METHOD, target["id"])
 
 
 def request_reload(store: Store) -> str:
