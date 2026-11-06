@@ -201,6 +201,50 @@ class Stage2RepairRebind(unittest.TestCase):
                         integrate.assert_called_once()
                         self.assertEqual(release.call_args.args[3], [(f"s2_finalize_base_{b['id']}", HEAD2)])
 
+    def test_preflight_incident_without_repair_state_releases_only_with_intact_evidence(self):
+        from unittest.mock import patch
+        for case in ("clean", "receipt", "run_start", "wrong_error", "dirty", "unfinished"):
+            with self.subTest(case=case):
+                w, b, path = _world(self)
+                w.store.delete(stage2.repair_state_key(b["id"]))
+                w.store.delete(stage2.repair_run_start_key(b["id"]))
+                data = json.loads(path.read_text("utf-8"))
+                data["repair_receipts"] = []
+                if case == "receipt":
+                    data["repair_receipts"] = [{"request_id": RECEIPT_ID}]
+                if case == "unfinished":
+                    data["optional_review_complete"] = False
+                path.write_text(json.dumps(data), "utf-8")
+                if case == "run_start":
+                    w.store.set(stage2.repair_run_start_key(b["id"]), "{}")
+                if case == "dirty":
+                    w.git.dirty_text = " M unrelated\n"
+                w.store.set(f"s2_finalize_base_{b['id']}", HEAD1)
+                maint = w.sup.maint
+                d = {"id": 57, "merge_sha": HEAD2}
+                env = {"observed": {}, "error": ("other failure" if case == "wrong_error" else
+                       "Stage 2 read-only preflight failed: output limit")}
+                def apply(*_):
+                    w.git.local_head = HEAD2
+                    return HEAD2, None
+                with patch.object(maint, "_preserved", return_value=None), \
+                     patch.object(maint, "_fix_not_loaded", return_value=False), \
+                     patch.object(maint, "_apply", side_effect=apply) as integrate, \
+                     patch.object(maint, "_fix_merged_integration_proof", return_value={"head": HEAD2}), \
+                     patch.object(maint, "_archive_report", return_value=True), \
+                     patch.object(maint, "_recovery_snapshot", return_value={}), \
+                     patch.object(maint, "_hold_unprovable") as hold, \
+                     patch.object(w.store, "release_defect", return_value=True) as release:
+                    maint._release_worktree(d, b, env)
+                    if case == "clean":
+                        integrate.assert_called_once()
+                        self.assertEqual(release.call_args.args[3], [(f"s2_finalize_base_{b['id']}", HEAD2)])
+                        hold.assert_not_called()
+                    else:
+                        integrate.assert_not_called()
+                        release.assert_not_called()
+                        hold.assert_called_once()
+
     def test_inflight_answer_dirty_owner_remote_and_receipt_mismatch_fail_closed(self):
         cases = ("pending", "apply_intent", "dirty", "remote", "wrong_branch", "non_ancestor", "baseline", "receipt")
         for case in cases:
