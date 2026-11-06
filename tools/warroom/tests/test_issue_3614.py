@@ -186,6 +186,41 @@ class MaintainerQueue(unittest.TestCase):
         self.assertEqual(w.store.batch(first["id"])["state"], "ERROR")
         self.assertEqual(w.git.dirty_text, " M existing-file")
 
+    def test_unknown_mergeability_and_base_race_do_not_launch(self):
+        w = self.w
+        first, base = self.conflict_pr()
+        count = len(w.adapter.launches)
+        w.gh.prs[50]["mergeable"] = None
+        w.sup._watch(first)
+        self.assertEqual(len(w.adapter.launches), count)
+        self.assertEqual(w.store.batch(first["id"])["state"], "WAITING_REVIEW")
+        w.store.delete(f"last_poll_{first['id']}")
+        w.gh.prs[50]["mergeable"] = False
+        w.git.base_sha = "d" * 40
+        w.sup._watch(first)
+        self.assertEqual(len(w.adapter.launches), count)
+        self.assertEqual(w.store.batch(first["id"])["state"], "WAITING_REVIEW")
+
+    def test_conflict_completion_returns_to_existing_review_watch(self):
+        w = self.w
+        first, base = self.conflict_pr()
+        w.tick()
+        batch = w.store.batch(first["id"])
+        new_head = "b" * 40
+        w.git.local_head = new_head
+        w.git.remote[first["branch"]] = new_head
+        w.git.integrated.extend([(str(first["worktree"]), HEAD1), (str(first["worktree"]), base)])
+        w.gh.prs[50].update(head_sha=new_head, mergeable=True)
+        w.gh.issue_comments_[50] = [{"id": 88, "user": {"login": w.cfg["expected_account"]},
+            "body": f"resolved and tested\nWarRoom-Conflict-Event: conflict:{base}\nWarRoom-Conflict-Fix-Head: {new_head}",
+            "created_at": "2099-01-01T00:00:00Z"}]
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        after = w.store.batch(first["id"])
+        self.assertEqual(after["state"], "WAITING_REVIEW")
+        self.assertEqual(after["head_sha"], new_head)
+        self.assertEqual(w.store.handled_event(first["id"], 50, HEAD1, "conflict:" + base)["status"], "HANDLED")
+
     def test_conflict_completion_requires_both_ancestors_and_exact_reply(self):
         w = self.w
         first, base = self.conflict_pr()
