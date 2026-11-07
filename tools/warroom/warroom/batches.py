@@ -100,7 +100,8 @@ def _git_bin(env) -> str:
 
 
 def _counts(runner: Runner, root, env, ref: str, pathspec: str) -> dict[str, int]:
-    res = runner.run([_git_bin(env), "grep", "-c", "", ref, "--", pathspec], cwd=root, env=env,
+    specs = [pathspec] if isinstance(pathspec, str) else list(pathspec)
+    res = runner.run([_git_bin(env), "grep", "-c", "", ref, "--", *specs], cwd=root, env=env,
                      timeout=120)
     if res.code not in (0, 1):
         raise BatchError(f"git grep {pathspec}: {res.err.strip()}")

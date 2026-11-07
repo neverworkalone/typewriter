@@ -108,224 +108,15 @@ def Shell_runner():
 
 
 class VerifyBlock(unittest.TestCase):
-    def setUp(self):
-        self.w = w = s2_world(self, canon={1: 100})
-        w.cfg["maintainer"] = "claude"
-        w.git.verified |= {("part", "001", "01", "01")}
-        w.git.base_sha = SHA1
-        w.git.outcomes[("batch", "001", "01")] = [failure()]
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-
-    def tick(self, n=1):
-        for _ in range(n):
-            self.w.now += self.w.cfg["poll_seconds"] + 1
-            self.w.tick()
-
-    def block(self):
-        return self.w.store.active_verify(CLS)
-
-    def issue_count(self):
-        return len(self.w.gh.created)
-
-    def maint(self):
-        return self.w.store.maintenance_rows()
-
-    def fix_merged(self):
-        """What Maintenance._track records once the Issue's PR is merged and cleaned up."""
-        b = self.block()
-        self.w.store.update_maintenance(b["issue_number"], state="DONE", merge_sha=MERGE)
-        self.w.store.update_defect(b["id"], state="FIX_MERGED", merge_sha=MERGE)
-
-    def test_deterministic_batch_failure_blocks_the_scope_with_one_issue_and_one_maintainer(self):
-        w = self.w
-        self.tick()
-        self.assertEqual(w.git.verify_calls[1:], [("batch", "001", "01", None)] * 2)   # reproduced on the same SHA once
-        b = self.block()
-        self.assertEqual((b["state"], b["batch_id"], b["source"], b["last_sha"]), ("LINKED", 0, "verify", SHA1))
-        self.assertEqual((self.issue_count(), [m["state"] for m in self.maint()]), (1, ["ACTIVE"]))
-        issue = w.gh.issues[101]
-        self.assertEqual(issue["labels"], ["urgent"])
-        for needle in ("남정", "001_01", "accounting", "verify --shard 001 --batch 01 --json", SHA1, CLS):
-            self.assertIn(needle, issue["body"])
-        ln = w.store.peek_line("claude", S2)
-        self.assertEqual((ln["run"], ln["blocked"]), (1, ""))   # the Line waits, it is not stopped
-        self.assertEqual(w.store.incomplete_batches()[0]["method"], "m")   # only the Maintainer runs; no Stage 2 Part
-        # repeated ticks, a restart and the same SHA: no re-verify, no second Issue, no second Maintainer
-        calls = len(w.git.verify_calls)
-        self.tick(3)
-        w.sup = w.make_sup()
-        self.tick(2)
-        self.assertEqual((len(w.git.verify_calls), self.issue_count(), len(self.maint())), (calls, 1, 1))
-        self.assertIn("#101", w.store.get("s2_wait_claude"))
-
-    def test_shard_failure_is_its_own_scope(self):
-        w = self.w
-        w.git.verified.add(("batch", "001", "01", None))
-        w.git.outcomes.clear()
-        w.git.outcomes[("shard", "001", None)] = [failure(["shard-level duplicate"], "rows")]
-        self.tick()
-        b = w.store.active_verify("stage2-verify-shard-001")
-        self.assertEqual((b["state"], self.issue_count()), ("LINKED", 1))
-        self.assertIn("Shard 001", w.gh.issues[101]["title"])
-        self.assertIsNone(self.block())
-
-    def test_unclassified_or_unreproducible_failures_create_nothing_and_stop_for_the_operator(self):
-        w = self.w
-        w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(False, "node: command not found")]
-        self.tick()
-        self.assertEqual((self.issue_count(), self.block(), w.store.peek_line("claude", S2)["run"]), (0, None, 0))
-        self.assertIn("분류되지 않음", w.store.peek_line("claude", S2)["blocked"])
-        w.store.set_line("claude", S2, blocked="")
-        w.git.outcomes[("batch", "001", "01")] = [failure(["a"]), failure(["b"])]   # a different cause on the 2nd run
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        self.tick()
-        self.assertEqual((self.issue_count(), self.block()), (0, None))
-        self.assertIn("재현되지 않음", w.store.peek_line("claude", S2)["blocked"])
-        w.store.set_line("claude", S2, blocked="")
-        w.git.outcomes[("batch", "001", "01")] = [failure(), VerifyOutcome(True, "")]   # flaky: passes the 2nd time
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        self.tick()
-        self.assertEqual((self.issue_count(), self.block()), (0, None))
-
-    def test_transient_git_error_keeps_backoff_and_creates_nothing(self):
-        w = self.w
-        w.git.verify_error = GitTransient("network")
-        self.tick()
-        self.assertEqual((self.issue_count(), self.block(), w.store.peek_line("claude", S2)["blocked"]), (0, None, ""))
-
-    def test_fix_merged_then_exact_verify_success_releases_and_caches_in_one_step(self):
-        w = self.w
-        self.tick()
-        self.fix_merged()
-        w.git.base_sha = SHA2
-        w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(True, "")]
-        w.git.verified.add(("shard", "001", None, None))
-        w.git.verify_calls.clear()
-        self.tick()
-        self.assertEqual(w.store.defects()[0]["state"], "RELEASED")
-        self.assertEqual(w.store.defects()[0]["integrated_sha"], SHA2)
-        self.assertEqual(w.store.get(stage2.ok_key("001", "01")), SHA2)
-        self.assertEqual(w.git.verify_calls[0], ("batch", "001", "01", None))
-        self.assertEqual(w.store.get("s2_wait_claude"), "")
-        self.assertIsNone(self.block())
-
-    def test_fix_merged_but_still_failing_holds_without_a_new_issue_or_maintainer(self):
-        w = self.w
-        self.tick()
-        self.fix_merged()
-        w.git.base_sha = SHA2
-        w.git.outcomes[("batch", "001", "01")] = [failure(ERRORS)]
-        self.tick()
-        b = self.block()
-        self.assertEqual(b["state"], "HELD")
-        self.assertIn(stage2.fingerprint("batch", "001", "01", "accounting", ERRORS), b["hold_reason"])
-        self.assertEqual((self.issue_count(), len(self.maint()), b["last_sha"]), (1, 1, SHA2))
-
-    def test_held_waits_on_the_same_sha_and_rechecks_exactly_on_a_new_one(self):
-        w = self.w
-        self.tick()
-        self.fix_merged()
-        w.git.base_sha = SHA2
-        w.git.outcomes[("batch", "001", "01")] = [failure(["other"])]
-        self.tick()
-        held_after_merge = self.block()
-        self.assertIn(stage2.fingerprint("batch", "001", "01", "accounting", ["other"]),
-                      held_after_merge["hold_reason"])
-        calls = len(w.git.verify_calls)
-        self.tick(2)
-        self.assertEqual(len(w.git.verify_calls), calls)   # same SHA: no re-verify
-        w.git.base_sha = SHA3
-        w.git.outcomes[("batch", "001", "01")] = [failure(["third"])]
-        self.tick()
-        b = self.block()
-        self.assertEqual((b["state"], b["last_sha"], self.issue_count(), len(self.maint())), ("HELD", SHA3, 1, 1))
-        report = defects.parse_verify(b["report"])
-        self.assertEqual(report["sha"], SHA3)
-        w.git.base_sha = "4" * 40
-        w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(True, "")]
-        w.git.verified.add(("shard", "001", None, None))
-        self.tick()
-        self.assertEqual((self.block(), w.store.defects()[0]["state"]), (None, "RELEASED"))
-
-    def test_a_new_fingerprint_before_the_fix_is_evidence_on_the_same_issue(self):
-        w = self.w
-        self.tick()
-        w.git.base_sha = SHA2
-        w.git.outcomes[("batch", "001", "01")] = [failure(["a different error"])]
-        self.tick(2)
-        b = self.block()
-        self.assertEqual((self.issue_count(), len(self.maint()), len(w.store.defects())), (1, 1, 1))
-        report = defects.parse_verify(b["report"])
-        self.assertEqual(len(report["extra"]), 1)
-        comments = w.gh.issue_comments_[101]
-        self.assertEqual(len(comments), 1)
-        self.assertIn("a different error", comments[0]["body"])
-        self.assertTrue(report["extra"][0]["posted"])
-        self.tick(2)
-        self.assertEqual(len(w.gh.issue_comments_[101]), 1)   # posted once, not on every poll
-
-    def test_a_failure_after_release_is_a_new_event_and_still_one_active_block(self):
-        w = self.w
-        self.tick()
-        self.fix_merged()
-        w.git.base_sha = SHA2
-        w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(True, "")]
-        w.git.verified.add(("shard", "001", None, None))
-        self.tick()
-        self.assertIsNone(self.block())
-        w.git.changed_between_paths = ["data/relations/relation-001.jsonl"]   # a later master changes what the scope reads
-        w.git.verified.add(("shard", "001", None, None))
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.git.base_sha = SHA3
-        w.git.outcomes[("batch", "001", "01")] = [failure()]
-        self.tick()
-        keys = [d["event_key"] for d in w.store.defects()]
-        self.assertEqual(len(keys), 2)
-        self.assertTrue(keys[1].startswith(keys[0] + ":after:"))
-        self.assertEqual(sum(d["state"] not in ("RELEASED", "OVERRIDDEN") for d in w.store.defects()), 1)
-        self.assertEqual(w.store.report_verify_failure("verify:batch:001:01:ffff", CLS, "{}"), None)   # second active block refused
-
-    def test_a_cached_scope_success_carries_over_only_while_its_inputs_are_unchanged(self):
-        w = self.w
-        self.tick()
-        self.fix_merged()
-        w.git.base_sha = SHA2
-        w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(True, "")]
-        w.git.verified.add(("shard", "001", None, None))
-        self.tick()
-        self.assertEqual(w.store.get(stage2.ok_key("001", "01")), SHA2)
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        calls = len(w.git.verify_calls)
-        w.git.base_sha = SHA3
-        w.git.changed_between_paths = ["docs/x.md", "data/relation-drops/drop-002.jsonl", "data/relation-candidates/002/002_01_a_codex.jsonl", "data/relations/relation-002-backup.jsonl"]
-        self.tick()
-        self.assertEqual((len(w.git.verify_calls), w.store.get(stage2.ok_key("001", "01"))), (calls, SHA3))   # carried over
-        for n, path in enumerate(("data/relations/relation-002.jsonl", "data/relation-drops/drop-001.jsonl", "scripts/relation/admission.mjs", "data/canonical/stdict-0001.jsonl",
-                                  "data/relation-candidates/001/001_01_a_codex.jsonl")):
-            with self.subTest(path=path):
-                control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-                sha = f"{n + 4}" * 40
-                w.git.base_sha, w.git.changed_between_paths = sha, [path]
-                calls = len(w.git.verify_calls)
-                self.tick()
-                self.assertGreater(len(w.git.verify_calls), calls)   # verified again on the new master
-                self.assertEqual(w.store.get(stage2.ok_key("001", "01")), sha)
-
-    def test_batch_id_zero_never_reaches_production_batch_paths(self):
-        w = self.w
-        self.tick()
-        self.fix_merged()
-        before = w.store.defects()[0]["state"]
-        w.sup.maint.step()   # _release must not OVERRIDE a verify block for "no longer existing batch 0"
-        self.assertEqual((before, w.store.defects()[0]["state"]), ("FIX_MERGED", "FIX_MERGED"))
-        self.assertEqual(w.sup.maint.resolved_note({"id": 0}), "")
-
-    def test_maintainer_unset_leaves_the_block_and_issue_only(self):
-        w = self.w
-        w.cfg["maintainer"] = None
-        self.tick(2)
-        self.assertEqual((self.issue_count(), [m["state"] for m in self.maint()], self.block()["state"]), (1, ["QUEUED"], "LINKED"))
-        self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)
+    def test_existing_verify_failure_reporting_remains_idempotent(self):
+        w = s2_world(self)
+        fingerprint = stage2.fingerprint("batch", "001", "01", "accounting", ERRORS)
+        event = stage2.VerifyFailure("batch", "001", "01", SHA1, "verify --shard 001 --batch 01 --json",
+                                     "accounting", tuple(ERRORS), fingerprint)
+        w.sup.maint.report_verify(event)
+        w.sup.maint.report_verify(event)
+        self.assertEqual(len(w.store.defects()), 1)
+        self.assertEqual(w.store.active_verify(CLS)["state"], "REPORTED")
 
 
 class IssueMatching(unittest.TestCase):
@@ -333,10 +124,15 @@ class IssueMatching(unittest.TestCase):
         self.w = w = s2_world(self, canon={1: 100})
         w.git.verified |= {("part", "001", "01", "01")}
         w.git.base_sha = SHA1
-        w.git.outcomes[("batch", "001", "01")] = [failure()]
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        self.reported = False
 
     def tick(self, n=1):
+        if not self.reported:
+            fingerprint = stage2.fingerprint("batch", "001", "01", "accounting", ERRORS)
+            event = stage2.VerifyFailure("batch", "001", "01", SHA1, "verify --shard 001 --batch 01 --json",
+                                         "accounting", tuple(ERRORS), fingerprint)
+            self.w.sup.maint.report_verify(event)
+            self.reported = True
         for _ in range(n):
             self.w.now += self.w.cfg["poll_seconds"] + 1
             self.w.tick()

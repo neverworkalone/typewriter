@@ -847,6 +847,7 @@ class FakeGh:
         self.branch_errors: dict[str, Exception] = {}
         self.files: dict[int, list | Exception] = {}
         self.pull_files_calls: list[int] = []
+        self.latest_stage2_pr = None
         self.merged_stage3_prs: list[dict] = []
         self.merged_stage3_prs_calls = 0
         self.branch_queries = 0
@@ -869,6 +870,9 @@ class FakeGh:
 
     def open_prs(self):
         return self.open
+
+    def latest_stage2_production(self, base):
+        return self.latest_stage2_pr
 
     def merged_relation_stage3_prs(self):
         self.merged_stage3_prs_calls += 1

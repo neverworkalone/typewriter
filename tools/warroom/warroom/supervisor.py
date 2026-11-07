@@ -1752,12 +1752,7 @@ class Supervisor:
         self._prepare_existing(self.store.batch(bid))
 
     def _prepare_new_stage2(self, ln) -> None:
-        """Assign the next Stage 2 Part: the earliest ready Part whose exact verify has not yet succeeded on master.
-
-        Single stays on the shard chosen at its first Part (waiting there rather than moving on); Continuous goes on to
-        the next shard. With nothing runnable it waits and re-checks at poll_seconds instead of re-running or
-        opening a duplicate PR.
-        """
+        """Assign the strict successor of the latest merged production Part."""
         model, method, base = ln["model"], STAGE2_METHOD, self.cfg["base_branch"]
         wait_key, poll_key, line = f"s2_wait_{model}", f"s2_poll_{model}", f"{model}/{method}"
         if self.store.get(wait_key) and self.clock() - float(self.store.get(poll_key, "0")) < self.cfg["poll_seconds"]:
@@ -1767,14 +1762,11 @@ class Supervisor:
         pin = ln["shard_pin"] if ln["mode"] == "single" else ""
         try:
             sha = self.git.fetch_base(base)
-            choice = stage2.choose(self.runner, self.paths.repo_root, self.env, ref=f"origin/{base}", sha=sha,
-                                   open_prs=self.gh.open_prs(), kv=self.store, pin=pin,
-                                   verify=lambda *a: self.git.verify_stage2(sha, *a),
-                                   outcome=lambda *a: self.git.verify_stage2_outcome(sha, *a), blocks=self.store,
-                                   changed=self.git.changed_between,
-                                   relation_owners=self.git.stage2_affected_relation_shards,
-                                   relation_owners_many=self.git.stage2_affected_relation_shards_many,
-                                   reconcile_completed=lambda *args: self._stage2_start_reconcile(ln, *args))
+            latest = self.gh.latest_stage2_production(base)
+            if latest and not self.git.is_ancestor(latest["merge_commit_sha"], sha):
+                raise GitError("latest merged Stage 2 PR is not contained in fetched master")
+            choice = stage2.choose(self.runner, self.paths.repo_root, self.env, ref=sha, sha=sha,
+                                   open_prs=self.gh.open_prs(), kv=self.store, pin=pin, latest_pr=latest)
         except TRANSIENT as e:
             return self._transient_wait(f"line:{model}:{method}:prepare", e, line=line)
         except Exception as e:   # BatchError, GitError, GhError
@@ -1791,7 +1783,7 @@ class Supervisor:
             self.store.set(wait_key, choice.note)
             return self.store.set(poll_key, str(self.clock()))
         self.store.set(wait_key, "")
-        if choice.status == "done":
+        if choice.status in ("done", "unready"):
             self.store.set_line(model, method, run=0, shard_pin="")
             return self.store.log(None, choice.note, line=line)
         part = choice.part
@@ -9926,30 +9918,51 @@ class Supervisor:
         bb, pp = stage2.split_key(b["batch"])
         ok_key, gate = stage2.ok_key(b["shard"], bb, pp), f"s2_merge_wait_{b['id']}"
         is_reconciliation = self._stage2_reconcile_task(b) is not None
-        if self.store.get(ok_key) and not is_reconciliation:
-            return True
-        if self.clock() - float(self.store.get(gate, "0")) < self.cfg["poll_seconds"]:
-            return False
-        self.store.set(gate, str(self.clock()))
-        base = self.cfg["base_branch"]
+        cached = self.store.get(ok_key)
         try:
+            # A restart after the Part success must still finish its boundary scopes before cleanup.
+            if cached and not is_reconciliation:
+                layout = stage2.read_layout(self.runner, self.paths.repo_root, self.env, cached)
+                records = 83 if (b["shard"], bb) == ("428", "02") else 500
+                last_part = int(pp) == stage2.part_count(records, layout.size(b["shard"]))
+                required = ([stage2.ok_key(b["shard"], bb)] if last_part else [])
+                if last_part and bb == "02":
+                    required.append(stage2.ok_key(b["shard"], None))
+                if all(self.store.get(key) == cached for key in required):
+                    return True
+            if self.clock() - float(self.store.get(gate, "0")) < self.cfg["poll_seconds"]:
+                return False
+            self.store.set(gate, str(self.clock()))
+            base = self.cfg["base_branch"]
             sha = self.git.fetch_base(base)
             merged = info.get("merge_commit_sha")
             if merged and not self.git.contains_on_base(merged, base):
                 self.store.log(b["id"], f"머지 커밋 {merged[:10]}이 아직 origin/{base}에 보이지 않습니다 — 재확인 예정", "warn")
                 return False
-            ok, tail = self.git.verify_stage2(sha, "part", b["shard"], bb, pp)
+            layout = stage2.read_layout(self.runner, self.paths.repo_root, self.env, sha)
+            records = 83 if (b["shard"], bb) == ("428", "02") else 500
+            last_part = int(pp) == stage2.part_count(records, layout.size(b["shard"]))
+            scopes = [("part", bb, pp, ok_key)]
+            if last_part and not is_reconciliation:
+                scopes.append(("batch", bb, None, stage2.ok_key(b["shard"], bb)))
+                if bb == "02":
+                    scopes.append(("shard", None, None, stage2.ok_key(b["shard"], None)))
+            for kind, batch, part, key in scopes:
+                if self.store.get(key) == sha and not is_reconciliation:
+                    continue
+                ok, tail = self.git.verify_stage2(sha, kind, b["shard"], batch, part)
+                if not ok:
+                    self._fail(b, "ERROR", f"PR #{info['number']} 머지 후 최신 master에서 {kind} "
+                               f"{stage2.label(b['shard'], b['batch'])} verify가 실패했습니다: {tail}. "
+                               "worktree를 보존하고 다음 Part를 시작하지 않습니다 (확인 후 Retry).")
+                    self.store.set(gate, "0")
+                    return False
+                self.store.set(key, sha)
+                self.store.log(b["id"], f"최신 master {sha[:10]}에서 {kind} "
+                               f"{stage2.label(b['shard'], b['batch'])} verify 통과")
         except Exception as e:
-            self.store.log(b["id"], f"머지 후 Part verify 준비 실패(재시도 예정): {e}", "warn")
+            self.store.log(b["id"], f"머지 후 verify 준비 실패(재시도 예정): {e}", "warn")
             return False
-        if not ok:
-            self._fail(b, "ERROR", f"PR #{info['number']} 머지 후 최신 master에서 {stage2.label(b['shard'], b['batch'])} "
-                       f"verify가 실패했습니다: {tail}. worktree를 보존하고 다음 Part를 시작하지 않습니다 (확인 후 Retry).")
-            self.store.set(gate, "0")
-            return False
-        self.store.set(ok_key, sha)
-        self.store.log(b["id"], f"최신 master {sha[:10]}에서 {stage2.label(b['shard'], b['batch'])} "
-                       f"{'reconciliation ' if is_reconciliation else ''}verify 통과")
         return True
 
     def _stage3_merged_verify(self, b, info) -> bool:
