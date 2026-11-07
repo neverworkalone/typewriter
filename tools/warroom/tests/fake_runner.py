@@ -97,10 +97,10 @@ class ScriptedRunner(Runner):
             return Result(0, "".join(f"{p}\n" for p in self.done))      # existence, including 0-byte files
         if argv[:2] == ["git", "grep"]:
             ref = argv[4]
-            spec = argv[-1]
-            if "canonical" in spec:
+            specs = argv[argv.index("--") + 1:]
+            if any("canonical" in spec for spec in specs):
                 rows = {f"data/canonical/stdict-{k:04d}.jsonl": v for k, v in self.canon.items()}
             else:
-                rows = {p: n for p, n in self.done.items() if n and fnmatch.fnmatchcase(p, spec)}   # empty files yield no grep output
+                rows = {p: n for p, n in self.done.items() if n and any(fnmatch.fnmatchcase(p, spec) for spec in specs)}   # empty files yield no grep output
             return Result(0 if rows else 1, "".join(f"{ref}:{p}:{n}\n" for p, n in rows.items()))
         return Result(0, "")

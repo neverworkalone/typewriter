@@ -985,8 +985,10 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], kv, l
     if marker is not None and marker != str(layout.size(sid)):
         return Choice("stop", note=f"샤드 {sid} Part 크기 표식이 현재 레이아웃과 다릅니다")
     records = 83 if (shard, batch) == (428, 2) else 500
-    path = f"data/relation-candidates/{sid}/{sid}_{bid}_*.jsonl"
-    counts = batches._counts(runner, root, env, ref, path)
+    prefix = f"data/relation-candidates/{sid}/{sid}_{bid}_"
+    paths = [f"{prefix}{method}_{model}.jsonl" for method in ("a", "b") for model in _AB_MODELS]
+    paths += [f"{prefix}{method}_*.jsonl" for method in ("c", "d")]
+    counts = batches._counts(runner, root, env, ref, paths)
     missing = []
     for method in ("a", "b"):
         for model in _AB_MODELS:
