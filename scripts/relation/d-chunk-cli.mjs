@@ -1327,12 +1327,13 @@ async function main(argv) {
     only(options, 'forms', 'boundary', 'cursor', 'contexts', 'reread', 'dir', 'chunk');
     if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--chunk NNN] [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16] [--reread]');
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
-    const { result, text } = await searchActive({
+    const { result, text, decision_state: state } = await searchActive({
       ref: positional[0], forms: options.forms?.split(',').map((item) => item.trim()).filter(Boolean), boundary: options.boundary,
       cursor: options.cursor, contexts: options.contexts === undefined ? undefined : Number(options.contexts), reread: options.reread === true,
       databasePath, root: options.dir, chunkNumber: optionalChunk(options),
     });
     console.log(text);
+    console.log(`decision_state=${state.state} searches=${state.searches} recorded_hits=${state.recorded_hits} all_complete=${state.all_complete}`);
     return result.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'search-batch') {
