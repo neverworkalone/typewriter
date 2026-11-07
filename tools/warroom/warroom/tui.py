@@ -985,11 +985,6 @@ class WarRoom(App):
             current_maint = next((b for b in reversed(maint_batches)
                                   if b["state"] in ("WAITING_REVIEW", "MERGED", "CLEANUP", "CLEARING")), None)
         if current_maint is None:
-            active_batch_ids = {m["batch_id"] for m in store.maintenance_rows()
-                                if m["state"] == "ACTIVE" and m["batch_id"] is not None}
-            current_maint = next((b for b in reversed(maint_batches)
-                                  if b["id"] in active_batch_ids and b["state"] in ("ERROR", "PAUSED")), None)
-        if current_maint is None:
             maint = {"state": "IDLE", "text": ""}
         else:
             maint = control.maintainer_card(store, self.cfg, issue_number=int(current_maint["batch"]))
