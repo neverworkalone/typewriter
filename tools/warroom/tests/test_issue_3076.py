@@ -225,6 +225,7 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
             return None
         with mock.patch.object(literary, "revalidate_submit_before_skip", side_effect=refresh) as call:
             w.tick()
+        print("DEBUG", self.tasks(w)["001"]["state"], self.data(w, "001"), literary.technical_skip_reason_code(w.wt(), self.b(w), 1))
         self.assertEqual(call.call_count, 1)
         self.assertTrue(call.call_args.kwargs["scoped"])
         self.assertEqual(self.tasks(w)["001"]["state"], "RUNNING")
