@@ -213,6 +213,9 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
         self.assertIn("chunk --sense-ids <id> --contexts 16 --format text --chunk 001", prompt)
         self.assertIn("같은 문맥을 확인할 수 있을 때만", prompt)
         self.assertIn("유사한 키 하나라는 사실만으로", prompt)
+        self.assertIn("이번 실행에서 해당 Sense만 공식", prompt)
+        self.assertIn("프로그램으로 문자 단위 비교", prompt)
+        self.assertIn("조회 명령이 실패하거나 같은 근거 문맥을 확인할 수 없으면", prompt)
 
     def test_complete_unshown_empty_sample_is_resubmitted_by_scoped_supervisor_cli(self):
         w = self.world(senses=24)
