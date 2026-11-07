@@ -124,12 +124,15 @@ class IssueMatching(unittest.TestCase):
         self.w = w = s2_world(self, canon={1: 100})
         w.git.verified |= {("part", "001", "01", "01")}
         w.git.base_sha = SHA1
-        fingerprint = stage2.fingerprint("batch", "001", "01", "accounting", ERRORS)
-        event = stage2.VerifyFailure("batch", "001", "01", SHA1, "verify --shard 001 --batch 01 --json",
-                                     "accounting", tuple(ERRORS), fingerprint)
-        w.sup.maint.report_verify(event)
+        self.reported = False
 
     def tick(self, n=1):
+        if not self.reported:
+            fingerprint = stage2.fingerprint("batch", "001", "01", "accounting", ERRORS)
+            event = stage2.VerifyFailure("batch", "001", "01", SHA1, "verify --shard 001 --batch 01 --json",
+                                         "accounting", tuple(ERRORS), fingerprint)
+            self.w.sup.maint.report_verify(event)
+            self.reported = True
         for _ in range(n):
             self.w.now += self.w.cfg["poll_seconds"] + 1
             self.w.tick()
