@@ -8530,6 +8530,10 @@ class Supervisor:
         problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
         if problem:
             return self._fail(b, "ERROR", problem)
+        if problem := self._saved_chunk_identity_problem(b):
+            return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
+        if not self._denials_cleared(b, Path(b["log_file"])):
+            return
         wt = Path(b["worktree"])
         try:
             if self.git.dirty(wt).strip():
@@ -8682,10 +8686,6 @@ class Supervisor:
                 if self.store.issue_request(self._ab_policy_skip_event_key(b, policy_chunk)) is not None:
                     return self._ab_save_policy_skip(b, policy_chunk)
             if self._ab_chunk_response(b):   # judge the prior response instead of regenerating it
-                if problem := self._saved_chunk_identity_problem(b):
-                    return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
-                if not self._denials_cleared(b, Path(b["log_file"])):
-                    return
                 return self._run_ok_ab_chunk(b)
         self.store.update(b["id"], retries=0, retry_after=None, error=None)
         return self._launch_ab_next(self.store.batch(b["id"]))
