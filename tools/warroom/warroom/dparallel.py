@@ -552,6 +552,10 @@ class ParallelD:
                     "(공유 코드·검증기의 결함을 발견했을 때만 이 경로에 쓰고, 다른 경로에는 쓰지 않는다).\n")
             if kind == FIX:
                 diag = dchunk.read_rejection(wt, b, rec)
+                if diag is None and sid:
+                    diag = dchunk.refresh_stale_search_rejection(
+                        sup.runner, sup._d_env(b), wt, b, rec,
+                        limit_to_previous=int(self.store.get(dchunk.fix_key(b["id"], n)) or 0) >= dchunk.MAX_FIXES)
                 if not sid or diag is None:
                     raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
                 sup._check_session_pin(b, sid, run)

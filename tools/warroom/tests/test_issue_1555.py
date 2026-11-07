@@ -1562,6 +1562,28 @@ class IncidentRecoveryProof(unittest.TestCase):
             row = w.store.task_row(b["id"], task)
             self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
 
+    def test_parallel_d_queued_fix_reinspects_stale_rejection_before_launch(self):
+        from unittest import mock
+        from warroom import prompts
+        w = self.w
+        b = make_batch(w, "d", run_kind="d_parallel")
+        w.store.add_tasks(b["id"], [("001", "001")])
+        w.store.update_task(b["id"], "001", state="FIXQ", session_id="ses_1",
+                            data=json.dumps({"kind": "fix"}))
+        w.store.add_run(b["id"], "d_chunk_new", "ses_1", None, "old.log", "old.exit",
+                        model="p/free-x-free", effort="high", task="001")
+        w.store.set(dchunk.fix_key(b["id"], 1), str(dchunk.MAX_FIXES))
+        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
+        rejection = {"errors": ["remaining rejected sense"]}
+        round_ = dparallel._Round(w.sup.dp, b)
+        w.adapter.plan.append({"code": 0, "session": "ses_1"})
+        with mock.patch.object(dchunk, "read_active", return_value=active), \
+             mock.patch.object(dchunk, "read_rejection", return_value=None), \
+             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=rejection) as refresh:
+            self.assertTrue(w.sup.dp._launch(b, w.store.task_row(b["id"], "001"), round_))
+            self.assertTrue(refresh.call_args.kwargs["limit_to_previous"])
+        self.assertEqual(w.adapter.launches[-1]["prompt"], prompts.d_chunk_fix(b, 1, "remaining rejected sense"))
+
     def test_parallel_c_retry_predicts_the_actual_correction_prompt(self):
         from unittest import mock
         from warroom import literary, cparallel
