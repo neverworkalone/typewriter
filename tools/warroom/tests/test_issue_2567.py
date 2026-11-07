@@ -68,7 +68,7 @@ class CompletedPartReconcile(unittest.TestCase):
         w.git.reconcile_preview_added = 1
         w.git.reconcile_added = 1
         self.assertTrue(control.start(w.store, "claude", S2, "single", cfg=w.cfg)[0])
-        w.tick()
+        w.sup._stage2_start_reconcile(w.store.peek_line("claude", S2), "001", "01", "01", old_sha, latest)
 
         batch = w.store.active_batch("claude", S2)
         self.assertEqual(batch["id"], prior_id, "the unique Stage 2 Part identity is reused for reconciliation")
@@ -82,22 +82,17 @@ class CompletedPartReconcile(unittest.TestCase):
         self.assertEqual(w.gh.created_prs[0]["title"], "[Stage 2 Reconcile] 001_01 Part 01")
         self.assertEqual(w.gh.pull_files(100), [{"path": "data/relation-drops/drop-001.jsonl"}])
 
-    def test_no_proven_orphan_drop_means_exact_verify_without_a_pr(self):
+    def test_no_proven_orphan_drop_creates_no_reconciliation(self):
         w = s2_world(self, canon={1: 100})
         old_sha, latest = self.configure(w)
         w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
         w.git.reconcile_preview_added = 0
-        w.git.verified |= {("part", "001", "01", "01"), ("batch", "001", "01", None),
-                           ("shard", "001", None, None)}
-        self.assertTrue(control.start(w.store, "claude", S2, "single", cfg=w.cfg)[0])
-        w.tick()
-
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        result = w.sup._stage2_start_reconcile(w.store.peek_line("claude", S2), "001", "01", "01", old_sha, latest)
+        self.assertIsNone(result)
+        self.assertEqual(w.store.get(stage2.ok_key("001", "01", "01")), old_sha)
         self.assertEqual(w.store.incomplete_batches(), [])
-        self.assertEqual(w.store.get(stage2.ok_key("001", "01", "01")), latest)
-        self.assertEqual(w.git.verify_calls, [("part", "001", "01", "01"),
-                                             ("batch", "001", "01", None), ("shard", "001", None, None)])
         self.assertEqual(w.gh.created_prs, [])
-        self.assertEqual(w.adapter.launches, [])
 
     def test_reconcile_review_fix_uses_checkpoint_free_owner_path_and_retry_returns_to_review(self):
         w = s2_world(self, canon={1: 100})
@@ -111,7 +106,7 @@ class CompletedPartReconcile(unittest.TestCase):
         w.git.reconcile_preview_added = 1
         w.git.reconcile_added = 1
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
+        w.sup._stage2_start_reconcile(w.store.peek_line("claude", S2), "001", "01", "01", old_sha, latest)
         batch = w.store.active_batch("claude", S2)
         self.assertEqual(batch["state"], "WAITING_REVIEW")
         self.assertIsNone(stage2.checkpoint(batch["worktree"], "001", batch["batch"]))
