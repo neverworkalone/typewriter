@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import fnmatch
 import os
 from pathlib import Path
 
@@ -100,6 +101,6 @@ class ScriptedRunner(Runner):
             if "canonical" in spec:
                 rows = {f"data/canonical/stdict-{k:04d}.jsonl": v for k, v in self.canon.items()}
             else:
-                rows = {p: n for p, n in self.done.items() if n}   # git grep -c prints nothing for empty files
+                rows = {p: n for p, n in self.done.items() if n and fnmatch.fnmatchcase(p, spec)}   # empty files yield no grep output
             return Result(0 if rows else 1, "".join(f"{ref}:{p}:{n}\n" for p, n in rows.items()))
         return Result(0, "")
