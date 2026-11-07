@@ -561,7 +561,7 @@ class ParallelD:
                 sup._check_session_pin(b, sid, run)
                 if int(self.store.get(dchunk.fix_key(b["id"], n)) or 0) < 1:
                     self.store.set(dchunk.fix_key(b["id"], n), "1")   # a restart between the decision and the launch
-                prompt = prompts.d_chunk_fix(b, n, dchunk.fix_problem(diag))
+                prompt = prompts.d_chunk_fix(b, n, dchunk.fix_problem(diag) + "\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\n" + dchunk.fix_bindings(rec, diag))
                 handle = ad.resume(sid, prompt, wt, env, run, log, ex, **extra)
             elif kind == RESUME:
                 if not sid:
