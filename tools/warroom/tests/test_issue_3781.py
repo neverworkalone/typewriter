@@ -77,6 +77,30 @@ class RecoveryLaneTests(unittest.TestCase):
         self.assertEqual(w.store.defect(defect_id)['state'], 'LINKED')
         self.assertEqual(w.store.batch(batch_id)['state'], 'PAUSED')
 
+    def test_c_report_from_fix_run_is_authorized(self):
+        fixture = fixtures.NoCodeRecovery()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        w = fixture.w
+        batch_id, defect_id, maint, _ = fixture.prepare_failed_d_task()
+        row = w.store.task_row(batch_id, '002')
+        with w.store._conn() as c:
+            c.execute("UPDATE batches SET method='c', run_kind='c_parallel' WHERE id=?", (batch_id,))
+            c.execute("UPDATE runs SET kind='c_chunk_fix' WHERE id=?", (row['run_id'],))
+            c.execute("UPDATE runs SET ended_at=1 WHERE batch_id=? AND ended_at IS NULL", (maint['id'],))
+        source = w.store.batch(batch_id)
+        owner = {'task': '002', 'chunk': '002', 'row_state': 'FAILED', 'task_run_id': row['run_id'],
+                 'run_id': row['run_id'], 'run_kind': 'c_chunk_fix', 'session_id': row['session_id'],
+                 'path': 'report.json'}
+        proof = {'batch_id': batch_id, 'event_key': w.store.defect(defect_id)['event_key'],
+                 'source_error_seq': source['error_seq'], 'task': '002', 'chunk': '002',
+                 'recovery_type': 'resume_report_task', 'baseline_task_state': 'FAILED',
+                 'baseline_task_run_id': row['run_id'], 'session_id': row['session_id'],
+                 'run_id': row['run_id'], 'task_report_path': 'report.json', 'task_report': owner}
+        self.assertTrue(w.store.approve_no_code_resume(maint['id'], 101, defect_id, proof))
+        self.assertEqual(w.store.batch(batch_id)['state'], 'PRODUCING')
+        self.assertEqual(w.store.defect(defect_id)['state'], 'RECOVERING')
+
     def test_serial_worktree_progress_is_read_under_source_lane(self):
         fixture = fixtures.NoCodeRecovery()
         fixture.setUp()
