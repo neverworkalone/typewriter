@@ -89,6 +89,81 @@ class SerialChunks(unittest.TestCase):
         merged = (w.wt() / REL).read_text().splitlines()
         self.assertEqual([json.loads(l)["record_id"] for l in merged], [r["id"] for r in w.runner.workbench.rows()])
 
+    def test_interrupted_stream_is_saved_without_regenerating(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        block = w.block(1)
+        rows = block.split("\n")
+        overlap = rows[4]
+        events = [
+            {"type": "step_start", "sessionID": "ses_1"},
+            {"type": "text", "sessionID": "ses_1", "part": {"text": "\n".join(rows[:4]) + "\n" + overlap[:5]}},
+            {"type": "error", "sessionID": "ses_1", "error": {"type": "provider.invalid-output", "message": "OpenAI Chat stream ended without finish_reason"}},
+            {"type": "step_start", "sessionID": "ses_1"},
+            {"type": "text", "sessionID": "ses_1", "part": {"text": "\n".join(rows[4:])}},
+        ]
+        w.adapter.plan.append({"code": 1, "session": "ses_1", "text": "\n".join(json.dumps(e) for e in events) + "\n"})
+        w.tick()
+        w.finish_last()
+        w.tick()
+        cp = stage1ab.checkpoint(w.wt(), w.row_())
+        self.assertTrue(stage1ab.chunk_saved(w.wt(), w.row_(), cp["chunks"][0]))
+        self.assertEqual(w.kinds()[0], "ab_chunk_new")
+        self.assertEqual(len(w.adapter.launches), 2)  # the second launch is the next chunk
+        self.assertIn("BEGIN chunk 002", w.adapter.launches[1]["prompt"])
+
+    def test_interrupted_stream_rejects_unbound_or_ambiguous_fragments(self):
+        import tempfile
+        events = [
+            {"type": "step_start", "sessionID": "s"},
+            {"type": "text", "sessionID": "s", "part": {"text": "BEGIN chunk 001\nS1\tpart"}},
+            {"type": "error", "sessionID": "s", "error": {"type": "provider.invalid-output", "message": "OpenAI Chat stream ended without finish_reason"}},
+            {"type": "step_start", "sessionID": "s"},
+            {"type": "text", "sessionID": "s", "part": {"text": "S1\tpartial\nS2\tother\nEND chunk 001"}},
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "run.log"
+            def recover():
+                path.write_text("\n".join(json.dumps(e) for e in events))
+                return stage1ab.interrupted_opencode_answer(path, 1, ["S1", "S2"], "s")
+            self.assertIsNotNone(recover())
+            events[3]["sessionID"] = "other"
+            self.assertIsNone(recover())
+            events[3]["sessionID"] = "s"
+            events[4]["part"]["text"] = "S1\tdifferent\nS2\tother\nEND chunk 001"
+            self.assertIsNone(recover())
+            events[4]["part"]["text"] = "S1\tpartial\nEND chunk 001"
+            self.assertIsNone(recover())
+
+    def test_missing_session_relaunches_without_output_identity_evidence(self):
+        from warroom.adapters import CodexCLIAdapter
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, end=False), session="ses_1")
+        w.adapter.plan.append({"code": 1, "text": "Error: no rollout found for thread id 0000"})
+        w.tick()
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
+        w.adapter.output_identity_problem = CodexCLIAdapter("codex").output_identity_problem
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "PRODUCING")
+        self.assertEqual(len(w.adapter.launches), 3)
+        self.assertEqual(w.adapter.launches[-1]["kind"], "start")
+
+    def test_response_with_failed_identity_is_not_saved(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1), session="ses_1")
+        w.tick()
+        w.adapter.output_identity_problem = lambda *args: ("ERROR", "identity mismatch")
+        w.finish_last()
+        w.tick()
+        cp = stage1ab.checkpoint(w.wt(), w.row_())
+        self.assertFalse(stage1ab.chunk_saved(w.wt(), w.row_(), cp["chunks"][0]))
+        self.assertEqual(w.row_()["state"], "ERROR")
+
     def test_prepare_uses_fifty_for_a_new_batch_and_keeps_an_existing_checkpoint(self):
         w = self.w
         w.start("single", "deepseek", "a")

@@ -249,6 +249,38 @@ def extract_block(final_text: str | None, chunk_no: int) -> list[str]:
     return body
 
 
+def interrupted_opencode_answer(log_file, chunk_no: int, aliases: list[str], expected_session: str) -> str | None:
+    """Recover an exactly overlapping continuation after an interrupted OpenCode stream."""
+    try:
+        events = [json.loads(line) for line in Path(log_file).read_text("utf-8").splitlines() if line.strip()]
+        # Some launchers emit a session-only envelope before the stream events.
+        envelope = events.pop(0) if events and set(events[0]) == {"sessionID"} else None
+        if [e.get("type") for e in events] != ["step_start", "text", "error", "step_start", "text"]:
+            return None
+        sid = events[0].get("sessionID")
+        if envelope is not None and envelope.get("sessionID") != sid:
+            return None
+        if not expected_session or sid != expected_session or any(e.get("sessionID") != sid for e in events):
+            return None
+        error = events[2].get("error", {})
+        if error.get("type") != "provider.invalid-output" or error.get("message") != "OpenAI Chat stream ended without finish_reason":
+            return None
+        first, last = (events[i].get("part", {}).get("text") for i in (1, 4))
+        if not isinstance(first, str) or not isinstance(last, str):
+            return None
+        prefix, suffix = first.split("\n"), last.split("\n")
+        if len(prefix) < 2 or not suffix or not prefix[-1] or not suffix[0].startswith(prefix[-1]):
+            return None
+        if not re.match(r"^S[1-9]\d*\t", prefix[-1]):
+            return None
+        joined = "\n".join(prefix[:-1] + suffix)
+        if list(split_rows(extract_block(joined, chunk_no))) != aliases:
+            return None
+        return joined
+    except (OSError, ValueError, TypeError, AttributeError, ABChunkError):
+        return None
+
+
 def split_rows(body: list[str]) -> dict[str, str]:
     """alias -> full line; an alias twice or a line without an S<n> alias is a defect the caller reports."""
     rows: dict[str, str] = {}

@@ -8304,10 +8304,24 @@ class Supervisor:
         except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
             return None
 
+    def _ab_answer(self, b, chunk: dict) -> str | None:
+        final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
+        try:
+            stage1ab.extract_block(final, chunk["number"])
+            return final
+        except stage1ab.ABChunkError:
+            view = (Path(b["worktree"]) / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
+            aliases = [row[0] for row in stage1ab.view_rows(view)]
+            run = self._last_run(b)
+            if (run is None or run["ended_at"] is None or run["log_file"] != b["log_file"]
+                    or run["session_id"] != b["session_id"] or run["kind"] != b["run_kind"]):
+                return final
+            return stage1ab.interrupted_opencode_answer(b["log_file"], chunk["number"], aliases, b["session_id"]) or final
+
     def _ab_complete_response(self, b, chunk: dict) -> bool:
         """True only when the current answer block covers every alias in the chunk's exact saved view."""
         try:
-            body = stage1ab.extract_block(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), chunk["number"])
+            body = stage1ab.extract_block(self._ab_answer(b, chunk), chunk["number"])
             revised = stage1ab.split_rows(body)
             view = (Path(b["worktree"]) / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
             aliases = [row[0] for row in stage1ab.view_rows(view)]
@@ -8546,7 +8560,7 @@ class Supervisor:
         ok, diag = False, ""
         submitted_lines = None
         try:
-            body = stage1ab.extract_block(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), chunk["number"])
+            body = stage1ab.extract_block(self._ab_answer(b, chunk), chunk["number"])
             revised = stage1ab.split_rows(body)
             previous = None
             answer_file = wt / stage1ab.answer_path(b, chunk["number"])
@@ -8556,6 +8570,10 @@ class Supervisor:
                     answer_file.write_text(stage1ab.compact_text(chunk["number"], stage1ab.saved_answer_lines(wt, b, chunk)), "utf-8")
                 previous = stage1ab.split_rows(answer_file.read_text("utf-8").split("\n")[1:-1])
             lines = stage1ab.merge_answer(previous, st["requested"], revised)
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return
             submitted_lines = lines
             ok, diag = stage1ab.save(self.runner, self.env, wt, b, chunk, lines)
             if ok:
@@ -8609,7 +8627,8 @@ class Supervisor:
         """The last run's FINAL answer holds one complete, well-formed block for the chunk it was started for."""
         try:
             baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "")
-            body = stage1ab.extract_block(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), baseline["chunk_no"])
+            chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(b["worktree"], b), baseline["chunk_no"])
+            body = stage1ab.extract_block(self._ab_answer(b, chunk), baseline["chunk_no"])
             return bool(stage1ab.split_rows(body))
         except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
             return False
@@ -8670,7 +8689,7 @@ class Supervisor:
                     return self._handle_ab_policy_refusal(b, policy_chunk)
                 if self.store.issue_request(self._ab_policy_skip_event_key(b, policy_chunk)) is not None:
                     return self._ab_save_policy_skip(b, policy_chunk)
-            if self._ab_chunk_response(b):   # a complete answer from the prior run: judge it instead of regenerating it
+            if self._ab_chunk_response(b):   # judge the prior response instead of regenerating it
                 return self._run_ok_ab_chunk(b)
         self.store.update(b["id"], retries=0, retry_after=None, error=None)
         return self._launch_ab_next(self.store.batch(b["id"]))
