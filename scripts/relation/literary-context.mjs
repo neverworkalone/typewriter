@@ -61,6 +61,9 @@ function failSubmission(reason, senseId, field, entryNumber = null, details = {}
     field,
     entry_number: Number.isSafeInteger(entryNumber) && entryNumber > 0 ? entryNumber : null,
   };
+  if (Number.isSafeInteger(details.verified_number) && details.verified_number > 0) {
+    error.affected.verified_number = details.verified_number;
+  }
   error.issues = (details.issues ?? [{ entry_number: error.affected.entry_number, reason, field }])
     .slice(0, MAX_SUBMISSION_ISSUES)
     .map(({ entry_number: number, reason: issueReason, field: issueField }) => ({
@@ -1715,14 +1718,14 @@ function validateSubmission(submission, checkpoint) {
   }
 }
 
-export function resolveVerifiedContextKey(key, senseId, results, entryNumber = null) {
+export function resolveVerifiedContextKey(key, senseId, results, entryNumber = null, verifiedNumber = null) {
   // Whitespace around a copied key has one deterministic repair: trim it, then keep the same strict unique-prefix
   // check. Never guess at a misspelling or alter the source context identity.
   const normalizedKey = key.trim();
-  if (normalizedKey.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber);
+  if (normalizedKey.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber, { verified_number: verifiedNumber });
   const matches = results.filter((row) => row.locator_key.startsWith(normalizedKey));
-  if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified', entryNumber);
-  if (matches.length > 1) failSubmission('context_key_ambiguous', senseId, 'verified', entryNumber);
+  if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified', entryNumber, { verified_number: verifiedNumber });
+  if (matches.length > 1) failSubmission('context_key_ambiguous', senseId, 'verified', entryNumber, { verified_number: verifiedNumber });
   return matches[0];
 }
 
@@ -1752,8 +1755,7 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
         result = sense.shown?.forms_sha256 === digest
           ? { total_hits: sense.shown.total_hits, results: sense.shown.unit_rowids.map((unitRowId) => resolveShownContext(database, unitRowId, forms)) }
           : runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
-        if (result.total_hits === 0 && entry.verified.length > 0) failSubmission('context_key_not_found', entry.sense_id, 'verified', entryNumber);
-        verified = entry.verified.map((key) => resolveVerifiedContextKey(key, entry.sense_id, result.results, entryNumber));
+        verified = entry.verified.map((key, keyIndex) => resolveVerifiedContextKey(key, entry.sense_id, result.results, entryNumber, keyIndex + 1));
       } catch (error) {
         if (error?.code === 'LITERARY_SUBMISSION_VALIDATION') throw error;
         throw codedError('LITERARY_INDEX_SEARCH', 'approved literary index search failed');

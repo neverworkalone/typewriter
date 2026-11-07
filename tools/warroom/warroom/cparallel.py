@@ -794,6 +794,24 @@ class ParallelC:
                         return self._task_failed(b, row, data, f"[{task}] 완전한 문맥 표본의 결정적 재제출 뒤에도 청크 완료를 확인하지 못했습니다. 보존합니다.")
                     self.store.log(b["id"], f"[{task}] 변경 없는 빈 결과 제출을 공식 CLI로 재검증해 저장했습니다 (unshown_empty_sample 표본 완료).", "warn")
                     return self._accept(b, row, data, round_)
+            # Refresh legacy key diagnostics through the official scoped CLI. A newly located key is
+            # actionable evidence, not permission to guess or edit its value.
+            if (diagnostic.is_file() and literary.technical_skip_reason_code(wt, b, n) is None
+                    and literary.context_key_diagnostic_position(wt, b, n) is None
+                    and not data.get("key_position_refresh")):
+                old = json.loads(diagnostic.read_text("utf-8"))
+                if old.get("reason") in ("context_key_not_found", "context_key_ambiguous", "context_key_too_short"):
+                    data["key_position_refresh"] = True
+                    refreshed = literary.revalidate_submit_before_skip(self.sup.runner, self._env(b), wt, b, n, scoped=True)
+                    if refreshed is not None:
+                        if self._pending(b, rec):
+                            return self._task_failed(b, row, data, f"[{task}] CLI 재검증 뒤 청크 완료를 확인하지 못했습니다.")
+                        return self._accept(b, row, data, round_)
+                    if (run["kind"] == FIX and self._fix_allowed(data)
+                            and literary.context_key_diagnostic_position(wt, b, n) is not None):
+                        data["kind"] = "fix"
+                        self._set(b, task, data, state="FIXQ", run_id=None)
+                        return self.store.log(b["id"], f"[{task}] 공식 CLI가 거부된 문맥 키 위치를 확인했습니다. 같은 세션에서 수정합니다.", "warn")
             no_submit_fix = run["kind"] == FIX and run["id"] not in data.get("completed_fix_runs", [])
             if no_submit_fix:   # a correction that never submitted is not a completed one, and is never simply repeated
                 if self._queue_sample_followup(b, row, data, run, rec, pending):
@@ -1188,7 +1206,8 @@ class ParallelC:
                                       ("status", "diagnostic", "reason", "affected", "issues", "repair_scope", "input_sha256")
                                       if key in diagnostic}
                 note += ("Supervisor가 현재 저장된 submit 진단을 아래처럼 다시 확인했다. 이 진단은 이 세션의 마지막 CLI 출력보다 "
-                         "최신일 수 있으므로 아래의 affected/entry_number와 input_sha256를 기준으로 수정한다:\n"
+                         "최신일 수 있으므로 아래의 affected/entry_number, verified_number(1부터 시작), input_sha256를 기준으로 수정한다. "
+                         "키를 직접 대조할 때는 CLI 출력에서 프로그램으로 추출하고 수기로 복사하지 않는다:\n"
                          + json.dumps(current_diagnostic, ensure_ascii=False, sort_keys=True) + "\n")
             except (OSError, ValueError, TypeError):
                 pass

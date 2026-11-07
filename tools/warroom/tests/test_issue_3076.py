@@ -201,6 +201,37 @@ class ParallelCCorrections(Helpers, unittest.TestCase):
         self.assertEqual(self.tasks(w)["001"]["state"], "FAILED")
         self.assertEqual(len([r for r in w.store.runs(self.b(w)["id"]) if r["kind"] == "c_chunk_fix"]), 1)
 
+    def test_legacy_key_diagnostic_refresh_queues_only_bound_fix(self):
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        self._finish_rejected(w, "001", submits=1)
+        w.tick()
+        ids = self.sense_ids(w, "001")
+        submit = w.wt() / ".warroom-scratch/c-chunk-001.submit.json"
+        diagnostic = submit.with_name(submit.name + ".diag.json")
+        def legacy():
+            submit.write_text(json.dumps({"senses": [{"sense_id": ids[0], "verified": ["wrong-key-123"], "candidates": []}]}))
+            diagnostic.write_text(json.dumps({"status": "FAILED", "diagnostic": "submit_validation",
+                "repair_scope": "resubmit_affected_sense", "reason": "context_key_not_found",
+                "affected": {"sense_id": ids[0], "field": "verified", "entry_number": 1},
+                "issues": [{"entry_number": 1, "reason": "context_key_not_found", "field": "verified"}],
+                "input_sha256": hashlib.sha256(submit.read_bytes()).hexdigest()}))
+        self._finish_rejected(w, "001", submits=0, reject=legacy)
+        def refresh(*args, **kwargs):
+            d = json.loads(diagnostic.read_text())
+            d["affected"]["verified_number"] = 1
+            diagnostic.write_text(json.dumps(d))
+            return None
+        with mock.patch.object(literary, "revalidate_submit_before_skip", side_effect=refresh) as call:
+            w.tick()
+        self.assertEqual(call.call_count, 1)
+        self.assertTrue(call.call_args.kwargs["scoped"])
+        self.assertEqual(self.tasks(w)["001"]["state"], "RUNNING")
+        self.assertIn('"verified_number": 1', w.adapter.launches[-1]["prompt"])
+        self.assertEqual(json.loads(submit.read_text())["senses"][0]["verified"], ["wrong-key-123"])
+        self.assertTrue(self.data(w, "001")["key_position_refresh"])
+
     def test_rejected_context_key_fix_receives_source_bound_recovery(self):
         w = self.world(senses=12)
         w.start("single", "deepseek", "c")

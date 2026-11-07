@@ -460,6 +460,24 @@ test('submission fails closed and writes nothing for uncited, duplicate or unkno
   }
 });
 
+test('submit locates a rejected key without exposing it or saving the chunk', async () => {
+  const fixture = await makeFixture({ unitCount: 3 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    const result = await submitCli(fixture, { senses: [{ sense_id: item.sense_id,
+      verified: [item.contexts[0].k, 'private-invalid-key'], candidates: [] }] });
+    const diagnostic = JSON.parse(result.stderr);
+    assert.equal(result.status, 1);
+    assert.equal(diagnostic.reason, 'context_key_not_found');
+    assert.equal(diagnostic.affected.verified_number, 2);
+    assert.equal(result.stderr.includes('private-invalid-key'), false);
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('C producer-visible module has no technical-skip writer', async () => {
   const module = await import('./literary-context.mjs');
   assert.equal('supervisorSkipLiterarySense' in module, false);
@@ -604,7 +622,8 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       assert.match(diagnostic.input_sha256, /^[a-f0-9]{64}$/u, scenario.name);
       assert.equal(diagnostic.reason, scenario.reason, scenario.name);
       const entryNumber = scenario.entryNumber ?? (scenario.senses ? 1 : null);
-      assert.deepEqual(diagnostic.affected, { sense_id: scenario.senseId, field: scenario.field, entry_number: entryNumber }, scenario.name);
+      assert.deepEqual(diagnostic.affected, { sense_id: scenario.senseId, field: scenario.field, entry_number: entryNumber,
+        ...(['context_key_not_found', 'context_key_too_short'].includes(scenario.reason) ? { verified_number: 1 } : {}) }, scenario.name);
       assert.ok(Array.isArray(diagnostic.issues), scenario.name);
       assert.ok(diagnostic.issues.length <= 16, scenario.name);
       if (scenario.expectedIssuePositions) {
