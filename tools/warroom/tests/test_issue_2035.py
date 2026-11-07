@@ -135,6 +135,35 @@ class SerialChunks(unittest.TestCase):
             events[4]["part"]["text"] = "S1\tpartial\nEND chunk 001"
             self.assertIsNone(recover())
 
+    def test_missing_session_relaunches_without_output_identity_evidence(self):
+        from warroom.adapters import CodexCLIAdapter
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, end=False), session="ses_1")
+        w.adapter.plan.append({"code": 1, "text": "Error: no rollout found for thread id 0000"})
+        w.tick()
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
+        w.adapter.output_identity_problem = CodexCLIAdapter("codex").output_identity_problem
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "PRODUCING")
+        self.assertEqual(len(w.adapter.launches), 3)
+        self.assertEqual(w.adapter.launches[-1]["kind"], "start")
+
+    def test_response_with_failed_identity_is_not_saved(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1), session="ses_1")
+        w.tick()
+        w.adapter.output_identity_problem = lambda *args: ("ERROR", "identity mismatch")
+        w.finish_last()
+        w.tick()
+        cp = stage1ab.checkpoint(w.wt(), w.row_())
+        self.assertFalse(stage1ab.chunk_saved(w.wt(), w.row_(), cp["chunks"][0]))
+        self.assertEqual(w.row_()["state"], "ERROR")
+
     def test_prepare_uses_fifty_for_a_new_batch_and_keeps_an_existing_checkpoint(self):
         w = self.w
         w.start("single", "deepseek", "a")

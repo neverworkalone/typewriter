@@ -8534,10 +8534,6 @@ class Supervisor:
         problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
         if problem:
             return self._fail(b, "ERROR", problem)
-        if problem := self._saved_chunk_identity_problem(b):
-            return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
-        if not self._denials_cleared(b, Path(b["log_file"])):
-            return
         wt = Path(b["worktree"])
         try:
             if self.git.dirty(wt).strip():
@@ -8574,6 +8570,10 @@ class Supervisor:
                     answer_file.write_text(stage1ab.compact_text(chunk["number"], stage1ab.saved_answer_lines(wt, b, chunk)), "utf-8")
                 previous = stage1ab.split_rows(answer_file.read_text("utf-8").split("\n")[1:-1])
             lines = stage1ab.merge_answer(previous, st["requested"], revised)
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return
             submitted_lines = lines
             ok, diag = stage1ab.save(self.runner, self.env, wt, b, chunk, lines)
             if ok:
