@@ -269,6 +269,44 @@ class StageTwoPartLayout(unittest.TestCase):
             stage2.choose(w.runner, w.paths.repo_root, w.sup.env, ref=self.SHA, sha=self.SHA, open_prs=[], kv=w.store)
 
 
+class StageTwoMergedBoundaries(unittest.TestCase):
+    def test_batch_and_shard_close_only_on_last_part(self):
+        from warroom import stage3
+        for shard, batch, part, scopes in [
+            ("006", "01", "01", [("part", "006", "01", "01")]),
+            ("006", "01", "02", [("part", "006", "01", "02"), ("batch", "006", "01", None)]),
+            ("006", "02", "02", [("part", "006", "02", "02"), ("batch", "006", "02", None), ("shard", "006", None, None)]),
+            ("428", "02", "01", [("part", "428", "02", "01"), ("batch", "428", "02", None), ("shard", "428", None, None)]),
+        ]:
+            with self.subTest(shard=shard, batch=batch, part=part):
+                w = s2_world(self)
+                bid = w.store.create_batch(method=S2, producer="claude", shard=shard, batch=f"{batch}-{part}", branch="b", worktree="w")
+                w.git.verified.update(scopes)
+                b = w.store.batch(bid)
+                self.assertTrue(w.sup._stage2_merged_verify(b, {"number": 7, "merge_commit_sha": "c" * 40}))
+                self.assertEqual(w.git.verify_calls, scopes)
+                if scopes[-1][0] == "shard":
+                    self.assertEqual(w.store.get(stage2.ok_key(shard, None)), w.git.base_sha)
+                    choice = stage3.choose(sha=w.git.base_sha, kv=w.store, open_prs=[], stage2_batches=[], stage3_batches=[], pin=shard)
+                    self.assertEqual((choice.status, choice.shard), ("shard", shard))
+                # A restart after the Part success must not repeat successful scope checks.
+                self.assertTrue(w.sup._stage2_merged_verify(b, {"number": 7, "merge_commit_sha": "c" * 40}))
+                self.assertEqual(w.git.verify_calls, scopes)
+
+    def test_failed_boundary_preserves_part_and_retries_boundary(self):
+        w = s2_world(self)
+        bid = w.store.create_batch(method=S2, producer="claude", shard="006", batch="01-02", branch="b", worktree="w")
+        w.git.verified.add(("part", "006", "01", "02"))
+        info = {"number": 7, "merge_commit_sha": "c" * 40}
+        self.assertFalse(w.sup._stage2_merged_verify(w.store.batch(bid), info))
+        self.assertEqual(w.store.get(stage2.ok_key("006", "01", "02")), w.git.base_sha)
+        self.assertIsNone(w.store.get(stage2.ok_key("006", "01")))
+        w.git.verified.add(("batch", "006", "01", None))
+        self.assertTrue(w.sup._stage2_merged_verify(w.store.batch(bid), info))
+        self.assertEqual(w.git.verify_calls, [("part", "006", "01", "02"), ("batch", "006", "01", None),
+                                              ("batch", "006", "01", None)])
+
+
 class StageTwoLifecycle(unittest.TestCase):
     def setUp(self):
         self.w = s2_world(self)
