@@ -979,6 +979,8 @@ class WarRoom(App):
             card.update(Text(card_text({**st, "display_owner": owner_label})))
             card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
         maint = control.maintainer_card(store, self.cfg)
+        if not store.maintenance_batch_open():
+            maint = {"state": "IDLE", "text": ""}
         has_maint_card = bool(list(root.query("#card-maintainer")))
         if has_maint_card:
             mc = root.query_one("#card-maintainer", MaintainerCard)
