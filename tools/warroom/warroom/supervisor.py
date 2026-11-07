@@ -634,6 +634,8 @@ class Supervisor:
             # Finalization can finish without AI. If it needs AI, its only launch is a new repair page, which
             # renders s2_repair from the operating checkout; checkpoint and ownership guards still apply.
             return {"s2_repair"}
+        if b["method"] == literary.METHOD and b["run_kind"] == cparallel.RUN_KIND:
+            return None if b["pr_number"] else self._c_parallel_resume_prompt_names(b)
         if b["method"] == dchunk.METHOD and b["run_kind"] == dparallel.RUN_KIND:
             return None if b["pr_number"] else self._d_parallel_resume_prompt_names(b)
         spec = self._CHUNK_PROMPTS.get(b["method"])
@@ -641,6 +643,31 @@ class Supervisor:
                 or b["run_kind"] in ("d_chunk_fix", "c_chunk_recovery")):
             return None
         return {spec[0]} if b["session_id"] else set(spec[1])
+
+    def _c_parallel_resume_prompt_names(self, b) -> set[str] | None:
+        """Prove the correction prompt only for acknowledged, retryable C submissions."""
+        rows = [r for r in self.store.task_rows(b["id"]) if r["state"] == "FAILED"]
+        if not rows:
+            return None
+        wt = Path(b["worktree"])
+        for row in rows:
+            try:
+                data = json.loads(row["data"] or "{}")
+                if (not isinstance(data, dict) or not data.get("ack") or data.get("pause")
+                        or data.get("search_failed") or not row["session_id"]
+                        or literary.read_active(wt, b, int(row["task"])) is None
+                        or not literary.submit_retryable(wt, b, int(row["task"]))):
+                    return None
+                guard = data.get("guard")
+                if (cparallel._legacy_shown_only_guard(data, guard)
+                        or (isinstance(guard, dict) and guard.get("reason_codes") == ["producer_reported_stop"])):
+                    return None
+                # No new operator grant is created by a Maintainer release.
+                if not self.cp._fix_allowed(data):
+                    return None
+            except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+                return None
+        return {"c_chunk_resume"}
 
     def _d_parallel_resume_prompt_names(self, b) -> set[str] | None:
         """Prompt templates re-entered for D parallel tasks acknowledged by the current failure.
