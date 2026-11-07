@@ -592,7 +592,7 @@ class Store:
                 if approval.get("recovery_type") == "resume_report_task":
                     owner = approval.get("task_report")
                     expected_kind = {"c": "c_parallel", "d": "d_parallel", "s2": "s2_parallel"}.get(b["method"])
-                    task_kinds = {"c": {"c_chunk_new", "c_chunk_resume", "c_chunk_recovery",
+                    task_kinds = {"c": {"c_chunk_new", "c_chunk_resume", "c_chunk_fix", "c_chunk_recovery",
                                          "c_chunk_scope_recovery"},
                                   "d": {"d_chunk_new", "d_chunk_resume", "d_chunk_fix"},
                                   "s2": {"s2_chunk_new", "s2_chunk_resume", "s2_chunk_fix",
