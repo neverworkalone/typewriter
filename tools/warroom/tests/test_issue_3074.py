@@ -199,6 +199,10 @@ class ParallelDCorrections(ParallelDHelpers, unittest.TestCase):
         fix = w.adapter.launches[-1]
         self.assertEqual((fix["kind"], fix["session"]), ("resume", "ses_1"))
         self.assertIn(dchunk.fix_problem(dchunk.read_rejection(w.wt(), w.row_(), dchunk.read_active(w.wt(), w.row_(), 1))), fix["prompt"])
+        rec = dchunk.read_active(w.wt(), w.row_(), 1)
+        sense = rec["senses"][0]
+        record = next(r for r in rec["records"] if r["record_id"] == sense["record_id"])
+        self.assertIn(f"{sense['ref']} [record={sense['record_id']}] {sense['sense_id']} · {record['lemma']}", fix["prompt"])
         self.assertEqual(w.store.get(dchunk.fix_key(bid, 1)), "1")
         self.assertIsNone(w.store.get(dchunk.fix_key(bid, 2)))
         self.assertEqual([r["kind"] for r in w.store.runs(bid) if r["task"] == "001"], ["d_chunk_fix", "d_chunk_new"])

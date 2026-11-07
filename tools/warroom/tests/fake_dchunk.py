@@ -86,7 +86,7 @@ class FakeDChunkCli:
         if number in self.auto:
             self.save(Path(cwd), number, lambda sid: [])
             return Result(0, json.dumps({"status": "AUTO_COMPLETE", **base}))
-        senses = [{"ref": f"s{i}", "sense_id": s["id"]} for i, s in enumerate((s for r in self.chunk(number) for s in r["senses"]), 1)]
+        senses = [{"ref": f"s{i}", "sense_id": s["id"], "record_id": r["id"]} for i, (r, s) in enumerate(((r, s) for r in self.chunk(number) for s in r["senses"]), 1)]
         view = f"batch=001_01 chunk={number:03d}/{total:03d}\n\n" + "\n".join(
             f"## {r['id']} {r['lemma']}\n" + "\n".join(f"{x['ref']} {x['sense_id']}" for x in senses if x["sense_id"].startswith(r["id"]))
             for r in self.chunk(number)) + "\n" + "".join(f"padding {i} 한국어 원문 발췌\n" for i in range(self.padding))
@@ -99,7 +99,7 @@ class FakeDChunkCli:
             "shard": self.opt(argv, "--shard"), "batch": self.opt(argv, "--batch"), "model": self.opt(argv, "--model"),
             "git_head": self.opt(argv, "--head"), "chunk_no": number, "view_sha256": hashlib.sha256(view.encode()).hexdigest(),
             "view_bytes": len(view.encode()),
-            "records": [{"record_id": r["id"], "sense_ids": [s["id"] for s in r["senses"]]} for r in self.chunk(number)],
+            "records": [{"record_id": r["id"], "lemma": r["lemma"], "sense_ids": [s["id"] for s in r["senses"]]} for r in self.chunk(number)],
             "senses": senses}))
         return Result(0, json.dumps({"status": "READY", "ai_senses": len(senses), **base}))
 
