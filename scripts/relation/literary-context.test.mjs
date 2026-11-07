@@ -990,7 +990,32 @@ test('chunk --skip rejects invalid ranges, missing evidence and mismatched shown
     await writeFile(fixture.checkpointPath, `${JSON.stringify(checkpoint)}\n`);
     const outOfOrder = await readFile(fixture.checkpointPath, 'utf8');
     await assert.rejects(chunk(fixture, { senseIds: 'sense-000001', contexts: 16, skip: 8 }), /order no longer matches/u);
+    const orderFailure = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--skip', '8', '--contexts', '16']));
+    assert.equal(orderFailure.status, 1);
+    assert.equal(JSON.parse(orderFailure.stderr).code, 'LITERARY_SKIP_ORDER');
+    assert.equal(JSON.parse(orderFailure.stderr).repair_scope, 'stop_and_report');
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), outOfOrder);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('chunk CLI identifies an exhausted or missing skip prefix without changing evidence', async () => {
+  const fixture = await makeFixture({ unitCount: 6 });
+  try {
+    const id = 'sense-000001';
+    const first = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', id, '--contexts', '8']));
+    assert.equal(first.status, 0, first.stderr);
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    const rejected = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', id, '--skip', '8', '--contexts', '16']));
+    assert.equal(rejected.status, 1);
+    const diagnostic = JSON.parse(rejected.stderr);
+    assert.equal(diagnostic.diagnostic, 'skip_evidence');
+    assert.equal(diagnostic.code, 'LITERARY_SKIP_PREFIX');
+    assert.equal(diagnostic.repair_scope, 'check_each_sense');
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+    const reread = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', id, '--contexts', '16']));
+    assert.equal(reread.status, 0, reread.stderr);
   } finally {
     await cleanup(fixture);
   }

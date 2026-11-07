@@ -1470,12 +1470,12 @@ function completeShownSample(sense, digest, result) {
 function assertSkipPrefix(prior, digest, allUnitRowIds, skippedContexts) {
   if (!prior || prior.forms_sha256 !== digest || !Array.isArray(prior.unit_rowids)
     || prior.unit_rowids.length < skippedContexts) {
-    fail('skip requires matching previously shown context evidence for this sense');
+    throw codedError('LITERARY_SKIP_PREFIX', 'skip requires matching previously shown context evidence for this sense');
   }
   const priorPrefix = prior.unit_rowids.slice(0, skippedContexts);
   if (priorPrefix.length !== skippedContexts
     || priorPrefix.some((unitRowId, index) => unitRowId !== allUnitRowIds[index])) {
-    fail('skip context order no longer matches previously shown evidence for this sense');
+    throw codedError('LITERARY_SKIP_ORDER', 'skip context order no longer matches previously shown evidence for this sense');
   }
 }
 

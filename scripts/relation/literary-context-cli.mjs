@@ -389,6 +389,16 @@ async function main() {
 
 main().catch((error) => {
   const errorType = typeof error?.name === 'string' && /^[A-Za-z][A-Za-z0-9]*$/u.test(error.name) ? error.name : 'Error';
+  if (error?.code === 'LITERARY_SKIP_PREFIX' || error?.code === 'LITERARY_SKIP_ORDER') {
+    const prefix = error.code === 'LITERARY_SKIP_PREFIX';
+    process.stderr.write(`${JSON.stringify({ status: 'FAILED', diagnostic: 'skip_evidence', code: error.code,
+      message: prefix
+        ? 'The requested skip exceeds matching previously shown evidence for at least one Sense. Check each Sense and its initial view; exclude exhausted Senses or reread without skip when evidence is missing.'
+        : 'The previously shown context order no longer matches. Stop and report; do not bypass the evidence check.',
+      repair_scope: prefix ? 'check_each_sense' : 'stop_and_report' })}\n`);
+    process.exitCode = 1;
+    return;
+  }
   if (error?.code === 'LITERARY_USAGE') {
     const messages = new Set([
       'arguments must use --option value pairs', 'invalid option format', 'an option was provided more than once',
