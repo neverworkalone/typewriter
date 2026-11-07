@@ -567,6 +567,76 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertEqual(w.store.defect(defect["id"])["state"], "RELEASED")
         self.assertEqual(w.store.maintenance(101)["state"], "DONE")
 
+    def test_saved_report_requires_a_new_followup_save_after_approval(self):
+        w = DWorld(records=50, parallel=True)
+        self.addCleanup(w.tmp.cleanup)
+        w.cfg["producers"] = PRODUCERS
+        w.runner.models.append("p/sonnet-free")
+        w.cfg["maintainer"] = "sonnet"
+        w.gh.issues[101] = {"state": "open", "labels": ["urgent"], "title": "Issue 101", "body": "diagnosis"}
+        w.start("single", "deepseek", "d")
+        w.adapter.plan.append({"code": 0, "session": "report-session",
+                               "effect": lambda: w.runner.dchunk.save(w.wt(), 1)})
+        w.ai(save=False, session="other-session")
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-2]["pid"])
+        w.tick()
+        source = w.row_()
+        self.assertEqual(w.store.task_row(source["id"], "001")["state"], "SAVED")
+        saved_bytes = (w.wt() / dchunk.names(source).directory / "chunk-001.jsonl").read_bytes()
+        raw = json.dumps(shared_report(defect_class="d-save-boundary", summary="Saved task reports an error"))
+        report_path = w.wt() / dparallel.defect_path(source, "001")
+        report_path.write_text(raw, "utf-8")
+        self.assertFalse(w.sup._scan_task_reports(source, w.sup.dp))
+        self.assertTrue(w.sup._scan_task_reports(source, w.sup.dp))
+        self.assertTrue(w.sup._scan_task_reports(w.store.batch(source["id"]), w.sup.dp))
+        source = w.store.batch(source["id"])
+        self.assertEqual(source["state"], "PAUSED")
+        defect = w.store.defect_by_event(defects.report_event_key(source["id"], raw))
+        w.store.update_defect(defect["id"], state="LINKED", issue_number=101)
+        w.store.ensure_maintenance(101)
+        maintainer_id = w.store.claim_maintenance(101, "sonnet", "maint-101", str(w.paths.worktrees / "maint-101"))
+        w.tick()
+        maintainer = w.store.batch(maintainer_id)
+        root = Path(maintainer["worktree"])
+        request = json.loads((root / ".warroom-scratch/incident-diagnosis-request.json").read_text())
+        self.assertEqual(request["scope"]["task_report"]["row_state"], "SAVED")
+        scope = {"task": "001", "chunk": "001"}
+        result = {"version": 2, "issue": 101, "attempt": maintainer_id, "round": request["round"],
+                  "defect_id": defect["id"], "event_key": defect["event_key"], "batch_id": source["id"],
+                  "source_head": request["source_head"], "evidence_sha256": request["evidence_sha256"],
+                  "scope": scope, "outcome": "no_code_resume", "summary": "Saved report is a false alarm.",
+                  "cause": "The saved decision is correct.",
+                  "recovery": {"type": "continue_after_saved_report", **scope,
+                               "action": "Preserve task 001 and continue the remaining task."},
+                  "blocker": None, "next_action": "Verify a new official save after approval."}
+        (root / ".warroom-scratch/incident-diagnosis.json").write_text(json.dumps(result))
+        marker = f"incident-recovery-101-attempt-{maintainer_id}-round-{request['round']}"
+        w.gh.comment_issue(101, "\n".join((result["summary"], result["cause"], result["recovery"]["action"],
+                                           result["next_action"], request["evidence_sha256"],
+                                           defects.marker(defects.EVENT_MARK, marker))))
+        w.adapter.finish(maintainer["pid"])
+        w.tick()
+        self.assertEqual(w.store.batch(source["id"])["state"], "PRODUCING")
+        self.assertEqual(w.store.defect(defect["id"])["state"], "RECOVERING")
+        self.assertFalse(w.store.finish_no_code_recovery(101, defect["id"], source["id"], "001"))
+        self.assertFalse(w.store.finish_no_code_recovery(101, defect["id"], source["id"], "001", followup_task="001"))
+        self.assertFalse(w.store.finish_no_code_recovery(101, defect["id"], source["id"], "001", followup_task="002"))
+        self.assertEqual(w.store.maintenance(101)["state"], "RECOVERING")
+        w.adapter.plan.append({"code": 0, "session": "other-session",
+                               "effect": lambda: w.runner.dchunk.save(w.wt(), 2)})
+        w.tick()
+        run = w.store.runs(source["id"])[0]
+        self.assertEqual(run["task"], "002")
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.store.task_row(source["id"], "002")["state"], "SAVED")
+        self.assertEqual(w.store.defect(defect["id"])["state"], "RELEASED")
+        self.assertEqual(w.store.maintenance(101)["state"], "DONE")
+        self.assertEqual((w.wt() / dchunk.names(source).directory / "chunk-001.jsonl").read_bytes(), saved_bytes)
+        approval = json.loads(w.store.get(f"no_code_approval_{defect['id']}"))
+        self.assertEqual(approval["verified_followup_task"], "002")
+
     def test_report_without_session_stops_workers_and_cannot_authorize_resume(self):
         w = DWorld(records=50, parallel=True)
         self.addCleanup(w.tmp.cleanup)
