@@ -8312,7 +8312,11 @@ class Supervisor:
         except stage1ab.ABChunkError:
             view = (Path(b["worktree"]) / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
             aliases = [row[0] for row in stage1ab.view_rows(view)]
-            return stage1ab.interrupted_opencode_answer(b["log_file"], chunk["number"], aliases) or final
+            run = self._last_run(b)
+            if (run is None or run["ended_at"] is None or run["log_file"] != b["log_file"]
+                    or run["session_id"] != b["session_id"] or run["kind"] != b["run_kind"]):
+                return final
+            return stage1ab.interrupted_opencode_answer(b["log_file"], chunk["number"], aliases, b["session_id"]) or final
 
     def _ab_complete_response(self, b, chunk: dict) -> bool:
         """True only when the current answer block covers every alias in the chunk's exact saved view."""

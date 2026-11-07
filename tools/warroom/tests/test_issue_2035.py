@@ -125,7 +125,7 @@ class SerialChunks(unittest.TestCase):
             path = Path(d) / "run.log"
             def recover():
                 path.write_text("\n".join(json.dumps(e) for e in events))
-                return stage1ab.interrupted_opencode_answer(path, 1, ["S1", "S2"])
+                return stage1ab.interrupted_opencode_answer(path, 1, ["S1", "S2"], "s")
             self.assertIsNotNone(recover())
             events[3]["sessionID"] = "other"
             self.assertIsNone(recover())

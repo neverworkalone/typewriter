@@ -249,7 +249,7 @@ def extract_block(final_text: str | None, chunk_no: int) -> list[str]:
     return body
 
 
-def interrupted_opencode_answer(log_file, chunk_no: int, aliases: list[str]) -> str | None:
+def interrupted_opencode_answer(log_file, chunk_no: int, aliases: list[str], expected_session: str) -> str | None:
     """Recover an exactly overlapping continuation after an interrupted OpenCode stream."""
     try:
         events = [json.loads(line) for line in Path(log_file).read_text("utf-8").splitlines() if line.strip()]
@@ -260,7 +260,7 @@ def interrupted_opencode_answer(log_file, chunk_no: int, aliases: list[str]) -> 
         sid = events[0].get("sessionID")
         if envelope is not None and envelope.get("sessionID") != sid:
             return None
-        if not sid or any(e.get("sessionID") != sid for e in events):
+        if not expected_session or sid != expected_session or any(e.get("sessionID") != sid for e in events):
             return None
         error = events[2].get("error", {})
         if error.get("type") != "provider.invalid-output" or error.get("message") != "OpenAI Chat stream ended without finish_reason":
