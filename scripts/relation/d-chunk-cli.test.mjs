@@ -1105,6 +1105,13 @@ withWorld('latest search state supersedes a ZERO_HITS prepare view and resumes i
     state: 'V_N_ALLOWED', searches: 2, recorded_hits: 4, all_complete: false,
   });
 
+  const reread = await runCli(['search', target.ref, '--reread', '--dir', world.root, '--chunk', '001'], '', {
+    TYPEWRITER_APPROVED_CORPUS_DB: world.options.databasePath,
+  });
+  assert.equal(reread.code, 0, reread.stderr);
+  assert.match(reread.stdout, /recorded_status=ZERO_HITS recorded_hits=0/u);
+  assert.match(reread.stdout, /decision_state=V_N_ALLOWED searches=2 recorded_hits=4 all_complete=false/u);
+
   const current = await currentActiveStates({ root: world.root, chunkNumber: 1 });
   assert.deepEqual(current.states.find((item) => item.sense === target.ref).decision_state, first.requests[0].decision_state);
 

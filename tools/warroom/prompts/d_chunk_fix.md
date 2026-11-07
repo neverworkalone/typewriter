@@ -6,6 +6,8 @@
 
 **검색 상태 스냅샷:** 기존 `view`는 `prepare` 당시 상태라 이후 검색으로 갱신되지 않는다. 거부 진단과 그 뒤 실행한 검색 응답 중 가장 최근 `decision_state`를 현재 상태로 사용하고, 예전 view의 `ZERO_HITS`/`COMPLETE`로 덮어쓰지 않는다. `Z`는 현재 상태가 `Z_ALLOWED`일 때만 가능하다. 동일 조건이 `LIMITED`이면 cursor 없는 재요청 대신 `cursor:"next"`로 이어 읽는다. 상태·hit 수만으로 source Sense 판독이나 `V`/`N`을 대신하지 않는다.
 
+한 record의 view에 여러 `search: forms=`가 있으면 모두 확인한다. 단일 검색의 `recorded_status`와 `recorded_hits`는 요청한 검색 조건만 뜻하며, 전체 record의 판정 가능 상태는 별도로 출력된 `decision_state`다. 재열람 시 문맥이 필요한 정확한 forms와 boundary를 지정한다.
+
 `{{decisions}}`에 이미 있는 판정은 그대로 두고 지목된 줄만 고치거나 추가한 뒤, 카드의 `save` 명령을 **한 번** 다시 실행한다. 저장은 모든 판정 대상 Sense가 한 파일에 있어야 통과하므로 파일 전체가 유지돼야 한다. 정상 저장되면 즉시 종료한다. 증거상 안전하게 저장할 수 없으면 저장하지 말고 그 사실을 보고한 뒤 종료한다. `AGENTS.md`, `docs/`, Git, `gh`, 다음 청크 진행, 조립, commit, push, PR 생성은 하지 않는다.
 
 `line N` 같은 순수 출력 형식 오류라면 기존 판정 의미를 보존하고 지목된 줄의 형식만 바로잡는다.
