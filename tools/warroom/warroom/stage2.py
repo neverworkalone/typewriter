@@ -7,10 +7,8 @@ shard). Shard 428 Batch 02 has 83 records = 1 Part either way. One Part = one AI
 under the reserved method `s2` with `batch` = "BB-PP", so launching, session/pin handling, PR watching, review
 fixes, Stop/Drain/Retry/Clear and recovery are the Supervisor's existing code.
 
-This module owns only what is new: which Part comes next. A Part is complete only when the exact
-`admission-cli verify --shard S --batch B --part P` has succeeded on the latest master. Its cached success carries
-forward only while the Part's relevant inputs stay unchanged; otherwise it is re-verified, with proven orphan
-candidates reconciled through a separate deterministic PR. Past file existence or a PR never counts as completion.
+New work follows the most recently merged Stage 2 production PR in strict canonical order. Existing Part production
+and merge verification remain separate from selecting the next Part.
 """
 from __future__ import annotations
 
@@ -956,231 +954,53 @@ def inputs_ready(cands: dict[str, int], shard: str, batch: str, records: int) ->
     return all(any(m == method and n == records for (m, _), n in have.items()) for method in ("c", "d"))
 
 
-def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verify, kv, pin: str = "",
-           outcome=None, blocks=None, changed=None, relation_owners=None, relation_owners_many=None,
-           reconcile_completed=None) -> Choice:
-    """The earliest ready, incomplete Part in canonical order (a pinned shard only, for a Single run).
-
-    `verify(kind, shard, batch, part) -> (ok, tail)` runs the exact admission verify on the latest master; `kv` caches
-    its successes. A Part whose Stage 1 inputs are not on master, or whose shard has an open Stage 2 PR, is waited
-    for, never skipped by changing the Single shard. Batch and shard verify close out their last Part. Raises
-    BatchError / GitError on unreadable master data or an open PR with an unknown file list (never "no PR").
-
-    A completed Part's exact success is carried to a new SHA only when its relevant inputs are unchanged. A
-    An approved Relation deletion may call `reconcile_completed(shard, batch, part, old_sha, sha)`: a returned note means
-    a deterministic Stage 2 reconciliation PR was started or is already active, so selection waits for that PR.
-
-    Batch/shard close-out (#2154): with `outcome(kind, shard, batch, part) -> VerifyOutcome` a deterministic verify
-    failure reproduced on the same SHA becomes `Choice("verify_failed")`, and `blocks` (the Store) holds the one active
-    block per scope: while it is current on this SHA the scope waits; a new SHA is re-verified exactly, and only a
-    success releases it. Without `outcome` a failure stops the Line as before.
-
-    A cached Batch/shard success is the master SHA it was verified on. On another SHA it stands only while
-    `changed(old, new)` and, when needed, `relation_owners(old, new)` show that no relevant source/target Sense or other
-    verify input changed. Unknown diffs fail closed and trigger the exact verify.
-    """
-    diffs: dict[str, list[str] | None] = {}
-    relation_diffs: dict[str, set[str] | None] = {}
-
-    def verified(key, shard):
-        """True while the scope's cached success still holds on `sha`."""
-        old = kv.get(key)
-        if not old:
-            return False
-        if old == sha or changed is None:
-            return True
-        if old not in diffs:
-            try:
-                diffs[old] = changed(old, sha)
-            except ResourceFenced:
-                raise
-            except GitError:
-                diffs[old] = None   # the old commit is unavailable: unknown, so verify again
-        paths = diffs[old]
-        relation_shards = None
-        if paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths):
-            if old not in relation_diffs:
-                if relation_owners is None:
-                    relation_diffs[old] = None
-                else:
-                    try:
-                        relation_diffs[old] = set(relation_owners(old, sha))
-                    except Exception:
-                        relation_diffs[old] = None
-            relation_shards = relation_diffs[old]
-        if scope_cache_invalidated(paths, shard, relation_shards):
-            return False
-        kv.set(key, sha)   # nothing it reads changed: the success carries over to this commit
-        return True
-
-    def changed_for_scope(old, shard):
-        """Return (changed paths, affected Relation owners, relevant) for one cached scope."""
-        if old not in diffs:
-            try:
-                diffs[old] = changed(old, sha) if changed is not None else None
-            except ResourceFenced:
-                raise
-            except GitError:
-                diffs[old] = None
-        paths = diffs[old]
-        relation_shards = None
-        if paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths):
-            if old not in relation_diffs:
-                if relation_owners is None:
-                    relation_diffs[old] = None
-                else:
-                    try:
-                        relation_diffs[old] = set(relation_owners(old, sha))
-                    except Exception:
-                        relation_diffs[old] = None
-            relation_shards = relation_diffs[old]
-        return paths, relation_shards, scope_cache_invalidated(paths, shard, relation_shards)
-
-    def close(kind, shard, batch):
-        """None once the scope's exact verify succeeded (cached), else the Choice that holds the Line."""
-        key = ok_key(shard, batch) if kind == "batch" else ok_key(shard, None)
-        if outcome is None:
-            ok, tail = verify(kind, shard, batch, None)
-            if not ok:
-                return Choice("stop", note=f"{stop_head(kind, shard, batch)}: {tail}")
-            kv.set(key, sha)
-            return None
-        block = blocks.active_verify(verify_class(kind, shard, batch))
-        if block is not None and block["last_sha"] == sha:   # already verified on this exact master: wait, never re-verify
-            return Choice("wait", note=f"urgent Issue #{block['issue_number']} 복구 대기" if block["issue_number"]
-                          else f"{scope_label(kind, shard, batch)} verify 실패 차단(Issue 등록 대기)")
-        first = outcome(kind, shard, batch, None)
-        if first.ok:
-            if block is not None:
-                blocks.release_verify(block["id"], sha, key)
-            else:
-                kv.set(key, sha)
-            return None
-        if first.failure is None:
-            return Choice("stop", note=f"{stop_head(kind, shard, batch)} (결정적 rows/accounting 실패로 분류되지 않음 — 운영자 확인): {first.tail}")
-        again = outcome(kind, shard, batch, None)   # the same SHA must reproduce the same cause
-        fps = [fingerprint(kind, shard, batch, o.failure["family"], o.failure["errors"]) if o.failure else None for o in (first, again)]
-        if again.ok or fps[0] != fps[1]:
-            return Choice("stop", note=f"{stop_head(kind, shard, batch)} (같은 SHA에서 같은 원인으로 재현되지 않음 — 운영자 확인): {again.tail or first.tail}")
-        f = first.failure
-        return Choice("verify_failed", note=first.tail, failure=VerifyFailure(
-            kind, shard, batch, sha, verify_command(kind, shard, batch), f["family"], tuple(f["errors"]), fps[0]))
-
+def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], kv, latest_pr=None, pin: str = "", **_unused) -> Choice:
+    """Select only the successor of the latest merged production Part."""
     layout = read_layout(runner, root, env, sha)
-    traces: dict[str, str] | None = None
-    canon = batches._counts(runner, root, env, ref, "data/canonical/stdict-*.jsonl")
-    cands = batches._candidate_counts(runner, root, env, ref)
-    if changed is not None:
-        # Parts can have different completion SHAs. Inspect their path deltas first and resolve all changed
-        # Relation rows in one CLI call, which scans Canonical once regardless of the number of old Part SHAs.
-        old_shas = set()
-        for shard_number in range(1, batches.SHARDS + 1):
-            shard_id = f"{shard_number:03d}"
-            for batch_number in (1, 2):
-                records = batches.expected_records(canon, shard_number, batch_number)
-                if records == 0:
-                    continue
-                batch_id = f"{batch_number:02d}"
-                for part_id in (f"{part:02d}" for part in range(1, part_count(records, layout.size(shard_id)) + 1)):
-                    old = kv.get(ok_key(shard_id, batch_id, part_id))
-                    if old and old != sha:
-                        old_shas.add(old)
-        relation_old_shas = []
-        for old in sorted(old_shas):
-            try:
-                diffs[old] = changed(old, sha)
-            except ResourceFenced:
-                raise
-            except GitError:
-                diffs[old] = None
-            paths = diffs[old]
-            if paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths):
-                relation_old_shas.append(old)
-        if relation_old_shas and relation_owners_many is not None:
-            try:
-                relation_diffs.update(relation_owners_many(relation_old_shas, sha))
-            except Exception:
-                relation_diffs.update({old: None for old in relation_old_shas})
-        elif relation_old_shas and relation_owners is not None:
-            for old in relation_old_shas:
-                try:
-                    relation_diffs[old] = set(relation_owners(old, sha))
-                except Exception:
-                    relation_diffs[old] = None
-    occupied: set[str] = set()
+    shard, batch, part = 1, 1, 1
+    if latest_pr:
+        match = re.fullmatch(r"(?:\[S2/[A-Za-z0-9-]+\]|\[Stage 2\]) (\d{3})_(\d{2}) Part (\d{2})", latest_pr.get("title", ""))
+        if not match:
+            raise batches.BatchError("invalid merged Stage 2 production title")
+        shard, batch, part = map(int, match.groups())
+        if not 1 <= shard <= 428 or batch not in (1, 2):
+            raise batches.BatchError("invalid merged Stage 2 production position")
+        records = 83 if (shard, batch) == (428, 2) else 500
+        if not 1 <= part <= part_count(records, layout.size(f"{shard:03d}")):
+            raise batches.BatchError("merged Stage 2 Part outside layout")
+        part += 1
+        if part > part_count(records, layout.size(f"{shard:03d}")):
+            part = 1
+            batch += 1
+            if batch > 2:
+                batch = 1
+                shard += 1
+    if shard > 428 or (pin and f"{shard:03d}" != pin):
+        return Choice("done", note="Stage 2 순차 대상이 완료되었습니다.")
+    sid, bid, pid = f"{shard:03d}", f"{batch:02d}", f"{part:02d}"
     for pr in open_prs:
-        occupied |= batches.pr_stage2_shards(pr)
-    waiting: list[str] = []
-    for s in range(1, batches.SHARDS + 1):
-        shard = f"{s:03d}"
-        if pin and shard != pin:
-            continue
-        marker = kv.get(layout_key(shard)) if layout.is_new(shard) else None
-        if marker is not None and marker != str(layout.size(shard)):
-            return Choice("stop", note=f"샤드 {shard}의 전환 표식 {layout_key(shard)}={marker!r}이 현재 Part 크기 "
-                                       f"{layout.size(shard)}와 다릅니다. 자동 해석하지 않습니다 — 운영자 확인")
-        if layout.is_new(shard) and marker is None:
-            # #3385: a new-layout Shard must be untouched. Any earlier trace (even Part 01/02 under the old size) means
-            # the transition cannot be proven, so the Line stops instead of re-splitting or re-running it.
-            if traces is None:
-                traces = earlier_traces(runner, root, env, sha, kv)
-            if shard in occupied or shard in traces:
-                why = traces.get(shard, "열린 Stage 2 PR")
-                return Choice("stop", note=f"샤드 {shard}는 새 Part 크기({layout.part_size}) 전환 표식({layout_key(shard)})이 없는데 "
-                                           f"이전 Stage 2 흔적이 있습니다({why}). 자동 전환·재분할하지 않습니다 — 운영자 확인")
-        if shard in occupied:
-            waiting.append(f"샤드 {shard}에 열린 Stage 2 PR이 있음")
-            continue
-        batches_open = []
-        for b in (1, 2):
-            records = batches.expected_records(canon, s, b)
-            if records == 0:
-                continue
-            batch = f"{b:02d}"
-            size = layout.size(shard)
-            parts = [f"{p:02d}" for p in range(1, part_count(records, size) + 1)]
-            for part in parts:
-                part_key = ok_key(shard, batch, part)
-                completed_sha = kv.get(part_key)
-                if completed_sha:
-                    if completed_sha == sha:
-                        continue
-                    paths, relation_shards, relevant = changed_for_scope(completed_sha, shard)
-                    if not relevant:
-                        kv.set(part_key, sha)
-                        continue
-                    if (relation_shards is not None and shard in relation_shards and reconcile_completed is not None
-                            and paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths)):
-                        try:
-                            note = reconcile_completed(shard, batch, part, completed_sha, sha)
-                        except Exception as error:
-                            return Choice("stop", note=f"완료된 {label(shard, batch_key(batch, part))}의 Stage 3 삭제 조정 실패: {error}")
-                        if note:
-                            return Choice("wait", note=note)
-                    ok, tail = verify("part", shard, batch, part)
-                    if not ok:
-                        return Choice("stop", note=f"완료된 {label(shard, batch_key(batch, part))}가 새 master에서 verify에 실패했습니다: {tail}")
-                    kv.set(part_key, sha)
-                    continue
-                if not inputs_ready(cands, shard, batch, records):
-                    waiting.append(f"{shard}_{batch} Stage 1 입력(6개 Candidate 파일)이 master에 완성되지 않음")
-                    break
-                ok, _tail = verify("part", shard, batch, part)
-                if not ok:
-                    unconfirmed = str(size) if layout.is_new(shard) and kv.get(layout_key(shard)) is None else None
-                    return Choice("part", Part(shard, batch, part, min(size, records - (int(part) - 1) * size), unconfirmed))
-                kv.set(part_key, sha)
-            open_ = any(not kv.get(ok_key(shard, batch, part)) for part in parts)
-            batches_open.append(open_)
-            if not open_ and not verified(ok_key(shard, batch), shard):
-                if (held := close("batch", shard, batch)) is not None:
-                    return held
-        if batches_open and not any(batches_open) and not verified(ok_key(shard, None), shard):
-            if (held := close("shard", shard, None)) is not None:
-                return held
-    if waiting:
-        return Choice("wait", note="; ".join(dict.fromkeys(waiting)))
-    return Choice("done", note="더 이상 진행할 Stage 2 Part가 없습니다." if not pin else f"샤드 {pin}의 Stage 2 Part가 모두 완료되었습니다.")
+        if re.match(r"(?:\[S2/|\[Stage 2\])", pr.get("title", "")) or sid in batches.pr_stage2_shards(pr):
+            return Choice("wait", note=f"샤드 {sid}에 열린 Stage 2 관련 PR이 있음")
+    marker = kv.get(layout_key(sid)) if layout.is_new(sid) else None
+    if marker is not None and marker != str(layout.size(sid)):
+        return Choice("stop", note=f"샤드 {sid} Part 크기 표식이 현재 레이아웃과 다릅니다")
+    records = 83 if (shard, batch) == (428, 2) else 500
+    path = f"data/relation-candidates/{sid}/{sid}_{bid}_*.jsonl"
+    counts = batches._counts(runner, root, env, ref, path)
+    missing = []
+    for method in ("a", "b"):
+        for model in _AB_MODELS:
+            name = f"data/relation-candidates/{sid}/{sid}_{bid}_{method}_{model}.jsonl"
+            if counts.get(name) != records:
+                missing.append(f"{method.upper()}/{model}")
+    for method in ("c", "d"):
+        matches = [n for name, n in counts.items() if (m := batches._CAND.fullmatch(name)) and m.group(3) == method]
+        if len(matches) != 1 or matches[0] != records:
+            missing.append(method.upper())
+    if missing:
+        return Choice("unready", note=f"다음 대상 {sid}_{bid} Part {pid} / 입력 미준비 / 실행 종료: {', '.join(missing)}")
+    unconfirmed = str(layout.size(sid)) if layout.is_new(sid) and marker is None else None
+    return Choice("part", Part(sid, bid, pid, min(layout.size(sid), records - (part - 1) * layout.size(sid)), unconfirmed))
 
 
 

@@ -46,6 +46,38 @@ class GhClient:
             raise self._fail("gh pr list", r)
         return json.loads(r.out or "[]")
 
+    def latest_stage2_production(self, base: str) -> dict | None:
+        """Find the latest merged production PR using merge-time ordered, bounded searches."""
+        from urllib.parse import urlencode
+        rows = []
+        for phrase in ('"S2"', '"Stage 2"'):
+            query = urlencode({"q": f'repo:{self.repo} is:pr is:merged base:{base} {phrase} Part in:title sort:merged-desc',
+                               "per_page": 100})
+            result = self._api(f"search/issues?{query}")
+            if not isinstance(result, dict) or result.get("incomplete_results") is not False or not isinstance(result.get("items"), list):
+                raise GhTransient("incomplete Stage 2 merged PR search")
+            found = None
+            for row in result["items"]:
+                title = row.get("title", "")
+                if re.fullmatch(r"(?:\[S2/[A-Za-z0-9-]+\]|\[Stage 2\]) \d{3}_\d{2} Part \d{2}", title):
+                    found = row
+                    break
+            if found:
+                rows.append(found)
+            elif result.get("total_count", 0) > len(result["items"]):
+                raise GhError("Stage 2 PR search exceeded bounded results without a production match")
+        if not rows:
+            return None
+        row = max(rows, key=lambda item: item.get("pull_request", {}).get("merged_at") or "")
+        detail = self._api(f"repos/{self.repo}/pulls/{row['number']}")
+        if (not detail.get("merged") or not detail.get("merged_at") or detail.get("state") != "closed"
+                or (detail.get("base") or {}).get("ref") != base
+                or ((detail.get("base") or {}).get("repo") or {}).get("full_name", "").lower() != self.repo.lower()
+                or ((detail.get("head") or {}).get("repo") or {}).get("full_name", "").lower() != self.repo.lower()
+                or detail.get("title") != row.get("title") or not re.fullmatch(r"[a-f0-9]{40}", detail.get("merge_commit_sha") or "")):
+            raise GhError("latest Stage 2 PR identity or merge evidence is incomplete")
+        return detail
+
     def prs_for_branch(self, branch: str) -> list[dict]:
         r = self.runner.run(["gh", "pr", "list", "--repo", self.repo, "--head", branch,
                              "--state", "all", "--json", "number,state,headRefOid,mergedAt"],

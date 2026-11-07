@@ -1752,12 +1752,7 @@ class Supervisor:
         self._prepare_existing(self.store.batch(bid))
 
     def _prepare_new_stage2(self, ln) -> None:
-        """Assign the next Stage 2 Part: the earliest ready Part whose exact verify has not yet succeeded on master.
-
-        Single stays on the shard chosen at its first Part (waiting there rather than moving on); Continuous goes on to
-        the next shard. With nothing runnable it waits and re-checks at poll_seconds instead of re-running or
-        opening a duplicate PR.
-        """
+        """Assign the strict successor of the latest merged production Part."""
         model, method, base = ln["model"], STAGE2_METHOD, self.cfg["base_branch"]
         wait_key, poll_key, line = f"s2_wait_{model}", f"s2_poll_{model}", f"{model}/{method}"
         if self.store.get(wait_key) and self.clock() - float(self.store.get(poll_key, "0")) < self.cfg["poll_seconds"]:
@@ -1767,14 +1762,11 @@ class Supervisor:
         pin = ln["shard_pin"] if ln["mode"] == "single" else ""
         try:
             sha = self.git.fetch_base(base)
-            choice = stage2.choose(self.runner, self.paths.repo_root, self.env, ref=f"origin/{base}", sha=sha,
-                                   open_prs=self.gh.open_prs(), kv=self.store, pin=pin,
-                                   verify=lambda *a: self.git.verify_stage2(sha, *a),
-                                   outcome=lambda *a: self.git.verify_stage2_outcome(sha, *a), blocks=self.store,
-                                   changed=self.git.changed_between,
-                                   relation_owners=self.git.stage2_affected_relation_shards,
-                                   relation_owners_many=self.git.stage2_affected_relation_shards_many,
-                                   reconcile_completed=lambda *args: self._stage2_start_reconcile(ln, *args))
+            latest = self.gh.latest_stage2_production(base)
+            if latest and not self.git.is_ancestor(latest["merge_commit_sha"], sha):
+                raise GitError("latest merged Stage 2 PR is not contained in fetched master")
+            choice = stage2.choose(self.runner, self.paths.repo_root, self.env, ref=sha, sha=sha,
+                                   open_prs=self.gh.open_prs(), kv=self.store, pin=pin, latest_pr=latest)
         except TRANSIENT as e:
             return self._transient_wait(f"line:{model}:{method}:prepare", e, line=line)
         except Exception as e:   # BatchError, GitError, GhError
@@ -1791,7 +1783,7 @@ class Supervisor:
             self.store.set(wait_key, choice.note)
             return self.store.set(poll_key, str(self.clock()))
         self.store.set(wait_key, "")
-        if choice.status == "done":
+        if choice.status in ("done", "unready"):
             self.store.set_line(model, method, run=0, shard_pin="")
             return self.store.log(None, choice.note, line=line)
         part = choice.part
