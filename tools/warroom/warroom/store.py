@@ -589,7 +589,7 @@ class Store:
             row = (c.execute("SELECT * FROM s2_tasks WHERE batch_id=? AND task=?", (b["id"], task)).fetchone()
                    if task is not None else None)
             if task is not None:
-                if approval.get("recovery_type") == "resume_report_task":
+                if approval.get("recovery_type") in ("resume_report_task", "continue_after_saved_report"):
                     owner = approval.get("task_report")
                     expected_kind = {"c": "c_parallel", "d": "d_parallel", "s2": "s2_parallel"}.get(b["method"])
                     task_kinds = {"c": {"c_chunk_new", "c_chunk_resume", "c_chunk_fix", "c_chunk_recovery",
@@ -599,7 +599,8 @@ class Store:
                                          "s2_chunk_format_fix"}}.get(b["method"], set())
                     if (not isinstance(owner, dict) or b["run_kind"] != expected_kind
                             or not isinstance(task, str) or not task or row is None
-                            or row["state"] not in ("RUNNING", "FIXQ", "FAILED")
+                            or row["state"] not in (("SAVED",) if approval.get("recovery_type") == "continue_after_saved_report"
+                                                    else ("RUNNING", "FIXQ", "FAILED"))
                             or row["state"] != approval.get("baseline_task_state")
                             or row["state"] != owner.get("row_state")
                             or row["chunk_id"] != approval.get("chunk") or row["chunk_id"] != owner.get("chunk")
@@ -662,7 +663,22 @@ class Store:
                     return False
                 c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) "
                           "DO UPDATE SET value=excluded.value", (epoch_key, str(epoch + 1)))
-            saved = {**approval, "status": "APPROVED", "approved_at": now}
+            followup_tasks = None
+            if approval.get("recovery_type") == "continue_after_saved_report":
+                if b["method"] != "d" or b["run_kind"] != "d_parallel":
+                    return False
+                current = c.execute("SELECT task,chunk_id,state,run_id,session_id FROM s2_tasks WHERE batch_id=? ORDER BY task", (b["id"],)).fetchall()
+                baseline = approval.get("baseline_tasks")
+                actual = [{"task": r["task"], "chunk": r["chunk_id"], "state": r["state"],
+                           "run_id": r["run_id"], "session_id": r["session_id"]} for r in current]
+                if not isinstance(baseline, list) or sorted(baseline, key=lambda x: x["task"]) != actual:
+                    return False
+                followup_tasks = [r["task"] for r in current if r["state"] in ("PENDING", "FIXQ")]
+                if not followup_tasks:
+                    return False
+            max_run_id = c.execute("SELECT COALESCE(MAX(id),0) FROM runs WHERE batch_id=?", (b["id"],)).fetchone()[0]
+            saved = {**approval, "status": "APPROVED", "approved_at": now,
+                     "followup_tasks": followup_tasks, "baseline_run_id": max_run_id}
             c.execute("INSERT INTO kv(key,value) VALUES(?,?)",
                       (key, json.dumps(saved, sort_keys=True, separators=(",", ":"))))
             c.execute("UPDATE defects SET state='RECOVERING', fix_kind='no-code', hold_reason=NULL, updated_at=? "
@@ -682,7 +698,7 @@ class Store:
             return True
 
     def finish_no_code_recovery(self, issue: int, defect_id: int, batch_id: int, task: str | None,
-                                *, serial_progress: bool = False) -> bool:
+                                *, serial_progress: bool = False, followup_task: str | None = None) -> bool:
         """Confirm resolution only after the original failed task is durably SAVED by its existing method path."""
         now = time.time()
         with self._conn() as c:
@@ -693,6 +709,17 @@ class Store:
             row = (c.execute("SELECT state FROM s2_tasks WHERE batch_id=? AND task=?", (batch_id, task)).fetchone()
                    if task is not None else None)
             approval = c.execute("SELECT value FROM kv WHERE key=?", (f"no_code_approval_{defect_id}",)).fetchone()
+            try:
+                proof = json.loads(approval["value"]) if approval is not None else None
+            except (TypeError, ValueError):
+                return False
+            if isinstance(proof, dict) and proof.get("recovery_type") == "continue_after_saved_report":
+                followup = c.execute("SELECT state FROM s2_tasks WHERE batch_id=? AND task=?", (batch_id, followup_task)).fetchone()
+                new_run = c.execute("SELECT 1 FROM runs WHERE batch_id=? AND task=? AND id>? AND ended_at IS NOT NULL AND exit_status='0' LIMIT 1",
+                                    (batch_id, followup_task, proof.get("baseline_run_id", -1))).fetchone()
+                if (proof.get("status") != "APPROVED" or followup_task not in (proof.get("followup_tasks") or [])
+                        or followup is None or followup["state"] != "SAVED" or new_run is None):
+                    return False
             if (d is None or b is None or approval is None
                     or (task is not None and (row is None or row["state"] != "SAVED"))
                     or (task is None and not serial_progress and b["state"] not in ("WAITING_REVIEW", "MERGED", "CLEANUP", "COMPLETE"))):
@@ -713,7 +740,8 @@ class Store:
             if isinstance(saved, dict):
                 saved.update(status="VERIFIED", verified_at=now,
                              verified_task_state=(row["state"] if row is not None else "CHECKPOINT_ADVANCED"),
-                             verified_batch_state=b["state"], verified_error_seq=b["error_seq"])
+                             verified_batch_state=b["state"], verified_error_seq=b["error_seq"],
+                             verified_followup_task=followup_task)
                 c.execute("UPDATE kv SET value=? WHERE key=?",
                           (json.dumps(saved, sort_keys=True, separators=(",", ":")), f"no_code_approval_{defect_id}"))
             self._add_event(c, batch_id, f"Maintainer Issue #{issue}: original failed scope {task if task is not None else 'serial chunk'} progress verified")
