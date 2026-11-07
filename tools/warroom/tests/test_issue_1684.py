@@ -67,6 +67,25 @@ def write_checkpoint(w, *, merged=False, shard="001", batch="01", part="01", nex
     }), "utf-8")
 
 
+class MergedProductionSearch(unittest.TestCase):
+    def test_latest_merged_production_and_incomplete_response(self):
+        from warroom.github import GhClient, GhTransient
+        client = GhClient(None, {}, "owner/repo")
+        row = {"number": 7, "title": "[S2/Codex] 006_01 Part 01", "pull_request": {"merged_at": "2026-01-02T00:00:00Z"}}
+        detail = {"number": 7, "title": row["title"], "body": "Refs #927", "merged": True, "state": "closed",
+                  "merged_at": row["pull_request"]["merged_at"], "merge_commit_sha": "a" * 40,
+                  "head": {"ref": "s2-codex-006-01-01", "repo": {"full_name": "owner/repo"}},
+                  "base": {"ref": "master", "repo": {"full_name": "owner/repo"}}}
+        unrelated = {"number": 8, "title": "[Stage 2 Reconcile] 006_01 Part 01"}
+        searches = iter([{"incomplete_results": False, "total_count": 2, "items": [unrelated, row]},
+                         {"incomplete_results": False, "total_count": 0, "items": []}, detail])
+        client._api = lambda *args, **kwargs: next(searches)
+        self.assertEqual(client.latest_stage2_production("master"), detail)
+        client._api = lambda *args, **kwargs: {"incomplete_results": True, "items": []}
+        with self.assertRaises(GhTransient):
+            client.latest_stage2_production("master")
+
+
 class StageTwoExclusivity(unittest.TestCase):
     def setUp(self):
         self.w = s2_world(self)

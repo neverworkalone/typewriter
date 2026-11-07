@@ -63,18 +63,24 @@ class GhClient:
                     found = row
                     break
             if found:
+                merged_at = (found.get("pull_request") or {}).get("merged_at")
+                if not isinstance(merged_at, str) or not merged_at:
+                    raise GhTransient("Stage 2 search result lacks merge time")
                 rows.append(found)
             elif result.get("total_count", 0) > len(result["items"]):
                 raise GhError("Stage 2 PR search exceeded bounded results without a production match")
         if not rows:
             return None
-        row = max(rows, key=lambda item: item.get("pull_request", {}).get("merged_at") or "")
+        row = max(rows, key=lambda item: item["pull_request"]["merged_at"])
+        if any(item["number"] != row["number"] and item["pull_request"]["merged_at"] == row["pull_request"]["merged_at"] for item in rows):
+            raise GhError("latest Stage 2 production merge time is ambiguous")
         detail = self._api(f"repos/{self.repo}/pulls/{row['number']}")
         if (not detail.get("merged") or not detail.get("merged_at") or detail.get("state") != "closed"
                 or (detail.get("base") or {}).get("ref") != base
                 or ((detail.get("base") or {}).get("repo") or {}).get("full_name", "").lower() != self.repo.lower()
                 or ((detail.get("head") or {}).get("repo") or {}).get("full_name", "").lower() != self.repo.lower()
-                or detail.get("title") != row.get("title") or not re.fullmatch(r"[a-f0-9]{40}", detail.get("merge_commit_sha") or "")):
+                or detail.get("title") != row.get("title") or detail.get("merged_at") != row["pull_request"]["merged_at"]
+                or not re.fullmatch(r"[a-f0-9]{40}", detail.get("merge_commit_sha") or "")):
             raise GhError("latest Stage 2 PR identity or merge evidence is incomplete")
         match = re.fullmatch(r"(?:\[S2/([A-Za-z0-9-]+)\]|\[Stage 2\]) (\d{3})_(\d{2}) Part (\d{2})", detail["title"])
         branch = (detail.get("head") or {}).get("ref", "")
