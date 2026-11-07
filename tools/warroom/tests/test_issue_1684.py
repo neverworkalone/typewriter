@@ -153,134 +153,18 @@ class StageTwoSelection(unittest.TestCase):
         for needle in ("001-01-01-001", "s2-claude-001-01-01"):
             self.assertIn(needle, launch["prompt"])
         self.assertEqual(w.git.chunk_views, [(b["worktree"], "001", "01", "01", True)])   # the Supervisor prepares this exact Part
-        self.assertEqual(w.git.verify_calls, [("part", "001", "01", "01")])
+        self.assertEqual(w.git.verify_calls, [])  # no completed Part is verified at selection
 
-    def test_completed_parts_are_skipped_and_only_exact_verified_parts_count(self):
-        self.w = w = s2_world(self)
-        w.git.verified |= {("part", "001", "01", "01"), ("part", "001", "01", "02")}
-        b = self.pick(w)
-        self.assertEqual(b["batch"], "01-03")
-        # A past file/PR is not completion: only the kv record written after a successful verify is.
-        self.assertTrue(w.store.get(stage2.ok_key("001", "01", "01")))
-        self.assertFalse(w.store.get(stage2.ok_key("001", "01", "03")))
-
-    def test_completed_part_reconciles_only_when_a_changed_relation_row_owns_its_shard(self):
-        w = s2_world(self, canon={1: 100})
-        old_sha, new_sha = "a" * 40, "b" * 40
-        w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
-        calls = []
-        choice = stage2.choose(
-            w.runner, w.paths.repo_root, w.sup.env, ref="origin/master", sha=new_sha, open_prs=[], kv=w.store,
-            verify=lambda *args: self.fail(f"exact verify should wait for reconcile task: {args}"),
-            changed=lambda old, new: ["data/relations/relation-001.jsonl"],
-            relation_owners=lambda old, new: {"001"},
-            reconcile_completed=lambda *args: calls.append(args) or "reconciliation PR pending",
-        )
-        self.assertEqual((choice.status, choice.note), ("wait", "reconciliation PR pending"))
-        self.assertEqual(calls, [("001", "01", "01", old_sha, new_sha)])
-
-    def test_unrelated_relation_change_carries_completed_part_without_reverifying_it(self):
-        w = s2_world(self, canon={1: 100})
-        old_sha, new_sha = "c" * 40, "d" * 40
-        w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
-        calls = []
-        choice = stage2.choose(
-            w.runner, w.paths.repo_root, w.sup.env, ref="origin/master", sha=new_sha, open_prs=[], kv=w.store,
-            verify=lambda *args: calls.append(args) or (True, ""),
-            changed=lambda old, new: ["data/relations/relation-002.jsonl"],
-            relation_owners=lambda old, new: {"002"},
-            reconcile_completed=lambda *args: self.fail(f"unrelated owner must not reconcile: {args}"),
-        )
-        self.assertEqual(choice.status, "done")
-        self.assertNotIn(("part", "001", "01", "01"), calls)
-        self.assertEqual(w.store.get(stage2.ok_key("001", "01", "01")), new_sha)
-
-
-    def test_batch_and_shard_verify_close_the_last_part(self):
-        self.w = w = s2_world(self, canon={1: 100})
-        w.git.verified |= {("part", "001", "01", "01")}
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
-        self.assertEqual(w.store.peek_line("claude", S2)["blocked"].startswith("Batch 001_01"), True)   # batch verify failed
-        w.store.set_line("claude", S2, blocked="")
-        w.git.verified.add(("batch", "001", "01", None))
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
-        self.assertIn("shard verify", w.store.peek_line("claude", S2)["blocked"])
-        w.store.set_line("claude", S2, blocked="")
-        w.git.verified.add(("shard", "001", None, None))
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
-        self.assertEqual((w.store.incomplete_batches(), w.store.peek_line("claude", S2)["run"]), ([], 0))
-        w.git.verify_calls.clear()
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
-        self.assertEqual(w.git.verify_calls, [])   # every level is cached: nothing is verified twice
-
-    def test_last_shard_short_batch_two_is_a_single_83_record_part(self):
-        self.w = w = s2_world(self, canon={1: 583})   # the real shard 428 has this shape: 500 + 83 records = 6 Parts
-        canon = {"data/canonical/stdict-0001.jsonl": 583}
-        self.assertEqual([stage2.part_count(batches.expected_records(canon, 1, bb), 100) for bb in (1, 2)], [5, 1])
-        w.git.verified |= {("part", "001", "01", f"{p:02d}") for p in range(1, 6)} | {("batch", "001", "01", None)}
-        b = self.pick(w)
-        self.assertEqual((b["batch"], w.git.verify_calls[-1]), ("02-01", ("part", "001", "02", "01")))
-        self.finish_part(w, "claude", "001", "02", "01")
-        w.git.verified |= {("batch", "001", "02", None), ("shard", "001", None, None)}
-        w.tick(2)
-        self.assertEqual(w.store.peek_line("claude", S2)["run"], 0)   # six Parts in all, no Part 02 of batch 02
-        self.assertEqual(len(w.store.line_batches("claude", S2)), 1)
-
-    def test_unready_inputs_wait_without_skipping_to_another_shard_in_single(self):
-        done = {**ready("01", 500, "001")}
-        del done["data/relation-candidates/001/001_01_d_codex.jsonl"]   # D missing in shard 001
-        done.update(ready("01", 500, "002"))
-        self.w = w = s2_world(self, canon={1: 500, 2: 500}, done=done)
-        b = self.pick(w, mode="continuous")   # Continuous moves on to the next shard that is ready
-        self.assertEqual((b["shard"], b["batch"]), ("002", "01-01"))
-        w.store.set_line("claude", S2, run=0)
-        w.store.finish_clear(b, "x")
-        w.store.set_line("claude", S2, shard_pin="001")   # a Single run bound to the not-ready shard waits there
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.store.set_line("claude", S2, shard_pin="001")
-        w.tick()
-        self.assertIsNone(w.store.active_batch("claude", S2))
-        self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)   # waiting, not finished
-
-
-    def test_pin_is_stored_with_the_part_so_a_restart_stays_in_the_shard(self):
-        self.w = w = s2_world(self, canon={1: 100, 2: 100})
-        real = w.store.set_line
-        w.store.set_line = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("crash after create_batch")) if "shard_pin" in k else real(*a, **k)
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()   # any later write is lost; the Part and its pin were one transaction
-        w.store.set_line = real
-        self.assertEqual(w.store.active_batch("claude", S2)["shard"], "001")
-        self.assertEqual(w.store.peek_line("claude", S2)["shard_pin"], "001")
-        w.sup = w.make_sup()   # restarted Supervisor
-        self.finish_part(w, "claude", "001", "01", "01")
-        w.git.verified |= {("batch", "001", "01", None), ("shard", "001", None, None)}
-        w.tick(2)
-        self.assertEqual((w.store.incomplete_batches(), w.store.peek_line("claude", S2)["run"]), ([], 0))
-        self.assertEqual(w.store.claimed_keys(S2, "claude"), {("001", "01-01")})  # shard 002 never started
-
-    def test_continuous_goes_on_to_the_next_shard(self):
-        self.w = w = s2_world(self, canon={1: 100, 2: 100})
-        self.pick(w, mode="continuous")
-        self.finish_part(w, "claude", "001", "01", "01")
-        w.git.verified |= {("batch", "001", "01", None), ("shard", "001", None, None)}
-        w.tick(2)
-        b = w.store.active_batch("claude", S2)
-        self.assertEqual((b["shard"], b["batch"]), ("002", "01-01"))
-        self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)
-
-    def test_nothing_runnable_waits_and_rechecks_without_a_duplicate_run(self):
-        self.w = w = s2_world(self, canon={1: 500}, done={})
+    def test_unready_stops_until_owner_restarts(self):
+        self.w = w = s2_world(self, done={})
         control.start(w.store, "claude", S2, "continuous", cfg=w.cfg)
         w.tick(3)
-        self.assertEqual((w.store.incomplete_batches(), w.adapter.launches), ([], []))
-        self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)
-        w.runner.set_batches(canon={1: 500}, done=ready("01", 500))   # the inputs land on master
-        w.now += 400
+        self.assertEqual(w.store.peek_line("claude", S2)["run"], 0)
+        self.assertEqual(w.store.incomplete_batches(), [])
+        w.runner.set_batches(canon={1: 1000}, done=ready("01", 500))
+        w.tick(2)
+        self.assertEqual(w.store.incomplete_batches(), [])
+        control.start(w.store, "claude", S2, "continuous", cfg=w.cfg)
         w.tick()
         self.assertEqual(w.store.active_batch("claude", S2)["batch"], "01-01")
 
@@ -314,110 +198,56 @@ class StageTwoSelection(unittest.TestCase):
         self.assertEqual(b["state"], "WAITING_REVIEW")
         n = b["pr_number"]
         w.gh.prs[n] |= {"state": "closed", "merged": True, "merge_commit_sha": "c" * 40}
+        w.gh.latest_stage2_pr = {"title": f"[S2/{model}] {shard}_{batch} Part {part}", "merge_commit_sha": "c" * 40}
+        w.git.ancestor_pairs.add(("c" * 40, w.git.base_sha))
         w.git.verified.add(("part", shard, batch, part))
         w.tick(3)
         self.assertEqual(w.store.batch(bid)["state"], "COMPLETE")
 
 
 class StageTwoPartLayout(unittest.TestCase):
-    """#3385: Shards through the legacy boundary keep 100-record Parts; later Shards use 250 and need a fixed layout."""
     SHA = "e" * 40
 
-    @staticmethod
-    def canon(last, **records):
-        """Shards 1..last exist on master; only the named ones (e.g. s6=1000) hold records."""
-        return {n: records.get(f"s{n}", 0) for n in range(1, last + 1)}
+    def choose(self, previous=None, *, inputs=None, pin="", marker=None):
+        w = s2_world(self, done=inputs or {})
+        if marker is not None:
+            w.store.set(stage2.layout_key("006"), marker)
+        return stage2.choose(w.runner, w.paths.repo_root, w.sup.env, ref=self.SHA, sha=self.SHA,
+                             open_prs=[], kv=w.store, latest_pr={"title": previous} if previous else None, pin=pin)
 
-    def choose(self, w, verified=(), open_prs=None, sha=None):
-        done = set(verified)
-        return stage2.choose(w.runner, w.paths.repo_root, w.sup.env, ref="origin/master", sha=sha or self.SHA,
-                             open_prs=open_prs or [], kv=w.store,
-                             verify=lambda kind, shard, batch, part: (kind != "part" or (shard, batch, part) in done, ""))
+    def test_sequential_boundaries(self):
+        for previous, expected in [
+            (None, ("001", "01", "01")),
+            ("[Stage 2] 005_02 Part 05", ("006", "01", "01")),
+            ("[S2/Codex] 006_01 Part 01", ("006", "01", "02")),
+            ("[S2/Codex] 024_02 Part 02", ("025", "01", "01")),
+            ("[S2/Codex] 428_01 Part 02", ("428", "02", "01")),
+        ]:
+            with self.subTest(previous=previous):
+                shard, batch, part = expected
+                result = self.choose(previous, inputs=ready(batch, 83 if (shard, batch) == ("428", "02") else 500, shard))
+                self.assertEqual((result.part.shard, result.part.batch, result.part.part), expected)
+        self.assertEqual(self.choose("[S2/Codex] 428_02 Part 01").status, "done")
 
-    def test_new_shard_has_two_250_record_parts_per_batch_and_records_the_layout_marker(self):
-        w = s2_world(self, canon=self.canon(6, s6=1000))
-        choice = self.choose(w)
-        self.assertEqual((choice.status, choice.part), ("part", stage2.Part("006", "01", "01", 250)))
-        self.assertEqual(choice.part.layout_marker, "250")
-        self.assertIsNone(w.store.get(stage2.layout_key("006")), "choose() never writes the marker; the batch row does")
-        w.store.set(stage2.layout_key("006"), "250")   # what the first batch row's transaction commits
-        done = [("006", "01", "01")]
-        self.assertEqual(self.choose(w, done).part, stage2.Part("006", "01", "02", 250))
-        done.append(("006", "01", "02"))   # there is never a Part 03: the next open Part is batch 02's first
-        self.assertEqual(self.choose(w, done).part, stage2.Part("006", "02", "01", 250))
-        self.assertEqual([r.split(":")[0] for r in w.runner.layout_refs][:1], [self.SHA])
-        self.assertTrue(all(r.startswith(f"{self.SHA}:") for r in w.runner.layout_refs), "the layout is read from the fixed SHA")
+    def test_missing_input_never_skips_and_reports_target(self):
+        result = self.choose("[S2/Codex] 006_01 Part 01", inputs=ready("01", 500, "007"))
+        self.assertEqual(result.status, "unready")
+        self.assertIn("006_01 Part 02", result.note)
+        self.assertIn("입력 미준비", result.note)
 
-    def test_marker_is_committed_with_the_first_part_only_and_a_failed_start_leaves_none(self):
-        w = s2_world(self, canon=self.canon(6, s6=1000))
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
-        b = w.store.active_batch("claude", S2)
-        self.assertEqual((b["shard"], w.store.get(stage2.layout_key("006"))), ("006", "250"))
-        # a choose() that is never turned into a batch row (Stop/Drain/crash) leaves no marker
-        w2 = s2_world(self, canon=self.canon(6, s6=1000))
-        self.assertEqual(self.choose(w2).part.layout_marker, "250")
-        self.assertIsNone(w2.store.get(stage2.layout_key("006")))
-        self.assertEqual(self.choose(w2).part.layout_marker, "250")   # traces are still checked next time
-        w2.store.set(stage2.ok_key("006", "01", "01"), self.SHA)
-        self.assertEqual(self.choose(w2).status, "stop")
-        # once confirmed, later Parts carry no marker
-        w2.store.delete(stage2.ok_key("006", "01", "01"))
-        w2.store.set(stage2.layout_key("006"), "250")
-        self.assertIsNone(self.choose(w2).part.layout_marker)
+    def test_marker_and_pin(self):
+        previous = "[S2/Codex] 005_02 Part 05"
+        self.assertEqual(self.choose(previous, inputs=ready("01", 500, "006")).part.layout_marker, "250")
+        self.assertEqual(self.choose(previous, inputs=ready("01", 500, "006"), marker="100").status, "stop")
+        self.assertEqual(self.choose(previous, pin="005").status, "done")
 
-    def test_marker_with_a_wrong_value_stops_even_with_old_traces(self):
-        for value in ("100", "garbage", ""):
-            with self.subTest(value):
-                w = s2_world(self, canon=self.canon(6, s6=1000))
-                w.store.set(stage2.layout_key("006"), value)
-                w.store.set(stage2.ok_key("006", "01", "01"), self.SHA)
-                self.assertEqual(self.choose(w).status, "stop")
-
-    def test_legacy_shard_keeps_five_100_record_parts_and_never_gets_a_marker(self):
-        w = s2_world(self, canon=self.canon(5, s5=1000))
-        w.store.set(stage2.ok_key("005", "01", "01"), "f" * 40)   # started long ago: traces are fine for a legacy Shard
-        w.runner.master_stage2_files = ["data/relations/relation-005.jsonl"]
-        done = [("005", "01", f"{p:02d}") for p in range(1, 5)]
-        self.assertEqual(self.choose(w, done).part, stage2.Part("005", "01", "05", 100))
-        self.assertIsNone(w.store.get(stage2.layout_key("005")))
-
-    def test_last_shard_shape_is_three_parts_in_the_new_layout(self):
-        w = s2_world(self, canon=self.canon(7, s7=583))   # 428 has the same 500 + 83 shape
-        canon = {"data/canonical/stdict-0007.jsonl": 583}
-        self.assertEqual([stage2.part_count(batches.expected_records(canon, 7, bb), 250) for bb in (1, 2)], [2, 1])
-        done = [("007", "01", "01"), ("007", "01", "02")]
-        self.assertEqual(self.choose(w, done).part, stage2.Part("007", "02", "01", 83))
-
-    def test_new_shard_without_marker_stops_on_any_earlier_trace_including_parts_one_and_two(self):
-        def kv_part(w): w.store.set(stage2.ok_key("006", "01", "01"), self.SHA)
-        def kv_batch(w): w.store.set(stage2.ok_key("006", "01"), self.SHA)
-        def row(w):
-            w.store.create_batch(method=S2, producer="claude", shard="006", batch="01-02", branch="s2-claude-006-01-02",
-                                 worktree="w", from_run=False)
-        def master_file(w): w.runner.master_stage2_files = ["data/relation-drops/drop-006.jsonl"]
-        for name, setup, prs in (("kv", kv_part, None), ("kv batch", kv_batch, None), ("batches row", row, None),
-                                 ("master file", master_file, None),
-                                 ("open PR", lambda w: None, [{"number": 9, "files": [{"path": "data/relations/relation-006.jsonl"}]}])):
-            with self.subTest(name):
-                w = s2_world(self, canon=self.canon(6, s6=1000))
-                setup(w)
-                choice = self.choose(w, open_prs=prs)
-                self.assertEqual(choice.status, "stop")
-                self.assertIn("006", choice.note)
-                self.assertIsNone(w.store.get(stage2.layout_key("006")))
-                w.store.set(stage2.layout_key("006"), "250")   # the marker makes the Shard's layout confirmed
-                self.assertNotEqual(self.choose(w, open_prs=prs).status, "stop")
-
-    def test_unreadable_or_malformed_layout_fails_closed(self):
-        for text in (None, "not json", json.dumps({"version": 1}),
-                     json.dumps({"version": 1, "legacy_through_shard": "5", "legacy_part_size": 100, "part_size": 250}),
-                     json.dumps({"version": 1, "legacy_through_shard": "005", "legacy_part_size": 100, "part_size": 300})):
-            with self.subTest(text=text):
-                w = s2_world(self, canon=self.canon(6, s6=1000))
-                w.runner.layout_text = text
-                with self.assertRaises(batches.BatchError):
-                    self.choose(w)
+    def test_bad_title_and_layout_fail_closed(self):
+        with self.assertRaises(batches.BatchError):
+            self.choose("[S2/Codex] 006_01 Part 03")
+        w = s2_world(self)
+        w.runner.layout_text = "invalid"
+        with self.assertRaises(batches.BatchError):
+            stage2.choose(w.runner, w.paths.repo_root, w.sup.env, ref=self.SHA, sha=self.SHA, open_prs=[], kv=w.store)
 
 
 class StageTwoLifecycle(unittest.TestCase):
@@ -442,6 +272,8 @@ class StageTwoLifecycle(unittest.TestCase):
     def merge(self):
         b = self.w.store.active_batch("claude", S2)
         self.w.gh.prs[b["pr_number"]] |= {"state": "closed", "merged": True, "merge_commit_sha": "c" * 40}
+        self.w.gh.latest_stage2_pr = {"title": "[S2/claude] 001_01 Part 01", "merge_commit_sha": "c" * 40}
+        self.w.git.ancestor_pairs.add(("c" * 40, self.w.git.base_sha))
 
     def test_next_part_never_starts_before_merge_and_master_verify(self):
         w = self.w

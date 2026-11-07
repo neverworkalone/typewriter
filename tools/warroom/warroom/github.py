@@ -76,6 +76,13 @@ class GhClient:
                 or ((detail.get("head") or {}).get("repo") or {}).get("full_name", "").lower() != self.repo.lower()
                 or detail.get("title") != row.get("title") or not re.fullmatch(r"[a-f0-9]{40}", detail.get("merge_commit_sha") or "")):
             raise GhError("latest Stage 2 PR identity or merge evidence is incomplete")
+        match = re.fullmatch(r"(?:\[S2/([A-Za-z0-9-]+)\]|\[Stage 2\]) (\d{3})_(\d{2}) Part (\d{2})", detail["title"])
+        branch = (detail.get("head") or {}).get("ref", "")
+        branch_match = re.fullmatch(r"s2-([a-z0-9-]+)-(\d{3})-(\d{2})-(\d{2})", branch)
+        if (not match or not branch_match or tuple(match.group(i) for i in (2, 3, 4)) != branch_match.groups()[1:]
+                or (match.group(1) and match.group(1).lower() != branch_match.group(1))
+                or not re.search(r"(?:#927|issues/927)(?!\d)", detail.get("body") or "")):
+            raise GhError("latest Stage 2 PR title, branch or issue ownership is ambiguous")
         return detail
 
     def prs_for_branch(self, branch: str) -> list[dict]:
