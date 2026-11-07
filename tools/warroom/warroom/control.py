@@ -522,13 +522,16 @@ def urgent_line(store: Store, cfg: dict) -> str:
     return items[0][0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
 
 
-def maintainer_card(store: Store, cfg: dict) -> dict:
+def maintainer_card(store: Store, cfg: dict, issue_number: int | None = None) -> dict:
     """Status-only content of the Board's Maintainer card (Issue #1684): {"state": IDLE|WORKING|ERROR, "text": str}.
 
     It shows the #1555 Maintainer's persisted progress whichever model runs it; it starts nothing. Colour is meant
     only while a task exists: IDLE (no open urgent Issue) is the neutral empty card.
     """
     items = urgent_items(store, cfg)
+    if issue_number is not None:
+        prefix = f"urgent issue #{issue_number} · "
+        items = [item for item in items if item[0].startswith(prefix)]
     if not items:
         return {"state": "IDLE", "text": ""}
     # Prefer the active AI execution, then an owned PR lifecycle, over older parked issues.

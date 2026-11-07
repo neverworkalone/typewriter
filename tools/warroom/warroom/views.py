@@ -267,9 +267,10 @@ def maintainer_card_text(card: dict) -> str:
     return "\n".join([title] + lines + [""] * (CARD_LINES - 1 - len(lines)))
 
 
+TIER_SWITCH_KEY_STYLE = "b #ffa500"
 TIER_FOOTER = {
     "free": ("Free", "b green"),
-    "go": ("Go", "b yellow"),
+    "go": ("Go", TIER_SWITCH_KEY_STYLE),
     "api": ("API", "b red"),
     "mixed": ("혼합", "b yellow"),
     "none": ("DeepSeek Go 모델 미설정", "dim"),
@@ -280,7 +281,7 @@ def tier_footer(state: str) -> str:
     """One-line board footer with the current tier nested under f; values are Rich markup."""
     label, style = TIER_FOOTER.get(state, TIER_FOOTER["none"])
     return (f"[b #ffa500]q[/] Quit · [b #ffa500]Shift+S[/] Stop All · [b #ffa500]r[/] 설정 리로드 · "
-            f"[b #ffa500]f[/] Free/Go/API 전환 ([{style}]{label}[/])")
+            f"[{TIER_SWITCH_KEY_STYLE}]f[/] Free/Go/API 전환 ([{style}]{label}[/])")
 
 
 def _maintainer_header(st: dict, who: str) -> str:
