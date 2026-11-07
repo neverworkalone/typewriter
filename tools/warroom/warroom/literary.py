@@ -520,6 +520,27 @@ def technical_skip_candidate(worktree, b, chunk_no: int) -> bool:
     return technical_skip_reason_code(worktree, b, chunk_no, require_input_digest=False) is None
 
 
+def context_key_diagnostic_position(worktree, b, chunk_no: int) -> int | None:
+    """Return a bound, one-based rejected key position; never trust stale diagnostics."""
+    if technical_skip_reason_code(worktree, b, chunk_no) is not None:
+        return None
+    n = names(b)
+    submit_path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json"
+    try:
+        diag = json.loads(submit_path.with_name(submit_path.name + ".diag.json").read_text("utf-8"))
+        submission = json.loads(submit_path.read_text("utf-8"))
+        affected = diag["affected"]
+        if diag["reason"] not in {"context_key_not_found", "context_key_ambiguous", "context_key_too_short"} or affected["field"] != "verified":
+            return None
+        position = affected.get("verified_number")
+        keys = submission["senses"][affected["entry_number"] - 1]["verified"]
+        if isinstance(position, int) and not isinstance(position, bool) and isinstance(keys, list) and 1 <= position <= len(keys):
+            return position
+    except (OSError, ValueError, KeyError, TypeError, IndexError):
+        pass
+    return None
+
+
 def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
     """True only when the exact failed verified key has surrounding whitespace that the CLI can trim safely."""
     n = names(b)
