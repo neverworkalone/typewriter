@@ -962,11 +962,17 @@ class Store:
             ln = c.execute("SELECT drain FROM lines WHERE model=? AND method=?", (model, STAGE2_METHOD)).fetchone()
             if ln is not None and ln["drain"]:
                 return False, f"{model}/S2 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
+            c.execute("DELETE FROM kv WHERE key IN (?, ?)", (f"s2_wait_{model}", f"s2_poll_{model}"))
             c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, STAGE2_METHOD, now))
             c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, shard_pin='', updated_at=? "
                       "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single", now, model,
                                                     STAGE2_METHOD))
         return True, ""
+
+    def stage2_merged_complete(self, shard: str, batch: str) -> bool:
+        with self._conn() as c:
+            return c.execute("SELECT 1 FROM batches WHERE method=? AND shard=? AND batch=? "
+                             "AND merged=1 AND state='COMPLETE' LIMIT 1", (STAGE2_METHOD, shard, batch)).fetchone() is not None
 
     def start_stage3(self, model: str, mode: str) -> tuple[bool, str]:
         """Reserve one shared Stage 3 run; same-shard Stage 2 ownership is checked again at batch creation."""

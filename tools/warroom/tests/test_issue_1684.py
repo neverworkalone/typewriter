@@ -85,6 +85,49 @@ class MergedProductionSearch(unittest.TestCase):
         with self.assertRaises(GhTransient):
             client.latest_stage2_production("master")
 
+    def test_pagination_deduplication_and_latest_merge_time(self):
+        from urllib.parse import parse_qs, urlparse
+        from warroom.github import GhClient
+        client = GhClient(None, {}, "owner/repo")
+        def row(n, when):
+            return {"number": n, "title": f"[S2/Codex] 006_01 Part {n:02d}",
+                    "pull_request": {"merged_at": when}}
+        older = row(1, "2026-01-01T00:00:00Z")
+        newest = row(2, "2026-01-02T00:00:00Z")
+        detail = {"number": 2, "title": newest["title"], "body": "#927", "merged": True, "state": "closed",
+                  "merged_at": newest["pull_request"]["merged_at"], "merge_commit_sha": "a" * 40,
+                  "head": {"ref": "s2-codex-006-01-02", "repo": {"full_name": "owner/repo"}},
+                  "base": {"ref": "master", "repo": {"full_name": "owner/repo"}}}
+        filler = [{"number": n, "title": "unrelated"} for n in range(100, 199)]
+        def api(path):
+            if path.endswith("/pulls/2"):
+                return detail
+            query = parse_qs(urlparse(path).query)
+            if '"Stage 2"' in query["q"][0]:
+                return {"incomplete_results": False, "total_count": 1, "items": [newest]}
+            page = int(query["page"][0])
+            return {"incomplete_results": False, "total_count": 101,
+                    "items": [older] + filler if page == 1 else [newest]}
+        client._api = api
+        self.assertEqual(client.latest_stage2_production("master"), detail)
+
+    def test_search_overflow_splits_newest_first(self):
+        from urllib.parse import parse_qs, urlparse
+        from warroom.github import GhClient
+        client = GhClient(None, {}, "owner/repo")
+        calls = []
+        def api(path):
+            if path == "repos/owner/repo":
+                return {"created_at": "2099-01-01T00:00:00Z"}
+            query = parse_qs(urlparse(path).query)["q"][0]
+            calls.append(query)
+            count = 1001 if len(calls) <= 2 else 0
+            return {"incomplete_results": False, "total_count": count, "items": []}
+        client._api = api
+        self.assertIsNone(client.latest_stage2_production("master"))
+        self.assertIn("merged:>=", calls[2])
+        self.assertIn("..", calls[4])
+
 
 class StageTwoExclusivity(unittest.TestCase):
     def setUp(self):
@@ -162,6 +205,27 @@ class StageTwoSelection(unittest.TestCase):
         control.start(w.store, model, S2, mode, cfg=w.cfg)
         w.tick()
         return w.store.active_batch(model, S2)
+
+    def test_completed_part_waits_across_models_and_restart_clears_gate(self):
+        w = s2_world(self)
+        bid = w.store.create_batch(method=S2, producer="codex", shard="001", batch="01-01", branch="b", worktree="w")
+        w.store.update(bid, state="COMPLETE", merged=1)
+        control.start(w.store, "claude", S2, "continuous", cfg=w.cfg)
+        w.tick()
+        self.assertIn("검색 반영 대기", w.store.get("s2_wait_claude"))
+        self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)
+        control.stop_line(w.store, "claude", S2)
+        control.start(w.store, "claude", S2, "continuous", cfg=w.cfg)
+        self.assertIsNone(w.store.get("s2_wait_claude"))
+        self.assertIsNone(w.store.get("s2_poll_claude"))
+
+    def test_selection_waits_for_merge_commit_on_master(self):
+        w = s2_world(self)
+        w.gh.latest_stage2_pr = {"title": "[S2/codex] 001_01 Part 01", "merge_commit_sha": "c" * 40}
+        control.start(w.store, "claude", S2, "continuous", cfg=w.cfg)
+        w.tick()
+        self.assertIn("merge commit master 반영 대기", w.store.get("s2_wait_claude"))
+        self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)
 
     def test_first_part_names_its_shard_batch_part_and_pins_the_model(self):
         self.w = w = s2_world(self)

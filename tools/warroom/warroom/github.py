@@ -47,33 +47,94 @@ class GhClient:
         return json.loads(r.out or "[]")
 
     def latest_stage2_production(self, base: str) -> dict | None:
-        """Find the latest merged production PR using merge-time ordered, bounded searches."""
+        """Search contiguous UTC windows, newest first, without trusting Search ordering."""
+        from datetime import datetime, timedelta, timezone
         from urllib.parse import urlencode
-        rows = []
-        for phrase in ('"S2"', '"Stage 2"'):
-            query = urlencode({"q": f'repo:{self.repo} is:pr is:merged base:{base} {phrase} Part in:title sort:merged-desc',
-                               "per_page": 100})
-            result = self._api(f"search/issues?{query}")
-            if not isinstance(result, dict) or result.get("incomplete_results") is not False or not isinstance(result.get("items"), list):
-                raise GhTransient("incomplete Stage 2 merged PR search")
-            found = None
-            for row in result["items"]:
-                title = row.get("title", "")
-                if re.fullmatch(r"(?:\[S2/[A-Za-z0-9-]+\]|\[Stage 2\]) \d{3}_\d{2} Part \d{2}", title):
-                    found = row
-                    break
-            if found:
-                merged_at = (found.get("pull_request") or {}).get("merged_at")
-                if not isinstance(merged_at, str) or not merged_at:
-                    raise GhTransient("Stage 2 search result lacks merge time")
-                rows.append(found)
-            elif result.get("total_count", 0) > len(result["items"]):
-                raise GhError("Stage 2 PR search exceeded bounded results without a production match")
-        if not rows:
+
+        def parse(value):
+            try:
+                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    raise ValueError("missing timezone")
+                return dt.astimezone(timezone.utc)
+            except (AttributeError, TypeError, ValueError):
+                raise GhTransient("invalid Stage 2 merge time")
+
+        def stamp(dt):
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+        pattern = r"(?:\[S2/[A-Za-z0-9-]+\]|\[Stage 2\]) \d{3}_\d{2} Part \d{2}"
+
+        def window(lower, upper):
+            bounds = f"{stamp(lower)}..{stamp(upper)}" if upper else f">={stamp(lower)}"
+            results = []
+            overflow = False
+            for phrase in ('"S2"', '"Stage 2"'):
+                query = f'repo:{self.repo} is:pr is:merged base:{base} {phrase} Part in:title merged:{bounds}'
+                first = None
+                page = 1
+                while True:
+                    params = urlencode({"q": query, "per_page": 100, "page": page})
+                    result = self._api(f"search/issues?{params}")
+                    if (not isinstance(result, dict) or result.get("incomplete_results") is not False
+                            or not isinstance(result.get("items"), list)
+                            or type(result.get("total_count")) is not int or result["total_count"] < 0):
+                        raise GhTransient("incomplete Stage 2 merged PR search")
+                    count = result["total_count"]
+                    if first is None:
+                        first = count
+                    elif count != first:
+                        raise GhTransient("changing Stage 2 merged PR search")
+                    if count > 1000:
+                        overflow = True
+                        break
+                    items = result["items"]
+                    if len(items) != min(100, count - (page - 1) * 100):
+                        raise GhTransient("incomplete Stage 2 merged PR search page")
+                    results.extend(items)
+                    if page * 100 >= count:
+                        break
+                    page += 1
+            if overflow:
+                span = (upper or now) - lower
+                if span <= timedelta(hours=1):
+                    raise GhError("Stage 2 merged PR search exceeds 1000 within one hour")
+                middle = lower + timedelta(seconds=int(span.total_seconds() // 2))
+                return window(middle, upper) or window(lower, middle)
+            rows = {}
+            for item in results:
+                if not isinstance(item, dict):
+                    raise GhTransient("invalid Stage 2 search result")
+                if re.fullmatch(pattern, item.get("title") or ""):
+                    number = item.get("number")
+                    if type(number) is not int:
+                        raise GhTransient("Stage 2 search result lacks PR number")
+                    merged = parse((item.get("pull_request") or {}).get("merged_at"))
+                    if number in rows and rows[number][1] != merged:
+                        raise GhTransient("inconsistent Stage 2 merge time")
+                    rows[number] = (item, merged)
+            if not rows:
+                return None
+            latest = max(value[1] for value in rows.values())
+            winners = [value[0] for value in rows.values() if value[1] == latest]
+            if len(winners) != 1:
+                raise GhError("latest Stage 2 production merge time is ambiguous")
+            return winners[0]
+
+        days = 7
+        lower = now - timedelta(days=days)
+        row = window(lower, None)
+        if row is None:
+            repo = self._api(f"repos/{self.repo}")
+            created = parse(repo.get("created_at") if isinstance(repo, dict) else None)
+            while row is None and lower > created:
+                days *= 2
+                older = max(created, now - timedelta(days=days))
+                row = window(older, lower)
+                lower = older
+        if row is None:
             return None
-        row = max(rows, key=lambda item: item["pull_request"]["merged_at"])
-        if any(item["number"] != row["number"] and item["pull_request"]["merged_at"] == row["pull_request"]["merged_at"] for item in rows):
-            raise GhError("latest Stage 2 production merge time is ambiguous")
         detail = self._api(f"repos/{self.repo}/pulls/{row['number']}")
         if (not detail.get("merged") or not detail.get("merged_at") or detail.get("state") != "closed"
                 or (detail.get("base") or {}).get("ref") != base
