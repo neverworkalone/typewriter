@@ -264,7 +264,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 ### 5-B. 실행·토큰·PR 경계
 
-1. **Stage 2 샤드 전체 완료 후 시작.** 해당 샤드의 모든 Batch/Part가 끝나고 최신 master에 대한 샤드 전체 verify 성공이 War Room에 유효해야 한다. Stage 2 Part 완료만으로 Stage 3를 시작하지 않는다. Stage 3 미완료 샤드 가운데 가장 빠른 샤드를 고르되, 같은 샤드 Relation/Drop을 수정하는 열린 PR이나 활성 작업이 있으면 대기한다.
+1. **Stage 2 샤드 전체 완료 후 시작.** 최근 master에 머지된 Stage 3 생산 PR의 바로 다음 샤드를 선택하고, 해당 샤드의 Stage 2 완료 기록이 없으면 실행을 종료한다. Stage 2 Part 완료만으로 Stage 3를 시작하지 않는다. 같은 샤드 Relation/Drop을 수정하는 열린 PR이나 활성 작업이 있으면 대기한다.
 2. **AI 청크: 관계 350~500행 목표**, 출발 Sense의 관계 목록은 **분할하지 않는다**. 한 청크에 여러 Sense를 묶을 수 있다. Source Sense별 전체 gloss를 한 번 제공하고, target 의미 구분에 필요한 경우 ID Sense 뜻풀이를 제공한다. Link Repair 대상은 동일 표기 전체 Sense·전체 gloss를 제공한다.
 3. **최소 출력:** `chunk NN` 뒤에 `D 1 5 9`, `L 4 T1`, 또는 `none`만 출력. Keep은 별도 출력하지 않고 기존 Relation을 유지한다. 청크마다 새 AI 세션을 사용하고 이미 검토한 청크 전체를 반복해서 읽지 않는다. 재개용 로컬 checkpoint는 청크 완료 여부와 결정만 저장한다.
 4. **Shard당 Stage 3 데이터 PR 한 개.** 모든 청크 완료 후 Relation/Drop에 한꺼번에 반영하고 기존 `validateRelationRows`/`verifyAccounting` 및 실제 DB 결과를 확인한다. 생산 PR은 **해당 샤드의 Relation/Drop 두 파일만** 변경한다. Stage 2와 Stage 3의 같은 샤드 작업 경합은 금지한다.
@@ -279,7 +279,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 - 아직 Stage 2 준비 전인 T의 후보는 **미리 Drop하지 않는다**. T가 동철 다른 Sense와 연결할 가능성을 기존 Stage 2 판정에 남긴다. 같은 ID 쌍이 나중에 다시 승인되면 그 소유 샤드의 Stage 3에서 판단한다.
 - 진행 중인 Stage 2 Part가 오래된 Relations를 기준으로 최종화하지 않게 **AI 판정이 끝난 후, materialize/premerge 전에 최신 master를 안전하게 반영**한다. 기존 AI 판단과 checkpoint를 보존하며 안전한 병합 불가 시 작업을 보존하고 명시적으로 정지한다. Stage 3 변경만으로 AI를 전수 재실행하지 않는다.
 - 영향 샤드 확인은 실제 변경된 Relation의 **양 끝 Sense 소유 샤드** 중심으로 하고, 자기 Drop/Candidate·공유 검증 코드·Canonical 등 기존 입력 변화는 계속 감지한다. 불명확한 경우 안전하게 verify한다. 재검증을 위한 새 SHA 영수증, 정책 digest, 전체 Sense 감사 원장, 범용 stale 시스템은 만들지 않는다.
-- Stage 3 완료는 War Room `s3` 작업의 실제 merged 상태로 판단하며, 상태 유실 시 **실제 머지된 PR·해당 샤드·변경 파일·이슈 연결**을 확인해 복구한다. PR 제목만으로 완료 확정하지 않는다.
+- Stage 3 순차 위치는 최근 머지된 생산 PR을 확인해 정하며, Store에서는 진행 중인 작업만 기존 절차로 복구한다. 실제 머지 후 해당 샤드의 검증과 완료 처리는 유지한다.
 
 ### 5-D. 편집 판단
 
