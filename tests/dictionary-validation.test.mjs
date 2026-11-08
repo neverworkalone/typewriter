@@ -25,6 +25,8 @@ function createDictionary({ metadataOverrides = {}, userVersion = SQLITE_SCHEMA_
     source_revision_source: 'git-head',
     source_revision_verified: 'true',
     database_kind: 'lite',
+    lite_id_compression: 'false',
+    lite_text_compression: 'false',
     ...Object.fromEntries(Object.keys(DICTIONARY_COUNT_QUERIES).map((key) => [key, '0'])),
     ...metadataOverrides,
   };
@@ -43,6 +45,8 @@ test('validates current packaged schema, version, revision, integrity, and row c
       source_revision_source: 'git-head',
       source_revision_verified: 'true',
       database_kind: 'lite',
+      lite_id_compression: 'false',
+      lite_text_compression: 'false',
       ...Object.fromEntries(Object.keys(DICTIONARY_COUNT_QUERIES).map((key) => [key, '0'])),
     });
   } finally {
@@ -253,6 +257,32 @@ test('the extension startup validation rejects Full-kind and source-table databa
         code: 'DATABASE_INTEGRITY_FAILED',
         details: { build_only_tables: [table] },
       });
+    } finally {
+      database.close();
+    }
+  }
+});
+
+// Issue #4761: the Lite metadata declares the storage layout and the tables must agree with it (fail-closed both ways).
+test('rejects a Lite layout that is undeclared, invalid, or contradicts the tables', () => {
+  const cases = [
+    [{ lite_id_compression: undefined }, null, 'DATABASE_METADATA_INVALID'],
+    [{ lite_text_compression: 'yes' }, null, 'DATABASE_METADATA_INVALID'],
+    // Flag ON but the packed tables are absent, and flag OFF while the packed tables exist.
+    [{ lite_id_compression: 'true' }, null, 'DATABASE_INTEGRITY_FAILED'],
+    [{ lite_text_compression: 'true' }, null, 'DATABASE_INTEGRITY_FAILED'],
+    [{}, 'CREATE TABLE packed_meaning_relations (source INTEGER PRIMARY KEY, data BLOB NOT NULL)', 'DATABASE_INTEGRITY_FAILED'],
+    [{}, 'CREATE TABLE text_pool (id INTEGER PRIMARY KEY, text TEXT NOT NULL)', 'DATABASE_INTEGRITY_FAILED'],
+  ];
+  for (const [overrides, extraSql, code] of cases) {
+    const database = createDictionary();
+    try {
+      for (const [key, value] of Object.entries(overrides)) {
+        if (value === undefined) database.prepare('DELETE FROM metadata WHERE key = ?').run(key);
+        else database.prepare('UPDATE metadata SET value = ? WHERE key = ?').run(value, key);
+      }
+      if (extraSql) database.exec(extraSql);
+      assert.throws(() => validateRuntimeDictionary(database), { code }, JSON.stringify([overrides, extraSql]));
     } finally {
       database.close();
     }

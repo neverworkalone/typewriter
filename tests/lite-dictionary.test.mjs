@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -20,20 +20,29 @@ import {
   readLogicalDatabaseSnapshot,
 } from '../scripts/build/query.mjs';
 import { validatePackagedDictionary, validateRuntimeDictionary } from '../src/runtime/dictionary-validation.js';
-import { BUILD_ONLY_TABLES } from '../src/runtime/dictionary-contract.js';
+import { BUILD_ONLY_TABLES, PLAIN_LAYOUT } from '../src/runtime/dictionary-contract.js';
+import {
+  PACKED_FORMAT_VERSION,
+  decodePackedRelations,
+  decodePackedTextRelations,
+  encodePackedRelations,
+  encodePackedTextRelations,
+  meaningId,
+  meaningNumber,
+} from '../src/runtime/packed-relations.js';
 import { validateSharedDictionary } from '../scripts/ci/validate-shared-dictionary.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PILOT_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'tests/fixtures/canonical-sample');
 
 /** Invariant: Lite is a verified, provenance-preserving projection of Full's product tables and nothing else. */
-async function withFullAndLite(callback) {
+async function withFullAndLite(callback, optimization = PLAIN_LAYOUT) {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-lite-'));
   try {
     const fullPath = path.join(directory, 'full.sqlite');
     const litePath = path.join(directory, 'lite.sqlite');
     const summary = await buildDictionary({ inputDirectory: PILOT_DIRECTORY, outputPath: fullPath, allowDirty: true });
-    await extractLiteDictionary({ fullPath, litePath });
+    await extractLiteDictionary({ fullPath, litePath, optimization });
     return await callback({ directory, fullPath, litePath, summary });
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -76,7 +85,7 @@ test('Lite inherits Full provenance and every product table unchanged, except it
   await withFullAndLite(({ fullPath, litePath }) => {
     const full = withDatabase(fullPath, (database) => readLogicalDatabaseSnapshot(database));
     const lite = withDatabase(litePath, (database) => readLogicalDatabaseSnapshot(database));
-    const withoutKind = (rows) => rows.filter(({ key }) => key !== 'database_kind');
+    const withoutKind = (rows) => rows.filter(({ key }) => key !== 'database_kind' && !key.startsWith('lite_'));
     assert.deepEqual(withoutKind(lite.rows.metadata), withoutKind(full.rows.metadata));
     assert.equal(full.rows.metadata.find(({ key }) => key === 'database_kind').value, 'full');
     assert.equal(lite.rows.metadata.find(({ key }) => key === 'database_kind').value, 'lite');
@@ -106,9 +115,10 @@ test('product queries return the same results on Full and on the extracted Lite'
 test('extraction is deterministic and is not a second canonical build', async () => {
   await withFullAndLite(async ({ directory, fullPath, litePath }) => {
     const again = path.join(directory, 'lite-again.sqlite');
-    await extractLiteDictionary({ fullPath, litePath: again });
+    await extractLiteDictionary({ fullPath, litePath: again, optimization: PLAIN_LAYOUT });
     const rows = (databasePath) => withDatabase(databasePath, (database) => readLogicalDatabaseSnapshot(database));
     assert.deepEqual(rows(again), rows(litePath));
+    assert.deepEqual((await readFile(again)).equals(await readFile(litePath)), true, 'same input and layout give identical bytes');
     assert.equal((await readdir(directory)).filter((name) => name.endsWith('.staging')).length, 0);
   });
 });
@@ -163,7 +173,6 @@ test('Full builds in place: no staging file, and the Full output survives a Lite
 test('Lite verification passes for a real extraction with different files and fails on tampering', async () => {
   await withFullAndLite(async ({ directory, fullPath, litePath }) => {
     const { createHash } = await import('node:crypto');
-    const { readFile } = await import('node:fs/promises');
     const digest = async (file) => createHash('sha256').update(await readFile(file)).digest('hex');
     assert.notEqual(await digest(fullPath), await digest(litePath), 'Full and Lite are different files');
     assert.ok(Object.keys(verifyLiteExtraction({ fullPath, litePath })).includes('meaning_relations'));
@@ -206,4 +215,70 @@ test('Lite product tables are WITHOUT ROWID and the file is repacked', async () 
       assert.doesNotThrow(() => validatePackagedDictionary(lite));
     }, {});
   });
+});
+
+// Issue #4761: the packed adjacency codec round-trips and refuses damaged or unsupported input.
+test('packed relation codec round-trips every field and rejects truncated, invalid or unsupported data', () => {
+  const links = [
+    { position: 0, target: 1, type: 'near', relevance: 1, origin: 'typewriter-authored', note: '' },
+    { position: 3, target: 536223, type: 'association', relevance: 9, origin: 'typewriter-authored-reverse', note: '' },
+    { position: 4, target: 2 ** 40, type: 'mood', relevance: 5, origin: 'typewriter-authored', note: '' },
+  ];
+  assert.deepEqual(decodePackedRelations(encodePackedRelations(links)), links);
+  const texts = [
+    { position: 0, text: 1, type: 'scene', relevance: 4 },
+    { position: 2, text: 53676, type: 'action', relevance: 9 },
+  ];
+  assert.deepEqual(decodePackedTextRelations(encodePackedTextRelations(texts)), texts);
+
+  const blob = encodePackedRelations(links);
+  assert.throws(() => decodePackedRelations(blob.slice(0, blob.length - 1)), /Truncated|Invalid/u);
+  assert.throws(() => decodePackedRelations(blob.slice(0, 1)), /Truncated/u);
+  assert.throws(() => decodePackedRelations(Uint8Array.from([PACKED_FORMAT_VERSION + 1, ...blob.slice(1)])), /version/u);
+  assert.throws(() => decodePackedRelations(Uint8Array.from([PACKED_FORMAT_VERSION, 0, 0, 0xff])), /Invalid/u);
+  assert.throws(() => decodePackedTextRelations(Uint8Array.from([PACKED_FORMAT_VERSION, 0, 1, 0x00])), /Invalid/u);
+
+  // A gap that pushes a position past the safe-integer range is rejected for both ID and text lists.
+  const maxGap = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f]; // 2^53 - 1
+  assert.throws(() => decodePackedTextRelations(Uint8Array.from([PACKED_FORMAT_VERSION, 0, 1, 0x14, ...maxGap, 1, 0x14, ...maxGap, 1, 0x14])), /position|integer/u);
+  assert.throws(() => decodePackedRelations(Uint8Array.from([PACKED_FORMAT_VERSION, 0, 1, 0x22, ...maxGap, 1, 0x22, ...maxGap, 1, 0x22])), /position|integer/u);
+
+  const row = links[0];
+  for (const bad of [
+    { ...row, note: 'x' }, { ...row, type: 'direct' }, { ...row, type: 'antonym' }, { ...row, relevance: 0 },
+    { ...row, relevance: 10 }, { ...row, relevance: null }, { ...row, origin: 'stdict-gloss-reference' }, { ...row, target: 0 },
+  ]) assert.throws(() => encodePackedRelations([bad]), /Invalid|cannot be packed/u, JSON.stringify(bad));
+  assert.throws(() => encodePackedRelations([]), /empty/u);
+  assert.throws(() => encodePackedRelations([row, { ...row, target: 2 }]), /strictly increasing/u);
+});
+
+test('Meaning IDs map to integers only in canonical m<integer> form and fail otherwise', () => {
+  assert.equal(meaningNumber('m001'), 1);
+  assert.equal(meaningNumber('m536223'), 536223);
+  assert.equal(meaningId(7), 'm007');
+  for (const bad of ['m1', 'm0001', 'm000', 'x001', 'm', 'm00a', 'm001_a', `m${'9'.repeat(30)}`, 'M001']) {
+    assert.throws(() => meaningNumber(bad), /canonical/u, bad);
+  }
+});
+
+test('every Lite layout verifies against Full; a layout/table mismatch or damaged packed table fails closed', async () => {
+  for (const idCompression of [false, true]) {
+    for (const textCompression of [false, true]) {
+      await withFullAndLite(({ directory, fullPath, litePath }) => {
+        const digests = verifyLiteExtraction({ fullPath, litePath });
+        assert.ok(['meaning_relations', 'meaning_text_relations'].every((key) => key in digests));
+        withDatabase(litePath, (lite) => {
+          assert.equal(lite.prepare("SELECT value FROM metadata WHERE key = 'lite_id_compression'").get().value, String(idCompression));
+          assert.equal(lite.prepare("SELECT value FROM metadata WHERE key = 'lite_text_compression'").get().value, String(textCompression));
+          assert.doesNotThrow(() => validatePackagedDictionary(lite));
+        });
+        const flipped = path.join(directory, 'flipped.sqlite');
+        return copyFile(litePath, flipped).then(() => {
+          withDatabase(flipped, (db) => db.exec("UPDATE metadata SET value = CASE value WHEN 'true' THEN 'false' ELSE 'true' END WHERE key = 'lite_id_compression'"), {});
+          assert.throws(() => verifyLiteExtraction({ fullPath, litePath: flipped }), /storage layout/u);
+          withDatabase(flipped, (lite) => assert.throws(() => validateRuntimeDictionary(lite), /storage layout/u));
+        });
+      }, { idCompression, textCompression });
+    }
+  }
 });

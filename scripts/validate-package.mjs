@@ -26,10 +26,13 @@ import { DEFAULT_CANONICAL_DIRECTORY } from './validate/canonical-jsonl.mjs';
 import {
   DICTIONARY_VERSION,
   BUILD_ONLY_TABLES_QUERY,
+  LAYOUT_TABLES_QUERY,
   MEANING_INTEGRITY_QUERIES,
+  layoutFromMetadata,
+  layoutTableMismatches,
   SQLITE_SCHEMA_VERSION,
 } from '../src/runtime/dictionary-contract.js';
-import { readForeignKeyViolations } from '../src/runtime/dictionary-validation.js';
+import { readForeignKeyViolations, validatePackedStorage } from '../src/runtime/dictionary-validation.js';
 import { createPackageReleaseInfo } from './build/release-info.mjs';
 
 const FORBIDDEN_PACKAGE_PATHS = [
@@ -58,6 +61,7 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'runtime/dictionary-contract.js',
   'runtime/dictionary-validation.js',
   'runtime/meaning-order.js',
+  'runtime/packed-relations.js',
   'runtime/protocol.js',
   'runtime/query-adapter.js',
   'runtime/search-query.js',
@@ -520,6 +524,28 @@ function validateDictionaryMetadata({
       if (violations !== 0) {
         errors.push(`Dictionary meaning layer check ${name} found ${violations} violation(s).`);
       }
+    }
+    // Lite storage layout (Issue #4761): metadata flags must match the tables, and every packed relation must decode and
+    // satisfy the constraints SQLite cannot enforce inside a BLOB. Logical totals equal table rows plus decoded rows.
+    try {
+      const layout = layoutFromMetadata(metadata);
+      const mismatched = layoutTableMismatches(layout, database.prepare(LAYOUT_TABLES_QUERY).all().map(({ name }) => name));
+      if (mismatched.length > 0) {
+        errors.push(`Dictionary storage layout does not match its tables: ${mismatched.join(', ')}.`);
+      } else {
+        const packed = validatePackedStorage(database, layout);
+        const count = (table) => Number(database.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get().count);
+        const relations = count('meaning_relations') + packed.idRelations;
+        const textRelations = (layout.textCompression ? 0 : count('meaning_text_relations')) + packed.textRelations;
+        if (metadata.meaning_relation_count !== String(relations)) {
+          errors.push('Dictionary meaning_relation_count does not match its stored and packed relations.');
+        }
+        if (metadata.meaning_text_relation_count !== String(textRelations)) {
+          errors.push('Dictionary meaning_text_relation_count does not match its stored and packed text relations.');
+        }
+      }
+    } catch (error) {
+      errors.push(`Dictionary packed relations are invalid: ${error.message}`);
     }
     const integrity = database.prepare('PRAGMA integrity_check').get()?.integrity_check;
     if (integrity !== 'ok') {

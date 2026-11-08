@@ -9,6 +9,7 @@ import {
   findRecordsBySearchTerm,
   getMeaningRecord,
 } from '../../src/runtime/sqlite-query.js';
+import { layoutFromMetadata } from '../../src/runtime/dictionary-contract.js';
 import { validatePackagedDictionary } from '../../src/runtime/dictionary-validation.js';
 
 function now() {
@@ -77,7 +78,7 @@ function prepareDatabaseForWorkerReady(database, expectedSourceRevision, recordM
   recordMemoryPhase('after_query_only_setup');
 
   const validationStart = now();
-  validatePackagedDictionary(database, { expectedSourceRevision });
+  const layout = layoutFromMetadata(validatePackagedDictionary(database, { expectedSourceRevision }));
   const packagedDictionaryValidationMs = elapsed(validationStart);
   recordMemoryPhase('after_packaged_dictionary_validation');
 
@@ -100,6 +101,7 @@ function prepareDatabaseForWorkerReady(database, expectedSourceRevision, recordM
   recordMemoryPhase('after_read_only_probe');
 
   return {
+    layout,
     query_only_setup_ms: queryOnlySetupMs,
     packaged_dictionary_validation_ms: packagedDictionaryValidationMs,
     read_only_probe_ms: readOnlyProbeMs,
@@ -132,7 +134,7 @@ function databaseSizeMetrics(database, databaseBytes) {
   };
 }
 
-function measureQueryPath(database, queryCase, iterations) {
+function measureQueryPath(database, queryCase, iterations, layout) {
   const firstStart = now();
   const firstResponse = findRecordsBySearchTerm(database, queryCase.term);
   const firstQueryMs = elapsed(firstStart);
@@ -145,7 +147,7 @@ function measureQueryPath(database, queryCase, iterations) {
 
   // The product database ships the meaning view, not raw source senses: the record detail load is the meaning
   // record, and the expected sense count is the canonical fixture's own (verified when the cases are derived).
-  const record = queryCase.record_id ? getMeaningRecord(database, queryCase.record_id) : null;
+  const record = queryCase.record_id ? getMeaningRecord(database, queryCase.record_id, layout) : null;
   if (queryCase.record_id && record?.id !== queryCase.record_id) {
     throw new Error(`SQLite WASM ambiguous-query fixture drifted: ${queryCase.category}`);
   }
@@ -165,7 +167,7 @@ function measureQueryPath(database, queryCase, iterations) {
     const detailTimings = [];
     for (let index = 0; index < iterations; index += 1) {
       const start = now();
-      getMeaningRecord(database, queryCase.record_id);
+      getMeaningRecord(database, queryCase.record_id, layout);
       detailTimings.push(elapsed(start));
     }
     detailQuery = summarizeTimings(detailTimings);
@@ -270,6 +272,7 @@ export async function measureSqliteWasmRuntime({
       coldDatabase,
       queryCase,
       iterations,
+      coldReadyComponents.layout,
     ));
     const coldSteadyState = recordMemory('after_queries');
     const coldLoadPeakRss = processMaximumRssMb();

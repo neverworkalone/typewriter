@@ -131,6 +131,10 @@ jobs:
       - name: SQL schema-only Full/Lite build and validation
         id: schema-build
         if: ${{ steps.schema.outputs.schema_changed == 'true' }}
+        env:
+          # The in-process Full/Lite reproducibility check holds three full-size logical snapshots; Node's default heap
+          # (about 4 GB) is no longer enough at the current dataset size (peak RSS 5.4 GB measured locally).
+          NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm run ci:schema
 
       - name: Require complete changed-path evidence

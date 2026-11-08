@@ -1,11 +1,19 @@
 import {
+  decodePackedRelations,
+  decodePackedTextRelations,
+  meaningNumber,
+} from './packed-relations.js';
+import {
   BUILD_ONLY_TABLES_QUERY,
   DATABASE_KIND_KEY,
   DATABASE_KINDS,
   DICTIONARY_COUNT_QUERIES,
   DICTIONARY_VERSION,
+  LAYOUT_TABLES_QUERY,
   MEANING_INTEGRITY_QUERIES,
   SQLITE_SCHEMA_VERSION,
+  layoutFromMetadata,
+  layoutTableMismatches,
 } from './dictionary-contract.js';
 import { ERROR_CODES } from './protocol.js';
 import { getMetadata } from './sqlite-query.js';
@@ -60,7 +68,15 @@ function readMetadata(database) {
  * and source revision. Whole-database scans stay in build/package validation
  * and `validatePackagedDictionary`.
  */
-export function validateRuntimeDictionary(database, {
+export function validateRuntimeDictionary(database, options = {}) {
+  return inspectRuntimeDictionary(database, options).metadata;
+}
+
+/**
+ * Same checks as `validateRuntimeDictionary`, also returning the Lite storage layout declared by the metadata (read here
+ * once, at open time, and passed to the query functions). The layout must match the layout tables actually present.
+ */
+export function inspectRuntimeDictionary(database, {
   expectedSourceRevision = undefined,
 } = {}) {
   const metadata = readMetadata(database);
@@ -143,12 +159,92 @@ export function validateRuntimeDictionary(database, {
     );
   }
 
-  return metadata;
+  let layout;
+  let layoutTables;
+  try {
+    layout = layoutFromMetadata(metadata);
+    layoutTables = selectRows(database, LAYOUT_TABLES_QUERY).map(({ name }) => name);
+  } catch (error) {
+    throw validationError(
+      ERROR_CODES.DATABASE_METADATA_INVALID,
+      'The packaged dictionary storage layout is invalid.',
+      { cause: error?.message || String(error) },
+    );
+  }
+  const mismatched = layoutTableMismatches(layout, layoutTables);
+  if (mismatched.length > 0) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary tables do not match its declared storage layout.',
+      { layout, mismatched_tables: mismatched },
+    );
+  }
+
+  return { metadata, layout };
+}
+
+/**
+ * Decode every packed relation list and check what BLOBs cannot enforce with SQLite constraints: canonical Meaning IDs,
+ * source/target/pool existence, `(target,type)` and `(text,type)` uniqueness, authored pairing in both directions, and
+ * pool integrity. Returns the logical row counts held in packed form. Build and package validation only: startup does
+ * not scan the database.
+ */
+export function validatePackedStorage(database, layout) {
+  const counts = { idRelations: 0, textRelations: 0 };
+  if (!layout.idCompression && !layout.textCompression) return counts;
+
+  const numbers = new Set(selectRows(database, 'SELECT id FROM meanings').map(({ id }) => meaningNumber(id)));
+  if (layout.idCompression) {
+    const pairs = new Map();
+    for (const { source, data } of selectRows(database, 'SELECT source, data FROM packed_meaning_relations')) {
+      if (!numbers.has(Number(source))) throw new Error(`packed relation source ${source} is not a Meaning`);
+      const seen = new Set();
+      const targets = new Set();
+      for (const row of decodePackedRelations(data)) {
+        if (!numbers.has(row.target) || row.target === Number(source)) throw new Error(`packed relation target ${row.target} of ${source} is invalid`);
+        const key = `${row.target}:${row.type}`;
+        if (seen.has(key)) throw new Error(`packed relations of ${source} repeat (target,type) ${key}`);
+        seen.add(key);
+        targets.add(row.target);
+        counts.idRelations += 1;
+      }
+      pairs.set(Number(source), targets);
+    }
+    // An authored relation is shown in both directions: each forward row needs some authored row back.
+    for (const [source, targets] of pairs) {
+      for (const target of targets) {
+        if (!pairs.get(target)?.has(source)) throw new Error(`packed authored relation ${source} -> ${target} has no reverse`);
+      }
+    }
+  }
+  if (layout.textCompression) {
+    const pool = new Map();
+    const texts = new Set();
+    for (const { id, text } of selectRows(database, 'SELECT id, text FROM text_pool')) {
+      if (typeof text !== 'string' || text.length === 0 || texts.has(text)) throw new Error(`text pool entry ${id} is empty or duplicated`);
+      texts.add(text);
+      pool.set(Number(id), 0);
+    }
+    for (const { source, data } of selectRows(database, 'SELECT source, data FROM packed_text_relations')) {
+      if (!numbers.has(Number(source))) throw new Error(`packed text relation source ${source} is not a Meaning`);
+      const seen = new Set();
+      for (const row of decodePackedTextRelations(data)) {
+        if (!pool.has(row.text)) throw new Error(`packed text relation of ${source} references a missing pool entry`);
+        const key = `${row.text}:${row.type}`;
+        if (seen.has(key)) throw new Error(`packed text relations of ${source} repeat (text,type) ${key}`);
+        seen.add(key);
+        pool.set(row.text, pool.get(row.text) + 1);
+        counts.textRelations += 1;
+      }
+    }
+    if ([...pool.values()].some((uses) => uses === 0)) throw new Error('text pool has an unused entry');
+  }
+  return counts;
 }
 
 /** Full integrity validation for build, package and benchmark tooling. */
 export function validatePackagedDictionary(database, options = {}) {
-  const metadata = validateRuntimeDictionary(database, options);
+  const { metadata, layout } = inspectRuntimeDictionary(database, options);
 
   let integrity;
   try {
@@ -208,15 +304,31 @@ export function validatePackagedDictionary(database, options = {}) {
     );
   }
 
+  let packedCounts;
+  try {
+    packedCounts = validatePackedStorage(database, layout);
+  } catch (error) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary packed relations are invalid.',
+      { cause: error?.message || String(error) },
+    );
+  }
+
   let mismatches;
   try {
+    // The metadata holds logical totals; the actual value is the table rows plus the decoded packed rows.
+    const packedTotals = {
+      meaning_relation_count: packedCounts.idRelations,
+      meaning_text_relation_count: packedCounts.textRelations,
+    };
     mismatches = Object.fromEntries(
       Object.entries(DICTIONARY_COUNT_QUERIES)
-        .map(([key, sql]) => [key, {
-          expected: metadata[key],
-          actual: String(selectValue(database, sql)),
-        }])
-        .filter(([key, values]) => values.expected !== values.actual),
+        .map(([key, sql]) => {
+          const tableRows = key === 'meaning_text_relation_count' && layout.textCompression ? 0 : Number(selectValue(database, sql));
+          return [key, { expected: metadata[key], actual: String(tableRows + (packedTotals[key] ?? 0)) }];
+        })
+        .filter(([, values]) => values.expected !== values.actual),
     );
   } catch (error) {
     throw validationError(

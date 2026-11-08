@@ -10,7 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { BuildError, buildDictionary } from '../scripts/build/dictionary.mjs';
 import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
 import { createDictionaryProgress } from '../scripts/build/dictionary-progress.mjs';
-import { SQLITE_SCHEMA_VERSION } from '../src/runtime/dictionary-contract.js';
+import { PLAIN_LAYOUT, SQLITE_SCHEMA_VERSION } from '../src/runtime/dictionary-contract.js';
 import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
@@ -88,7 +88,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
 
     // The Lite product database is extracted from the verified Full database and ships no source layer.
     const litePath = path.join(outputDirectory, 'lite.sqlite');
-    await extractLiteDictionary({ fullPath: outputPath, litePath });
+    await extractLiteDictionary({ fullPath: outputPath, litePath, optimization: PLAIN_LAYOUT });
     const database = new DatabaseSync(litePath, { readOnly: true });
     try {
       assert.equal(countRows(database, 'records'), 6);
@@ -101,7 +101,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
         ],
       );
       assert.equal(countRows(database, 'generated_surface_forms'), summary.generatedSurfaceFormCount);
-      assert.deepEqual(getMetadata(database), { ...summary.metadata, database_kind: 'lite' });
+      assert.deepEqual(getMetadata(database), { ...summary.metadata, database_kind: 'lite', lite_id_compression: 'false', lite_text_compression: 'false' });
 
       assert.deepEqual(findRecordsByExactTerm(database, '기쁨'), [
         {
@@ -284,7 +284,7 @@ test('builds the canonical-only meaning layer and projected meaning relations wi
     assert.equal(summary.metadata.meaning_projection_source_relation_count, '3');
 
     const litePath = path.join(path.dirname(outputPath), 'lite.sqlite');
-    await extractLiteDictionary({ fullPath: outputPath, litePath });
+    await extractLiteDictionary({ fullPath: outputPath, litePath, optimization: PLAIN_LAYOUT });
     const database = new DatabaseSync(litePath, { readOnly: true });
     try {
       assert.equal(countRows(database, 'meanings'), 6);

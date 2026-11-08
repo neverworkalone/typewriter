@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
-import { MEANING_INTEGRITY_QUERIES } from '../src/runtime/dictionary-contract.js';
+import { MEANING_INTEGRITY_QUERIES, PLAIN_LAYOUT } from '../src/runtime/dictionary-contract.js';
 import { projectDirectReverses } from '../scripts/build/direct-reverse.mjs';
 import { projectRecordMeanings, projectMeaningRelations } from '../scripts/build/record-meanings.mjs';
 import { MEANING_SOURCE_INTEGRITY_QUERIES, glossReferenceViolations } from '../scripts/build/meaning-source-checks.mjs';
@@ -41,7 +41,7 @@ async function buildFixture(directory, records = RECORDS) {
   });
   // The source-derived checks run on the Full database; the Lite product database is extracted from it.
   const litePath = path.join(directory, 'lite.sqlite');
-  await extractLiteDictionary({ fullPath: outputPath, litePath });
+  await extractLiteDictionary({ fullPath: outputPath, litePath, optimization: PLAIN_LAYOUT });
   return { deployed: litePath, full: outputPath };
 }
 

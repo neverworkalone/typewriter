@@ -17,7 +17,7 @@ import {
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
 import { extractLiteDictionary, readDatabaseKind } from '../build/lite-dictionary.mjs';
-import { DATABASE_KINDS } from '../../src/runtime/dictionary-contract.js';
+import { DATABASE_KINDS, PLAIN_LAYOUT } from '../../src/runtime/dictionary-contract.js';
 import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
 import {
   findRecordsByExactTerm,
@@ -459,7 +459,7 @@ export async function runM2Pipeline({
     // Both independent builds are Full databases; the Lite product database is extracted from the first and must
     // agree with it on every product table.
     const litePath = path.join(temporaryDirectory, 'lite.sqlite');
-    await extractLiteDictionary({ fullPath: firstPath, litePath });
+    await extractLiteDictionary({ fullPath: firstPath, litePath, optimization: PLAIN_LAYOUT });
     const firstDatabase = new DatabaseSync(firstPath, { readOnly: true });
     const secondDatabase = new DatabaseSync(secondPath, { readOnly: true });
     const liteDatabase = new DatabaseSync(litePath, { readOnly: true });
@@ -478,7 +478,7 @@ export async function runM2Pipeline({
       );
       for (const table of Object.keys(liteSnapshot.rows)) {
         // The Lite database inherits all metadata unchanged except its own database kind.
-        const withoutKind = (rows) => (table === 'metadata' ? rows.filter(({ key }) => key !== 'database_kind') : rows);
+        const withoutKind = (rows) => (table === 'metadata' ? rows.filter(({ key }) => key !== 'database_kind' && !key.startsWith('lite_')) : rows);
         assert.deepEqual(
           withoutKind(liteSnapshot.rows[table]),
           withoutKind(firstSnapshot.rows[table]),
