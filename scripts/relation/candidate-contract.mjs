@@ -126,55 +126,6 @@ export function isThousandsCommaFragment(candidate, gloss) {
   return cut > 0 && intact === 0;
 }
 
-/**
- * A final-form predicate clause is a narrated action, event, or procedure ("땀이 흐르다", "별이 흔들리다"), not an
- * independent writer-facing expression. A compact scene/image phrase may end in a modifier form of the same verb
- * ("마른 버드나무", "갈대밭") and stays allowed. Only the final token decides, and ordinary verb lemmas that are
- * genuine words ("흐르다", "울다") are not clauses themselves.
- */
-const FINAL_PREDICATE = /(?:^|\s)(?:[가-힣]+(?:고|며|면|게|지|야|니|죠|네|다)|[아어](?:라|요|야))$/u;
-// A bare auxiliary lemma ("울다") is a genuine word; the same lemma attached to a subject ("계획이 되다") is a clause.
-const BARE_PREDICATE_LEMMAS = new Set(['하다', '되다', '이다']);
-
-export function isPredicativeClause(candidate) {
-  const normalized = normalizeCandidate(candidate);
-  if (!normalized.includes(' ')) return false;
-  if (BARE_PREDICATE_LEMMAS.has(normalized)) return false;
-  return FINAL_PREDICATE.test(normalized);
-}
-
-/**
- * A candidate that only re-packs the source gloss as a noun phrase ("무더기 검은 이삭" for "이삭이 무더기로
- * 검게 된 것") adds no expression of its own. Candidates sharing the gloss content words are flagged so the
- * producer replaces the mechanical restatement with a real writer-facing expression.
- */
-const GLOSS_REPACKAGE_STOPWORDS = new Set(['것', '수', '때', '등', '및', '그', '이', '저', '등등']);
-// Adnominal color/shape modifiers carry no independent expression when the gloss already states them.
-const GLOSS_REPACKAGE_MODIFIERS = new Set(['검은', '검게', '까만', '하얀', '붉은', '푸른', '든', '된']);
-
-export function isGlossRepackage(candidate, gloss) {
-  const normalized = normalizeCandidate(candidate);
-  if (typeof gloss !== 'string' || !gloss.trim()) return false;
-  const glossWords = new Set(normalizeCandidate(gloss).split(/\s+/u)
-    .map((word) => word.replace(/[^\p{L}]/gu, ''))
-    .filter((word) => word.length > 1 && !GLOSS_REPACKAGE_STOPWORDS.has(word)));
-  const candidateWords = normalized.split(/\s+/u)
-    .map((word) => word.replace(/[^\p{L}]/gu, ''))
-    .filter((word) => word.length > 1 && !GLOSS_REPACKAGE_STOPWORDS.has(word));
-  const contentWords = candidateWords.filter((word) => !GLOSS_REPACKAGE_MODIFIERS.has(word));
-  if (contentWords.length < 2) return false;
-  // Every content word root of the candidate occurs in the gloss words: the candidate re-packs the gloss definition
-  // ("무더기 검은 이삭" for "이삭이 무더기로 검게 된 것") instead of adding a writer-facing expression.
-  const glossRoots = new Set([...glossWords].map((word) => word.slice(0, 2)));
-  return contentWords.every((word) => glossWords.has(word) || glossRoots.has(word.slice(0, 2)));
-}
-
-export function candidateExpressionIneffective(candidate, gloss) {
-  if (isPredicativeClause(candidate)) return 'candidate is a predicative clause/narrated action, not an independent expression';
-  if (isGlossRepackage(candidate, gloss)) return 'candidate mechanically re-packs the source gloss';
-  return undefined;
-}
-
 function hasExactKeys(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
