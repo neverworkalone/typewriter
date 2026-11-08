@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { buildDictionary } from './dictionary.mjs';
 import { extractLiteDictionary } from './lite-dictionary.mjs';
+import { createDictionaryProgress, progressStage } from './dictionary-progress.mjs';
 
 const PRODUCT_LEGAL_FILES = Object.freeze([
   'Apache-2.0.txt',
@@ -94,6 +95,7 @@ export function createProductRuntimeAssets({
       return;
     }
 
+    const onProgress = createDictionaryProgress();
     const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
     // The Extension ships only the Lite product database, always extracted from a verified Full database: either the
     // CI-shared Full artifact, or a Full database built here from the current sources (never a reused cache).
@@ -120,6 +122,7 @@ export function createProductRuntimeAssets({
         outputPath: fullDictionaryPath,
         repositoryDirectory: projectRoot,
         allowDirty,
+        onProgress,
       });
       fullPath = summary.outputPath;
 
@@ -129,7 +132,9 @@ export function createProductRuntimeAssets({
           + `${summary.meaningProjection.authored_row_count} echoes.`,
       );
     }
+    const finishLite = progressStage(onProgress, 'Lite extraction, verification and VACUUM');
     await extractLiteDictionary({ fullPath, litePath: outputPath });
+    finishLite();
     console.log(`Product (Lite) dictionary extracted from ${fullPath}.`);
 
     const database = new DatabaseSync(outputPath, { readOnly: true });
