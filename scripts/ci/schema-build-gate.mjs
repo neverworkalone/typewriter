@@ -72,6 +72,8 @@ export async function runSchemaBuildGate() {
   const reproducibilityMs = Math.round((performance.now() - reproducibilityStartedAt) * 100) / 100;
 
   const productValidationStartedAt = performance.now();
+  // The product-output contract compares dist-web with dist; CI only builds dist-web when site/ changed.
+  await runPnpm('build:web');
   await runPnpm('validate:product-outputs');
   const productValidationMs = Math.round((performance.now() - productValidationStartedAt) * 100) / 100;
 
