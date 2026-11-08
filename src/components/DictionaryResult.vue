@@ -326,7 +326,7 @@ defineExpose({ focusCandidate });
                   data-page-direction="previous"
                   :aria-label="`${group.label} 이전 20개`"
                   @click="changeRelationPage(sense, group, page.page - 1, $event)"
-                ><span class="relation-page-glyph" aria-hidden="true">←</span></button>
+                ><span class="relation-page-glyph" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M11.8 8h-7M7.5 5.1 4.6 8l2.9 2.9" /></svg></span></button>
                 <component
                   :is="relationLinkTag(relation)"
                   class="relation-link"
@@ -351,7 +351,7 @@ defineExpose({ focusCandidate });
                   data-page-direction="next"
                   :aria-label="`${group.label} 다음 20개`"
                   @click="changeRelationPage(sense, group, page.page + 1, $event)"
-                ><span class="relation-page-glyph" aria-hidden="true">→</span></button>
+                ><span class="relation-page-glyph" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4.2 8h7M8.5 5.1 11.4 8l-2.9 2.9" /></svg></span></button>
               </span>
               <span
                 v-if="hasInlinePagination(group, page)"
@@ -662,8 +662,30 @@ defineExpose({ focusCandidate });
 
 .relation-page-glyph {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f2e8e4;
+  color: #8e5b54;
   transform: translateY(7.5px);
+}
+
+.relation-page-glyph svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.relation-page-button:hover .relation-page-glyph {
+  background: #e8d6d0;
+  color: #7e433e;
 }
 
 .relation-entry.has-previous-page > .relation-page-button .relation-page-glyph {
@@ -687,7 +709,7 @@ defineExpose({ focusCandidate });
   position: absolute;
   inset: -4px;
   border: 2px solid #7e433e;
-  border-radius: 2px;
+  border-radius: 50%;
   content: '';
   pointer-events: none;
 }
