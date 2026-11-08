@@ -106,6 +106,8 @@ function unpack(data, readRow) {
   };
   while (offset < data.length) {
     const position = next + reader.varint();
+    // Positions must stay safe integers and strictly increase (the next gap base position + 1 must be safe too).
+    if (!Number.isSafeInteger(position) || !Number.isSafeInteger(position + 1)) throw new Error('Invalid packed relation position');
     rows.push(readRow(reader, position));
     next = position + 1;
   }

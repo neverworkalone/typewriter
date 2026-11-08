@@ -238,6 +238,11 @@ test('packed relation codec round-trips every field and rejects truncated, inval
   assert.throws(() => decodePackedRelations(Uint8Array.from([PACKED_FORMAT_VERSION, 0, 0, 0xff])), /Invalid/u);
   assert.throws(() => decodePackedTextRelations(Uint8Array.from([PACKED_FORMAT_VERSION, 0, 1, 0x00])), /Invalid/u);
 
+  // A gap that pushes a position past the safe-integer range is rejected for both ID and text lists.
+  const maxGap = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f]; // 2^53 - 1
+  assert.throws(() => decodePackedTextRelations(Uint8Array.from([PACKED_FORMAT_VERSION, 0, 1, 0x14, ...maxGap, 1, 0x14, ...maxGap, 1, 0x14])), /position|integer/u);
+  assert.throws(() => decodePackedRelations(Uint8Array.from([PACKED_FORMAT_VERSION, 0, 1, 0x22, ...maxGap, 1, 0x22, ...maxGap, 1, 0x22])), /position|integer/u);
+
   const row = links[0];
   for (const bad of [
     { ...row, note: 'x' }, { ...row, type: 'direct' }, { ...row, type: 'antonym' }, { ...row, relevance: 0 },
