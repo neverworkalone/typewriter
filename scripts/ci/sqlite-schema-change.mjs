@@ -12,6 +12,7 @@ const REPOSITORY_DIRECTORY = path.resolve(path.dirname(SCRIPT_PATH), '../..');
 // the new DDL path is rejected until this ownership list is updated.
 export const SQLITE_SCHEMA_OWNER_PATHS = Object.freeze([
   'scripts/build/sqlite-schema.mjs',
+  'scripts/build/lite-dictionary.mjs',
 ]);
 
 const SQL_COMMENT_PATTERN = '(?:/\\*[\\s\\S]*?\\*/|--[^\\r\\n]*(?:\\r?\\n|$))';
