@@ -613,7 +613,7 @@ export async function main() {
     onProgress: createDictionaryProgress(),
   });
   console.log(
-    `Built ${summary.outputPath}: ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s).`,
+    `Built : ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s).`,
   );
 
   return summary;
