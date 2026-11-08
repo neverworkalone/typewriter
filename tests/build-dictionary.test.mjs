@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { BuildError, buildDictionary } from '../scripts/build/dictionary.mjs';
 import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
+import { createDictionaryProgress } from '../scripts/build/dictionary-progress.mjs';
 import { SQLITE_SCHEMA_VERSION } from '../src/runtime/dictionary-contract.js';
 import {
   findRecordsByExactTerm,
@@ -39,12 +40,16 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
   const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
 
   try {
+    const events = [];
     const summary = await buildDictionary({
+      onProgress: (event) => { events.push(event); throw new Error('logging failure'); },
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
       allowDirty: true,
     });
 
+    assert.deepEqual(events.map(({ type }) => type), ['start', 'complete', 'start', 'complete', 'start', 'complete', 'start', 'count', 'complete', 'start', 'complete']);
+    assert.deepEqual(events.find(({ type }) => type === 'count'), { type: 'count', stage: 'Full SQLite records', count: 6, total: 6 });
     assert.equal(summary.outputPath, outputPath);
     assert.equal(summary.metadata.database_kind, 'full');
     assert.equal(existsSync(`${outputPath}.staging`), false);
@@ -313,5 +318,21 @@ test('builds the canonical-only meaning layer and projected meaning relations wi
     }
   } finally {
     await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+
+test('dictionary progress uses one updating TTY line and concise non-TTY output', () => {
+  for (const isTTY of [false, true]) {
+    let output = '';
+    const progress = createDictionaryProgress({ isTTY, write: (text) => { output += text; } });
+    progress({ type: 'start', stage: 'Full SQLite writing' });
+    progress({ type: 'count', stage: 'Full SQLite records', count: 5000, total: 6000 });
+    progress({ type: 'count', stage: 'Full SQLite records', count: 6000, total: 6000 });
+    progress({ type: 'complete', stage: 'Full SQLite writing', elapsedMs: 1000 });
+    assert.match(output, /6000 \/ 6000/);
+    assert.equal(output.includes('5000 / 6000'), isTTY);
+    assert.equal(/[\r\x1b]/.test(output), isTTY);
+    if (!isTTY) assert.equal(output.trim().split('\n').length, 2);
   }
 });

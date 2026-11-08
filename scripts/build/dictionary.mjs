@@ -1,6 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createDictionaryProgress, progressStage } from './dictionary-progress.mjs';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
@@ -210,7 +211,7 @@ function storedMeanings(meaningLayer, model) {
     .sort((left, right) => compareMeaningIds(left.id, right.id));
 }
 
-function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
+function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, reportProgress) {
   const insertMetadata = database.prepare(
     'INSERT INTO metadata (key, value) VALUES (?, ?)',
   );
@@ -289,6 +290,7 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
     return sense;
   };
 
+  let insertedRecords = 0;
   for (const record of model.records) {
     insertRecord.run(
       record.id,
@@ -305,7 +307,12 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
     record.senses.forEach((sense, position) => {
       insertSense.run(sense.id, record.id, position, sense.pos, sense.gloss);
     });
+    insertedRecords += 1;
+    if (insertedRecords % 5000 === 0 || insertedRecords === model.records.length) {
+      reportProgress(insertedRecords, model.records.length);
+    }
   }
+  if (model.records.length === 0) reportProgress(0, 0);
 
   for (const row of surfaceFormRows) {
     insertGeneratedSurfaceForm.run(
@@ -457,6 +464,7 @@ export async function buildDictionary({
   relationsDirectory,
   requireSurfaceFormClassifications,
   requireSurfaceFormCollisionReview,
+  onProgress,
   ...removedOptions
 } = {}) {
   for (const name of REMOVED_OPTIONS) {
@@ -471,6 +479,7 @@ export async function buildDictionary({
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
   assertRecordMeaningsOption(inputDirectory, recordMeanings);
 
+  let finishStage = progressStage(onProgress, 'Canonical loading and normalization');
   const context = canonicalContext ?? await loadCanonicalContext({
     directory: inputDirectory,
   });
@@ -478,6 +487,8 @@ export async function buildDictionary({
     canonicalContext: context,
     semanticAudit,
   });
+  finishStage();
+  finishStage = progressStage(onProgress, 'Surface form projection');
   const exceptionManifest = context.derived?.surfaceFormExceptionManifest
     ?? await loadSurfaceFormExceptionManifest();
   context.derived.surfaceFormExceptionManifest = exceptionManifest;
@@ -498,11 +509,14 @@ export async function buildDictionary({
     requireClassDispositions,
     requireCollisionReview,
   });
+  finishStage();
+  finishStage = progressStage(onProgress, 'Approved relations and meaning projection');
   // Approved Relations JSONL feeds the official canonical build; fixture inputs opt in with `relationsDirectory`.
   const authoredFiles = await loadApprovedRelationFiles(relationsDirectory
     ?? (requireExceptionTargets ? DEFAULT_RELATIONS_DIRECTORY : undefined));
   const shardSenseIds = authoredFiles.length > 0 ? await loadShardSenseIds(inputDirectory) : undefined;
   const meaningLayer = loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles, shardSenseIds });
+  finishStage();
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,
     sourceRevision,
@@ -515,6 +529,7 @@ export async function buildDictionary({
   let database;
   let generatedMetadata;
   try {
+    finishStage = progressStage(onProgress, 'Full SQLite writing');
     database = new DatabaseSync(resolvedOutputPath);
     const sqliteVersion = database
       .prepare('SELECT sqlite_version() AS version')
@@ -535,14 +550,19 @@ export async function buildDictionary({
     database.exec(SQLITE_SCHEMA_SQL);
     database.exec(SQLITE_SOURCE_SCHEMA_SQL);
     database.exec('BEGIN IMMEDIATE;');
-    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows, meaningLayer);
+    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows, meaningLayer, (count, total) => {
+      try { onProgress?.({ type: 'count', stage: 'Full SQLite records', count, total }); } catch {}
+    });
     database.exec('COMMIT;');
+    finishStage();
+    finishStage = progressStage(onProgress, 'Full database verification');
     verifyDatabase(database, { includeSource: true });
     if (meaningLayer.projected) {
       assertRecordMeaningCoverage(database, (name, count) => {
         throw new BuildError(`record meaning coverage check ${name} found ${count} violation(s)`, 'RECORD_MEANING_COVERAGE');
       });
     }
+    finishStage();
   } catch (error) {
     if (database) {
       try {
@@ -590,6 +610,7 @@ export async function buildDictionary({
 export async function main() {
   const summary = await buildDictionary({
     allowDirty: process.argv.includes('--allow-dirty'),
+    onProgress: createDictionaryProgress(),
   });
   console.log(
     `Built ${summary.outputPath}: ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s).`,
