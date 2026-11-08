@@ -1726,10 +1726,10 @@ class Supervisor:
             return
         pin = ln["shard_pin"] if ln["mode"] == "single" else ""
         try:
-            sha = self.git.fetch_base(base)
             latest = self.gh.latest_stage2_production(base)
+            sha = self.git.fetch_base(base)
             if latest and not self.git.is_ancestor(latest["merge_commit_sha"], sha):
-                raise GitError("latest merged Stage 2 PR is not contained in fetched master")
+                return self._stage2_selection_wait(wait_key, poll_key, line, "merge commit master 반영 대기")
             choice = stage2.choose(self.runner, self.paths.repo_root, self.env, ref=sha, sha=sha,
                                    open_prs=self.gh.open_prs(), kv=self.store, pin=pin, latest_pr=latest)
         except TRANSIENT as e:
@@ -1743,15 +1743,16 @@ class Supervisor:
             self.maint.report_verify(choice.failure)
             choice = stage2.Choice("wait", note=f"{choice.failure.scope} verify 실패 차단 — urgent Issue 등록·복구 대기")
         if choice.status == "wait":
-            if self.store.get(wait_key) != choice.note:
-                self.store.log(None, f"Stage 2 대기: {choice.note}", line=line)
-            self.store.set(wait_key, choice.note)
-            return self.store.set(poll_key, str(self.clock()))
+            return self._stage2_selection_wait(wait_key, poll_key, line, choice.note)
         self.store.set(wait_key, "")
+        self.store.set(poll_key, "")
         if choice.status in ("done", "unready"):
             self.store.set_line(model, method, run=0, shard_pin="")
             return self.store.log(None, choice.note, line=line)
         part = choice.part
+        if self.store.stage2_merged_complete(part.shard, part.key):
+            return self._stage2_selection_wait(wait_key, poll_key, line,
+                                               f"{part.shard}_{part.batch} Part {part.part} 검색 반영 대기")
         branch = f"{method}-{model}-{part.shard}-{part.key}"
         wt = self.paths.worktrees / f"{method}-{model}-{part.shard}_{part.key}"
         try:
@@ -1767,6 +1768,12 @@ class Supervisor:
             self.store.set(stage2.mode_key(bid), stage2.PARALLEL)   # fixed for this Part; a Part without it stays serial
         self.store.log(bid, f"Stage 2 {stage2.label(part.shard, part.key)} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
+
+    def _stage2_selection_wait(self, wait_key, poll_key, line, note):
+        if self.store.get(wait_key) != note:
+            self.store.log(None, f"Stage 2 대기: {note}", line=line)
+        self.store.set(wait_key, note)
+        self.store.set(poll_key, str(self.clock()))
 
     def _tiered(self, producer: str) -> bool:
         """Free/Go tiers and the automatic quota switch belong to the producer's CLI (OpenCode only)."""
