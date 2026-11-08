@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { patchCandidateRows, serializeCandidateJsonl, validateCandidateBatch, validateCandidatePaths } from './candidate-contract.mjs';
+import { candidateExpressionIneffective, patchCandidateRows, serializeCandidateJsonl, validateCandidateBatch, validateCandidatePaths } from './candidate-contract.mjs';
 import { validateChangedCandidateFiles } from './validate-candidate-changes.mjs';
 
 function fixture(candidate = '다른 표현', batch = '01') {
@@ -393,4 +393,17 @@ test('Candidate v1 reports every normalized source-lemma containment in one run 
   valid[0].senses = [sense('w1-s1', ['희망 가격']), sense('w1-s2', ['경제 전망'])];
   valid[1].senses = [sense('w2-s1', ['일기예보', '비구름'])];
   assert.equal(validateCandidateBatch(canonicalRows, valid, { batch: '01' }).candidateCount, 7);
+});
+
+test('final expression check separates predicative clauses and gloss restatements from compact scene images', () => {
+  const gloss = '밀 이삭이 무더기로 검게 된 병';
+  for (const clause of ['땀이 흐르다', '별이 흔들리다', '어긋난 계획이 되다', '밀 이삭이 검게 되다']) {
+    assert.ok(candidateExpressionIneffective(clause, gloss), clause);
+  }
+  for (const restatement of ['무더기 검은 이삭']) {
+    assert.ok(candidateExpressionIneffective(restatement, gloss), restatement);
+  }
+  for (const image of ['겨울 아침', '마른 버드나무', '검은 점무늬', '병든 이삭', '땀방울', '흐르다', '울다']) {
+    assert.equal(candidateExpressionIneffective(image, gloss), undefined, image);
+  }
 });
