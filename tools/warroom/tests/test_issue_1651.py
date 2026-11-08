@@ -22,21 +22,24 @@ class PullRequestFiles(unittest.TestCase):
             {"path": "README.md"},
         ])
 
-    def test_merged_stage3_pr_listing_keeps_its_owned_head_branch(self):
+    def test_stage3_search_selects_latest_merge_independent_of_result_order(self):
+        from urllib.parse import parse_qs, urlparse
         class Runner:
             def run(self, argv, **kwargs):
-                row = {"number": 2800, "title": "[Relation Stage 3] 001", "body": "implements #2450",
-                       "merged_at": "2026-11-02T08:00:00Z", "base": {"ref": "master"},
-                       "head": {"ref": "s3-codex-001", "repo": {"full_name": "neverworkalone/typewriter"}},
-                       "merge_commit_sha": HEAD2}
-                return Result(0, json.dumps([[row]]))
-
+                path = argv[2]
+                def row(n, shard, date):
+                    return {"number": n, "title": f"[S3/Codex] {shard}", "body": "implements #2455",
+                            "pull_request": {"merged_at": date}}
+                if path.startswith("search/"):
+                    q = parse_qs(urlparse(path).query)["q"][0]
+                    items = [row(1, "005", "2026-01-01T00:00:00Z"), row(2, "006", "2026-02-01T00:00:00Z")] if '"S3"' in q else []
+                    return Result(0, json.dumps({"items": items, "total_count": len(items), "incomplete_results": False}))
+                repo = {"full_name": "neverworkalone/typewriter"}
+                return Result(0, json.dumps({"number": 2, "title": "[S3/Codex] 006", "body": "implements #2455",
+                    "merged": True, "state": "closed", "merged_at": "2026-02-01T00:00:00Z", "merge_commit_sha": HEAD2,
+                    "base": {"ref": "master", "repo": repo}, "head": {"ref": "s3-codex-006", "repo": repo}}))
         gh = GhClient(Runner(), {}, "neverworkalone/typewriter")
-
-        self.assertEqual(gh.merged_relation_stage3_prs(), [{
-            "number": 2800, "title": "[Relation Stage 3] 001", "body": "implements #2450",
-            "base_ref": "master", "shard": "001", "head_ref": "s3-codex-001", "merge_commit_sha": HEAD2,
-        }])
+        self.assertEqual(gh.latest_stage3_production("master")["number"], 2)
 
     def test_branch_pr_listing_includes_merge_timestamp_for_closed_state_classification(self):
         class Runner:

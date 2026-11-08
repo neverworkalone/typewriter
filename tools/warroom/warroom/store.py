@@ -986,33 +986,12 @@ class Store:
             ln = c.execute("SELECT drain FROM lines WHERE model=? AND method=?", (model, STAGE3_METHOD)).fetchone()
             if ln is not None and ln["drain"]:
                 return False, f"{model}/S3 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
+            c.execute("DELETE FROM kv WHERE key IN (?, ?)", (f"s3_wait_{model}", f"s3_poll_{model}"))
             c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, STAGE3_METHOD, now))
             c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, shard_pin='', updated_at=? "
                       "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single", now,
                                                        model, STAGE3_METHOD))
         return True, ""
-
-    def restore_stage3_completion(self, *, producer: str, shard: str, pr_number: int, merge_sha: str,
-                                  branch: str) -> bool:
-        """Restore one lost Stage 3 completion from a validated merged PR identity; no parallel ledger is created."""
-        now = time.time()
-        if branch != f"s3-{producer}-{shard}":
-            return False
-        with self._conn() as c:
-            c.execute("BEGIN IMMEDIATE")
-            rows = c.execute("SELECT id, producer, state, merged, pr_number, head_sha FROM batches WHERE method=? AND shard=?",
-                             (STAGE3_METHOD, shard)).fetchall()
-            if any(row["state"] != "COMPLETE" for row in rows):
-                return False
-            if rows:
-                matching = next((row for row in rows if row["pr_number"] == pr_number
-                                 and row["head_sha"] == merge_sha and row["merged"]), None)
-                return matching is not None
-            c.execute("INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,pr_number,head_sha,run_kind,"
-                      "merged,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                      (STAGE3_METHOD, producer, shard, "all", branch, "", "COMPLETE", pr_number, merge_sha,
-                       "s3_recovered", 1, now, now))
-        return True
 
     def request_drain_all(self, lines) -> int:
         """Drain target Lines that own an unfinished batch, in one transaction shared with `create_batch`.

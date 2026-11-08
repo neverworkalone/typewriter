@@ -874,9 +874,9 @@ class FakeGh:
     def latest_stage2_production(self, base):
         return self.latest_stage2_pr
 
-    def merged_relation_stage3_prs(self):
+    def latest_stage3_production(self, base):
         self.merged_stage3_prs_calls += 1
-        return list(self.merged_stage3_prs)
+        return self.merged_stage3_prs[-1] if self.merged_stage3_prs else None
 
     def create_pr(self, head, base, title, body, labels):
         self.created_prs = getattr(self, "created_prs", [])

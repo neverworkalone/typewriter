@@ -142,56 +142,23 @@ def validate_pr(pr: dict, files: list[dict]) -> str:
     return shard
 
 
-def choose(*, sha: str, kv, open_prs: list[dict], stage2_batches: list, stage3_batches: list,
-           pin: str = "", refresh_stage2=None) -> Choice:
-    """Pick the earliest current-master Stage 2 verified shard without same-shard ownership or PR conflict.
-
-    `refresh_stage2(shard) -> (ready, detail)` carries an old shard verify only across irrelevant changes, or runs the
-    exact shard verify on this master. It is called lazily while considering a shard; missing completion evidence is
-    never upgraded into a success.
-    """
-    occupied_prs: set[str] = set()
-    for pr in open_prs:
-        occupied_prs |= batches.pr_stage2_shards(pr)
-    s2_owned = {row["shard"] for row in stage2_batches if row["state"] != "COMPLETE"}
-    s3_done = {row["shard"] for row in stage3_batches if row["state"] == "COMPLETE" and row["merged"]}
-    s3_owned = {row["shard"] for row in stage3_batches if row["state"] != "COMPLETE"}
-    incomplete: list[str] = []
-    stale: list[str] = []
-    occupied: list[str] = []
-    for number in range(1, SHARDS + 1):
-        shard = f"{number:03d}"
-        if pin and shard != pin or shard in s3_done:
-            continue
-        if shard in s2_owned or shard in occupied_prs or shard in s3_owned:
-            occupied.append(shard)
-            continue
-        old = kv.get(stage2.ok_key(shard, None))
-        if old == sha:
-            return Choice("shard", shard)
-        if not old:
-            incomplete.append(shard)
-            continue
-        if refresh_stage2 is None:
-            stale.append(f"{shard} (최신 master verify 필요)")
-            continue
-        ready, detail = refresh_stage2(shard)
-        if ready:
-            return Choice("shard", shard)
-        stale.append(f"{shard} (최신 master verify 실패: {detail})")
-        break   # do not run exact verifies across later shards after the earliest stale candidate failed
-    if incomplete or stale or occupied:
-        reasons = []
-        if incomplete:
-            reasons.append("Stage 2 미완료(현재 SHA shard verify 성공 기록 없음): " + ", ".join(incomplete[:8]))
-        if stale:
-            reasons.append("구 SHA shard verify 필요 또는 실패: " + "; ".join(stale[:8]))
-        if occupied:
-            reasons.append("동일 샤드 작업·PR 점유: " + ", ".join(occupied[:8]))
-        return Choice("wait", note="; ".join(reasons))
-    if pin:
-        return Choice("wait", note=f"고정된 Stage 3 샤드 {pin}이 아직 Stage 2 완료·미점유 상태가 아닙니다")
-    return Choice("done", note="Stage 2가 완료된 미점유 Stage 3 샤드가 없습니다")
+def choose(*, kv, open_prs: list[dict], stage2_batches: list, stage3_batches: list,
+           latest_pr=None, pin: str = "") -> Choice:
+    """Select exactly the successor of the last merged production shard."""
+    previous = int(_PR_TITLE.fullmatch(latest_pr["title"]).group(1)) if latest_pr else 0
+    if previous >= SHARDS:
+        return Choice("done", note="Stage 3 전체 샤드 생산이 완료되었습니다.")
+    shard = f"{previous + 1:03d}"
+    if pin and pin != shard:
+        return Choice("unready", note=f"고정 샤드 {pin}와 Stage 3 순차 대상 {shard} 불일치 / 실행 종료")
+    if any(row["shard"] == shard and row["state"] == "COMPLETE" and row["merged"] for row in stage3_batches):
+        return Choice("wait", note=f"샤드 {shard} 완료의 GitHub 검색 반영 대기")
+    if (any(row["shard"] == shard and row["state"] != "COMPLETE" for row in stage2_batches + stage3_batches)
+            or any(shard in batches.pr_stage2_shards(pr) for pr in open_prs)):
+        return Choice("wait", note=f"샤드 {shard} 작업·PR 점유")
+    if not kv.get(stage2.ok_key(shard, None)):
+        return Choice("unready", note=f"다음 샤드 {shard} Stage 2 미완료 / 실행 종료")
+    return Choice("shard", shard)
 
 
 def cli(runner, env: dict, worktree, *args: str, timeout: int = 900):

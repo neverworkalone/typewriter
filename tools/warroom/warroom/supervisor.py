@@ -1659,79 +1659,44 @@ class Supervisor:
         self.store.log(bid, f"배치 {nb.stem} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
 
-    def _stage3_recover_merged(self, base: str) -> None:
-        """Restore Stage 3 completion only from issue-linked, merged PRs with the exact shard file scope."""
-        if getattr(self, "_s3_recovery_sha", None) == base:
-            return
-        rows = self.gh.merged_relation_stage3_prs()
-        producers = stage3_models(self.cfg)
-        known = {(batch["shard"], batch["pr_number"]): (batch["producer"], batch["branch"])
-                 for batch in self.store.all_batches()
-                 if batch["method"] == STAGE3_METHOD and batch["state"] == "COMPLETE"
-                 and batch["merged"] and batch["pr_number"] is not None}
-        seen: set[str] = set()
-        for pr in rows:
-            shard = stage3.shard_pr(pr)
-            if shard is None or pr.get("base_ref") != "master":
-                raise stage3.Stage3Error(f"PR #{pr.get('number')} is not a linked Stage 3 PR on master")
-            head_ref = pr.get("head_ref") or ""
-            owner = next((model for model in producers if head_ref == f"s3-{model}-{shard}"), None)
-            if owner is None:
-                raise stage3.Stage3Error(f"PR #{pr.get('number')} head branch does not identify a configured Stage 3 producer")
-            if shard in seen:
-                raise stage3.Stage3Error(f"여러 merged Stage 3 PR이 샤드 {shard}를 주장합니다")
-            seen.add(shard)
-            merge_sha = pr.get("merge_commit_sha") or ""
-            key = (shard, pr.get("number"))
-            if key in known:
-                if known[key] != (owner, head_ref):
-                    raise stage3.Stage3Error(f"PR #{pr['number']} 기존 Stage 3 복구의 producer/branch가 원본과 다릅니다")
-                continue
-            files = self.gh.pull_files(pr["number"])
-            if stage3.validate_pr(pr, files) != shard:
-                raise stage3.Stage3Error(f"PR #{pr['number']} changed files do not match its shard")
-            if not re.fullmatch(r"[a-f0-9]{40}", merge_sha):
-                raise stage3.Stage3Error(f"PR #{pr['number']}의 merge commit SHA를 확인할 수 없습니다")
-            if not self.git.contains_on_base(merge_sha, self.cfg["base_branch"]):
-                continue
-            ok, detail = self.git.verify_stage2(base, "shard", shard, None, None)
-            if not ok:
-                raise stage3.Stage3Error(f"PR #{pr['number']} 머지 후 master Stage 3 shard verify 실패: {detail}")
-            self.store.set(stage3.ok_key(shard), base)
-            if not self.store.restore_stage3_completion(producer=owner, shard=shard, pr_number=pr["number"],
-                                                        merge_sha=merge_sha, branch=head_ref):
-                raise stage3.Stage3Error(f"PR #{pr['number']}와 기존 Stage 3 Store 소유권이 충돌합니다")
-        self._s3_recovery_sha = base
-
     def _prepare_new_stage3(self, ln) -> None:
-        """Select the earliest Stage 2 shard verified on this master and not occupied by an edit/PR."""
+        """Select the strict successor of the latest merged Stage 3 production PR."""
         model, method = ln["model"], STAGE3_METHOD
         base, line = self.cfg["base_branch"], f"{model}/{method}"
         key = f"line:{model}:{method}:prepare"
+        wait_key, poll_key = f"s3_wait_{model}", f"s3_poll_{model}"
+        if self.store.get(wait_key) and self.clock() - float(self.store.get(poll_key, "0")) < self.cfg["poll_seconds"]:
+            return
+        if not self._transient_due(key):
+            return
+        all_batches = self.store.all_batches()
+        s3_batches = [b for b in all_batches if b["method"] == STAGE3_METHOD]
+        occupied = next((b for b in s3_batches if b["state"] != "COMPLETE"), None)
         try:
-            sha = self.git.fetch_base(base)
-            self._stage3_recover_merged(sha)
-            choice = stage3.choose(sha=sha, kv=self.store, open_prs=self.gh.open_prs(),
-                                   stage2_batches=[b for b in self.store.all_batches() if b["method"] == STAGE2_METHOD],
-                                   stage3_batches=[b for b in self.store.all_batches() if b["method"] == STAGE3_METHOD],
-                                   pin=ln["shard_pin"] if ln["mode"] == "single" else "",
-                                   refresh_stage2=lambda shard: stage2.refresh_shard_success(
-                                       shard, sha, kv=self.store, changed=self.git.changed_between,
-                                       relation_owners=self.git.stage2_affected_relation_shards,
-                                       verify=lambda *args: self.git.verify_stage2(sha, *args)))
+            if occupied:
+                choice = stage3.Choice("wait", note=f"Stage 3 샤드 {occupied['shard']} 작업 점유")
+            else:
+                latest = self.gh.latest_stage3_production(base)
+                sha = self.git.fetch_base(base)
+                if latest and not self.git.is_ancestor(latest["merge_commit_sha"], sha):
+                    choice = stage3.Choice("wait", note="최근 Stage 3 머지의 master 반영 대기")
+                else:
+                    choice = stage3.choose(kv=self.store, open_prs=self.gh.open_prs(),
+                                           stage2_batches=[b for b in all_batches if b["method"] == STAGE2_METHOD],
+                                           stage3_batches=s3_batches, latest_pr=latest,
+                                           pin=ln["shard_pin"] if ln["mode"] == "single" else "")
         except TRANSIENT as error:
             return self._transient_wait(key, error, line=line)
         except Exception as error:
             return self._blocked(ln, f"Stage 3 샤드 선정 실패: {error}")
         self._transient_clear(key, line=line)
         if choice.status == "wait":
-            wait_key = f"s3_wait_{model}"
             if self.store.get(wait_key) != choice.note:
                 self.store.log(None, f"Stage 3 대기: {choice.note}", line=line)
             self.store.set(wait_key, choice.note)
-            return
-        self.store.set(f"s3_wait_{model}", "")
-        if choice.status == "done":
+            return self.store.set(poll_key, str(self.clock()))
+        self.store.set(wait_key, "")
+        if choice.status in ("done", "unready"):
             self.store.set_line(model, method, run=0, shard_pin="")
             return self.store.log(None, choice.note, line=line)
         shard = choice.shard
