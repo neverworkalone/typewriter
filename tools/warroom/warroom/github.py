@@ -203,8 +203,10 @@ class GhClient:
                     raise GhTransient("incomplete Stage 3 merged PR search")
                 if total is None:
                     total = result["total_count"]
-                if result["total_count"] != total or total > 1000:
-                    raise GhTransient("Stage 3 merged PR search exceeds or changed its bounded results")
+                if total > 1000:
+                    raise GhError("Stage 3 merged PR search exceeds 1000 results")
+                if result["total_count"] != total:
+                    raise GhTransient("Stage 3 merged PR search changed its bounded results")
                 items = result["items"]
                 if len(items) != min(100, total - (page - 1) * 100):
                     raise GhTransient("incomplete Stage 3 merged PR search page")

@@ -41,6 +41,15 @@ class PullRequestFiles(unittest.TestCase):
         gh = GhClient(Runner(), {}, "neverworkalone/typewriter")
         self.assertEqual(gh.latest_stage3_production("master")["number"], 2)
 
+    def test_stage3_search_limit_is_not_transient(self):
+        from warroom.github import GhError, GhTransient
+        class Runner:
+            def run(self, argv, **kwargs):
+                return Result(0, json.dumps({"items": [], "total_count": 1001, "incomplete_results": False}))
+        with self.assertRaises(GhError) as caught:
+            GhClient(Runner(), {}, "neverworkalone/typewriter").latest_stage3_production("master")
+        self.assertNotIsInstance(caught.exception, GhTransient)
+
     def test_branch_pr_listing_includes_merge_timestamp_for_closed_state_classification(self):
         class Runner:
             argv = None

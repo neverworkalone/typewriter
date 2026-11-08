@@ -106,6 +106,16 @@ class Stage3IndependentStart(unittest.TestCase):
         self.start().assert_not_called()
         self.assertEqual(w.gh.merged_stage3_prs_calls, 2)
 
+    def test_search_limit_blocks_without_automatic_retry(self):
+        from warroom.github import GhError
+        w = self.w
+        with mock.patch.object(w.gh, "latest_stage3_production", side_effect=GhError("search exceeds 1000 results")) as search:
+            self.start().assert_not_called()
+            line = w.store.line("codex", STAGE3_METHOD)
+            self.assertTrue(line["blocked"])
+            self.assertEqual(line["run"], 0)
+            self.assertEqual(search.call_count, 1)
+
     def test_existing_occupancy_precedes_search(self):
         w = self.w
         w.store.create_batch(method=STAGE3_METHOD, producer="other", shard="001", batch="all", branch="s3-other-001", worktree="/tmp/s3-test")
