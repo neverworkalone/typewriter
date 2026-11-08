@@ -1523,7 +1523,8 @@ class IncidentRecoveryProof(unittest.TestCase):
         active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
         rejection = {"errors": ["fixture rejection"]}
         with mock.patch.object(dchunk, "read_active", return_value=active), \
-             mock.patch.object(dchunk, "read_rejection", return_value=rejection):
+             mock.patch.object(dchunk, "read_rejection", return_value=rejection), \
+             mock.patch.object(dchunk, "fix_bindings", return_value="s1 [record=w1] w1-s1 · 표제어"):
             predicted = w.sup.resume_prompt_names(w.store.batch(b["id"]))
             self.assertEqual(predicted, {"d_chunk_fix"})
 
@@ -1536,7 +1537,7 @@ class IncidentRecoveryProof(unittest.TestCase):
             self.assertTrue(w.sup.dp._launch(w.store.batch(b["id"]), row, round_))
 
         launch = w.adapter.launches[-1]
-        self.assertEqual(launch["prompt"], prompts.d_chunk_fix(b, 1, "fixture rejection"))
+        self.assertEqual(launch["prompt"], prompts.d_chunk_fix(b, 1, "fixture rejection\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\ns1 [record=w1] w1-s1 · 표제어"))
         self.assertEqual(w.store.runs(b["id"])[0]["kind"], "d_chunk_fix")
 
     def test_parallel_d_stale_rejection_is_proved_without_writing_then_refreshed_for_retry(self):
@@ -1561,6 +1562,29 @@ class IncidentRecoveryProof(unittest.TestCase):
             self.assertNotIn("dry_run", refresh.call_args.kwargs)
             row = w.store.task_row(b["id"], task)
             self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
+
+    def test_parallel_d_queued_fix_reinspects_stale_rejection_before_launch(self):
+        from unittest import mock
+        from warroom import prompts
+        w = self.w
+        b = make_batch(w, "d", run_kind="d_parallel")
+        w.store.add_tasks(b["id"], [("001", "001")])
+        w.store.update_task(b["id"], "001", state="FIXQ", session_id="ses_1",
+                            data=json.dumps({"kind": "fix"}))
+        w.store.add_run(b["id"], "d_chunk_new", "ses_1", None, "old.log", "old.exit",
+                        model="p/free-x-free", effort="high", task="001")
+        w.store.set(dchunk.fix_key(b["id"], 1), str(dchunk.MAX_FIXES))
+        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
+        rejection = {"errors": ["remaining rejected sense"]}
+        round_ = dparallel._Round(w.sup.dp, b)
+        w.adapter.plan.append({"code": 0, "session": "ses_1"})
+        with mock.patch.object(dchunk, "read_active", return_value=active), \
+             mock.patch.object(dchunk, "read_rejection", return_value=None), \
+             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=rejection) as refresh, \
+             mock.patch.object(dchunk, "fix_bindings", return_value="s1 [record=w1] w1-s1 · 표제어"):
+            self.assertTrue(w.sup.dp._launch(b, w.store.task_row(b["id"], "001"), round_))
+            self.assertTrue(refresh.call_args.kwargs["limit_to_previous"])
+        self.assertEqual(w.adapter.launches[-1]["prompt"], prompts.d_chunk_fix(b, 1, "remaining rejected sense\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\ns1 [record=w1] w1-s1 · 표제어"))
 
     def test_parallel_c_retry_predicts_the_actual_correction_prompt(self):
         from unittest import mock

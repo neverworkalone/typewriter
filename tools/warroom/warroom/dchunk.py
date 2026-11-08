@@ -803,6 +803,24 @@ def fix_problem(diag: dict) -> str:
     return text[:MAX_DIAGNOSTIC_CHARS]
 
 
+
+def fix_bindings(rec: dict, diag: dict) -> str:
+    """Bind rejected senses to their exact active record, without repeating literary contexts."""
+    records = {r.get("record_id"): r for r in rec.get("records", []) if isinstance(r, dict)}
+    lines = []
+    for failed in diag["failed_records"]:
+        rid = failed["record_id"]
+        record = records.get(rid)
+        if not record or not isinstance(record.get("lemma"), str):
+            raise DChunkError("거부된 Sense의 활성 record 결속을 확인할 수 없습니다")
+        for sense_id in failed["failed_sense_ids"]:
+            matches = [s for s in rec["senses"] if s.get("sense_id") == sense_id and s.get("record_id") == rid]
+            if len(matches) != 1 or not isinstance(matches[0].get("ref"), str):
+                raise DChunkError("거부된 Sense의 활성 별칭 결속을 확인할 수 없습니다")
+            lines.append(f"{matches[0]['ref']} [record={rid}] {sense_id} · {record['lemma']}")
+    return "\n".join(lines)
+
+
 def delivery(card_bytes: int, view: str) -> str:
     """"inline" when the whole card + view fits one argv element, else "pages" (that chunk only). Never a partial view."""
     return "inline" if card_bytes + len(view.encode("utf-8")) <= INLINE_MAX_PROMPT_BYTES else "pages"

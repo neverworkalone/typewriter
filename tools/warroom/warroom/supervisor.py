@@ -2682,7 +2682,7 @@ class Supervisor:
                 diag = dchunk.read_rejection(Path(wt), b, rec) if rec else None
                 if not sid or diag is None:
                     raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
-                prompt = prompts.d_chunk_fix(b, rec["chunk_no"], dchunk.fix_problem(diag))
+                prompt = prompts.d_chunk_fix(b, rec["chunk_no"], dchunk.fix_problem(diag) + "\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\n" + dchunk.fix_bindings(rec, diag))
                 h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
             elif b["method"] == dchunk.METHOD and kind in ("d_chunk_new", "d_chunk_resume"):
                 prompt, baseline = self._d_chunk_prompt(b, kind, remote)

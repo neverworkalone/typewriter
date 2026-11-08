@@ -552,12 +552,16 @@ class ParallelD:
                     "(공유 코드·검증기의 결함을 발견했을 때만 이 경로에 쓰고, 다른 경로에는 쓰지 않는다).\n")
             if kind == FIX:
                 diag = dchunk.read_rejection(wt, b, rec)
+                if diag is None and sid:
+                    diag = dchunk.refresh_stale_search_rejection(
+                        sup.runner, sup._d_env(b), wt, b, rec,
+                        limit_to_previous=int(self.store.get(dchunk.fix_key(b["id"], n)) or 0) >= dchunk.MAX_FIXES)
                 if not sid or diag is None:
                     raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
                 sup._check_session_pin(b, sid, run)
                 if int(self.store.get(dchunk.fix_key(b["id"], n)) or 0) < 1:
                     self.store.set(dchunk.fix_key(b["id"], n), "1")   # a restart between the decision and the launch
-                prompt = prompts.d_chunk_fix(b, n, dchunk.fix_problem(diag))
+                prompt = prompts.d_chunk_fix(b, n, dchunk.fix_problem(diag) + "\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\n" + dchunk.fix_bindings(rec, diag))
                 handle = ad.resume(sid, prompt, wt, env, run, log, ex, **extra)
             elif kind == RESUME:
                 if not sid:
