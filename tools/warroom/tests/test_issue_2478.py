@@ -72,76 +72,56 @@ class Stage3IndependentStart(unittest.TestCase):
     def setUp(self):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
-        self.w.cfg["producers"] = {
-            "codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"},
-        }
+        self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        self.assertTrue(self.w.store.start_stage3("codex", "continuous")[0])
 
-    def _start(self, *, old_success=HEAD1, changed_paths=None, verified=True):
-        w = self.w
-        w.git.base_sha = HEAD2
-        w.git.changed_between_paths = list(changed_paths or [])
-        w.git.relation_owner_shards = {"001"}
-        if verified:
-            w.git.verify_heads.add((HEAD2, "shard", "001", None, None))
-        if old_success:
-            w.store.set(stage2.ok_key("001", None), old_success)
-        self.assertTrue(w.store.start_stage3("codex", "continuous")[0])
-        line = dict(w.store.line("codex", STAGE3_METHOD))
-        with mock.patch.object(w.sup, "_stage3_recover_merged"), \
-                mock.patch.object(w.sup, "_prepare_existing") as prepare, \
-                mock.patch.object(stage3, "SHARDS", 1):
-            w.sup._prepare_new_stage3(line)
+    def start(self):
+        with mock.patch.object(self.w.sup, "_prepare_existing") as prepare:
+            self.w.sup._prepare_new_stage3(dict(self.w.store.line("codex", STAGE3_METHOD)))
         return prepare
 
-    def test_stage3_starts_from_old_unrelated_shard_cache_without_running_stage2(self):
-        prepare = self._start(changed_paths=["README.md"])
-        batch = self.w.store.latest_batch("codex", STAGE3_METHOD)
-
-        self.assertEqual(batch["shard"], "001")
-        prepare.assert_called_once()
-        self.assertEqual(self.w.store.get(stage2.ok_key("001", None)), HEAD2)
+    def test_old_success_is_trusted_without_reverification(self):
+        self.w.store.set(stage2.ok_key("001", None), "any recorded value")
+        self.start().assert_called_once()
         self.assertEqual(self.w.git.verify_calls, [])
-        self.assertIsNone(self.w.store.latest_batch("codex", STAGE2_METHOD))
-        self.assertEqual(self.w.store.line("codex", STAGE2_METHOD)["run"], 0)
+        self.assertEqual(self.w.store.get(stage2.ok_key("001", None)), "any recorded value")
 
-    def test_stage3_reverifies_related_change_on_master_before_starting(self):
-        prepare = self._start(changed_paths=[RELATION])
-        batch = self.w.store.latest_batch("codex", STAGE3_METHOD)
-
-        self.assertEqual(batch["shard"], "001")
-        prepare.assert_called_once()
-        self.assertEqual(self.w.git.verify_calls, [("shard", "001", None, None)])
-        self.assertEqual(self.w.store.get(stage2.ok_key("001", None)), HEAD2)
-
-    def test_failed_reverify_waits_without_cache_update_or_stage3_ownership(self):
-        prepare = self._start(changed_paths=[RELATION], verified=False)
-
-        prepare.assert_not_called()
+    def test_missing_success_stops_without_skipping(self):
+        self.w.store.set(stage2.ok_key("002", None), HEAD1)
+        self.start().assert_not_called()
+        self.assertEqual(self.w.store.line("codex", STAGE3_METHOD)["run"], 0)
         self.assertIsNone(self.w.store.latest_batch("codex", STAGE3_METHOD))
-        self.assertEqual(self.w.store.get(stage2.ok_key("001", None)), HEAD1)
-        wait = self.w.store.get("s3_wait_codex")
-        self.assertIn("구 SHA shard verify 필요 또는 실패", wait)
-        self.assertIn("최신 master verify 실패", wait)
 
-
-    def test_failed_earliest_stale_shard_does_not_verify_later_shards(self):
+    def test_merge_lag_waits_with_poll_interval_and_manual_restart_clears_wait(self):
         w = self.w
-        w.store.set(stage2.ok_key("001", None), HEAD1)
-        w.store.set(stage2.ok_key("002", None), HEAD1)
-        verified = []
+        w.cfg["poll_seconds"] = 300
+        w.gh.merged_stage3_prs = [{"title": "[S3/Codex] 006", "merge_commit_sha": HEAD1}]
+        self.start().assert_not_called()
+        self.assertIn("master", w.store.get("s3_wait_codex"))
+        self.start().assert_not_called()
+        self.assertEqual(w.gh.merged_stage3_prs_calls, 1)
+        w.store.set_line("codex", STAGE3_METHOD, run=0)
+        self.assertTrue(w.store.start_stage3("codex", "continuous")[0])
+        self.assertIsNone(w.store.get("s3_wait_codex"))
+        self.start().assert_not_called()
+        self.assertEqual(w.gh.merged_stage3_prs_calls, 2)
 
-        def refresh(shard):
-            verified.append(shard)
-            return False, "accounting incomplete"
+    def test_search_limit_blocks_without_automatic_retry(self):
+        from warroom.github import GhError
+        w = self.w
+        with mock.patch.object(w.gh, "latest_stage3_production", side_effect=GhError("search exceeds 1000 results")) as search:
+            self.start().assert_not_called()
+            line = w.store.line("codex", STAGE3_METHOD)
+            self.assertTrue(line["blocked"])
+            self.assertEqual(line["run"], 0)
+            self.assertEqual(search.call_count, 1)
 
-        with mock.patch.object(stage3, "SHARDS", 2):
-            choice = stage3.choose(sha=HEAD2, kv=w.store, open_prs=[], stage2_batches=[],
-                                  stage3_batches=[], refresh_stage2=refresh)
-
-        self.assertEqual(choice.status, "wait")
-        self.assertEqual(verified, ["001"])
-        self.assertEqual(w.store.get(stage2.ok_key("001", None)), HEAD1)
-        self.assertEqual(w.store.get(stage2.ok_key("002", None)), HEAD1)
+    def test_existing_occupancy_precedes_search(self):
+        w = self.w
+        w.store.create_batch(method=STAGE3_METHOD, producer="other", shard="001", batch="all", branch="s3-other-001", worktree="/tmp/s3-test")
+        self.start().assert_not_called()
+        self.assertEqual(w.gh.merged_stage3_prs_calls, 0)
+        self.assertIn("점유", w.store.get("s3_wait_codex"))
 
 
 if __name__ == "__main__":

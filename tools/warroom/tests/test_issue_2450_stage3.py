@@ -36,28 +36,18 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
     def setUp(self):
         self.w = s3_world(self)
 
-    def test_selection_requires_current_full_shard_stage2_verification_and_no_owner(self):
+    def test_selection_uses_only_the_next_shard(self):
         w = self.w
-        with mock.patch.object(stage3, "SHARDS", 2):
-            self.assertEqual(stage3.choose(sha=HEAD1, kv=w.store, open_prs=[], stage2_batches=[],
-                                           stage3_batches=[]).status, "wait")
-            self.assertEqual(w.git.verify_calls, [])
-            w.store.set(stage2.ok_key("002", None), HEAD1)
-            choice = stage3.choose(sha=HEAD1, kv=w.store, open_prs=[], stage2_batches=[], stage3_batches=[])
-            self.assertEqual((choice.status, choice.shard), ("shard", "002"))
-            w.store.set(stage2.ok_key("001", None), "stale-master")
-            self.assertEqual(stage3.choose(sha=HEAD1, kv=w.store, open_prs=[], stage2_batches=[],
-                                           stage3_batches=[]).shard, "002")
-            w.store.set(stage2.ok_key("001", None), HEAD1)
-            stage2_running = [{"shard": "001", "state": "PRODUCING"}]
-            self.assertEqual(stage3.choose(sha=HEAD1, kv=w.store, open_prs=[], stage2_batches=stage2_running,
-                                           stage3_batches=[]).shard, "002")
-            open_pr = {"number": 8, "files": [{"path": DROP}]}
-            self.assertEqual(stage3.choose(sha=HEAD1, kv=w.store, open_prs=[open_pr], stage2_batches=[],
-                                           stage3_batches=[]).shard, "002")
-            done = [{"shard": "001", "state": "COMPLETE", "merged": 1}]
-            self.assertEqual(stage3.choose(sha=HEAD1, kv=w.store, open_prs=[], stage2_batches=[],
-                                           stage3_batches=done).shard, "002")
+        args = dict(kv=w.store, open_prs=[], stage2_batches=[], stage3_batches=[])
+        latest = {"title": "[S3/Codex] 006"}
+        w.store.set(stage2.ok_key("008", None), HEAD1)
+        self.assertEqual(stage3.choose(**args, latest_pr=latest).status, "unready")
+        w.store.set(stage2.ok_key("007", None), "older success")
+        self.assertEqual(stage3.choose(**args, latest_pr=latest).shard, "007")
+        self.assertEqual(stage3.choose(**{**args, "stage2_batches": [{"shard": "007", "state": "PRODUCING"}]}, latest_pr=latest).status, "wait")
+        self.assertEqual(stage3.choose(**{**args, "stage3_batches": [{"shard": "007", "state": "COMPLETE", "merged": 1}]}, latest_pr=latest).status, "wait")
+        self.assertEqual(stage3.choose(**args, latest_pr=latest, pin="008").status, "unready")
+        self.assertEqual(stage3.choose(**args, latest_pr={"title": "[S3/Codex] 428"}).status, "done")
 
     def test_claude_or_codex_line_can_start_and_store_reserves_one_shard(self):
         w = self.w
@@ -591,45 +581,6 @@ class Stage3SupervisorFlow(unittest.TestCase):
         self.assertIn("허용되지 않은 파일", result["error"])
         self.assertEqual(w.gh.created_prs, [])
 
-    def test_merged_pr_recovery_requires_valid_files_and_latest_master_verify(self):
-        w = self.w
-        codex_merge, claude_merge = "2" * 40, "3" * 40
-        self.assertTrue(w.store.start_stage3("claude", "single")[0])
-        w.git.on_base = True
-        w.git.verified.update({("shard", "001", None, None), ("shard", "002", None, None)})
-        w.gh.merged_stage3_prs = [
-            {"number": 88, "title": "[Relation Stage 3] 001", "body": "implements #2450",
-             "base_ref": "master", "head_ref": "s3-codex-001", "merge_commit_sha": codex_merge},
-            {"number": 89, "title": "[Relation Stage 3] 002", "body": "implements #2450",
-             "base_ref": "master", "head_ref": "s3-claude-002", "merge_commit_sha": claude_merge},
-        ]
-        w.gh.files[88] = [{"path": RELATION}]
-        w.gh.files[89] = [{"path": "data/relation-drops/drop-002.jsonl"}]
-        w.sup._stage3_recover_merged(w.git.base_sha)
-        codex_row = w.store.latest_batch("codex", STAGE3_METHOD)
-        claude_row = w.store.latest_batch("claude", STAGE3_METHOD)
-        self.assertEqual((codex_row["state"], codex_row["merged"], codex_row["pr_number"],
-                          codex_row["head_sha"], codex_row["branch"]),
-                         ("COMPLETE", 1, 88, codex_merge, "s3-codex-001"))
-        self.assertEqual((claude_row["state"], claude_row["merged"], claude_row["pr_number"],
-                          claude_row["head_sha"], claude_row["branch"]),
-                         ("COMPLETE", 1, 89, claude_merge, "s3-claude-002"))
-        self.assertEqual(w.store.get(stage3.ok_key("001")), w.git.base_sha)
-        self.assertEqual(w.store.get(stage3.ok_key("002")), w.git.base_sha)
-        w.sup._stage3_recover_merged(w.git.base_sha)
-        self.assertEqual(w.gh.merged_stage3_prs_calls, 1)
-        self.assertEqual(w.gh.pull_files_calls, [88, 89])
-
-    def test_merged_pr_recovery_does_not_mark_shard_complete_when_verify_fails(self):
-        w = self.w
-        w.git.on_base = True
-        w.gh.merged_stage3_prs = [{"number": 89, "title": "[Relation Stage 3] 001", "body": "implements #2450",
-                                   "base_ref": "master", "head_ref": "s3-codex-001",
-                                   "merge_commit_sha": "2" * 40}]
-        w.gh.files[89] = [{"path": RELATION}]
-        with self.assertRaises(stage3.Stage3Error):
-            w.sup._stage3_recover_merged(w.git.base_sha)
-        self.assertIsNone(w.store.latest_batch("codex", STAGE3_METHOD))
 
 
 if __name__ == "__main__":

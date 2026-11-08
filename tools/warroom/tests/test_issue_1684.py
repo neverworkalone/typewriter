@@ -287,7 +287,7 @@ class StageTwoMergedBoundaries(unittest.TestCase):
                 self.assertEqual(w.git.verify_calls, scopes)
                 if scopes[-1][0] == "shard":
                     self.assertEqual(w.store.get(stage2.ok_key(shard, None)), w.git.base_sha)
-                    choice = stage3.choose(sha=w.git.base_sha, kv=w.store, open_prs=[], stage2_batches=[], stage3_batches=[], pin=shard)
+                    choice = stage3.choose(kv=w.store, open_prs=[], stage2_batches=[], stage3_batches=[], pin=shard, latest_pr={"title": f"[S3/Codex] {int(shard)-1:03d}"})
                     self.assertEqual((choice.status, choice.shard), ("shard", shard))
                 # A restart after the Part success must not repeat successful scope checks.
                 self.assertTrue(w.sup._stage2_merged_verify(b, {"number": 7, "merge_commit_sha": "c" * 40}))

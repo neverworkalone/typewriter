@@ -188,23 +188,58 @@ class GhClient:
         return [{"path": f.get("filename")} for f in
                 self._api(f"repos/{self.repo}/pulls/{n}/files", paginate=True)]
 
-    def merged_relation_stage3_prs(self) -> list[dict]:
-        """Merged, explicitly identified Stage 3 PRs used only to recover Stage 3 worker completion."""
-        rows = self._api(f"repos/{self.repo}/pulls?state=closed&per_page=100", paginate=True)
-        result = []
-        title_pattern, issue_pattern = prbody.S3_TITLE, prbody.S3_ISSUE_LINK
-        for row in rows:
-            title = row.get("title") or ""
-            match = title_pattern.fullmatch(title)
-            if not match or not row.get("merged_at") or not issue_pattern.search(row.get("body") or ""):
-                continue
-            result.append({
-                "number": row["number"], "title": title, "body": row.get("body") or "",
-                "base_ref": (row.get("base") or {}).get("ref"), "shard": match.group(1),
-                "head_ref": self._owned_ref(row["head"]),
-                "merge_commit_sha": row.get("merge_commit_sha") or "",
-            })
-        return result
+    def latest_stage3_production(self, base: str) -> dict | None:
+        """Search all bounded production results; GitHub relevance order is not merge order."""
+        from urllib.parse import urlencode
+        rows = {}
+        for phrase in ('"S3"', '"Relation Stage 3"'):
+            total = None
+            for page in range(1, 11):
+                query = urlencode({"q": f'repo:{self.repo} is:pr is:merged base:{base} {phrase} in:title',
+                                   "per_page": 100, "page": page})
+                result = self._api(f"search/issues?{query}")
+                if (not isinstance(result, dict) or result.get("incomplete_results") is not False
+                        or not isinstance(result.get("items"), list) or type(result.get("total_count")) is not int):
+                    raise GhTransient("incomplete Stage 3 merged PR search")
+                if total is None:
+                    total = result["total_count"]
+                if total > 1000:
+                    raise GhError("Stage 3 merged PR search exceeds 1000 results")
+                if result["total_count"] != total:
+                    raise GhTransient("Stage 3 merged PR search changed its bounded results")
+                items = result["items"]
+                if len(items) != min(100, total - (page - 1) * 100):
+                    raise GhTransient("incomplete Stage 3 merged PR search page")
+                for row in items:
+                    if prbody.S3_TITLE.fullmatch(row.get("title") or "") and prbody.S3_ISSUE_LINK.search(row.get("body") or ""):
+                        merged = (row.get("pull_request") or {}).get("merged_at")
+                        if not isinstance(merged, str) or not merged or type(row.get("number")) is not int:
+                            raise GhTransient("Stage 3 search result lacks merge evidence")
+                        rows[row["number"]] = row
+                if page * 100 >= total:
+                    break
+        if not rows:
+            return None
+        ordered = sorted(rows.values(), key=lambda row: row["pull_request"]["merged_at"], reverse=True)
+        row = ordered[0]
+        if len(ordered) > 1 and ordered[1]["pull_request"]["merged_at"] == row["pull_request"]["merged_at"]:
+            raise GhError("latest Stage 3 production merge time is ambiguous")
+        detail = self._api(f"repos/{self.repo}/pulls/{row['number']}")
+        match = re.fullmatch(r"(?:\[S3/([A-Za-z0-9-]+)\]|\[Relation Stage 3\]) (\d{3})", detail.get("title") or "")
+        head, target = detail.get("head") or {}, detail.get("base") or {}
+        branch = re.fullmatch(r"s3-([A-Za-z0-9-]+)-(\d{3})", head.get("ref") or "")
+        if (not detail.get("merged") or detail.get("state") != "closed"
+                or detail.get("merged_at") != row["pull_request"]["merged_at"]
+                or detail.get("title") != row.get("title") or target.get("ref") != base
+                or (target.get("repo") or {}).get("full_name", "").lower() != self.repo.lower()
+                or (head.get("repo") or {}).get("full_name", "").lower() != self.repo.lower()
+                or not match or not branch or match.group(2) != branch.group(2)
+                or (match.group(1) and match.group(1).lower() != branch.group(1).lower())
+                or not 1 <= int(match.group(2)) <= 428
+                or not prbody.S3_ISSUE_LINK.search(detail.get("body") or "")
+                or not re.fullmatch(r"[a-f0-9]{40}", detail.get("merge_commit_sha") or "")):
+            raise GhError("latest Stage 3 PR identity or merge evidence is incomplete")
+        return detail
 
     def maintainer_ci_failure(self, pr: int, head: str, branch: str):
         """Return only a terminal failure of this PR's required CI job, with bound API evidence."""
