@@ -73,6 +73,10 @@ export function createProductRuntimeAssets({
         path.join(runtimeDirectory, 'search-query.js'),
       ),
       cp(
+        path.join(projectRoot, 'src/runtime/packed-relations.js'),
+        path.join(runtimeDirectory, 'packed-relations.js'),
+      ),
+      cp(
         path.join(projectRoot, 'src/runtime/sqlite-query.js'),
         path.join(runtimeDirectory, 'sqlite-query.js'),
       ),

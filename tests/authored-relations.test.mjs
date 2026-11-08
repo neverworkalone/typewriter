@@ -15,8 +15,9 @@ import {
 } from '../scripts/build/authored-relations.mjs';
 import { normalizeRecords } from '../scripts/normalize/canonical.mjs';
 import { projectRelation } from '../src/domain/projection.js';
-import { getMeaningRecord } from '../src/runtime/sqlite-query.js';
-import { validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
+import { getMeaningRecord, getMeaningRelations } from '../src/runtime/sqlite-query.js';
+import { PLAIN_LAYOUT } from '../src/runtime/dictionary-contract.js';
+import { inspectRuntimeDictionary, validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
 
 const record = (n, lemma, senses) => ({
   id: `w00${n}`, record_type: 'entry', role: 'start', candidate_id: `w00${n}`, lemma, search_forms: [lemma],
@@ -127,7 +128,9 @@ test('DB-free approved Relation validation reads all exact files against the Can
 // Shard 001 holds w001..w003 and shard 002 holds w004: a relation file may only name sources its own shard stores.
 const SHARDS = { '001': RECORDS.slice(0, 3), '002': RECORDS.slice(3) };
 
-async function build(rows, { files = {}, shards = SHARDS } = {}) {
+// The Lite layout defaults to plain tables so the projection tests below read `meaning_relations` directly; the
+// packed layouts are covered by the four-mode test at the end.
+async function build(rows, { files = {}, shards = SHARDS, optimization = PLAIN_LAYOUT } = {}) {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-authored-'));
   const canonical = path.join(directory, 'canonical');
   const relations = path.join(directory, 'relations');
@@ -144,7 +147,7 @@ async function build(rows, { files = {}, shards = SHARDS } = {}) {
     }
     await buildDictionary({ inputDirectory: canonical, outputPath: full, relationsDirectory: relations, allowDirty: true, recordMeanings: true });
     const lite = path.join(directory, 'lite.sqlite');
-    await extractLiteDictionary({ fullPath: full, litePath: lite });
+    await extractLiteDictionary({ fullPath: full, litePath: lite, optimization });
     return { directory, full, lite };
   } catch (error) {
     await rm(directory, { recursive: true, force: true });
@@ -306,5 +309,52 @@ test('independent approved rows in opposite directions between different senses 
     full.close();
   } finally {
     await rm(built.directory, { recursive: true, force: true });
+  }
+});
+
+// Issue #4761: every combination of the two independent Lite flags returns exactly what Full returns, in the same order,
+// with STDICT and packed authored relations interleaved by position and text relations appended after the links.
+test('all four Lite layouts return the Full output for links, interleaved positions and text relations', async () => {
+  const rows = [
+    idRow(),
+    idRow({ target_record_id: 'w005', target_sense_id: 'w005-s2', type: 'mood', relevance: 7 }),
+    textRow(), textRow({ text: '공통 말', type: 'mood', relevance: 9 }),
+  ];
+  const files = { '002': [
+    idRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w003', target_sense_id: 'w003-s1', type: 'sensory', relevance: 3 }),
+    textRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', text: '공통 말', type: 'near', relevance: 2 }),
+    textRow({ source_record_id: 'w004', source_sense_id: 'w004-s2', text: '공통 말', type: 'scene', relevance: 5 }),
+  ] };
+  for (const idCompression of [false, true]) {
+    for (const textCompression of [false, true]) {
+      const optimization = { idCompression, textCompression };
+      const built = await build(rows, { files, optimization });
+      try {
+        const full = new DatabaseSync(built.full, { readOnly: true });
+        const lite = new DatabaseSync(built.lite, { readOnly: true });
+        try {
+          const { layout } = inspectRuntimeDictionary(lite);
+          assert.deepEqual({ ...layout }, optimization);
+          assert.doesNotThrow(() => validatePackagedDictionary(lite));
+          let links = 0;
+          let texts = 0;
+          for (const { id } of full.prepare('SELECT id FROM records ORDER BY id').all()) {
+            const expected = getMeaningRecord(full, id);
+            assert.deepEqual(getMeaningRecord(lite, id, layout), expected, `${JSON.stringify(optimization)} ${id}`);
+            for (const sense of expected.senses) {
+              assert.deepEqual(getMeaningRelations(lite, sense.id, layout), getMeaningRelations(full, sense.id), `${JSON.stringify(optimization)} ${sense.id}`);
+              links += sense.relations.filter((relation) => relation.target !== null).length;
+              texts += sense.relations.filter((relation) => relation.target === null).length;
+            }
+          }
+          assert.ok(links >= 7 && texts === 4, `${JSON.stringify(optimization)} saw ${links} links and ${texts} texts`);
+        } finally {
+          lite.close();
+          full.close();
+        }
+      } finally {
+        await rm(built.directory, { recursive: true, force: true });
+      }
+    }
   }
 });

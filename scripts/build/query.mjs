@@ -124,14 +124,6 @@ export function readLogicalDatabaseSnapshot(database) {
         )
         .all(),
     ),
-    meaning_text_relations: plainRows(
-      database
-        .prepare(
-          `SELECT source_meaning_id, position, text, type, relevance
-           FROM meaning_text_relations ORDER BY source_meaning_id, position`,
-        )
-        .all(),
-    ),
     generated_surface_forms: plainRows(
       database
         .prepare(
@@ -149,6 +141,24 @@ export function readLogicalDatabaseSnapshot(database) {
 
   // The STDICT source tables exist only in the Full database, never in the Lite product database.
   const tables = new Set(schema.filter(({ type }) => type === 'table').map(({ name }) => name));
+  // Layout-dependent Lite tables (Issue #4761): plain text relations or the text pool and packed lists.
+  if (tables.has('meaning_text_relations')) {
+    rows.meaning_text_relations = plainRows(
+      database
+        .prepare(
+          `SELECT source_meaning_id, position, text, type, relevance
+           FROM meaning_text_relations ORDER BY source_meaning_id, position`,
+        )
+        .all(),
+    );
+  }
+  for (const [table, columns] of [
+    ['packed_meaning_relations', 'source, data'],
+    ['text_pool', 'id, text'],
+    ['packed_text_relations', 'source, data'],
+  ]) {
+    if (tables.has(table)) rows[table] = plainRows(database.prepare(`SELECT ${columns} FROM ${table} ORDER BY 1`).all());
+  }
   if (tables.has('senses')) {
     rows.senses = plainRows(
       database

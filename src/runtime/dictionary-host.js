@@ -7,7 +7,7 @@ import {
   findRecordsBySearchTerm,
   getMeaningRecord,
 } from './sqlite-query.js';
-import { validateRuntimeDictionary } from './dictionary-validation.js';
+import { inspectRuntimeDictionary } from './dictionary-validation.js';
 
 export function createDictionaryHost({
   sqlite3InitModule,
@@ -105,7 +105,7 @@ export function createDictionaryHost({
         );
       }
 
-      const dictionaryMetadata = validateRuntimeDictionary(database, {
+      const { metadata: dictionaryMetadata, layout } = inspectRuntimeDictionary(database, {
         expectedSourceRevision,
       });
 
@@ -141,6 +141,7 @@ export function createDictionaryHost({
         writeBlocked,
         persistedWriteCount,
         dictionaryMetadata,
+        layout,
       };
     } catch (error) {
       try {
@@ -205,7 +206,7 @@ export function createDictionaryHost({
     }
 
     const runtime = await getDatabase();
-    const { database } = runtime;
+    const { database, layout } = runtime;
 
     try {
       switch (method) {
@@ -215,7 +216,7 @@ export function createDictionaryHost({
         case 'search':
           return findRecordsBySearchTerm(database, validateString(params.term, 'term'));
         case 'get-meaning-record':
-          return getMeaningRecord(database, validateString(params.recordId, 'recordId'));
+          return getMeaningRecord(database, validateString(params.recordId, 'recordId'), layout);
         case 'metadata':
           return runtime.dictionaryMetadata;
         default:
