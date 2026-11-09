@@ -651,8 +651,31 @@ async function readCursorEntries(directory, meta, ref) {
   }
 }
 
+/**
+ * A search condition is recorded per record. When a request names a sense of a different record than the one the view
+ * printed the same forms/boundary under, say so, so the AI retries with the right sN instead of suspecting the evidence.
+ */
+function otherRecordHint(entries, recordId, forms, boundary, senseRefs) {
+  const key = searchKey(forms, boundary);
+  const others = [...new Set((Array.isArray(entries) ? entries : [])
+    .filter((entry) => entry?.record_id !== recordId && entry?.key === key && typeof entry.record_id === 'string')
+    .map((entry) => entry.record_id))];
+  if (others.length === 0) return '';
+  const label = (id) => {
+    const refs = senseRefs instanceof Map ? senseRefs.get(id) : null;
+    return refs?.length ? `${id} (${refs.join(', ')})` : id;
+  };
+  return `; these exact forms/boundary are recorded for ${others.map(label).join(', ')} instead — this sense belongs to record ${recordId}, so use the sense ref printed under that record's heading`;
+}
+
+const senseRefsByRecord = (meta) => {
+  const map = new Map();
+  for (const item of meta.senses ?? []) map.set(item.record_id, [...(map.get(item.record_id) ?? []), item.ref]);
+  return map;
+};
+
 /** Resolve only an unconsumed, source-recorded LIMITED cursor for this exact record and search condition. */
-export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entries, ref = 'cursor' }) {
+export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entries, ref = 'cursor', senseRefs = null }) {
   const requestedCursor = cursor === '' ? null : cursor ?? null;
   if (requestedCursor !== null && typeof requestedCursor !== 'string') throw cursorInputError(ref, 'cursor must be a string or null');
   const condition = recordedCondition({ recordId, forms, boundary, entries, ref });
@@ -668,7 +691,7 @@ export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entri
     if (condition.complete) return null;
     if (condition.status !== 'LIMITED') {
       const conditionText = `recorded_status=${condition.recorded_status ?? 'UNRECORDED'} recorded_hits=${condition.recorded_hits} forms=${JSON.stringify(forms)} boundary=${JSON.stringify(boundary ?? null)}`;
-      throw cursorInputError(ref, `${condition.status === 'UNRECORDED' ? 'there is no recorded search' : 'there is no unfinished search'} for this condition (${conditionText})`, 'no-pending');
+      throw cursorInputError(ref, `${condition.status === 'UNRECORDED' ? 'there is no recorded search' : 'there is no unfinished search'} for this condition of record ${recordId} (${conditionText})${otherRecordHint(entries, recordId, forms, boundary, senseRefs)}`, 'no-pending');
     }
     return condition.cursor;
   }
@@ -806,7 +829,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     if (reread && !condition.complete) {
       throw cursorInputError(request.sense, `reread requires a proven completed condition (status=${condition.recorded_status ?? condition.status}, hits=${condition.recorded_hits})`);
     }
-    const cursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense });
+    const cursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense, senseRefs: senseRefsByRecord(meta) });
     if (cursor !== null) {
       if (typeof validateCursor !== 'function') throw cursorInputError(request.sense, 'corpus cursor validation is required');
       validateCursor(cursor, forms, boundary, request.sense);
@@ -998,7 +1021,7 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
   if (reread && !condition.complete) {
     throw cursorInputError(ref, `reread requires a proven completed condition (status=${condition.recorded_status ?? condition.status}, hits=${condition.recorded_hits})`);
   }
-  const resolvedCursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms: list, boundary, entries: priorEntries ?? [], ref });
+  const resolvedCursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms: list, boundary, entries: priorEntries ?? [], ref, senseRefs: senseRefsByRecord(meta) });
   const currentDecisionState = () => decisionState(recordEvidence(priorEntries, record.id));
   if (condition.complete && !reread) {
     const result = {
