@@ -126,6 +126,69 @@ export function isThousandsCommaFragment(candidate, gloss) {
   return cut > 0 && intact === 0;
 }
 
+/**
+ * A source gloss states the sense as a predicate clause ("군데군데 … 들어가 있는 상태이다.", "혼자 중얼거림.", "… 번데기로 되는
+ * 일."). A candidate that is that clause read as a headword, with no other content, only repacks the gloss; a word inside
+ * the clause ("번데기", "혼잣말") or a compact scene is a separate expression and stays eligible.
+ */
+function glossClauseSurfaces(gloss, candidate) {
+  if (typeof gloss !== 'string') return undefined;
+  const sentence = gloss.normalize('NFC').trim();
+  const stripped = sentence.replace(/[.。]$/u, '');
+  const endsWithPeriod = stripped !== sentence;
+  // Several clauses or a figurative gloss describe more than one attribute or an image; no single clause is read.
+  if (/[.。]|또는|따위|뜻으로|거나|지만|는데/u.test(stripped)) return undefined;
+  const segments = stripped.split(/\s+/u).filter(Boolean);
+  if (segments.length === 0) return undefined;
+  const surfaces = new Set();
+  // Every clause prefix of the gloss, from the whole gloss down to its first word, is read as one candidate surface.
+  for (let length = segments.length; length >= 1; length -= 1) {
+    const clauseSegments = segments.slice(0, length);
+    const raw = clauseSegments.join(' ');
+    // A category head noun the gloss wrote after its ending ("… 되는 일") is not part of the attribute.
+    const head = /^(?:일|것|상태|경우)$/u.test(segments[length - 1]);
+    const base = head ? clauseSegments.slice(0, -1).join(' ') : raw;
+    if (!base || !/[가-힣]{2,}/u.test(base)) continue;
+    // A noun phrase the gloss uses to describe something else ("남사당패 탈놀이의 둘째 마당", "기체 물질을 통틀어 이르는
+    // 말") is not the clause; a clause predicate ends the sentence ("희롱함.", "… 되는 상태이다.", "… 둘째 마당.") or
+    // ends the words before its category head ("… 번데기로 되는 일.").
+    const predicateEnd = length === segments.length && endsWithPeriod;
+    const clauseLike = predicateEnd || (head && /(?:되|하|있|없)는$/u.test(segments[length - 2] ?? ''));
+    if (!clauseLike) continue;
+    // The gloss word itself ("버릴말") is not the clause read back as a headword.
+    if (segments.length === 1 && normalizeCandidate(candidate) === raw) continue;
+    surfaces.add(raw);
+    // A 되 predicate names its subject with 로/으로 ("… 번데기로 되" → "… 번데기가 되").
+    const subjectFirst = base.replace(/되는$/u, '되').replace(/([가-힣])로 ?되$/u, '$1가 되');
+    for (const variant of new Set([base, subjectFirst])) {
+      surfaces.add(variant);
+      if (/(?:^| )되$/u.test(variant)) surfaces.add(`${variant} 다`);
+      surfaces.add(`${variant}다`);
+    }
+    // The predicate reads the same clause in plain dictionary form ("희롱함" → "희롱하다", "… 없음" → "… 없다").
+    const predicate = base.replace(/ (?:일|것|상태|경우)$/u, '');
+    const plain = predicate.replace(/(?:없|아니|못하|아니하)$/u, '').replace(/(?:함|음|기)$/u, '하');
+    if (plain !== predicate) {
+      surfaces.add(plain);
+      surfaces.add(`${plain}다`);
+    }
+  }
+  return { clause: segments.join(' '), surfaces };
+}
+
+export function glossClauseRestatementMessage(candidate, gloss, sourceLemma) {
+  const analysis = glossClauseSurfaces(gloss, candidate);
+  if (analysis === undefined) return undefined;
+  const candidateSurface = normalizeCandidate(candidate).replace(/[\s-]/gu, '');
+  const lemmaSurface = normalizeCandidate(sourceLemma ?? '').replace(/[\s-]/gu, '');
+  if (!candidateSurface || candidateSurface === lemmaSurface) return undefined;
+  const forbidden = new Set([...analysis.surfaces]
+    .flatMap((surface) => [surface, surface.replace(/(?:하|되)$/u, '')])
+    .map((surface) => surface.replace(/[\s-]/gu, '')));
+  if (!forbidden.has(candidateSurface)) return undefined;
+  return `candidate ${JSON.stringify(candidate)} mechanically restates the source gloss clause ${JSON.stringify(analysis.clause)}`;
+}
+
 function hasExactKeys(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
@@ -157,6 +220,8 @@ export function candidateV1ContentIssue(candidate, source, sourceSense, independ
       message: `candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`,
     };
   }
+  const restatement = glossClauseRestatementMessage(candidate, sourceSense.gloss, source.lemma);
+  if (restatement !== undefined) return { kind: 'gloss_clause_restatement', message: restatement };
   return undefined;
 }
 
