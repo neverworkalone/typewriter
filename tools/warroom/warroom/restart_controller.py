@@ -390,6 +390,8 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
 
     root = paths.repo_root.resolve()
     for path, request in requests:
+        if request.get("state") in TERMINAL_REQUEST_STATES:
+            continue   # a finished request (e.g. an old `loaded` one whose merge is no longer in HEAD) never blocks a start
         if request.get("runtime_root") != str(root) or not isinstance(request.get("merge_sha"), str):
             return _set_waiting(paths, request, "restart request is malformed or belongs to another runtime root")
         head_result = _git(["rev-parse", "HEAD"], root)
