@@ -126,6 +126,31 @@ export function isThousandsCommaFragment(candidate, gloss) {
   return cut > 0 && intact === 0;
 }
 
+/**
+ * A source gloss states the sense as a predicate clause ("군데군데 … 들어가 있는 상태이다.", "혼자 중얼거림."). A candidate
+ * that is that clause read as a headword, with no other content, only repacks the gloss; a word inside the clause
+ * ("번데기", "혼잣말") or a compact scene is a separate expression and stays eligible.
+ */
+export function glossClauseRestatementMessage(candidate, gloss, sourceLemma) {
+  if (typeof gloss !== 'string') return undefined;
+  const normalizedGloss = normalizeCandidate(gloss);
+  // Several clauses or a figurative gloss describe more than one attribute or an image; no single clause is read.
+  if (!/[가-힣]\.$/u.test(normalizedGloss) || /[.。]|또는|따위|뜻으로/u.test(normalizedGloss.slice(0, -1))) return undefined;
+  const clause = normalizeCandidate(normalizedGloss.replace(/\.$/u, '').split(/거나|지만|는데/u)[0]);
+  // The predicate reads the same clause in plain dictionary form ("희롱함" → "희롱하다", "… 없음" → "… 없다").
+  const plain = clause.replace(/(?:없|아니|못하|아니하)$/u, '').replace(/(?:함|음|기)$/u, '하');
+  // A category head noun the gloss wrote before its ending ("… 되는 일") is not part of the attribute.
+  const surfaces = new Set([clause, plain, `${clause}다`, `${plain}다`, plain.replace(/하$/u, ''),
+    clause.replace(/(?:되었|여졌)$/u, '되'), clause.replace(/(?:지|하지|되지) 않$/u, '지 않')]
+    .flatMap((text) => [text, text.replace(/ (?:일|것|상태|경우)$/u, '')])
+    .map((text) => text.replace(/[\s-]/gu, '')));
+  const candidateSurface = normalizeCandidate(candidate).replace(/[\s-]/gu, '');
+  const lemmaSurface = normalizeCandidate(sourceLemma ?? '').replace(/[\s-]/gu, '');
+  if (!candidateSurface || candidateSurface === lemmaSurface) return undefined;
+  if (!surfaces.has(candidateSurface)) return undefined;
+  return `candidate ${JSON.stringify(candidate)} mechanically restates the source gloss clause ${JSON.stringify(clause)}`;
+}
+
 function hasExactKeys(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
@@ -157,6 +182,8 @@ export function candidateV1ContentIssue(candidate, source, sourceSense, independ
       message: `candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`,
     };
   }
+  const restatement = glossClauseRestatementMessage(candidate, sourceSense.gloss, source.lemma);
+  if (restatement !== undefined) return { kind: 'gloss_clause_restatement', message: restatement };
   return undefined;
 }
 
