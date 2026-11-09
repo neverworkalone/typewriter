@@ -5,7 +5,6 @@ handle_pending_restart() return ("starting", None) forever, so ensure_supervisor
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import unittest
 from unittest import mock
@@ -42,22 +41,19 @@ class TerminalRequestsDoNotBlock(unittest.TestCase):
                 self.assertIsNone(handle_pending_restart(self.w.paths, self.w.store), state)
             self.assertNotEqual(json.loads(path.read_text()).get("state"), "waiting", state)
 
-    @unittest.skipUnless(importlib.util.find_spec("textual"), "warroom.tui needs textual (not installed in CI)")
-    def test_supervisor_autostart_proceeds_when_every_request_is_finished(self):
-        from warroom import tui
-        path = write_restart_request(self.w.paths, {"id": 0, "merge_sha": HEAD1}, None)
-        _set_state(path, "loaded")
-        calls = []
-
-        def run(command, **kwargs):
-            calls.append(command)
-            # `which tmux` ok, no existing Supervisor session, new-session ok
-            return mock.Mock(returncode=1 if command[:2] == ["tmux", "has-session"] else 0, stdout="", stderr="")
-
-        git, ancestor, lock = self._patches(ancestor=False)
-        with git, ancestor, lock, mock.patch("warroom.tui.subprocess.run", side_effect=run):
-            self.assertEqual(tui.ensure_supervisor(self.w.paths), ("starting", None))
-        self.assertTrue(any(c[:2] == ["tmux", "new-session"] for c in calls), calls)
+    def test_autostart_path_stays_open_when_every_request_is_finished(self):
+        # ensure_supervisor() proceeds to its tmux launch exactly when this returns None (lock free); a live
+        # Supervisor still reports "locked". Mix a stale `loaded` request (SHA not in HEAD) with finished ones.
+        loaded = write_restart_request(self.w.paths, {"id": 0, "merge_sha": HEAD1}, None)
+        done = write_restart_request(self.w.paths, {"id": 7, "merge_sha": HEAD1}, None)
+        _set_state(loaded, "loaded")
+        _set_state(done, "progress_verified")
+        git, ancestor, lock = self._patches(ancestor=False, lock_held=False)
+        with git, ancestor, lock:
+            self.assertIsNone(handle_pending_restart(self.w.paths, self.w.store))
+        git, ancestor, lock = self._patches(ancestor=False, lock_held=True)
+        with git, ancestor, lock:
+            self.assertEqual(handle_pending_restart(self.w.paths, self.w.store), ("locked", None))
 
     def test_unfinished_request_outside_head_still_blocks_restart(self):
         path = write_restart_request(self.w.paths, {"id": 91, "merge_sha": HEAD1}, None)
