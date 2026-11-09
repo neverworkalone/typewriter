@@ -489,7 +489,7 @@ main().catch((error) => {
       const summaries = new Map();
       for (const issue of affected.candidate_issues) {
         if (!issue || typeof issue.record_id !== 'string' || issue.canonical_record_id !== issue.record_id
-          || typeof issue.sense_id !== 'string' || !['source_lemma_repeat', 'thousands_comma_fragment', 'gloss_clause_restatement', 'duplicate_candidate'].includes(issue.kind)) continue;
+          || typeof issue.sense_id !== 'string' || !['source_lemma_repeat', 'thousands_comma_fragment', 'duplicate_candidate'].includes(issue.kind)) continue;
         summaries.set(`${issue.record_id}\0${issue.sense_id}\0${issue.kind}`, {
           record_id: issue.record_id,
           canonical_record_id: issue.canonical_record_id,

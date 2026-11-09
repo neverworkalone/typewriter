@@ -2093,7 +2093,7 @@ function removeValidatedCandidateIssues(checkpoint, candidateRows, issues) {
   if (checkpoint.contract !== CHECKPOINT_CONTRACT || !Array.isArray(issues) || issues.length === 0) return 0;
   const bySense = new Map();
   for (const issue of issues) {
-    if (!issue || !['source_lemma_repeat', 'thousands_comma_fragment', 'gloss_clause_restatement', 'duplicate_candidate'].includes(issue.kind)
+    if (!issue || !['source_lemma_repeat', 'thousands_comma_fragment', 'duplicate_candidate'].includes(issue.kind)
       || typeof issue.record_id !== 'string' || typeof issue.sense_id !== 'string'
       || issue.canonical_record_id !== issue.record_id
       || typeof issue.candidate !== 'string' || !Number.isInteger(issue.candidate_index) || issue.candidate_index < 0) return 0;
