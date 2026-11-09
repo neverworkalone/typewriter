@@ -142,7 +142,7 @@ class FakeWorkbenchCli:
                 if reason:
                     auto_removed.append({"alias": alias, "senseId": sense["id"], "candidate": candidate, "reason": reason})
                     continue
-                if candidate.strip() != candidate:
+                if candidate.strip() != candidate or candidate.endswith("!"):   # '!' = test-only invalid marker (blank padding is trimmed upstream)
                     return Result(1, "", f'chunk {n:03d} input line {record_index} record_id {rec["id"]} sense_id {sense["id"]} candidate {index} {json.dumps(candidate, ensure_ascii=False)} must be a non-empty trimmed string')
                 seen.add(" ".join(candidate.split()).casefold())
                 kept.append(candidate)

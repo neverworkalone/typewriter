@@ -248,8 +248,8 @@ class SerialChunks(unittest.TestCase):
     def test_third_correction_removes_only_the_exact_rejected_candidate_then_revalidates(self):
         w = self.w
         w.start("single", "deepseek", "a")
-        w.ai(w.block(1, {"S5": "S5\t bad"}), session="ses_1")
-        retry = "BEGIN chunk 001\nS5\t bad\nEND chunk 001"
+        w.ai(w.block(1, {"S5": "S5\tbad!"}), session="ses_1")
+        retry = "BEGIN chunk 001\nS5\tbad!\nEND chunk 001"
         for _ in range(3):
             w.ai(retry, session="ses_1")
         w.tick()
@@ -257,7 +257,7 @@ class SerialChunks(unittest.TestCase):
         w.tick()
         st = stage1ab.load_state(w.store, w.row_()["id"], 1)
         self.assertEqual((st["tries"], st["requested"]), (1, ["S5"]))
-        self.assertIn('" bad"', st["problem"])
+        self.assertIn('"bad!"', st["problem"])
         for _ in range(3):
             w.finish_last()
             w.tick()
@@ -270,14 +270,14 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_retry", "ab_chunk_retry", "ab_chunk_new"])
         self.assertEqual(w.row_()["state"], "PRODUCING")                 # next chunk starts after the validated save
         events = [entry for entry in w.store.recent_events() if entry["batch_id"] == b["id"]]
-        self.assertTrue(any("정정 3회 뒤 식별된 부적격 후보 1개" in entry["msg"] and 'S5 " bad"' in entry["msg"]
+        self.assertTrue(any("정정 3회 뒤 식별된 부적격 후보 1개" in entry["msg"] and 'S5 "bad!"' in entry["msg"]
                             for entry in events))
 
 
     def test_a_correction_may_not_change_an_unrequested_row(self):
         w = self.w
         w.start("single", "deepseek", "a")
-        w.ai(w.block(1, {"S5": "S5\t bad"}), session="ses_1")
+        w.ai(w.block(1, {"S5": "S5\tbad!"}), session="ses_1")
         w.ai("BEGIN chunk 001\nS5\t수정\nS6\t바꿈\nEND chunk 001", session="ses_1")
         w.tick()
         w.finish_last()
@@ -455,6 +455,10 @@ class Helpers(unittest.TestCase):
                            ("reversed", "END chunk 003\nBEGIN chunk 003"), ("mismatched", "BEGIN chunk 003\nS1\nEND chunk 004")):
             with self.subTest(name), self.assertRaises(stage1ab.ABChunkError):
                 stage1ab.extract_block(text, 3)
+
+    def test_split_rows_trims_candidate_whitespace(self):
+        rows = stage1ab.split_rows(["S1\t 낚시\t마이크 \t\u00a0엄숙하다\t \t", "S2"])
+        self.assertEqual(rows, {"S1": "S1\t낚시\t마이크\t엄숙하다", "S2": "S2"})
 
     def test_merge_answer_and_rejected_aliases(self):
         prev = {"S1": "S1\ta", "S2": "S2\tb", "S3": "S3"}
