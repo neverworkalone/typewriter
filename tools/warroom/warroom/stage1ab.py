@@ -290,7 +290,10 @@ def split_rows(body: list[str]) -> dict[str, str]:
             raise ABChunkError(f"답변 줄이 S<n> 별칭으로 시작하지 않습니다: {line[:60]!r}")
         if alias in rows:
             raise ABChunkError(f"별칭 {alias}가 두 번 나왔습니다")
-        rows[alias] = line
+        # Whitespace around a tab field is formatting noise, never part of a candidate (save-chunk rejects it
+        # and models re-introduce it on every retry): trim each field and drop blank ones.
+        alias, *fields = line.split("\t")
+        rows[alias] = "\t".join([alias, *(f.strip() for f in fields if f.strip())])
     return rows
 
 
