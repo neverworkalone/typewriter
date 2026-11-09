@@ -411,6 +411,8 @@ test('Candidate v1 rejects candidates that mechanically restate the source gloss
     ['혼자 중얼거림', '혼자 중얼거림.'],
     ['가만히 서 있음', '가만히 서 있음.'],
     ['번데기가 되다', '번데기가 되다.'],
+    // the gloss sentence itself with its 로 되 predicate read as a dictionary 되다 clause
+    ['곤충의 애벌레가 번데기가 되다', '곤충의 애벌레가 번데기로 되는 일.'],
   ]) {
     assert.throws(run([candidate], gloss), restatement, `${candidate} / ${gloss}`);
   }
@@ -425,7 +427,6 @@ test('Candidate v1 rejects candidates that mechanically restate the source gloss
     ['군데군데', '군데군데 둥그스름하게 푹 패거나 들어가 있는 상태이다.'],
     ['혼잣말', '남이 듣지 못하도록 입속으로 혼자 중얼거림.'],
     ['희롱', '장난감이나 놀림감처럼 희롱함.'],
-    ['번데기가 되다', '곤충의 애벌레가 번데기로 되는 일.'],
     ['겨울 아침', '군데군데 둥그스름하게 푹 패거나 들어가 있는 상태이다.'],
     ['국화과', '국화과의 여러해살이풀. 7~9월에 노란 두상화가 피고 열매는 수과(瘦果)를 맺는다.'],
     ['어린잎', '잎은 큰 심장 모양이고 어린잎은 식용한다.'],

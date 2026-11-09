@@ -136,18 +136,30 @@ export function glossClauseRestatementMessage(candidate, gloss, sourceLemma) {
   const normalizedGloss = normalizeCandidate(gloss);
   // Several clauses or a figurative gloss describe more than one attribute or an image; no single clause is read.
   if (!/[가-힣]\.$/u.test(normalizedGloss) || /[.。]|또는|따위|뜻으로/u.test(normalizedGloss.slice(0, -1))) return undefined;
-  const clause = normalizeCandidate(normalizedGloss.replace(/\.$/u, '').split(/거나|지만|는데/u)[0]);
-  // The predicate reads the same clause in plain dictionary form ("희롱함" → "희롱하다", "… 없음" → "… 없다").
-  const plain = clause.replace(/(?:없|아니|못하|아니하)$/u, '').replace(/(?:함|음|기)$/u, '하');
+  const rawClause = normalizeCandidate(normalizedGloss.replace(/\.$/u, '').split(/거나|지만|는데/u)[0]);
   // A category head noun the gloss wrote before its ending ("… 되는 일") is not part of the attribute.
-  const surfaces = new Set([clause, plain, `${clause}다`, `${plain}다`, plain.replace(/하$/u, ''),
-    clause.replace(/(?:되었|여졌)$/u, '되'), clause.replace(/(?:지|하지|되지) 않$/u, '지 않')]
-    .flatMap((text) => [text, text.replace(/ (?:일|것|상태|경우)$/u, '')])
+  const baseClause = rawClause.replace(/ (?:일|것|상태|경우)$/u, '');
+  const surfaces = new Set([baseClause, rawClause]);
+  // A 되 predicate names its subject with 로/으로 ("… 번데기로 되" → "… 번데기가 되다").
+  const subjectFirst = baseClause.replace(/되는$/u, '되').replace(/([가-힣])로 되$/u, '$1가 되');
+  if (/ 되$/u.test(subjectFirst)) {
+    surfaces.add(subjectFirst);
+    surfaces.add(`${subjectFirst}다`);
+  }
+  // The predicate reads the same clause in plain dictionary form ("희롱함" → "희롱하다", "… 없음" → "… 없다").
+  for (const base of [baseClause, rawClause]) {
+    const plain = base.replace(/(?:없|아니|못하|아니하)$/u, '').replace(/(?:함|음|기)$/u, '하');
+    surfaces.add(`${base}다`);
+    surfaces.add(plain.replace(/하$/u, ''));
+    surfaces.add(`${plain}다`);
+  }
+  const clause = baseClause;
+  const normalizedSurfaces = new Set([...surfaces].flatMap((text) => [text, text.replace(/(?:하|되)$/u, '')])
     .map((text) => text.replace(/[\s-]/gu, '')));
   const candidateSurface = normalizeCandidate(candidate).replace(/[\s-]/gu, '');
   const lemmaSurface = normalizeCandidate(sourceLemma ?? '').replace(/[\s-]/gu, '');
   if (!candidateSurface || candidateSurface === lemmaSurface) return undefined;
-  if (!surfaces.has(candidateSurface)) return undefined;
+  if (!normalizedSurfaces.has(candidateSurface)) return undefined;
   return `candidate ${JSON.stringify(candidate)} mechanically restates the source gloss clause ${JSON.stringify(clause)}`;
 }
 
