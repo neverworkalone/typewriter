@@ -155,9 +155,10 @@ function glossClauseSurfaces(gloss, candidate) {
     const predicateEnd = length === segments.length && endsWithPeriod;
     const clauseLike = predicateEnd || (head && /(?:되|하|있|없)는$/u.test(segments[length - 2] ?? ''));
     if (!clauseLike) continue;
-    // The gloss word itself ("버릴말") is not the clause read back as a headword.
-    if (segments.length === 1 && normalizeCandidate(candidate) === raw) continue;
-    surfaces.add(raw);
+    // A single-word gloss that is the headword itself ("버릴말.") is not a clause read back as a candidate; its predicate
+    // reading ("희롱함." → "희롱") is added below like any other clause.
+    const headwordGloss = segments.length === 1 && normalizeCandidate(candidate) === raw;
+    if (!headwordGloss) surfaces.add(raw);
     // A 되 predicate names its subject with 로/으로 ("… 번데기로 되" → "… 번데기가 되").
     const subjectFirst = base.replace(/되는$/u, '되').replace(/([가-힣])로 ?되$/u, '$1가 되');
     for (const variant of new Set([base, subjectFirst])) {

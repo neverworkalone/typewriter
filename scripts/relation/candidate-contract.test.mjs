@@ -404,6 +404,9 @@ test('Candidate v1 rejects candidates that mechanically restate the source gloss
   const restatement = /mechanically restates the source gloss clause/;
   // one-clause glosses read as a headword: the clause itself or the same clause with its 하다/되다 predicate
   for (const [candidate, gloss] of [
+    // a single-token gloss that is exactly the candidate still reads as its predicate nominalization
+    ['희롱함', '희롱함.'],
+    ['걱정함', '걱정함.'],
     ['희롱', '희롱함.'],
     ['걱정', '걱정함.'],
     ['희사', '희사함.'],
