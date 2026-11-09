@@ -162,13 +162,17 @@ function glossClauseSurfaces(gloss, candidate) {
     // A 되 predicate names its subject with 로/으로 ("… 번데기로 되" → "… 번데기가 되").
     const subjectFirst = base.replace(/되는$/u, '되').replace(/([가-힣])로 ?되$/u, '$1가 되');
     for (const variant of new Set([base, subjectFirst])) {
-      surfaces.add(variant);
-      if (/(?:^| )되$/u.test(variant)) surfaces.add(`${variant} 다`);
+      if (!headwordGloss) {
+        surfaces.add(variant);
+        if (/(?:^| )되$/u.test(variant)) surfaces.add(`${variant} 다`);
+      }
       surfaces.add(`${variant}다`);
     }
     // The predicate reads the same clause in plain dictionary form ("희롱함" → "희롱하다", "… 없음" → "… 없다").
-    const predicate = base.replace(/ (?:일|것|상태|경우)$/u, '');
-    const plain = predicate.replace(/(?:없|아니|못하|아니하)$/u, '').replace(/(?:함|음|기)$/u, '하');
+    const predicate = headwordGloss ? '' : base.replace(/ (?:일|것|상태|경우)$/u, '');
+    const plain = predicate === ''
+      ? ''
+      : predicate.replace(/(?:없|아니|못하|아니하)$/u, '').replace(/(?:함|음|기)$/u, '하');
     if (plain !== predicate) {
       surfaces.add(plain);
       surfaces.add(`${plain}다`);
@@ -185,7 +189,8 @@ export function glossClauseRestatementMessage(candidate, gloss, sourceLemma) {
   if (!candidateSurface || candidateSurface === lemmaSurface) return undefined;
   const forbidden = new Set([...analysis.surfaces]
     .flatMap((surface) => [surface, surface.replace(/(?:하|되)$/u, '')])
-    .map((surface) => surface.replace(/[\s-]/gu, '')));
+    .map((surface) => surface.replace(/[\s-]/gu, ''))
+    .filter((surface) => surface !== lemmaSurface));
   if (!forbidden.has(candidateSurface)) return undefined;
   return `candidate ${JSON.stringify(candidate)} mechanically restates the source gloss clause ${JSON.stringify(analysis.clause)}`;
 }

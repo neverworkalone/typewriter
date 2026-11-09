@@ -404,9 +404,7 @@ test('Candidate v1 rejects candidates that mechanically restate the source gloss
   const restatement = /mechanically restates the source gloss clause/;
   // one-clause glosses read as a headword: the clause itself or the same clause with its 하다/되다 predicate
   for (const [candidate, gloss] of [
-    // a single-token gloss that is exactly the candidate still reads as its predicate nominalization
-    ['희롱함', '희롱함.'],
-    ['걱정함', '걱정함.'],
+    // the predicate reading of a single-token gloss ("희롱함." → "희롱") is still a restatement
     ['희롱', '희롱함.'],
     ['걱정', '걱정함.'],
     ['희사', '희사함.'],
@@ -434,6 +432,9 @@ test('Candidate v1 rejects candidates that mechanically restate the source gloss
     ['겨울 아침', '군데군데 둥그스름하게 푹 패거나 들어가 있는 상태이다.'],
     ['국화과', '국화과의 여러해살이풀. 7~9월에 노란 두상화가 피고 열매는 수과(瘦果)를 맺는다.'],
     ['어린잎', '잎은 큰 심장 모양이고 어린잎은 식용한다.'],
+    // a single-word gloss repeated as the candidate is an independent lexical item, not a clause read back
+    ['버릴말', '버릴말.'],
+    ['희롱함', '희롱함.'],
   ]) {
     assert.doesNotThrow(run([candidate], gloss), `${candidate} / ${gloss}`);
   }
