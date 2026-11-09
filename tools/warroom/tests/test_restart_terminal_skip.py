@@ -5,13 +5,13 @@ handle_pending_restart() return ("starting", None) forever, so ensure_supervisor
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import unittest
 from unittest import mock
 
 from tests.fakes import HEAD1
 from tests.test_issue_1555 import world
-from warroom import tui
 from warroom.restart_controller import (TERMINAL_REQUEST_STATES, handle_pending_restart, request_path,
                                         write_restart_request)
 
@@ -42,7 +42,9 @@ class TerminalRequestsDoNotBlock(unittest.TestCase):
                 self.assertIsNone(handle_pending_restart(self.w.paths, self.w.store), state)
             self.assertNotEqual(json.loads(path.read_text()).get("state"), "waiting", state)
 
+    @unittest.skipUnless(importlib.util.find_spec("textual"), "warroom.tui needs textual (not installed in CI)")
     def test_supervisor_autostart_proceeds_when_every_request_is_finished(self):
+        from warroom import tui
         path = write_restart_request(self.w.paths, {"id": 0, "merge_sha": HEAD1}, None)
         _set_state(path, "loaded")
         calls = []
