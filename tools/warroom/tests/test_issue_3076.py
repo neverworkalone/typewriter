@@ -55,6 +55,16 @@ class Helpers:
 
 
 class ParallelC(Helpers, unittest.TestCase):
+    def test_report_recovery_requires_unsaved_checkpoint_not_only_fixq_row(self):
+        w = self.world(senses=13)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        self.assertTrue(w.sup.maint._c_report_task_pending(b, "001"))
+        self.save(w, "001")
+        self.assertFalse(w.sup.maint._c_report_task_pending(b, "001"))
+        self.assertFalse(w.sup.maint._c_report_task_pending(b, "999"))
+
     def test_fast_unavailable_blocks_a_completed_chunk_after_abnormal_exit(self):
         w = self.world(senses=12)
         w.adapter.plan.clear()

@@ -553,8 +553,12 @@ class NoCodeRecovery(unittest.TestCase):
         self.assertIsNone(w.store.defect(defect_id)["merge_sha"])
         self.assertFalse(w.store.maintenance_batch_open())
 
-        # Resume alone is intermediate; only the original task's persisted SAVED state resolves the Issue.
+        # A pre-existing save reflected after approval is not new recovery progress.
         w.store.update_task(batch_id, "002", state="SAVED")
+        w.tick()
+        self.assertEqual(w.store.defect(defect_id)["state"], "RECOVERING")
+        run = w.store.add_run(batch_id, "d_chunk_resume", "d-session-002", None, "", "", task="002")
+        w.store.finish_run(run, 0)
         w.tick()
         self.assertEqual(w.store.defect(defect_id)["state"], "RELEASED")
         self.assertEqual(w.store.maintenance(101)["state"], "DONE")

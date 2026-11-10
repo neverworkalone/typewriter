@@ -100,6 +100,11 @@ class RecoveryLaneTests(unittest.TestCase):
         self.assertTrue(w.store.approve_no_code_resume(maint['id'], 101, defect_id, proof))
         self.assertEqual(w.store.batch(batch_id)['state'], 'PRODUCING')
         self.assertEqual(w.store.defect(defect_id)['state'], 'RECOVERING')
+        w.store.update_task(batch_id, '002', state='SAVED')
+        self.assertFalse(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
+        new_run = w.store.add_run(batch_id, 'c_chunk_resume', row['session_id'], None, '', '', task='002')
+        w.store.finish_run(new_run, 0)
+        self.assertTrue(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
 
     def test_serial_worktree_progress_is_read_under_source_lane(self):
         fixture = fixtures.NoCodeRecovery()
@@ -142,7 +147,8 @@ class RecoveryLaneTests(unittest.TestCase):
         proof = {'version': 3, 'outcome': 'no_code_resume', 'batch_id': batch_id, 'defect_id': defect_id,
                  'task': '002', 'chunk': '002', 'source_error_seq': 0, 'cause': 'fixture'}
         w.store.set(f'm_diag_{maint["id"]}', json.dumps(proof))
-        w.store.set(f'no_code_approval_{defect_id}', json.dumps({'status': 'APPROVED'}))
+        baseline = max(r['id'] for r in w.store.runs(batch_id))
+        w.store.set(f'no_code_approval_{defect_id}', json.dumps({'status': 'APPROVED', 'baseline_run_id': baseline}))
         w.store.update_defect(defect_id, state='RECOVERING')
         w.store.update_maintenance(101, state='RECOVERING')
         release, thread = self.producer(w.sup, lambda: w.store.update_task(batch_id, '002', state='SAVED'))
@@ -150,5 +156,7 @@ class RecoveryLaneTests(unittest.TestCase):
         self.assertEqual(w.store.defect(defect_id)['state'], 'RECOVERING')
         release.set()
         thread.join(5)
+        run = w.store.add_run(batch_id, 'd_chunk_resume', 'session', None, '', '', task='002')
+        w.store.finish_run(run, 0)
         w.sup.maint._verify_no_code_recoveries()
         self.assertEqual(w.store.defect(defect_id)['state'], 'RELEASED')
