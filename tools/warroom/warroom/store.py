@@ -1935,6 +1935,62 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE maintenance SET {cols} WHERE issue_number=?", (*fields.values(), issue_number))
 
+    def reserve_maintainer_continuation(self, batch_id: int, *, expected_state: str, run_id: int | None,
+                                        record: dict, error: str) -> str:
+        """Hand one ended Maintainer run to the continuation queue in ONE transaction (#5256).
+
+        The reservation (`m_continuation_<id>`), PAUSED, pause_reason, the paused_from/error a `_fail` would write and
+        the cleanup of its exit verdict, pending re-entry and backoff counters commit together, so a stop between writes
+        can never leave a reservation the queue does not see. The transaction re-checks the Issue's ownership of this
+        attempt, the expected state, that `run_id` is its last and ended run with no live process, and Stop/Clear/stop
+        pin. A repeat for the same ended run is idempotent and keeps the first queue time.
+        Returns "RESERVED", "ALREADY" (the same run is already waiting) or "REFUSED" (nothing written).
+        """
+        now = time.time()
+        key = f"m_continuation_{batch_id}"
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            b = c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if b is None or b["method"] != MAINTENANCE_METHOD:
+                return "REFUSED"
+            raw = c.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+            try:
+                existing = json.loads(raw["value"]) if raw else None
+            except (TypeError, ValueError):
+                existing = None
+            if (b["state"] == "PAUSED" and b["pause_reason"] == "maintainer_continuation"
+                    and isinstance(existing, dict) and existing.get("run_id") == run_id):
+                return "ALREADY"
+            last = c.execute("SELECT id, ended_at FROM runs WHERE batch_id=? ORDER BY id DESC LIMIT 1",
+                             (batch_id,)).fetchone()
+            if (b["state"] != expected_state or b["pid"] is not None
+                    or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND ended_at IS NULL", (batch_id,)).fetchone()
+                    or (last["id"] if last else None) != run_id or (last is not None and last["ended_at"] is None)):
+                return "REFUSED"
+            m = c.execute("SELECT * FROM maintenance WHERE issue_number=?", (int(b["batch"]),)).fetchone()
+            if m is None or m["batch_id"] != batch_id or m["state"] != "ACTIVE":
+                return "REFUSED"
+            line = c.execute("SELECT force_stop FROM lines WHERE model=? AND method=?",
+                             (b["producer"], MAINTENANCE_METHOD)).fetchone()
+            if ((line is not None and line["force_stop"])
+                    or c.execute("SELECT 1 FROM clear_requests WHERE batch_id=?", (batch_id,)).fetchone()
+                    or c.execute("SELECT 1 FROM kv WHERE key=?",
+                                 (f"stop_pin_{b['producer']}_{MAINTENANCE_METHOD}",)).fetchone()):
+                return "REFUSED"   # the operator's control is handled first; it is never overwritten by a handoff
+            queued_at = existing.get("queued_at") if isinstance(existing, dict) else None
+            record = {**record, "run_id": run_id,
+                      "queued_at": queued_at if isinstance(queued_at, (int, float)) else now}
+            prev = b["state"] if b["state"] not in ("PAUSED", "ERROR") else b["paused_from"]
+            c.execute("UPDATE batches SET state='PAUSED', paused_from=?, pause_reason='maintainer_continuation', "
+                      "error=?, retry_after=NULL, updated_at=? WHERE id=?", (prev, error, now, batch_id))
+            for gone in (exit_verdict_key(batch_id), f"pending_{batch_id}"):
+                c.execute("DELETE FROM kv WHERE key=?", (gone,))
+            c.execute("DELETE FROM kv WHERE substr(key, 1, ?)=?", (len(f"tw_b{batch_id}:"), f"tw_b{batch_id}:"))
+            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                      (key, json.dumps(record, ensure_ascii=False, sort_keys=True)))
+            self._add_event(c, batch_id, error, level="error")
+            return "RESERVED"
+
     def resume_maintainer_continuation(self, batch_id: int) -> bool:
         """Give the free Maintainer slot to one unfinished attempt waiting in PAUSED/maintainer_continuation (#5245).
 

@@ -4,6 +4,7 @@ authorizations are not reused; queue order is fair; Drain only stops new claims;
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -418,3 +419,214 @@ class RecurrenceReintake(unittest.TestCase):
         self.assertNotEqual(json.loads(w.store.get(f"no_code_approval_{again['id']}") or "{}").get("status"), "APPROVED")
         submit("investigate", {"type": "continue_same_session", "action": "저장 거부 경로를 재현해 공통 원인을 찾는다"})
         self.assertEqual(int(w.store.get(f"m_diagnosis_round_{follow['id']}")), 1)   # accepted on the current evidence
+
+
+# ---- #5256: transient queries in the diagnosis path; atomic continuation handoff --------------------------------------
+class Died(BaseException):
+    """A Supervisor process death: not an Exception, so no tick handler absorbs it."""
+
+
+def restart(w):
+    w.sup = w.make_sup()
+    w.sup_runner_ok()
+
+
+def fail_once(obj, name, exc):
+    original = getattr(obj, name)
+    calls = []
+
+    def wrapped(*args, **kwargs):
+        calls.append(args)
+        if len(calls) == 1:
+            raise exc
+        return original(*args, **kwargs)
+    setattr(obj, name, wrapped)
+    return calls
+
+
+class TransientDiagnosisQuery(unittest.TestCase):
+    """Old: a GitHub query failure became BLOCKED(validation_exception) → ERROR + operator Retry; a Git one DEFERRED,
+    which the next tick turned into a new AI launch. New: only the same ended run's judgement is retried with backoff."""
+
+    setUp, submit, end_run = StructuredContinuation.setUp, StructuredContinuation.submit, StructuredContinuation.end_run
+
+    def assert_waits_then_continues(self, calls, *, restart_between=False):
+        w, m = self.w, self.m
+        self.submit()
+        launches = len(w.adapter.launches)
+        current = self.end_run(ticks=1)
+        self.assertEqual((current["state"], current["error"]), ("PRODUCING", None))
+        self.assertEqual(json.loads(w.store.get(f"pending_{m['id']}"))["stage"], "exit0")
+        self.assertEqual(len(w.adapter.launches), launches)        # no AI run while the query is failing
+        self.assertEqual(int(w.store.get(f"m_diagnosis_round_{m['id']}", "0")), 0)
+        self.assertFalse((Path(m["worktree"]) / REJECTION_FILE).exists())
+        if restart_between:
+            restart(w)
+        w.now += 3600   # the query backoff elapsed
+        w.tick(3)
+        self.assertGreaterEqual(len(calls), 2)
+        self.assertEqual(int(w.store.get(f"m_diagnosis_round_{m['id']}")), 1)   # the same result was verified
+        self.assertEqual(len(w.adapter.launches), launches + 1)                   # one continuation, no duplicate
+        self.assertEqual(w.store.batch(m["id"])["state"], "PRODUCING")
+        self.assertIsNone(w.store.get(f"pending_{m['id']}"))
+
+    def fail_inside_judgement(self, name, exc):
+        """Fail the first `name` lookup made BY the structured judgement (not the PR discovery before it)."""
+        w, calls, armed = self.w, [], []
+        original, judge = getattr(w.gh, name), w.sup.maint._finish_structured_diagnosis
+
+        def lookup(*args, **kwargs):
+            if armed:
+                calls.append(args)
+                if len(calls) == 1:
+                    raise exc
+            return original(*args, **kwargs)
+
+        def judging(*args, **kwargs):
+            armed.append(True)
+            return judge(*args, **kwargs)
+        setattr(w.gh, name, lookup)
+        w.sup.maint._finish_structured_diagnosis = judging
+        return calls
+
+    def test_issue_comment_lookup_failure_is_re_judged_not_blocked(self):
+        from warroom.github import GhTransient
+        calls = self.fail_inside_judgement("issue_comments", GhTransient("gh api: HTTP 502"))
+        self.assert_waits_then_continues(calls)
+
+    def test_pr_lookup_failure_is_re_judged_across_a_supervisor_restart(self):
+        from warroom.github import GhTransient
+        calls = self.fail_inside_judgement("prs_for_branch", GhTransient("gh pr list: connection reset"))
+        self.assert_waits_then_continues(calls, restart_between=True)
+
+    def test_git_query_failure_is_re_judged_without_relaunching_the_ai(self):
+        from warroom.gitops import GitTransient
+        calls = fail_once(self.w.sup.maint, "_git_facts", GitTransient("index.lock"))
+        self.assert_waits_then_continues(calls)
+
+    def test_a_real_evidence_mismatch_is_still_blocked(self):
+        w, m = self.w, self.m
+        self.submit()
+        evidence = Path(m["worktree"]) / f".warroom-scratch/incident/{self.defect_id}.json"
+        evidence.write_text(evidence.read_text("utf-8") + " ", "utf-8")   # the preserved evidence no longer matches
+        current = self.end_run()
+        self.assertEqual(current["state"], "ERROR")
+        self.assertIn("[evidence_integrity]", current["error"])
+
+
+class TransientLegacyDiagnosis(unittest.TestCase):
+    def test_legacy_handoff_comment_lookup_failure_reaches_the_proven_handoff(self):
+        from tests import test_issue_1555 as t1555
+        from warroom.github import GhTransient
+        case = t1555.AutonomousIncident()
+        case.setUp()
+        self.addCleanup(case.tearDown)
+        w = case.w
+        judge = w.sup.maint._judge_diagnosis_file
+        state = {"armed": False}
+
+        def judge_once(*args, **kwargs):   # fail the first comment lookup made BY the diagnosis judgement
+            if not state["armed"]:
+                state["armed"] = True
+                fail_once(w.gh, "issue_comments", GhTransient("gh api: HTTP 503"))
+            return judge(*args, **kwargs)
+        w.sup.maint._judge_diagnosis_file = judge_once
+        w, m = case.diagnose(blocked=True)
+        self.assertNotEqual(m["state"], "ERROR", m["error"])
+        w.now += 3600
+        w.tick(3)
+        self.assertEqual(w.store.batch(m["id"])["state"], "COMPLETE")   # the proven handoff completed after the retry
+        self.assertEqual(w.store.maintenance(101)["state"], "HELD")
+
+
+class AtomicContinuationHandoff(unittest.TestCase):
+    def setUp(self):
+        self.w = world()
+        self.addCleanup(self.w.tmp.cleanup)
+        produce_and_report(self.w)
+        self.w.tick()
+        self.m = maintainer_row(self.w)
+
+    def die_at_handoff_end(self):
+        """Kill the Supervisor at the last write of the handoff, whichever shape it has (old: the pause_reason update
+        after PAUSED was committed; new: the event inside the one reservation transaction)."""
+        from warroom.store import Store
+        update, add_event = Store.update, Store._add_event
+
+        def dying_update(store, batch_id, **fields):
+            if fields.get("pause_reason") == CONTINUATION_PAUSE:
+                raise Died()
+            return update(store, batch_id, **fields)
+
+        def dying_event(c, batch_id, msg, **kwargs):
+            if "Maintainer 작업 미완료" in msg:
+                raise Died()
+            return add_event(c, batch_id, msg, **kwargs)
+        return mock.patch.multiple(Store, update=dying_update, _add_event=staticmethod(dying_event))
+
+    def test_a_stop_during_the_handoff_never_loses_the_attempt(self):
+        w, m = self.w, self.m
+        launches = len(w.adapter.launches)
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        with self.die_at_handoff_end(), self.assertRaises(Died):
+            w.tick()
+        restart(w)
+        current = w.store.batch(m["id"])
+        self.assertIn((current["state"], current["pause_reason"]),
+                      (("PRODUCING", ""), ("PRODUCING", None)))      # rolled back: no half handoff
+        self.assertIsNone(w.store.get(f"m_continuation_{m['id']}"))
+        w.tick(3)   # re-entry judges the same ended run again, hands it off and the queue resumes it
+        self.assertEqual(json.loads(w.store.get(f"m_continuation_resumed_{m['id']}"))["reason"], "no_pr_no_result")
+        self.assertEqual(w.store.batch(m["id"])["state"], "PRODUCING")
+        self.assertEqual(len(w.adapter.launches), launches + 1)
+
+    def test_a_committed_handoff_survives_a_restart_and_a_repeat_keeps_its_queue_time(self):
+        w, m = self.w, self.m
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        with mock.patch.object(w.sup.maint, "_start"):
+            w.tick()
+        record = json.loads(w.store.get(f"m_continuation_{m['id']}"))
+        w.now += 100
+        w.sup.maint.continue_later(w.store.batch(m["id"]), "no_pr_no_result", "repeat of the same ended run", "produce")
+        self.assertEqual(json.loads(w.store.get(f"m_continuation_{m['id']}"))["queued_at"], record["queued_at"])
+        restart(w)
+        launches = len(w.adapter.launches)
+        w.tick(3)
+        self.assertEqual(w.store.batch(m["id"])["state"], "PRODUCING")
+        self.assertEqual(len(w.adapter.launches), launches + 1)
+
+    def test_a_failed_description_file_keeps_the_reservation_and_is_rewritten_on_resume(self):
+        from warroom import maintenance
+        w, m = self.w, self.m
+        real = os.replace
+
+        def failing_replace(src, dst):
+            if str(dst).endswith("incident-diagnosis-rejection.json"):
+                raise OSError("disk full")
+            return real(src, dst)
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        with mock.patch.object(maintenance.os, "replace", failing_replace), mock.patch.object(w.sup.maint, "_start"):
+            w.tick()
+        self.assertEqual(w.store.batch(m["id"])["pause_reason"], CONTINUATION_PAUSE)
+        self.assertIsNotNone(w.store.get(f"m_continuation_{m['id']}"))
+        self.assertFalse((Path(m["worktree"]) / REJECTION_FILE).exists())
+        w.tick(3)
+        self.assertEqual(rejection(m)["reason"], "no_pr_no_result")   # rewritten from the DB record before the run
+
+    def test_stop_clear_and_a_live_run_are_never_overwritten_by_a_handoff(self):
+        w, m = self.w, self.m
+        run_id = w.store.runs(m["id"])[0]["id"]
+        args = dict(expected_state="PRODUCING", run_id=run_id, record={"kind": "produce", "reason": "x"}, error="x")
+        self.assertEqual(w.store.reserve_maintainer_continuation(m["id"], **args), "REFUSED")   # still running
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.store.finish_runs(m["id"], 0, clear_pid=True)
+        w.store.set_line("sonnet", "m", force_stop=1)
+        self.assertEqual(w.store.reserve_maintainer_continuation(m["id"], **args), "REFUSED")
+        w.store.set_line("sonnet", "m", force_stop=0)
+        w.store.set("stop_pin_sonnet_m", str(m["id"]))
+        self.assertEqual(w.store.reserve_maintainer_continuation(m["id"], **args), "REFUSED")
+        w.store.delete("stop_pin_sonnet_m")
+        self.assertEqual(w.store.reserve_maintainer_continuation(m["id"], **{**args, "run_id": run_id - 1}), "REFUSED")
+        self.assertEqual(w.store.batch(m["id"])["state"], "PRODUCING")
+        self.assertEqual(w.store.reserve_maintainer_continuation(m["id"], **args), "RESERVED")
+        self.assertEqual(w.store.reserve_maintainer_continuation(m["id"], **args), "ALREADY")
