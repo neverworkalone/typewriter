@@ -267,7 +267,7 @@ def _worktree_ownership_problem(paths: Paths, store: Store, *, recovering_stoppe
         if not path.exists():
             if batch["state"] == "PREPARE":
                 continue
-            req = store.clear_request(batch["producer"], batch["method"])
+            req = store.clear_request(batch["producer"], batch["method"], batch_id=batch["id"])
             branch = batch["branch"]
             expected = (f"maint-{batch['batch']}" if batch["method"] == MAINTENANCE_METHOD else
                         f"{batch['method']}-{batch['producer']}-{batch['shard']}-{batch['batch']}")
@@ -278,7 +278,9 @@ def _worktree_ownership_problem(paths: Paths, store: Store, *, recovering_stoppe
             except ValueError:
                 rel = Path(".")
             ref = f"refs/heads/{branch}"
-            if (recovering_stopped_supervisor and batch["state"] == "CLEARING" and req is not None
+            if (recovering_stopped_supervisor and req is not None
+                    and (batch["state"] == "CLEARING" or
+                         (batch["state"] in ("ERROR", "PAUSED") and req["status"] == "REQUESTED"))
                     and req["batch_id"] == batch["id"] and req["model"] == batch["producer"]
                     and req["method"] == batch["method"] and branch == expected and rel.parts
                     and (batch["method"] != MAINTENANCE_METHOD or (maint is not None and maint["batch_id"] == batch["id"]))
