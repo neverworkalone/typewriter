@@ -550,8 +550,17 @@ class ClearRealGit(unittest.TestCase):
         bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01",
                                    branch=branch, worktree=str(wt), state="ERROR")
         self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
-        w.store.pin_clear("deepseek", "a")
         git.discard_owned(wt, branch)
+        # An unpinned request can be handed to a stopped Supervisor only with the same exact ownership proof.
+        self.assertIsNotNone(_worktree_ownership_problem(w.paths, w.store))
+        self.assertIsNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
+        w.store.set_clear(bid, status="BLOCKED")
+        self.assertIsNotNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
+        w.store.set_clear(bid, status="REQUESTED")
+        w.store.update(bid, branch="wrong")
+        self.assertIsNotNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
+        w.store.update(bid, branch=branch)
+        w.store.pin_clear("deepseek", "a")
         self.assertIsNotNone(_worktree_ownership_problem(w.paths, w.store))
         self.assertIsNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
         w.store.update(bid, branch="wrong")
