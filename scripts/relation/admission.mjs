@@ -18,6 +18,8 @@ export { normalizeCandidate };
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 export const ADMISSION_TYPES = Object.freeze(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
+/** An `action` ID relation must target a verb or expression Sense (same contract as dataset-integrity). */
+export const ACTION_TARGET_POS = Object.freeze(['verb', 'expression']);
 /** Required Stage 1 producers per batch: A/B by Codex and Claude, C and D by one owner-assigned model each. */
 export const REQUIRED_PRODUCERS = Object.freeze(['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c', 'd']);
 export const BATCHES = Object.freeze(['01', '02']);
@@ -415,7 +417,11 @@ export class AdmissionVerifyError extends Error {
   }
 }
 
-export function validateRelationRows({ relationRows, dropRows = [], index, shardSenseIds, otherRelationRows = [] }) {
+/**
+ * `actionTargetPosSenseIds` (#5178): source Senses whose `action` ID rows must target a verb/expression Sense. Only the
+ * Stage 2 Part verify passes it; historical approved rows, the build and Stage 3 keep their existing contract.
+ */
+export function validateRelationRows({ relationRows, dropRows = [], index, shardSenseIds, otherRelationRows = [], actionTargetPosSenseIds = null }) {
   const errors = [];
   const seenPairs = new Map();
   const pairKey = (sourceSense, targetRecord, targetSense) => `${sourceSense}\u0000${targetRecord}\u0000${targetSense}`;
@@ -503,6 +509,9 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     const target = index.senses.get(row.target_sense_id);
     if (!target || target.record.id !== row.target_record_id) { errors.push(`${at}: target_sense_id ${row.target_sense_id} is not a sense of ${row.target_record_id}`); return; }
     if (row.target_record_id === row.source_record_id) errors.push(`${at}: relation targets its own record`);
+    if (row.type === 'action' && actionTargetPosSenseIds?.has(row.source_sense_id) && !ACTION_TARGET_POS.includes(target.sense.pos)) {
+      errors.push(`${at}: action relation ${row.source_sense_id} -> ${row.target_record_id}/${row.target_sense_id} targets pos ${target.sense.pos}; expected ${ACTION_TARGET_POS.join(' or ')}`);
+    }
     const forward = pairKey(row.source_sense_id, row.target_record_id, row.target_sense_id);
     if (seenPairs.has(forward)) {
       errors.push(`${at}: duplicate or reverse-duplicate ID relation ${row.source_sense_id} <-> ${row.target_sense_id} (${describeMatches(seenPairs.get(forward))})`);

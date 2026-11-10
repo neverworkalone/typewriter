@@ -33,6 +33,7 @@ import {
   sameSpellingTargets,
   shardDropPath,
   shardRelationPath,
+  ACTION_TARGET_POS,
   validateRelationRows,
   verifyAccounting,
   AdmissionVerifyError,
@@ -154,7 +155,7 @@ async function writeFileStateAtomically(file, state) {
  * Structured decision validation. Every independent check runs; checks that depend on an undecidable branch
  * (for example the exact/no_exact_match target checks when `target_resolution` itself is wrong) are `unevaluated`.
  */
-function decisionProblems(item, candidate, decision, { allowSupervisorFailureDrop = false, pathPrefix = 'decision' } = {}) {
+function decisionProblems(item, candidate, decision, { allowSupervisorFailureDrop = false, pathPrefix = 'decision', storedDecision = false } = {}) {
   const problems = [];
   const unevaluated = [];
   const label = `${item.sense_id}/${candidate.text}`;
@@ -209,6 +210,11 @@ function decisionProblems(item, candidate, decision, { allowSupervisorFailureDro
     if (!target || !target.senses.some((sense) => sense.sense_id === decision.target_sense_id)) {
       add('target_sense_id', 'not_supplied_target', 'exact target must be one of the supplied same-spelling senses');
     }
+    // #5178: every new or changed decision is checked; an already stored one stays readable so it can be amended.
+    const targetPos = target?.senses.find((sense) => sense.sense_id === decision.target_sense_id)?.pos;
+    if (!storedDecision && decision.type === 'action' && targetPos !== undefined && !ACTION_TARGET_POS.includes(targetPos)) {
+      add('type', 'action_target_pos', `action target ${decision.target_record_id}/${decision.target_sense_id} has pos ${targetPos}; expected ${ACTION_TARGET_POS.join(' or ')}`);
+    }
     if (decision.target_record_id === item.record_id) add('target_record_id', 'forbidden', 'an ID relation cannot target its own record');
     if (candidate.already_accounted === true) {
       const usedTargetSenseIds = new Set([
@@ -255,8 +261,8 @@ function decisionProblems(item, candidate, decision, { allowSupervisorFailureDro
   return result();
 }
 
-function validateDecision(item, candidate, decision, allowSupervisorFailureDrop = false) {
-  const { problems } = decisionProblems(item, candidate, decision, { allowSupervisorFailureDrop });
+function validateDecision(item, candidate, decision, allowSupervisorFailureDrop = false, storedDecision = false) {
+  const { problems } = decisionProblems(item, candidate, decision, { allowSupervisorFailureDrop, storedDecision });
   if (problems.length) throw new Error(problems[0].message);
 }
 
@@ -391,7 +397,7 @@ function validateCheckpointDecisions(checkpoint) {
         if (candidate.decision.disposition !== 'existing') throw new Error(`${item.sense_id}/${candidate.text}: existing coverage cannot be replaced by a required decision`);
         const seenTargets = new Set(candidate.existing_target_sense_ids);
         for (const [index, relation] of candidate.additional_relations.entries()) {
-          validateDecision(item, { ...candidate, additional_relations: candidate.additional_relations.slice(0, index) }, relation);
+          validateDecision(item, { ...candidate, additional_relations: candidate.additional_relations.slice(0, index) }, relation, false, true);
           if (usesSourceMirrorTypeTier(checkpoint) && relation.target_resolution === 'exact'
               && (relation.reverse_type !== relation.type || relation.reverse_relevance !== relation.relevance)) {
             throw new Error(`${item.sense_id}/${candidate.text}: new-policy optional ID relations must mirror source type/relevance`);
@@ -401,7 +407,7 @@ function validateCheckpointDecisions(checkpoint) {
         }
       } else {
         validateDecision(item, candidate, candidate.decision,
-          candidate.decision?.disposition === 'drop' && candidate.decision.reason === 'f');
+          candidate.decision?.disposition === 'drop' && candidate.decision.reason === 'f', true);
         if (usesSourceMirrorTypeTier(checkpoint) && candidate.decision.target_resolution === 'exact'
             && (candidate.decision.reverse_type !== candidate.decision.type
               || candidate.decision.reverse_relevance !== candidate.decision.relevance)) {
@@ -1289,7 +1295,8 @@ async function runCommand(options, root, timing) {
   const relationRows = await loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot));
   const dropRows = await loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot));
   const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-  validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows: others });
+  validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows: others,
+    actionTargetPosSenseIds: options.part ? new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id))) : null });
   timing?.end();
   timing?.start('accounting');
   const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows });

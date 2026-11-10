@@ -4,7 +4,7 @@ Only an effective blocking `-1` review event calls for a producer response. **Ne
 
 {{session_note}} Keep the assigned worktree, branch, and current HEAD; never merge, rebase, reset, or switch branches. Do not create another PR, request review, or merge.
 
-Run commands from the worktree root. Use `.warroom-scratch/...` as paths; do not `cd .warroom-scratch`. Create `.warroom-scratch/amend-decisions.txt` with the Write tool. `amend --help` is not implemented; use the command and arguments below.
+Run commands from the worktree root. Use `.warroom-scratch/...` as paths; do not `cd .warroom-scratch`. Create `.warroom-scratch/amend-decisions.txt` using any available, permitted file-writing method (a file tool or the shell); do not require a tool named Write. If writing is actually denied, report that instead of working around it. `amend --help` is not implemented; use the command and arguments below.
 
 ## Source-bound review work
 
