@@ -88,7 +88,11 @@ class FencedRunner:
 
     def resources(self, cwd) -> set[str]:
         """Locks the calling thread holds (L3 verify, L4 repo: ALL of them) plus the owned worktree it works in. With no
-        lock and no owned worktree, independence from shared state is unprovable -> the repository."""
+        lock and no owned worktree, independence from shared state is unprovable -> the repository.
+
+        A command inside an owned worktree that holds no repo lock binds only that worktree (#5162): in normal operation
+        such commands of different batches already run side by side, so a child of an ended Supervisor that cannot be
+        judged holds back its own batch, not every Line."""
         found = set(lanes.held_names()) & {"repo", "verify"}
         owned = None
         if self.worktrees is not None and cwd:
@@ -100,7 +104,6 @@ class FencedRunner:
                 owned = None
         if owned:
             found.add(f"worktree:{owned}")
-            found.add("repo")   # a worktree command shares the object store/refs (fetch, child git): never provably independent
         return found or {"repo"}
 
     def run(self, argv, cwd=None, env=None, input=None, timeout=120) -> Result:

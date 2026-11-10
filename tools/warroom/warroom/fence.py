@@ -368,7 +368,7 @@ class Fence:
                 f"{item['verdict'].state}: {item['verdict'].reason}")
 
     def previous_unresolved(self) -> list[dict]:
-        """Unresolved fences left by OTHER instances (for #3774 READY)."""
+        """Unresolved fences left by OTHER instances."""
         with self._guard:
             return [dict(item) for item in self._unresolved.values() if item["instance"] != self.instance]
 

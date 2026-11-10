@@ -21,14 +21,21 @@ fi
 
 # The launcher is independent of a long-running TUI/Supervisor Python process. It can consume a durable restart
 # request after a code deployment even when the existing TUI session was started from an older checkout revision.
-env TYPEWRITER_WARROOM_ROOT="$ROOT" PYTHONPATH="$WR" "$VENV/bin/python" -m warroom.restart_controller
+if [ "${1:-}" = "--replace" ]; then
+  # `./kwar` (#5162): replace only the Supervisor instance. The TUI session, AI runs, batches, checkpoints and PRs stay.
+  # A replacement that is refused, failed or unfinished ends here with its reason and exit code: the TUI is not opened,
+  # so an unfinished restart is never mistaken for a completed one.
+  env TYPEWRITER_WARROOM_ROOT="$ROOT" PYTHONPATH="$WR" "$VENV/bin/python" -m warroom.restart_controller --replace || exit $?
+else
+  env TYPEWRITER_WARROOM_ROOT="$ROOT" PYTHONPATH="$WR" "$VENV/bin/python" -m warroom.restart_controller
+fi
 
 CMD="cd '$ROOT' && env TYPEWRITER_WARROOM_ROOT='$ROOT' PYTHONPATH='$WR' '$VENV/bin/python' -m warroom.tui"
 if tmux has-session -t warroom 2>/dev/null; then
   LIVE="$(tmux show-environment -t warroom TYPEWRITER_WARROOM_ROOT 2>/dev/null | sed -n 's/^TYPEWRITER_WARROOM_ROOT=//p')"
   if [ "$LIVE" != "$ROOT" ]; then
     echo "[war] 실행 중인 warroom TUI의 루트(${LIVE:-미기록})가 $ROOT 와 다릅니다. 붙지 않습니다." >&2
-    echo "[war] tools/warroom/README.md 의 'Supervisor 코드 수정 후 재시작' 절차를 따르세요." >&2; exit 1
+    echo "[war] tools/warroom/README.md 의 'Supervisor 재시작' 절차를 따르세요." >&2; exit 1
   fi
 fi
 if [ -n "$TMUX" ] && [ "$(tmux display-message -p '#S')" = "warroom" ]; then

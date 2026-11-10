@@ -37,7 +37,6 @@ from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitErro
 from .lanes import Lanes
 from .launch_gate import LaunchDenied, LaunchGate
 from .maintenance import Maintenance
-from . import restart_controller as rc
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
 from .usage import submit_attempts
 
@@ -124,21 +123,19 @@ class Supervisor:
         self.clock = clock
         self.lanes = Lanes()
         self.launch_gate = LaunchGate()
+        self.launch_gate.guard = self._stop_requested   # an in-flight tick admits no new AI once STOPPING is recorded
         for ad in (adapter.values() if isinstance(adapter, dict) else [adapter]):
             if hasattr(ad, 'required_launch_gate'):   # every AI spawn must run inside a permit (#3787)
                 ad.required_launch_gate = self.launch_gate
         self._frozen_lanes = set()
-        self._frozen_seq: dict = {}   # frozen key -> the Restart drain (phase seq) whose closed gate denied it; None: no drain
         self._frozen_lock = threading.Lock()
-        # Restart coordination (#3774). Everything below is touched only by the Coordinator thread, except `_drain`, the
-        # one memory boundary that Workers read through accepting_new_work().
+        # Restart handoff (#5162): the Controller moves this instance RUNNING -> STOPPING and nothing moves it back.
+        # `_submit_hold` is the Coordinator's own; `_drain` is the one memory boundary Workers read through
+        # accepting_new_work().
         self.phase_instance = (fence.instance if fence is not None else None) or str(uuid.uuid4())
-        self._drain = threading.Event()   # set BEFORE the gate closes: no new production, batch, Finalization or review-fix
-        self._submit_hold = False         # READY/STOPPING (or about to be): the Coordinator submits no Worker at all
-        self._gate_closing = False        # begin_close() done and end_close()/open() not yet
-        self._reopen_pending = False      # a cancelled drain waits for its last permit before reopening
-        self._drain_seq = None
-        self._drain_since = None
+        self._drain = threading.Event()   # STOPPING: no new production, batch, Finalization or review-fix
+        self._submit_hold = False         # STOPPING: the Coordinator submits no Worker at all
+        self._stop_seen = False           # this process has read its own STOPPING (any thread)
         self._interval = 5.0
         self._submitted_at: dict = {}
         self._slow_logged: set = set()
@@ -162,17 +159,9 @@ class Supervisor:
     def instance_id(self) -> str | None:
         return self.fence.instance if self.fence is not None else None
 
-    def active_children(self) -> list[dict]:
-        """Journalled Git/Node children of this instance not yet proven finished or non-executable (#3774 READY)."""
-        return self.fence.active_children() if self.fence is not None else []
-
-    def unresolved_fences(self) -> list[dict]:
-        """Unresolved fences left by earlier instances (#3774 READY must not treat them as clear)."""
-        return self.fence.previous_unresolved() if self.fence is not None else []
-
     def accepting_new_work(self) -> bool:
-        """False from the moment a Restart drain begins (memory, before the gate even closes) until it is cancelled and the
-        gate is reopened. Collecting an already running AI's exit, saving it, Stop and Clear are NOT new work."""
+        """False from the moment this instance is STOPPING. Collecting an already running AI's exit, saving it, Stop and
+        Clear are NOT new work."""
         return not self._drain.is_set() and self.launch_gate.is_open
 
     def _finalization_held(self, b, kind: str) -> bool:
@@ -186,7 +175,7 @@ class Supervisor:
         key = (b["id"], kind)
         if key not in self._phase_logged:
             self._phase_logged.add(key)
-            self.store.log(b["id"], f"Restart drain 중이므로 새 Finalization({kind})을 시작하지 않습니다 — 저장된 상태를 보존하고 "
+            self.store.log(b["id"], f"Restart STOPPING 중이므로 새 Finalization({kind})을 시작하지 않습니다 — 저장된 상태를 보존하고 "
                            "새 instance가 이어서 실행합니다", "warn")
         return True
 
@@ -194,8 +183,34 @@ class Supervisor:
         """Publish this instance's RUNNING restart_phase (superseding whatever an earlier instance left)."""
         self.store.begin_restart_phase(self.phase_instance)
 
-    # ---- Restart coordination (Coordinator thread only) -------------------------------------------------------------
-    FINALIZE_KINDS = ("c_finalize", "d_finalize", "ab_finalize", "s2_deterministic_finalize", "s3_finalize")
+    # ---- Restart handoff (#5162) --------------------------------------------------------------------------------------
+    def _stopping(self) -> bool:
+        """True once the Controller moved THIS instance to STOPPING: no Worker is submitted, no new AI, batch or
+        Finalization starts, and the process leaves as soon as its in-flight Workers return. It never decides that work is
+        "finished" - whatever still runs at the Controller's deadline is recovered by the next instance from the batch's
+        own DB, checkpoint, process, Git and PR facts, exactly as after a crash."""
+        if self._submit_hold:
+            return True
+        if not self._stop_requested():
+            return False
+        self._submit_hold = True
+        self.store.log(None, "Restart: STOPPING — 새 Worker·AI·배치·Finalization을 시작하지 않고, 진행 중 Worker가 반환되면 "
+                       "종료합니다 (남은 작업은 새 instance가 이어서 처리)", "warn")
+        return True
+
+    def _stop_requested(self) -> bool:
+        """Has the Controller recorded STOPPING for THIS instance? Read from the Store by whichever thread asks (the
+        Coordinator, the serial loop, and the LaunchGate before every admission), so a tick already under way starts no
+        new AI either. The first reader closes the memory boundary and the gate; nothing reopens them."""
+        if self._stop_seen:
+            return True
+        cur = self.store.restart_phase()
+        if cur is None or cur.get("instance") != self.phase_instance or cur.get("phase") != "STOPPING":
+            return False
+        self._drain.set()          # memory boundary first: no new batch, Finalization or review-fix from here
+        self.launch_gate.shut()    # every later AI permit is denied, also for a thread inside a wider permit
+        self._stop_seen = True
+        return True
 
     def _batch_has_open_work(self, b) -> bool:
         """An AI/task still running, or a recorded outcome not yet collected and saved."""
@@ -217,161 +232,9 @@ class Supervisor:
             # these completed run/task rows for the next instance instead of resubmitting an unproductive Line forever.
         return self.store.get(exit_verdict_key(b["id"])) is not None
 
-    def _lane_has_drain_work(self, key) -> bool:
-        """Does this lane still have something a drain must carry out: collect an exit, save, a started Finalization, a
-        pending Stop/Clear? Lanes with none are not even submitted, so the Coordinator can observe an empty Worker set."""
-        if key is None:
-            lines = [ln for ln in self.store.lines() if ln["method"] == MAINTENANCE_METHOD]
-            batches = self.store.maintenance_batches()
-        else:
-            lines = [self.store.line(*key)]
-            b = self.store.active_batch(*key)
-            batches = [b] if b is not None else []
-        for ln in lines:
-            if ln["force_stop"]:
-                return True
-            req = self.store.clear_request(ln["model"], ln["method"], actionable=True)
-            if req is not None:
-                return True
-        for b in batches:
-            if self._batch_has_open_work(b):
-                return True
-            if key is not None and b["state"] == "PRODUCING" and b["run_kind"] in self.FINALIZE_KINDS \
-                    and not self._frozen_denied(key):
-                return True   # started before the drain: it runs to completion
-        return False
-
-    def _frozen_denied(self, key) -> bool:
-        with self._frozen_lock:
-            return key in self._frozen_lanes
-
-    def _drain_blockers(self, pending) -> list[str]:
-        """Why DRAINING cannot be READY yet (empty: every Worker, permit, AI, run, fence and control is settled)."""
-        out = []
-        if pending:
-            out.append("Worker " + ", ".join("maintainer" if k is None else f"{k[0]}/{k[1]}" for k in pending))
-        if not self.launch_gate.drained:
-            out.append("LaunchGate permit")
-        if self.active_children():
-            out.append("Git/Node 자식 journal")
-        if self.unresolved_fences():
-            out.append("이전 instance 미해소 fence")
-        keys = [(ln["model"], ln["method"]) for ln in self.store.lines() if ln["method"] != MAINTENANCE_METHOD]
-        for key in keys + [None]:
-            if self._lane_has_drain_work(key):
-                out.append("maintainer" if key is None else f"{key[0]}/{key[1]}")
-        return out
-
-    def _restart_step(self, pending: dict) -> str:
-        """Advance the Restart phase one step; returns what this cycle may dispatch: "run" (everything), "drain" (only
-        collecting what already runs, Stop/Clear and started Finalizations) or "none" (READY/STOPPING: nothing)."""
-        cur = self.store.restart_phase()
-        if cur is None or cur.get("instance") != self.phase_instance:
-            cur = self.store.begin_restart_phase(self.phase_instance)
-        phase = cur["phase"]
-        identity = rc.request_identity(self.paths, self.code_sha)
-        blocker = rc.policy_blocker(self.store) if identity else None
-        if phase == "RUNNING":
-            if self._reopen_pending:
-                self._finish_reopen()
-                return "drain" if self._reopen_pending else "run"
-            if not identity or blocker:
-                return "run"
-            self._begin_drain(cur, identity)
-            return "none" if self._submit_hold else "drain"
-        if phase == "STOPPING":
-            self._submit_hold = True
-            if ("stopping", cur["seq"]) not in self._phase_logged:
-                self._phase_logged.add(("stopping", cur["seq"]))
-                self.store.log(None, "Restart: STOPPING — Controller가 이 instance를 종료합니다 (Worker 제출 0)", "warn")
-            return "none"
-        # DRAINING or READY: the request must still exist and the policy must still allow it, else only the Coordinator
-        # returns to RUNNING (and a lost CAS means STOPPING won, which is final).
-        if not identity or blocker:
-            return self._cancel_restart(cur, blocker or "요청이 철회되었거나 이미 로드되었습니다")
-        if cur["request"] != identity:   # the pending SET changed: carry the new identity without leaving the phase
-            cur = self.store.cas_restart_phase(cur, phase, identity)
-            if cur is None:
-                return "none" if (self.store.restart_phase() or {}).get("phase") == "STOPPING" else "drain"
-        if phase == "READY":
-            return "none"
-        blockers = self._drain_blockers(pending)
-        if blockers:
-            self._note_slow_drain(cur, blockers)
-            return "drain"
-        self._submit_hold = True   # memory first: from here no Worker is submitted, whatever the CAS outcome
-        if pending or self._drain_blockers(pending):
-            self._submit_hold = False
-            return "drain"
-        if self.store.cas_restart_phase(cur, "READY", identity) is None:
-            self._submit_hold = False
-            return "drain"
-        self.store.log(None, "Restart: READY — 모든 Worker·AI·run·fence가 정리되었습니다 (Controller의 STOPPING 대기)")
-        return "none"
-
-    def _begin_drain(self, cur: dict, identity: str) -> None:
-        self._drain.set()                 # 1. memory boundary: no new work from here
-        self.launch_gate.begin_close()    # 2. non-blocking: new permits are denied as of this return
-        self._gate_closing = True
-        new = self.store.cas_restart_phase(cur, "DRAINING", identity)   # 3. only now is DRAINING durable
-        if new is None:
-            self._reopen_pending = True   # lost the CAS: undo the memory/gate side without claiming a phase
-            return
-        self._drain_seq, self._drain_since = new["seq"], self.clock()
-        self.store.log(None, f"Restart: DRAINING 시작 (request={identity}) — 새 AI·배치·Finalization·review-fix 중지, "
-                       "실행 중 AI 수거와 Stop/Clear는 계속")
-
-    def _cancel_restart(self, cur: dict, reason: str) -> str:
-        new = self.store.cas_restart_phase(cur, "RUNNING", "")
-        if new is None:   # READY->STOPPING (or another transition) won the CAS: STOPPING never returns to RUNNING
-            return "none" if (self.store.restart_phase() or {}).get("phase") == "STOPPING" else "drain"
-        self.store.log(None, f"Restart 취소: {reason} — RUNNING으로 복귀합니다", "warn")
-        self._reopen_pending = True
-        self._submit_hold = False
-        self._finish_reopen()
-        return "drain" if self._reopen_pending else "run"
-
-    def _finish_reopen(self) -> None:
-        """Reopen the gate once the last permit of the cancelled drain is gone (never blocking the Coordinator)."""
-        if self._gate_closing and not self.launch_gate.drained:
-            return
-        if self._gate_closing:
-            self.launch_gate.end_close()
-            self._gate_closing = False
-        self.launch_gate.open()
-        released = self._release_drain_frozen(self._drain_seq)
-        self._drain.clear()
-        self._submit_hold = False
-        self._reopen_pending = False
-        self._drain_seq = self._drain_since = None
-        self.store.log(None, "Restart 취소 후 LaunchGate를 다시 열었습니다" + (f" (이 drain이 만든 frozen {released}건 해제)" if released else ""))
-
-    def _release_drain_frozen(self, seq) -> int:
-        """Only lanes frozen by THIS drain's closed gate (a denial writes nothing) are released; any other frozen lane keeps
-        its freeze, with the reason logged once."""
-        released = 0
-        with self._frozen_lock:
-            for key in list(self._frozen_lanes):
-                if seq is not None and self._frozen_seq.get(key) == seq:
-                    self._frozen_lanes.discard(key)
-                    self._frozen_seq.pop(key, None)
-                    released += 1
-                elif ("kept", key) not in self._phase_logged:
-                    self._phase_logged.add(("kept", key))
-                    label = "maintainer" if key is None else f"{key[0]}/{key[1]}"
-                    self.store.log(None, f"frozen 유지: {label} — 이번 drain이 만든 거부임을 증명할 수 없습니다", "warn")
-        return released
-
-    def _note_slow_drain(self, cur: dict, blockers: list[str]) -> None:
-        if self._drain_since is not None and self.clock() - self._drain_since > 600 and ("slow", cur["seq"]) not in self._phase_logged:
-            self._phase_logged.add(("slow", cur["seq"]))
-            self.store.log(None, "Restart DRAINING이 10분 넘게 READY에 도달하지 못했습니다 (자동 취소하지 않음). 대기 중: "
-                           + "; ".join(blockers[:6]), "warn")
-
     def _freeze(self, key) -> None:
         with self._frozen_lock:
             self._frozen_lanes.add(key)
-            self._frozen_seq[key] = self._drain_seq if self._drain.is_set() else None
 
     def _frozen_skips(self, key) -> bool:
         """A frozen lane means "no new AI start". While the gate is closed it still runs its tick (collection, save, Stop/
@@ -402,6 +265,8 @@ class Supervisor:
         for ln in self.store.lines():
             if ln["method"] == MAINTENANCE_METHOD:
                 continue   # Maintainer has one serialized AI slot but may own several independent PR watches
+            if self._stop_requested():
+                return   # STOPPING was recorded during this tick: no further Line is dispatched
             try:
                 self._tick_line(ln["model"], ln["method"])
             except Exception:  # one Line's failure never stalls the others
@@ -409,6 +274,8 @@ class Supervisor:
                                + traceback.format_exc()[-800:], "error", line=f"{ln['model']}/{ln['method']}")
         with self._frozen_lock:
             maintenance_frozen = None in self._frozen_lanes
+        if self._stop_requested():
+            return
         if not maintenance_frozen and not self._repo_fenced():
             try:
                 try:
@@ -479,8 +346,9 @@ class Supervisor:
                                           "warn", line=f"{model}/{method}")
             return self._force_stop(b) if b is not None else self.store.set_line(model, method, run=0)
         if b is None:
-            if ln["run"] and not control.drained(self.store, ln) and not self._drain.is_set():
-                self._prepare_new(ln)   # selecting a new batch is new work: never once a Restart drain has begun
+            if (ln["run"] and not control.drained(self.store, ln) and not self._drain.is_set()
+                    and not self._stop_requested()):
+                self._prepare_new(ln)   # selecting a new batch is new work: never once this instance is STOPPING
             return
         handler = {"PREPARE": self._prepare_existing, "PRODUCING": self._poll_producing,
                    "FIXING": self._poll_run, "WAITING_REVIEW": self._watch,
@@ -1631,6 +1499,8 @@ class Supervisor:
             return   # the CLI check runs in the background: this Line waits here, the others keep moving
         if problem:
             return self._blocked(ln, "시작 차단: " + problem)
+        if self._stop_requested():
+            return   # STOPPING landed while this Line was being checked: no Git work and no claim start after it
         if method == STAGE2_METHOD:
             return self._prepare_new_stage2(ln)
         if method == STAGE3_METHOD:
@@ -9991,8 +9861,7 @@ class Supervisor:
     def _parallel_cycle(self, pool, pending: dict, cursor: int, workers: int) -> int:
         """Coordinate one fixed-interval turn; no worker job is queued beyond available slots.
 
-        What may be submitted depends on the Restart phase (purpose, not just gate state): RUNNING submits everything;
-        DRAINING submits only lanes that still have something to collect/save/stop; READY and STOPPING submit nothing."""
+        RUNNING submits every lane; STOPPING submits nothing (in-flight Workers only return)."""
         self.store.set("heartbeat", str(self.clock()))
         self._handle_reload()
         self.store.fire_due_drain_schedules(self.clock(), control.board_line_keys(self.store, self.cfg))
@@ -10017,8 +9886,7 @@ class Supervisor:
                 self._slow_logged.add(key)
                 label = "maintainer" if key is None else f"{key[0]}/{key[1]}"
                 self.store.log(None, f"Line job이 {2 * self._interval:g}초(2×interval)를 넘어 실행 중입니다: {label}", "warn", line=label)
-        purpose = self._restart_step(pending)
-        if purpose == "none" or self._submit_hold:
+        if self._stopping():
             return cursor
         keys = [(ln["model"], ln["method"]) for ln in self.store.lines() if ln["method"] != MAINTENANCE_METHOD]
         keys.append(None)
@@ -10029,8 +9897,6 @@ class Supervisor:
             if len(pending) >= workers:
                 break
             if key in pending:
-                continue
-            if purpose == "drain" and not self._lane_has_drain_work(key):
                 continue
             pending[key] = (pool.submit(self._parallel_maintenance) if key is None
                             else pool.submit(self._tick_line, *key))
@@ -10051,6 +9917,12 @@ class Supervisor:
                     cursor = self._parallel_cycle(pool, pending, cursor, workers)
                 except Exception:
                     self.store.log(None, "parallel coordinator 예외:\n" + traceback.format_exc()[-800:], "error")
+                if self._submit_hold:
+                    if not pending:   # STOPPING and every in-flight Worker returned: leave now, the lock goes with us
+                        self.store.log(None, "Restart: 진행 중 Worker가 모두 반환되어 이 instance를 종료합니다")
+                        return
+                    stop_event.wait(min(interval, 0.5))   # only waiting for Workers to return: look again soon
+                    continue
                 deadline += interval
                 now = time.monotonic()
                 if deadline < now:
@@ -10060,10 +9932,15 @@ class Supervisor:
     # ---- daemon --------------------------------------------------------
     def run_forever(self, interval: float = 5.0) -> None:
         while True:
+            if self._stopping():   # checked BEFORE every dispatch: the serial loop has no in-flight Worker between ticks
+                self.store.log(None, "Restart: 이 instance를 종료합니다")
+                return
             try:
                 self.tick()
             except Exception:
                 self.store.log(None, "supervisor tick 예외:\n" + traceback.format_exc()[-800:], "error")
+            if self._stop_seen:
+                continue   # STOPPING arrived during the tick: leave now instead of sleeping first
             time.sleep(interval)
 
 

@@ -543,7 +543,7 @@ class ParallelStage2:
     def _finish(self, b, plan) -> None:
         """Every task is SAVED: verify the totals, persist `closed` first, then continue on the existing serial path."""
         if self.sup._finalization_held(b, "s2_plan_close"):
-            return   # Restart drain: the saved tasks stay as they are; the next instance re-enters here from the same facts
+            return   # Restart STOPPING: the saved tasks stay as they are; the next instance re-enters here from the same facts
         wt, (bb, pp) = self._wt(b), stage2.split_key(b["batch"])
         try:
             checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])

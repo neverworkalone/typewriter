@@ -55,15 +55,26 @@ class TerminalRequestsDoNotBlock(unittest.TestCase):
         with git, ancestor, lock:
             self.assertEqual(handle_pending_restart(self.w.paths, self.w.store), ("locked", None))
 
-    def test_unfinished_request_outside_head_still_blocks_restart(self):
+    def test_unfinished_request_outside_head_never_keeps_a_stopped_supervisor_down(self):
+        """#5162: a code update that cannot be applied is set aside with its reason; the line is started on the current code."""
         path = write_restart_request(self.w.paths, {"id": 91, "merge_sha": HEAD1}, None)
         self.assertEqual(request_path(self.w.paths, 91), path)
+        started = []
+
+        def tmux(args, **kw):
+            if args[0] == "new-session":
+                started.append(args)
+            return mock.Mock(returncode=0 if args[0] == "new-session" else 1, stdout="")
         git, ancestor, lock = self._patches(ancestor=False)
-        with git, ancestor, lock:
+        with git, ancestor, lock, \
+             mock.patch("warroom.restart_controller._update_target", return_value=(None, "origin/master에 없습니다")), \
+             mock.patch("warroom.restart_controller._tmux", side_effect=tmux), \
+             mock.patch("warroom.restart_controller.STARTUP_TIMEOUT", 0.01), \
+             mock.patch("warroom.restart_controller.time.sleep"):
             self.assertEqual(handle_pending_restart(self.w.paths, self.w.store), ("starting", None))
         data = json.loads(path.read_text())
-        self.assertEqual(data["state"], "waiting")
-        self.assertIn("does not contain the requested merge", data["blocker"])
+        self.assertEqual((data["state"], len(started)), ("waiting", 1))
+        self.assertIn("현재 코드로 계속 운영", data["blocker"])
 
 
 if __name__ == "__main__":
