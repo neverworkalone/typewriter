@@ -13,7 +13,7 @@ from tests.test_issue_2034_d import DWorld
 from tests.test_supervisor import review
 from tests.test_lines import PRODUCERS
 from warroom import control, defects, dchunk, dparallel
-from warroom.restart_controller import (_live_work_or_controls, _request_files, handle_pending_restart, has_pending_restart, record_runtime,
+from warroom.restart_controller import (_request_files, handle_pending_restart, has_pending_restart, record_runtime,
                                         request_operator_restart, update_restart_request, write_restart_request)
 
 
@@ -309,7 +309,6 @@ class MaintainerQueue(unittest.TestCase):
                                "VALUES(?,?,?,?,?,?)", (blocked, blocked_model, "m", "BLOCKED", "ERROR", 0))
                 self.assertTrue(control.request_clear(w.store, target["producer"], "m", target["id"], 101)[0])
                 w.sup._drain.set()
-                self.assertTrue(w.sup._lane_has_drain_work(None))
                 w.sup._tick_maintenance(collection_only=True)
                 self.assertIsNone(w.store.batch(target["id"]))
                 self.assertEqual(w.store.clear_request(blocked_model, "m", batch_id=blocked)["status"], "BLOCKED")
@@ -705,20 +704,6 @@ class NoCodeRecovery(unittest.TestCase):
                     "task_report_path": dparallel.defect_path(source, "001")}
         self.assertFalse(w.sup.maint._validate_report_task(source, evidence, {"task": "001", "chunk": "001"}))
 
-    def test_restart_controller_refuses_operator_controls_and_open_workers(self):
-        w = self.w
-        self.assertIsNone(_live_work_or_controls(w.store))
-        w.store.line("deepseek", "a")
-        w.store.set_line("deepseek", "a", drain=1)
-        self.assertIsNone(_live_work_or_controls(w.store))
-        w.store.set_line("deepseek", "a", force_stop=1)
-        self.assertIn("Stop", _live_work_or_controls(w.store))
-        self.assertIsNone(_live_work_or_controls(w.store, recovering_stopped_supervisor=True))
-        self.assertEqual(w.store.line("deepseek", "a")["force_stop"], 1)
-        w.store.set_line("deepseek", "a", drain=1)
-        self.assertIsNone(_live_work_or_controls(w.store, recovering_stopped_supervisor=True))
-        self.assertEqual(w.store.line("deepseek", "a")["drain"], 1)
-
 
 class RestartHandoff(unittest.TestCase):
     def setUp(self):
@@ -740,22 +725,9 @@ class RestartHandoff(unittest.TestCase):
              mock.patch("warroom.restart_controller._lock_held", return_value=False):
             self.assertIsNone(handle_pending_restart(w.paths, w.store))
 
-    def test_stopped_supervisor_can_consume_existing_clear_after_workers_finish(self):
-        store = mock.Mock()
-        store.incomplete_batches.return_value = [{"id": 42, "pid": 999999}]
-        store.lines.return_value = [{"model": "codex", "method": "d", "drain": 0, "force_stop": 0}]
-        store.get.return_value = None
-        store.clear_request.return_value = {"batch_id": 42, "status": "REQUESTED"}
-        exit_file = Path(self.w.tmp.name) / "run.exit"
-        store.runs.return_value = [{"ended_at": None, "pid": 999999, "exit_file": str(exit_file)}]
-        with mock.patch("warroom.restart_controller._pid_alive", return_value=False):
-            self.assertIn("unclosed run", _live_work_or_controls(store, recovering_stopped_supervisor=True))
-            exit_file.write_text("0\n")
-            self.assertIn("unclosed run", _live_work_or_controls(store))
-            self.assertIsNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
-        self.assertEqual(store.clear_request.return_value["status"], "REQUESTED")
-
-    def test_restart_consumes_pinned_maintainer_stop_only_after_worker_exits(self):
+    def test_restart_never_waits_for_a_worker_and_the_new_supervisor_consumes_the_pinned_maintainer_stop(self):
+        """#5162: an open run, a recorded worker PID and a pinned operator Stop are batch facts for the next instance to
+        reconcile, never a reason to keep a stopped Supervisor down."""
         w = self.w
         store = w.store
         store.line("sonnet", "m")
@@ -778,22 +750,10 @@ class RestartHandoff(unittest.TestCase):
 
         with mock.patch("warroom.restart_controller._git", return_value=result), \
              mock.patch("warroom.restart_controller._ancestor", return_value=True), \
-             mock.patch("warroom.restart_controller._worktree_ownership_problem", return_value=None), \
-             mock.patch("warroom.restart_controller._pid_alive", return_value=False), \
              mock.patch("warroom.restart_controller._lock_held", return_value=False), \
              mock.patch("warroom.restart_controller._live_runtime_owner", return_value=True), \
-             mock.patch("warroom.restart_controller._tmux", side_effect=tmux) as launch:
-            handle_pending_restart(w.paths, store)
-            self.assertIn("unclosed run", json.loads(request.read_text())["blocker"])
-            self.assertFalse(launch.called)
-            exit_file.write_text("0\n")
-            with mock.patch("warroom.restart_controller._lock_held", return_value=True), \
-                 mock.patch("warroom.restart_controller._is_serial_runtime", return_value=True):   # a live workers=1 Supervisor
-                handle_pending_restart(w.paths, store)
-            self.assertIn("unclosed run", json.loads(request.read_text())["blocker"])
-            self.assertFalse(launch.called)
-            self.assertEqual(store.get("stop_pin_sonnet_m"), str(batch))
-            handle_pending_restart(w.paths, store)
+             mock.patch("warroom.restart_controller._tmux", side_effect=tmux):
+            handle_pending_restart(w.paths, store)       # the run is still open: the start does not wait for it
         self.assertEqual(json.loads(request.read_text())["state"], "loaded")
         self.assertIsNone(store.get("stop_pin_sonnet_m"))
         self.assertEqual(store.line("sonnet", "m")["force_stop"], 0)
@@ -816,21 +776,6 @@ class RestartHandoff(unittest.TestCase):
             with self.assertRaises(ValueError):
                 request_operator_restart(self.w.paths, HEAD1)
 
-    def test_stopped_supervisor_can_recover_proven_exited_runs(self):
-        store = mock.Mock()
-        store.incomplete_batches.return_value = [{"id": 42, "pid": 999999}]
-        store.lines.return_value = []
-        store.get.return_value = None
-        exit_file = Path(self.w.tmp.name) / "run.exit"
-        store.runs.return_value = [{"ended_at": None, "pid": 999999, "exit_file": str(exit_file)}]
-        self.assertIsNotNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
-        exit_file.write_text("0\n")
-        with mock.patch("warroom.restart_controller._pid_alive", return_value=False):
-            self.assertIsNotNone(_live_work_or_controls(store))
-            self.assertIsNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
-        with mock.patch("warroom.restart_controller._pid_alive", return_value=True):
-            self.assertIsNotNone(_live_work_or_controls(store, recovering_stopped_supervisor=True))
-
     def test_restart_request_and_loaded_sha_survive_process_boundaries(self):
         w = self.w
         defect = {"id": 91, "issue_number": 92, "batch_id": 93, "merge_sha": HEAD1}
@@ -841,7 +786,6 @@ class RestartHandoff(unittest.TestCase):
         record_runtime(w.paths, HEAD1)
         self.assertTrue(update_restart_request(w.paths, 91, "loaded", loaded_code_sha=HEAD1))
         self.assertFalse(has_pending_restart(w.paths))
-        self.assertFalse(_live_work_or_controls(w.store))
 
     def test_persisted_restart_signal_converts_database_row_once(self):
         w = self.w

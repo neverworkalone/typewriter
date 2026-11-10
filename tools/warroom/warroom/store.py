@@ -309,7 +309,7 @@ class Store:
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
             c.execute("DELETE FROM kv WHERE key=?", (exit_verdict_key(batch_id),))
 
-    # --- restart_phase: {instance, phase, request, seq}, changed only by an exact-match CAS (#3774) ---
+    # --- restart_phase: {instance, phase, request, seq[, stopping_at]}, changed only by an exact-match CAS (#3774, #5162) ---
     def restart_phase(self) -> dict | None:
         raw = self.get(RESTART_PHASE_KEY)
         try:
@@ -319,14 +319,15 @@ class Store:
         return value if isinstance(value, dict) else None
 
     def begin_restart_phase(self, instance: str) -> dict:
-        """A new instance supersedes whatever an earlier instance left: its READY/STOPPING proves nothing about this one."""
+        """A new instance supersedes whatever an earlier instance left: its STOPPING proves nothing about this one."""
         value = {"instance": instance, "phase": "RUNNING", "request": "", "seq": 0}
         self.set(RESTART_PHASE_KEY, json.dumps(value, sort_keys=True))
         return value
 
-    def cas_restart_phase(self, expect: dict, phase: str, request: str) -> dict | None:
+    def cas_restart_phase(self, expect: dict, phase: str, request: str, stopping_at: float | None = None) -> dict | None:
         """Move `expect` to `phase` iff the stored value is exactly `expect` (one BEGIN IMMEDIATE winner). seq increases on
-        every change. Returns the new value, or None when another actor won."""
+        every change. `stopping_at` (when the bounded handoff began) is written once, by the first STOPPING, and carried
+        unchanged afterwards. Returns the new value, or None when another actor won."""
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             row = c.execute("SELECT value FROM kv WHERE key=?", (RESTART_PHASE_KEY,)).fetchone()
@@ -337,6 +338,9 @@ class Store:
             if current != expect:
                 return None
             new = {"instance": expect["instance"], "phase": phase, "request": request, "seq": expect["seq"] + 1}
+            started = expect.get("stopping_at", stopping_at if phase == "STOPPING" else None)
+            if started is not None:
+                new["stopping_at"] = started
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                       (RESTART_PHASE_KEY, json.dumps(new, sort_keys=True)))
             return new

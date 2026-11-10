@@ -1,6 +1,7 @@
 """WAR ROOM / TYPEWRITER situation board (Textual). Pure view over the shared DB."""
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import subprocess
@@ -34,6 +35,25 @@ SCHEDULE_HOURS = [(f"{hour:02d}:00", f"{hour:02d}") for hour in range(24)]
 DEFAULT_SCHEDULE_HOUR = "09"
 
 
+def pending_restart_step(paths: Paths) -> tuple[str, str | None] | None:
+    """Carry a pending Supervisor restart one step further with the Controller code the operating checkout holds NOW.
+
+    It runs as a fresh process (#5162): this TUI may have been started long before a Controller fix was deployed, and a
+    restart must never depend on restarting the TUI. The Controller takes the launcher lock itself."""
+    wr = str(paths.repo_root / "tools" / "warroom")
+    env = {**os.environ, "PYTHONPATH": wr, ROOT_ENV: str(paths.repo_root)}
+    try:
+        done = subprocess.run([sys.executable, "-m", "warroom.restart_controller", "--json"], cwd=paths.repo_root, env=env,
+                              capture_output=True, text=True, timeout=600)
+        result = json.loads(done.stdout.strip().splitlines()[-1])["result"] if done.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError, KeyError, TypeError) as error:
+        return "failed", f"Supervisor restart controller 실행 실패: {type(error).__name__}: {error}"
+    if done.returncode != 0:
+        tail = (done.stderr or done.stdout).strip().splitlines()[-1:] or [f"exit {done.returncode}"]
+        return "failed", f"Supervisor restart controller 실패: {redact(tail[0])[:300]}"
+    return (result[0], result[1]) if result else None
+
+
 def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
     """Ensure a Supervisor start is underway without replacing a process that may already be starting.
 
@@ -42,14 +62,13 @@ def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
     Returns (locked|starting|failed, optional error).
     """
     from .supervisor import acquire_lock
+    restart = pending_restart_step(paths)
+    if restart is not None:
+        return restart
     launch_lock = acquire_lock(paths.local / "supervisor-launch.lock")
     if launch_lock is None:
         return "starting", None  # another TUI is checking/starting the shared session
     try:
-        from .restart_controller import handle_pending_restart
-        restart = handle_pending_restart(paths, Store(paths.db))
-        if restart is not None:
-            return restart
         supervisor_lock = acquire_lock(paths.lock)
         if supervisor_lock is None:
             # #3378: a live Supervisor started from another checkout (e.g. a removed Codex worktree) keeps loading that
@@ -60,7 +79,7 @@ def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
                 live_root = ""
             if live_root and live_root != str(paths.repo_root):
                 return "failed", (f"실행 중인 Supervisor의 루트({live_root})가 운영 루트({paths.repo_root})와 다릅니다. "
-                                  "강제 종료하지 말고 README의 'Supervisor 코드 수정 후 재시작' 절차를 따르세요.")
+                                  "강제 종료하지 말고 README의 'Supervisor 재시작' 절차를 따르세요.")
             return "locked", None  # heartbeat can lag, but the existing process owns the lock
         supervisor_lock.close()
 
@@ -935,7 +954,9 @@ class WarRoom(App):
         root = self.screen_stack[0]   # the board, even while Batch Detail is on top
         alive = control.supervisor_alive(store)
         from .restart_controller import has_pending_restart
-        restart_pending = has_pending_restart(self.paths)
+        # A STOPPING instance is a restart in progress even when its request was withdrawn meanwhile: it submits no work.
+        restart_pending = (has_pending_restart(self.paths)
+                           or (store.restart_phase() or {}).get("phase") == "STOPPING")
         now = time.monotonic()
         restart_due = restart_pending
         missing_due = (not alive and

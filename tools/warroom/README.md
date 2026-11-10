@@ -31,33 +31,36 @@ S2도 같은 쿼리를 사용합니다. `b.method='s2'`, `b.batch='BB-PP'`(예: 
 
 ```sh
 ./war                 # TUI 열기/재연결, Supervisor가 없으면 시작
+./kwar                # Supervisor만 안전하게 재시작한 뒤 TUI 열기 (운영자용 단일 Restart 진입점)
 ./dashboard           # 기존 Supervisor를 공유하는 보조 Web View (http://localhost:8000)
 ./dashboard --port 8123
 ```
 
 설정 변경: `tools/warroom/.local/config.json` 수정 후 TUI에서 `r`을 눌러 리로드합니다. 실행 중인 AI run의 프로필·세션은 바뀌지 않습니다. **Python 코드 수정은 설정 리로드만으로 적용되지 않습니다.**
 
-Supervisor 수정 코드를 배포했다면 운영 메인 checkout에서 `./war`를 실행합니다. 별도 restart controller가 보존된 요청(`.git/typewriter-supervisor/restart-requests/`)을 확인하고, **worker 종료·운영 루트 및 worktree 소유권·Stop/Clear/hold** 등의 조건이 안전할 때만 Supervisor를 교체합니다. Line Drain과 Drain All은 Restart를 막지 않으며 새 Supervisor에도 유지되어 해당 Line의 후속 배치를 차단합니다. 불확실하면 기존 작업을 중단하지 않고 대기합니다. 코드가 실제로 로드된 SHA와 원 생산 task의 공식 저장 진전은 별개로 확인합니다.
+### Supervisor 재시작 (#5162)
 
-incident와 무관한 코드 수정의 명시적 재시작 요청:
+**Supervisor는 언제든 교체할 수 있고, 새 Supervisor는 각 배치의 기존 상태(DB, 실행 증거, 프로세스, checkpoint, worktree, Git HEAD/remote, PR)를 확인해 그 지점부터 이어갑니다.** 다른 Line의 AI·finalization·Git/Node 작업, Stop/Clear/Drain, defect hold는 Restart를 막지 않습니다. 정상 Restart와 비정상 종료 후 재기동은 같은 경로입니다.
+
+- **`./kwar`** — 지금 운영 checkout에 있는 코드로 Supervisor instance를 교체합니다. TUI(`warroom` 세션), AI run, 배치, checkpoint, PR은 그대로 둡니다. 같은 SHA여도 실제로 새 instance(새 PID·instance ID)가 떠야 성공이며, 이미 대기 중인 코드 갱신 요청이 있으면 같은 교체 1회에 함께 반영합니다. `./kwar` 자체는 코드를 갱신하지 않습니다. 종료 코드: `0` 새 instance 확인(TUI를 엽니다) / `1` 교체 거부·실패 / `2` 제한 시간 안에 미확인. `0`이 아니면 TUI를 열지 않고 사유를 출력합니다. 어느 경우에도 실행 중인 작업은 보존됩니다.
+- **Maintainer 수정 머지** — Supervisor가 영속 요청(`.git/typewriter-supervisor/restart-requests/`)을 남기면 TUI가 사람 개입 없이 같은 절차를 진행합니다. TUI는 매번 새 프로세스로 Controller를 실행하므로 TUI를 재시작하지 않아도 배포된 Controller 코드가 쓰입니다.
+- **절차** — Controller가 실행 중인 instance를 `RUNNING → STOPPING`(Store `restart_phase`, `BEGIN IMMEDIATE` CAS)으로 옮깁니다. STOPPING인 Supervisor는 새 Worker·AI·배치·Finalization을 시작하지 않고, 진행 중 Worker가 반환되면 스스로 종료합니다. **유예는 최대 30초**이며(최초 STOPPING 시각 `stopping_at` 기준, 반복 요청은 같은 절차에 합류할 뿐 시계를 되돌리지 않습니다) 넘으면 소유한 `warroom-supervisor` 세션을 종료합니다. 끊긴 Git/Node 자식은 새 instance의 fence 스캔이, 살아 있는 AI는 PID·exit 기록 재부착이, 미확정 PR/Issue 생성은 사전 영속 마커와 GitHub 재조회가 이어받습니다.
+- **코드 갱신** — 요청한 수정이 운영 checkout에 없으면 Controller가 `git fetch` 후 `origin/<base>`로 fast-forward 합니다. 조건: base 브랜치, 추적 파일 변경 없음, 들어올 경로와 겹치는 미추적 파일 없음, `pnpm-lock.yaml` 불변, 대상 commit의 Supervisor 코드가 운영 venv·`config.json`으로 import·검증 통과. checkout은 **이전 instance가 종료된 뒤에만** 바뀌며 reset·stash는 하지 않습니다. 조건이 맞지 않으면 사유를 요청 파일·Audit Log에 남기고 **현재 코드로 계속 운영**합니다(5분 뒤 재확인). 코드 갱신 불가는 instance 교체를 막지 않습니다.
+- **배치별 보류** — 판정할 수 없는 Git/Node 자식은 그 자식이 쓰던 worktree(또는 실제로 잡고 있던 repo/verify 작업)만 fence 합니다. 한 배치의 문제로 다른 Line이 멈추지 않습니다.
+- C/D 생산 세션은 운영 checkout의 CLI(`scripts/relation/d-chunk-cli.mjs`, `literary-context-cli.mjs`)를 직접 호출하므로 코드 갱신 시점부터 새 CLI를 씁니다. 이 CLI들의 명령·입출력·checkpoint는 실행 중인 세션과 호환을 유지해야 합니다.
+
+incident와 무관하게 특정 commit의 로드를 요청하려면:
 
 ```sh
 TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" \
   tools/warroom/.local/venv/bin/python -m warroom.restart_controller --request-code-sha <FULL_SHA>
 ```
 
-### 병렬 Supervisor와 정상 Restart (#3774)
+`supervisor_workers`의 기본값은 **16**입니다(`config.example.json` 참고). 운영 `config.json`에 `1`을 override로 남기지 마세요. `1`은 직렬 회귀·장애 폴백 전용이며, 1→4→16 단계 확대는 하지 않습니다. 실제 기동 값과 현재 instance는 `runtime`(`.git/typewriter-supervisor/supervisor-runtime.json`)의 `supervisor_workers`/`instance`/`pid`/`loaded_code_sha`로 확인합니다.
 
-`supervisor_workers`의 기본값은 **16**입니다(`config.example.json` 참고). 운영 `config.json`에 `1`을 override로 남기지 마세요. `1`은 직렬 회귀·장애 폴백 전용이며, 1→4→16 단계 확대는 하지 않습니다. 실제 기동 값은 `runtime`(`.git/typewriter-supervisor/`의 runtime 기록)의 `supervisor_workers`/`instance`로 확인합니다.
+이 절차가 처음 배포될 때 한 번은 `./kwar`로 교체합니다. 이전 버전 Supervisor는 STOPPING에서 스스로 종료하지 않으므로 30초 뒤 세션 종료 경로로 교체됩니다.
 
-workers>1 Supervisor의 모든 정상 Restart는 AI가 0개여도 `RUNNING → DRAINING → READY → STOPPING`을 거칩니다(Store `restart_phase`, `BEGIN IMMEDIATE` CAS).
-
-- Controller는 영속 Restart 요청만 기록합니다. Coordinator만 `RUNNING → DRAINING`을 수행하고 LaunchGate를 닫아 새 AI 시작·새 배치·새 Finalization·PR review-fix·Maintainer 새 작업을 막습니다. 이미 실행 중인 AI의 종료 수거·공식 저장, Stop/Clear 처리는 계속합니다.
-- 모든 Worker·AI·open run·Git/Node 자식 fence가 정리되면 Coordinator가 메모리에서 Worker 제출을 먼저 멈춘 뒤 `DRAINING → READY`로 전이합니다. READY/STOPPING에서는 Worker 제출이 0건입니다.
-- Controller는 현재 instance의 READY와 요청 identity를 확인하고 CAS `READY → STOPPING`에 성공한 경우에만 Supervisor tmux 세션을 종료합니다. 시간 초과만으로 자동 취소하지 않으며, 취소는 Coordinator만 `RUNNING`으로 되돌립니다(`STOPPING`에서는 복귀 불가).
-- READY 이후 접수된 Stop/Clear는 영속 요청으로 남아 새 Supervisor가 처리합니다. 수동 강제 종료·비정상 종료는 정상 Restart가 아니며, 새 instance가 시작 시 Git/Node fence 스캔으로 복구합니다.
-
-프롬프트·설정·Supervisor는 검증된 **운영 메인 checkout**에서만 읽습니다. 임시 worktree로 대체하지 않습니다. **`.local/` 삭제, DB 수동 초기화, 강제 프로세스 종료, 코드 리로드 목적의 Retry는 금지합니다.** 장애나 재시작 지연 사유는 TUI의 Supervisor 상태·Audit Log에서 확인합니다.
+프롬프트·설정·Supervisor는 검증된 **운영 메인 checkout**에서만 읽습니다. 임시 worktree로 대체하지 않습니다. **`.local/` 삭제, DB 수동 초기화, `tmux kill-session`·signal에 의한 수동 종료, 코드 리로드 목적의 Retry는 금지합니다** — 재시작은 `./kwar`를 쓰세요. 장애나 코드 갱신 보류 사유는 TUI의 Supervisor 상태·Audit Log에서 확인합니다.
 
 DeepSeek 공식 API를 사용하려면 OpenCode에서 `/connect`로 DeepSeek를 등록하고
 `opencode models`에서 `deepseek/deepseek-flash`를 확인한다. 인증 정보는 OpenCode의

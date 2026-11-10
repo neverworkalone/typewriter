@@ -253,7 +253,7 @@ class ResourceBindingTests(Harness):
         (wts / "a").mkdir(parents=True)
         r = FencedRunner(Runner(), self.next_instance(), wts)
         verify, repo = OrderedLock(3, name="verify"), OrderedLock(4, reentrant=True, name="repo")
-        self.assertEqual(r.resources(wts / "a"), {"worktree:a", "repo"})
+        self.assertEqual(r.resources(wts / "a"), {"worktree:a"})   # #5162: an owned worktree binds only itself
         self.assertEqual(r.resources(self.root), {"repo"}, "unprovable independence is the repository")
         with verify:
             self.assertEqual(r.resources(self.root), {"verify"})
@@ -402,17 +402,20 @@ class TerminateRegressionTests(Harness):
         self.assertNotIn(signal.SIGKILL, sent)
         self.assertEqual(sent.count(signal.SIGTERM), 1)
 
-    def test_lock_free_worktree_command_fence_blocks_other_repo_access(self):
+    def test_lock_free_worktree_command_fence_holds_only_its_own_worktree(self):
+        """#5162: an unjudgeable child of an ended Supervisor holds back its own batch, never every Line."""
         wts = self.root / "wts"
         (wts / "a").mkdir(parents=True)
+        (wts / "b").mkdir(parents=True)
         fence = self.next_instance()
         r = FencedRunner(Runner(), fence, wts)
         fence._hold(self.root / "m.json", {"resources": sorted(r.resources(wts / "a")), "pid": 1, "pgid": 2}, "old",
                     fence_mod.Verdict(UNKNOWN, "x"))
         with self.assertRaises(ResourceFenced):
-            r.run(["git", "--version"], cwd=self.root)   # another repo access
-        with self.assertRaises(ResourceFenced):
             r.run(["git", "--version"], cwd=wts / "a")
+        self.assertEqual(fence.blocked({"repo"}), [])            # the Coordinator's whole-repository skip stays off
+        self.assertTrue(r.run(["git", "--version"], cwd=wts / "b").ok)   # another batch's worktree
+        self.assertTrue(r.run(["git", "--version"], cwd=self.root).ok)   # the repository itself
 
 
 class StartupAndInterfaceTests(Harness):
