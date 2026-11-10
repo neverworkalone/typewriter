@@ -524,7 +524,11 @@ class Supervisor:
             return
         ln = self.store.line(model, MAINTENANCE_METHOD)
 
-        request = self.store.pin_clear(model, MAINTENANCE_METHOD)
+        # Clear belongs to the request owner, even when the active/default Maintainer model differs.
+        clear_model = next((line["model"] for line in self.store.lines()
+                            if line["method"] == MAINTENANCE_METHOD
+                            and self.store.clear_request(line["model"], MAINTENANCE_METHOD) is not None), None)
+        request = self.store.pin_clear(clear_model, MAINTENANCE_METHOD) if clear_model is not None else None
         if request is not None:
             clearing = self.store.batch(request["batch_id"])
             if clearing is not None and clearing["state"] == "CLEARING":

@@ -274,6 +274,23 @@ class MaintainerQueue(unittest.TestCase):
         self.assertIsNone(w.sup._complete_producer_fix_events(batch, {"head_sha": "b" * 40}))
         self.assertEqual(w.store.handled_event(first["id"], 50, HEAD1, "ci:42:1")["status"], "HANDLED")
 
+    def test_clear_uses_request_owner_when_another_model_sorts_first(self):
+        w = self.w
+        produce_and_report(w)
+        w.tick()
+        target = maintainer_row(w)
+        w.store.update(target["id"], state="ERROR", pid=None)
+        w.store.finish_runs(target["id"], 0)
+        w.store.line("aaa", "m")
+        self.assertTrue(control.request_clear(w.store, target["producer"], "m", target["id"], 101)[0])
+        with mock.patch.object(w.sup, "_clear") as clear:
+            w.sup._drain.set()
+            w.sup._tick_maintenance(collection_only=True)
+        self.assertEqual(w.store.batch(target["id"])["state"], "CLEARING")
+        clear.assert_called_once()
+        self.assertEqual(clear.call_args.args[0]["id"], target["id"])
+        self.assertEqual(w.store.peek_line("aaa", "m")["run"], 0)
+
     def test_stale_pinned_stop_does_not_stop_next_maintainer_execution(self):
         w = self.w
         produce_and_report(w)
