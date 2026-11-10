@@ -283,12 +283,11 @@ class MaintainerQueue(unittest.TestCase):
         w.store.finish_runs(target["id"], 0)
         w.store.line("aaa", "m")
         self.assertTrue(control.request_clear(w.store, target["producer"], "m", target["id"], 101)[0])
-        with mock.patch.object(w.sup, "_clear") as clear:
-            w.sup._drain.set()
-            w.sup._tick_maintenance(collection_only=True)
-        self.assertEqual(w.store.batch(target["id"])["state"], "CLEARING")
-        clear.assert_called_once()
-        self.assertEqual(clear.call_args.args[0]["id"], target["id"])
+        w.sup._drain.set()
+        w.sup._tick_maintenance(collection_only=True)
+        self.assertIsNone(w.store.batch(target["id"]))
+        self.assertIsNone(w.store.clear_request(target["producer"], "m"))
+        self.assertEqual(w.store.maintenance(101)["state"], "HELD")
         self.assertEqual(w.store.peek_line("aaa", "m")["run"], 0)
 
     def test_stale_pinned_stop_does_not_stop_next_maintainer_execution(self):
