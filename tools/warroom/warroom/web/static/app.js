@@ -84,9 +84,10 @@ function card(l) {
 }
 
 function maintainerCard(m) {
-  const st = { IDLE: "empty", WORKING: "PRODUCING", COMING: "WAITING_REVIEW", ERROR: "ERROR" }[m.state];
+  const st = { IDLE: "empty", WORKING: "PRODUCING", COMING: "WAITING_REVIEW", ERROR: "ERROR", WAITING: "WAITING_REVIEW" }[m.state];
+  const label = { IDLE: "—", WAITING: "대기 중" }[m.state] || m.state;
   return h("div", { class: "card " + st },
-    h("div", { class: "t" }, h("span", {}, "Maintainer"), h("span", {}, m.state === "IDLE" ? "—" : m.state)),
+    h("div", { class: "t" }, h("span", {}, "Maintainer"), h("span", {}, label)),
     h("div", { class: "s" }, m.state === "IDLE" ? "진행 중인 작업 없음" : m.text));
 }
 
