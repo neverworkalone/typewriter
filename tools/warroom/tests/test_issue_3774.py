@@ -214,7 +214,7 @@ class ReplaceNeverWaitsForOtherLines(RestartWorld, unittest.TestCase):
         self.assertEqual((state["kill"], state["started"]), (1, 1))                 # loaded SHA alone is not "done"
         self.assertEqual(json.loads(path.read_text())["state"], "loaded")
         self.assertFalse(update.called or forward.called)                           # ./kwar asks for no code update
-        self.assertFalse([c for c in state["tmux"] if "warroom" in c and c[0] != "show-environment"])
+        self.assertFalse([c for c in state["tmux"] if ("warroom" in c or "=warroom" in c) and c[0] != "show-environment"])
 
 
 class CodeUpdate(RestartWorld, unittest.TestCase):
@@ -445,6 +445,35 @@ class KwarEntry(unittest.TestCase):
                 self.assertEqual(calls[0], "python -m warroom.restart_controller --replace")
                 self.assertEqual(any(c.startswith("tmux new-session") for c in calls), code == 0)
                 self.assertFalse(any("kill" in c for c in calls))                   # nothing is killed by hand
+
+    def test_war_opens_the_tui_when_only_the_supervisor_session_exists(self):
+        """tmux resolves a bare `-t warroom` to `warroom-supervisor` by prefix. With no TUI session, the launcher must
+        create one instead of refusing over the Supervisor session's (absent) root record."""
+        repo = Path(__file__).resolve().parents[3]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "root"
+            (root / ".git").mkdir(parents=True)
+            (root / "tools/warroom/prompts").mkdir(parents=True)
+            (root / "tools/warroom/prompts/m.md").write_text("m")
+            venv = root / "tools/warroom/.local/venv/bin"
+            venv.mkdir(parents=True)
+            log = Path(tmp) / "calls"
+            (venv / "python").write_text("#!/bin/sh\nexit 0\n")
+            fake = Path(tmp) / "bin"
+            fake.mkdir()
+            # Only `warroom-supervisor` exists: an exact `=warroom` target is not found, a prefix target is.
+            (fake / "tmux").write_text(
+                f'#!/bin/sh\necho "tmux $*" >> "{log}"\n'
+                'case "$1 $3" in "has-session =warroom"|"show-environment =warroom") exit 1 ;; esac\nexit 0\n')
+            for script in (venv / "python", fake / "tmux"):
+                script.chmod(0o755)
+            (root / "war").write_text((repo / "war").read_text())
+            (root / "war").chmod(0o755)
+            env = {"PATH": f"{fake}:/usr/bin:/bin", "HOME": tmp}
+            done = subprocess.run(["/bin/sh", str(root / "war")], env=env, capture_output=True, text=True, timeout=30)
+            calls = log.read_text().splitlines()
+            self.assertEqual((done.returncode, done.stderr), (0, ""))
+            self.assertTrue(any(c.startswith("tmux new-session -A -s warroom ") for c in calls))
 
 
 class SerialSupervisorStopping(RestartWorld, unittest.TestCase):

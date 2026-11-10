@@ -31,8 +31,10 @@ else
 fi
 
 CMD="cd '$ROOT' && env TYPEWRITER_WARROOM_ROOT='$ROOT' PYTHONPATH='$WR' '$VENV/bin/python' -m warroom.tui"
-if tmux has-session -t warroom 2>/dev/null; then
-  LIVE="$(tmux show-environment -t warroom TYPEWRITER_WARROOM_ROOT 2>/dev/null | sed -n 's/^TYPEWRITER_WARROOM_ROOT=//p')"
+# `=warroom` is an exact match: a bare `-t warroom` also matches the `warroom-supervisor` session by prefix, which made a
+# Supervisor running without a TUI session look like a TUI of an unrecorded root.
+if tmux has-session -t '=warroom' 2>/dev/null; then
+  LIVE="$(tmux show-environment -t '=warroom' TYPEWRITER_WARROOM_ROOT 2>/dev/null | sed -n 's/^TYPEWRITER_WARROOM_ROOT=//p')"
   if [ "$LIVE" != "$ROOT" ]; then
     echo "[war] 실행 중인 warroom TUI의 루트(${LIVE:-미기록})가 $ROOT 와 다릅니다. 붙지 않습니다." >&2
     echo "[war] tools/warroom/README.md 의 'Supervisor 재시작' 절차를 따르세요." >&2; exit 1
