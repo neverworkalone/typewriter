@@ -274,6 +274,8 @@ class Supervisor:
                                + traceback.format_exc()[-800:], "error", line=f"{ln['model']}/{ln['method']}")
         with self._frozen_lock:
             maintenance_frozen = None in self._frozen_lanes
+        if self._stop_requested():
+            return
         if not maintenance_frozen and not self._repo_fenced():
             try:
                 try:
@@ -344,7 +346,8 @@ class Supervisor:
                                           "warn", line=f"{model}/{method}")
             return self._force_stop(b) if b is not None else self.store.set_line(model, method, run=0)
         if b is None:
-            if ln["run"] and not control.drained(self.store, ln) and not self._drain.is_set():
+            if (ln["run"] and not control.drained(self.store, ln) and not self._drain.is_set()
+                    and not self._stop_requested()):
                 self._prepare_new(ln)   # selecting a new batch is new work: never once this instance is STOPPING
             return
         handler = {"PREPARE": self._prepare_existing, "PRODUCING": self._poll_producing,
@@ -1496,6 +1499,8 @@ class Supervisor:
             return   # the CLI check runs in the background: this Line waits here, the others keep moving
         if problem:
             return self._blocked(ln, "시작 차단: " + problem)
+        if self._stop_requested():
+            return   # STOPPING landed while this Line was being checked: no Git work and no claim start after it
         if method == STAGE2_METHOD:
             return self._prepare_new_stage2(ln)
         if method == STAGE3_METHOD:

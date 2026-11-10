@@ -481,6 +481,39 @@ class SerialSupervisorStopping(RestartWorld, unittest.TestCase):
         self.assertEqual(len(seen), 1)                            # no further Line of that tick, and no further tick
         self.assertEqual(w.adapter.launches, [])
 
+    def test_a_line_past_its_dispatch_check_claims_no_new_batch_and_starts_no_git_work(self):
+        """STOPPING lands after the Line was dispatched and found runnable: the admission boundary of a NEW batch is the
+        Store claim itself (one write lock with the Controller's CAS), with the Git work before it checked on the way."""
+        for moment in ("_preflight", "fetch_base"):
+            with self.subTest(stopping_recorded_during=moment):
+                w = self.world(records=25)
+                self.plan_all(w, [1])
+                w.start("single", "deepseek", "d")
+                owner = w.sup if moment == "_preflight" else w.sup.git
+                real = getattr(owner, moment)
+
+                def landed(*a, **k):
+                    self.stop(w)
+                    return real(*a, **k)
+                with mock.patch.object(owner, moment, side_effect=landed) as hit, \
+                     mock.patch.object(w.sup.git, "create_worktree") as worktree:
+                    fetch = mock.patch.object(w.sup.git, "fetch_base", wraps=w.sup.git.fetch_base)
+                    with (fetch if moment == "_preflight" else mock.MagicMock()) as fetched:
+                        w.sup._tick_line_locked(*LINE)            # already past the dispatch-time check
+                    self.assertTrue(hit.called)
+                    if moment == "_preflight":
+                        self.assertFalse(fetched.called)          # no Git work begins after STOPPING
+                    self.assertFalse(worktree.called)
+                self.assertEqual((w.store.incomplete_batches(), w.adapter.launches), ([], []))
+                self.assertEqual(w.store.line(*LINE)["run"], 1)   # the reservation is kept for the next instance
+
+    def test_an_existing_batch_is_still_claimed_normally_while_running(self):
+        w = self.world(records=25)
+        self.plan_all(w, [1])
+        w.start("single", "deepseek", "d")
+        w.tick()
+        self.assertEqual((len(w.store.incomplete_batches()), len(w.adapter.launches)), (1, 1))
+
     def test_a_line_already_inside_its_tick_is_denied_the_launch_permit(self):
         w = self.world(records=25)
         self.plan_all(w, [1])

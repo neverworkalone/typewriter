@@ -376,6 +376,15 @@ class Store:
                                (f["producer"], f["method"])).fetchone()
                 if ln is None or not ln["run"] or ln["drain"] or ln["force_stop"]:
                     raise LineNotRunnable(f"{f['producer']}/{f['method']} 라인이 신규 배치를 받을 수 없는 상태입니다.")
+                # The same write lock the Controller's STOPPING CAS takes (#5162): a claim either commits before
+                # STOPPING is recorded or sees it here. A new instance resets the phase before it dispatches anything.
+                phase = c.execute("SELECT value FROM kv WHERE key=?", (RESTART_PHASE_KEY,)).fetchone()
+                try:
+                    stopping = phase is not None and json.loads(phase["value"]).get("phase") == "STOPPING"
+                except (ValueError, AttributeError):
+                    stopping = False
+                if stopping:
+                    raise LineNotRunnable("Supervisor가 STOPPING 중이라 신규 배치를 만들지 않습니다.")
             if c.execute("SELECT 1 FROM batches WHERE method=? AND producer=? AND state!='COMPLETE'",
                          (f["method"], f["producer"])).fetchone():
                 raise LineBusy(f"{f['producer']}/{f['method']} 라인에 미완료 배치가 있습니다.")
