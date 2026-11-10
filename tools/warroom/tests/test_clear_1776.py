@@ -594,6 +594,42 @@ class ClearRealGit(unittest.TestCase):
         self.assertIsNone(w.store.batch(bid))
         self.assertIsNone(w.store.clear_request("deepseek", "a"))
 
+    def test_restart_hands_unpinned_clear_to_new_supervisor(self):
+        from warroom.gitops import Git
+        from warroom.shell import Runner
+        from warroom.restart_controller import handle_pending_restart, record_runtime, write_restart_request
+        from tests.test_gitops_adapter import ENV
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.paths.repo_root = self.repo
+        git = Git(Runner(), self.repo, ENV, w.paths.worktrees)
+        w.sup.git = git
+        wt = w.paths.worktrees / BRANCH
+        git.fetch_base("master")
+        git.create_worktree(wt, BRANCH, "master")
+        w.store.line("deepseek", "a")
+        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01",
+                                   branch=BRANCH, worktree=str(wt))
+        w.store.update(bid, state="ERROR")
+        self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
+        git.discard_owned(wt, BRANCH)
+        head = git.head(self.repo)
+        request = write_restart_request(w.paths, {"id": 91, "merge_sha": head}, None)
+        absent = mock.Mock(returncode=1, stdout="")
+        def tmux(args, **kwargs):
+            if args[0] == "new-session":
+                record_runtime(w.paths, head, instance="new-instance")
+                w.sup._tick_line("deepseek", "a")
+                return mock.Mock(returncode=0, stdout="")
+            return absent
+        with mock.patch("warroom.restart_controller._lock_held", return_value=False), \
+             mock.patch("warroom.restart_controller._live_runtime_owner", return_value=True), \
+             mock.patch("warroom.restart_controller._tmux", side_effect=tmux):
+            handle_pending_restart(w.paths, w.store)
+        self.assertEqual(json.loads(request.read_text())["state"], "loaded")
+        self.assertIsNone(w.store.batch(bid))
+        self.assertIsNone(w.store.clear_request("deepseek", "a"))
+
     def test_discard_missing_worktree_never_deletes_ref_created_after_check(self):
         self.git.fetch_base("master")
         wt = self.wts / "w1"
