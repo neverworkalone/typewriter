@@ -106,6 +106,34 @@ class RecoveryLaneTests(unittest.TestCase):
         w.store.finish_run(new_run, 0)
         self.assertTrue(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
 
+    def test_legacy_approval_requires_successful_run_started_after_approval(self):
+        fixture = fixtures.NoCodeRecovery()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        w = fixture.w
+        batch_id, defect_id, maint, _ = fixture.prepare_failed_d_task()
+        w.store.update_defect(defect_id, state='RECOVERING')
+        w.store.update_maintenance(101, state='RECOVERING')
+        w.store.update_task(batch_id, '002', state='SAVED')
+        key = f'no_code_approval_{defect_id}'
+        approval = {'status': 'APPROVED', 'recovery_type': 'resume_failed_task', 'approved_at': 100.0}
+        w.store.set(key, json.dumps(approval))
+        with w.store._conn() as c:
+            c.execute('UPDATE runs SET started_at=99 WHERE batch_id=? AND task=?', (batch_id, '002'))
+        self.assertFalse(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
+        run = w.store.add_run(batch_id, 'd_chunk_resume', 'd-session-002', None, '', '', task='002')
+        w.store.finish_run(run, 1)
+        with w.store._conn() as c:
+            c.execute('UPDATE runs SET started_at=101 WHERE id=?', (run,))
+        self.assertFalse(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
+        for invalid in (None, True, -1):
+            w.store.set(key, json.dumps({**approval, 'approved_at': invalid}))
+            self.assertFalse(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
+        w.store.set(key, json.dumps(approval))
+        with w.store._conn() as c:
+            c.execute("UPDATE runs SET exit_status='0' WHERE id=?", (run,))
+        self.assertTrue(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
+
     def test_serial_worktree_progress_is_read_under_source_lane(self):
         fixture = fixtures.NoCodeRecovery()
         fixture.setUp()
