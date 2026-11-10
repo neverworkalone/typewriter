@@ -82,6 +82,85 @@ class MaintainerQueue(unittest.TestCase):
         w.store.update_defect(defect["id"], state="HELD", hold_reason="failure")
         self.assertEqual(control.maintainer_card(w.store, w.cfg)["state"], "ERROR")
 
+    def paused_source_with_maintainer(self):
+        w = self.w
+        source = produce_and_report(w)
+        w.tick()
+        return source, maintainer_row(w), w.store.defects()[0]
+
+    def test_card_follows_the_current_situation(self):
+        w = self.w
+        card = lambda: control.maintainer_card(w.store, w.cfg)
+        source, maint, defect = self.paused_source_with_maintainer()
+
+        w.store.update(maint["id"], state="PRODUCING")   # a running AI outranks an older hold reason
+        w.store.update_defect(defect["id"], state="HELD", hold_reason="old failure")
+        self.assertEqual(card()["state"], "WORKING")
+        self.assertNotIn("보류", card()["text"])
+        w.store.update_defect(defect["id"], state="LINKED", hold_reason=None)
+
+        w.store.update(maint["id"], state="WAITING_REVIEW", pid=None, pr_number=50)
+        self.assertEqual((card()["state"], card()["pr"]), ("WORKING", "PR #50"))
+
+        w.store.update(maint["id"], state="ERROR", error="boom")   # the source batch is still paused: act on it
+        self.assertEqual(card()["state"], "ERROR")
+
+        # Recovery is still being verified: shown even though the attempt and the source batch are COMPLETE.
+        w.store.update(maint["id"], state="COMPLETE", error=None)
+        w.store.update_maintenance(101, state="RECOVERING")
+        w.store.update_defect(defect["id"], state="RECOVERING")
+        w.store.update(source["id"], state="COMPLETE")
+        self.assertEqual(card()["state"], "COMING")
+        self.assertIn("복구 확인 중", card()["text"])
+        self.assertTrue(control.open_maintenance(w.store))
+
+    def test_queued_issue_is_waiting(self):
+        from warroom import views
+        w = self.w
+        w.store.ensure_maintenance(300)
+        card = control.maintainer_card(w.store, w.cfg)
+        self.assertEqual(card["state"], "WAITING")
+        self.assertIn("대기 중", views.maintainer_card_text(card))
+
+    def test_past_error_of_a_finished_source_leaves_the_card_but_stays_clearable(self):
+        w = self.w
+        source, maint, defect = self.paused_source_with_maintainer()
+        w.store.update(maint["id"], state="ERROR", pid=None, error="no PR")
+        w.store.update_defect(defect["id"], state="OVERRIDDEN")
+        w.store.update(source["id"], state="COMPLETE")
+        self.assertEqual(control.maintainer_card(w.store, w.cfg)["state"], "IDLE")
+        self.assertEqual(control.open_maintenance(w.store), [])
+        self.assertEqual(control.urgent_items(w.store, w.cfg), [])
+
+        # The Detail still shows the leftover attempt with its exact Issue, so the existing Clear is accepted.
+        st = control.maintainer_status(w.store, w.cfg, maint["producer"])
+        self.assertEqual((st["issue_number"], st["batch_id"]), (101, maint["id"]))
+        self.assertTrue(st["maintainer"]["residual"])
+        self.assertIn("잔여 Maintainer 기록", st["maintainer"]["text"])
+
+        w.store.ensure_maintenance(300)   # a current Issue takes the card and is not counted with the past record
+        card = control.maintainer_card(w.store, w.cfg)
+        self.assertEqual(card["state"], "WAITING")
+        self.assertIn("#300", card["issue"])
+        self.assertNotIn("건 대기", card["issue"])
+        st = control.maintainer_status(w.store, w.cfg, maint["producer"])   # the attempt on screen keeps its own Issue
+        self.assertEqual((st["issue_number"], st["batch_id"]), (101, maint["id"]))
+        self.assertEqual([n for n, _ in st["maintainer"]["others"]], [300])
+        self.assertEqual(control.request_clear(w.store, maint["producer"], "m", maint["id"], 101), (True, ""))
+
+    def test_held_record_is_past_only_with_explicit_source_completion(self):
+        w = self.w
+        source, maint, defect = self.paused_source_with_maintainer()
+        w.store.update(maint["id"], state="COMPLETE", pid=None)
+        w.store.update_maintenance(101, state="HELD", hold_reason="resume failed")
+        w.store.update_defect(defect["id"], state="HELD", hold_reason="resume failed")
+        self.assertEqual(control.maintainer_card(w.store, w.cfg)["state"], "ERROR")   # source still paused
+        w.store.update(source["id"], state="COMPLETE")
+        self.assertEqual(control.maintainer_card(w.store, w.cfg)["state"], "IDLE")
+        self.assertEqual(control.open_maintenance(w.store), [])
+        w.store.update_defect(defect["id"], batch_id=999999)   # a missing source row is not proof of completion
+        self.assertEqual(control.maintainer_card(w.store, w.cfg)["state"], "ERROR")
+
     def open_pr_for(self, issue: int, pr: int) -> dict:
         w = self.w
         branch = f"maint-{issue}"

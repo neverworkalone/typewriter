@@ -458,10 +458,12 @@ def _maintainer_text(store: Store, cfg: dict, m, deps, full: bool = False) -> st
     """
     n = None if full else 70
     st = m["state"]
+    b = store.batch(m["batch_id"]) if m["batch_id"] else None
+    live = b is not None and b["state"] in _MAINT_AI + _MAINT_PR   # a running attempt outranks an older hold reason
     held = [d for d in deps if d["state"] == "HELD"]
-    if held:
+    if held and not live:
         return f"보류: {_short(held[0]['hold_reason'], n)}"
-    if st == "HELD":
+    if st == "HELD" and not live:
         return f"보류: {_short(m['hold_reason'], n)}"
     if st == "QUEUED":
         if cfg.get("maintainer") is None:
@@ -470,7 +472,8 @@ def _maintainer_text(store: Store, cfg: dict, m, deps, full: bool = False) -> st
         return f"Maintainer 설정 오류 · {_short(problem, n)}" if problem else "Maintainer 대기 중"
     if st == "DONE":
         return "머지·Cleanup 완료 · 종속 배치 수정 반영 중"
-    b = store.batch(m["batch_id"]) if m["batch_id"] else None
+    if st == "RECOVERING":
+        return "원 배치 복구 확인 중"
     if b is None:
         return "Maintainer 준비 중"
     pr = f"PR #{b['pr_number']} · " if b["pr_number"] else ""
@@ -481,20 +484,69 @@ def _maintainer_text(store: Store, cfg: dict, m, deps, full: bool = False) -> st
             "MERGED": f"{pr}머지됨 · Cleanup 중", "CLEANUP": f"{pr}머지됨 · Cleanup 중",
             "PAUSED": f"{pr}Maintainer PAUSED · {_short(b['error'], n)} {retry_hint}",
             "ERROR": f"{pr}Maintainer ERROR · {_short(b['error'], n)} {retry_hint}",
-            "CLEARING": f"{pr}Maintainer Clear 진행 중"}.get(b["state"], b["state"])
+            "CLEARING": f"{pr}Maintainer Clear 진행 중",
+            "COMPLETE": f"{pr}Cleanup 완료 · 머지 확인 중"}.get(b["state"], b["state"])
+
+
+_MAINT_AI = ("PREPARE", "PRODUCING", "FIXING")
+_MAINT_PR = ("WAITING_REVIEW", "MERGED", "CLEANUP", "CLEARING")
+
+
+def _maintenance_residual(store: Store, m, linked) -> bool:
+    """Whether an Issue is only a past Maintainer record: its source work is over and nothing is being done for it.
+
+    Only explicit local evidence counts: every linked defect is RELEASED/OVERRIDDEN or its source batch row exists and
+    is COMPLETE (a missing source row proves nothing). A RECOVERING/QUEUED/DONE Issue is never residual — the
+    Supervisor still has to settle it — and neither is one whose attempt is running or owns a PR lifecycle.
+    """
+    if m["state"] not in ("HELD", "ACTIVE") or not linked:
+        return False
+    b = store.batch(m["batch_id"]) if m["batch_id"] else None
+    if b is not None and (b["state"] in _MAINT_AI + _MAINT_PR or b["pid"] is not None):
+        return False
+    for d in linked:
+        if d["state"] in ("RELEASED", "OVERRIDDEN"):
+            continue
+        source = store.batch(d["batch_id"])
+        if source is None or source["state"] != "COMPLETE":
+            return False
+    return True
+
+
+def _maintenance_split(store: Store) -> tuple[list[tuple], list[tuple]]:
+    """(current, residual) lists of (maintenance row, its dependent defects), oldest first."""
+    linked: dict[int, list] = {}
+    for d in store.defects():
+        if d["issue_number"] is not None:
+            linked.setdefault(d["issue_number"], []).append(d)
+    current, residual = [], []
+    for m in store.maintenance_rows():
+        own = linked.get(m["issue_number"], [])
+        deps = [d for d in own if d["state"] in ("LINKED", "FIX_MERGED", "HELD")]
+        if m["state"] in ("DONE", "HELD") and not deps:
+            continue   # nothing depends on it any more (all released/overridden): closed
+        (residual if _maintenance_residual(store, m, own) else current).append((m, deps))
+    return current, residual
 
 
 def open_maintenance(store: Store) -> list[tuple]:
-    """(maintenance row, its dependent defects) of every open urgent Issue, oldest first."""
-    deps_by_issue: dict[int, list] = {}
-    for d in store.defects(("LINKED", "FIX_MERGED", "HELD")):
-        deps_by_issue.setdefault(d["issue_number"], []).append(d)
-    return [(m, deps_by_issue.get(m["issue_number"], [])) for m in store.maintenance_rows()
-            # DONE/HELD with nothing depending on it any more (all released/overridden) is closed
-            if not (m["state"] in ("DONE", "HELD") and not deps_by_issue.get(m["issue_number"]))]
+    """(maintenance row, its dependent defects) of every urgent Issue that still needs work or attention, oldest first.
+
+    Past records whose source batches already finished are left out (see `residual_maintenance`)."""
+    return _maintenance_split(store)[0]
+
+
+def residual_maintenance(store: Store) -> list[tuple]:
+    """Past Issues that still own an unfinished Maintainer attempt (Detail only: the operator can still Clear it)."""
+    unfinished = {b["id"] for b in store.maintenance_batches()}
+    return [(m, deps) for m, deps in _maintenance_split(store)[1] if m["batch_id"] in unfinished]
 
 
 _BAD_PREFIXES = ("보류", "Maintainer 설정 오류", "Maintainer 미설정")
+
+
+def _needs_attention(text: str) -> bool:
+    return text.startswith(_BAD_PREFIXES) or "PAUSED" in text or "ERROR" in text
 
 
 def urgent_items(store: Store, cfg: dict, full: bool = False) -> list[tuple[str, bool]]:
@@ -509,8 +561,7 @@ def urgent_items(store: Store, cfg: dict, full: bool = False) -> list[tuple[str,
         items.append((f"urgent · 공통 결함 `{d['defect_class']}` · Issue 등록 대기", False))
     for m, deps in open_maintenance(store):
         text = _maintainer_text(store, cfg, m, deps, full)
-        bad = text.startswith(_BAD_PREFIXES) or "PAUSED" in text or "ERROR" in text
-        items.append((f"urgent issue #{m['issue_number']} · {text}", bad))
+        items.append((f"urgent issue #{m['issue_number']} · {text}", _needs_attention(text)))
     return items
 
 
@@ -522,49 +573,57 @@ def urgent_line(store: Store, cfg: dict) -> str:
     return items[0][0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
 
 
-def maintainer_card(store: Store, cfg: dict, issue_number: int | None = None) -> dict:
-    """Status-only content of the Board's Maintainer card (Issue #1684): {"state": IDLE|WORKING|ERROR, "text": str}.
+def _card_rank(store: Store, m, deps) -> tuple[int, int]:
+    """Board card order of one open Issue: running AI, owned PR lifecycle, fix landing / recovery being verified,
+    a failure that needs the operator, then a queued Issue. Running attempts go newest first, the rest oldest first."""
+    b = store.batch(m["batch_id"]) if m["batch_id"] else None
+    if b is not None and (b["state"] in _MAINT_AI or b["pid"] is not None):
+        return 0, -b["id"]
+    if b is not None and b["state"] in _MAINT_PR:
+        return 1, -b["id"]
+    held = m["state"] == "HELD" or any(d["state"] == "HELD" for d in deps)
+    if m["state"] == "ACTIVE" and b is not None and b["state"] == "COMPLETE" and not held:
+        return 1, -b["id"]   # cleaned up; the Supervisor confirms the merge on its next tick
+    if m["state"] in ("DONE", "RECOVERING") and not held:
+        return 2, 0
+    return (4, 0) if m["state"] == "QUEUED" and not held else (3, 0)
 
-    It shows the #1555 Maintainer's persisted progress whichever model runs it; it starts nothing. Colour is meant
-    only while a task exists: IDLE (no open urgent Issue) is the neutral empty card.
+
+def maintainer_card(store: Store, cfg: dict) -> dict:
+    """Status-only content of the Board's Maintainer card (Issue #1684):
+    {"state": IDLE|WORKING|COMING|ERROR|WAITING, "text": str, ...}.
+
+    It shows the #1555 Maintainer's persisted progress whichever model runs it; it starts nothing. The TUI and the
+    web Board both show exactly this: the one Issue that matters now among those still needing work or attention
+    (`open_maintenance`). Past records whose source batches already finished never reach the card; IDLE is the
+    neutral empty card.
     """
-    items = urgent_items(store, cfg)
-    if issue_number is not None:
-        prefix = f"urgent issue #{issue_number} · "
-        items = [item for item in items if item[0].startswith(prefix)]
-    if not items:
-        return {"state": "IDLE", "text": ""}
-    # Prefer the active AI execution, then an owned PR lifecycle, over older parked issues.
-    # Keep all other issues in the count and retain their normal detail view.
-    batches = store.maintenance_batches()
-    live = sorted((b for b in batches if b["state"] in
-                   ("PREPARE", "PRODUCING", "FIXING", "WAITING_REVIEW", "MERGED", "CLEANUP")),
-                  key=lambda b: (b["state"] not in ("PREPARE", "PRODUCING", "FIXING"), -b["id"]))
-    for b in live:
-        row = next((m for m in store.maintenance_rows() if m["batch_id"] == b["id"]), None)
-        if row is not None:
-            prefix = f"urgent issue #{row['issue_number']} · "
-            index = next((i for i, (item, _) in enumerate(items) if item.startswith(prefix)), None)
-            if index is not None:
-                items.insert(0, items.pop(index))
-                break
-    text = items[0][0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
-    out = {"state": "ERROR" if any(bad for _, bad in items[:1]) else "WORKING", "text": text,
-           "issue": "", "pr": "", "detail": "", "elapsed": None}
-    head, sep, rest = items[0][0].partition(" · ")
-    if not head.startswith("urgent issue #"):   # a pending defect report has no Issue yet: keep the plain wrap
+    rows = open_maintenance(store)
+    reported = store.defects(("REPORTED",))
+    more = len(rows) + len(reported) - 1
+    suffix = f" (+{more}건 대기)" if more > 0 else ""
+    out = {"state": "IDLE", "text": "", "issue": "", "pr": "", "detail": "", "elapsed": None}
+    if not rows:
+        if not reported:
+            return {"state": "IDLE", "text": ""}
+        # a pending defect report has no Issue yet: keep the plain wrap
+        out.update(state="WORKING", text=f"urgent · 공통 결함 `{reported[0]['defect_class']}` · Issue 등록 대기" + suffix)
         return out
-    out["issue"] = head + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
-    rows = [m for m in store.maintenance_rows() if f"urgent issue #{m['issue_number']} · " in items[0][0]]
-    b = store.batch(rows[0]["batch_id"]) if rows and rows[0]["batch_id"] else None
-    if (rows and rows[0]["state"] in ("DONE", "RECOVERING") and rows[0]["merge_sha"]
-            and (b is None or b["state"] == "COMPLETE") and out["state"] != "ERROR"):
-        out["state"] = "COMING"
+    ranked = sorted(rows, key=lambda r: _card_rank(store, *r))   # stable: equal ranks stay oldest first
+    m, deps = ranked[0]
+    rank = _card_rank(store, m, deps)[0]
+    rest = _maintainer_text(store, cfg, m, deps)
+    head = f"urgent issue #{m['issue_number']}"
+    out["state"] = ("ERROR" if _needs_attention(rest) or rank == 3 else
+                    "WORKING" if rank < 2 else "COMING" if rank == 2 else "WAITING")
+    out["text"] = f"{head} · {rest}{suffix}"
+    out["issue"] = head + suffix
+    b = store.batch(m["batch_id"]) if m["batch_id"] else None
     if b is not None:   # the same actual elapsed time as every other card
         runs, now = store.runs(b["id"]), time.time()
         if runs:
             out["elapsed"] = elapsed_seconds(runs, now=now)
-    if out["state"] == "ERROR" or not sep:
+    if out["state"] == "ERROR":
         out["detail"] = rest
     elif b is not None and b["pr_number"] and b["state"] in ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING"):
         out["pr"] = f"PR #{b['pr_number']}"
@@ -602,11 +661,20 @@ def maintainer_status(store: Store, cfg: dict, model: str) -> dict:
     st = line_status(store, model, MAINTENANCE_METHOD)
     rows = open_maintenance(store)
     target = maintainer_issue_row(store)
-    info = {"issue": None, "row_state": None, "text": "", "hold": "", "others": [], "drain_note": "", "reasons": {}}
+    unfinished = {b["id"] for b in store.maintenance_batches()}
+    residual = None
+    if st["occupied"] and (target is None or target[0]["batch_id"] not in unfinished):
+        # The unfinished attempt on screen belongs to a past Issue: keep its exact Issue number so Clear still works.
+        residual = next((r for r in residual_maintenance(store) if r[0]["batch_id"] == st["batch_id"]), None)
+        target = residual or target
+    info = {"issue": None, "row_state": None, "text": "", "hold": "", "others": [], "drain_note": "", "reasons": {},
+            "residual": residual is not None}
     if target is not None:
         m, deps = target
-        info.update(issue=m["issue_number"], row_state=m["state"], text=_maintainer_text(store, cfg, m, deps, True),
-                    hold=m["hold_reason"] or "")
+        text = _maintainer_text(store, cfg, m, deps, True)
+        if residual is not None:
+            text = "원 배치 완료 · 잔여 Maintainer 기록 · " + text
+        info.update(issue=m["issue_number"], row_state=m["state"], text=text, hold=m["hold_reason"] or "")
         info["others"] = [(o["issue_number"], _short(_maintainer_text(store, cfg, o, od, False), 90))
                           for o, od in rows if o["issue_number"] != m["issue_number"]]
         if not st["occupied"]:   # no execution: the state is the Issue's own
