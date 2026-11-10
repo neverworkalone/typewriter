@@ -1174,7 +1174,8 @@ class Store:
             query += " AND batch_id=?"
             args.append(batch_id)
         if actionable:
-            query += " AND status != BLOCKED"
+            query += " AND status != ?"
+            args.append("BLOCKED")
         with self._conn() as c:
             return c.execute(query + " ORDER BY requested_at, batch_id LIMIT 1", args).fetchone()
 
@@ -1204,8 +1205,8 @@ class Store:
             query = "SELECT * FROM clear_requests WHERE model=? AND method=?"
             args = [model, method]
             if batch_id is not None:
-                query += " AND batch_id=? AND status != BLOCKED"
-                args.append(batch_id)
+                query += " AND batch_id=? AND status != ?"
+                args.extend([batch_id, "BLOCKED"])
             req = c.execute(query + " ORDER BY requested_at, batch_id LIMIT 1", args).fetchone()
             if req is None:
                 return None

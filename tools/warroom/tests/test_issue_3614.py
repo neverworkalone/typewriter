@@ -300,12 +300,13 @@ class MaintainerQueue(unittest.TestCase):
                 target = maintainer_row(w)
                 w.store.update(target["id"], state="ERROR", pid=None)
                 w.store.finish_runs(target["id"], 0)
-                blocked = w.store.create_batch(method="m", producer=blocked_model, shard="", batch="102",
-                                               branch="maint-102", worktree=str(w.paths.worktrees / "maint-102"),
-                                               state="CLEARING")
                 with w.store._conn() as db:
+                    blocked = db.execute(
+                        "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,model_tier,created_at,updated_at) "
+                        "SELECT method,?,shard,?, ?,worktree,?,model_tier,created_at,updated_at FROM batches WHERE id=?",
+                        (blocked_model, "102", "maint-102", "CLEARING", target["id"])).lastrowid
                     db.execute("INSERT INTO clear_requests(batch_id,model,method,status,prior_state,requested_at) "
-                               "VALUES(?,?,m,BLOCKED,ERROR,0)", (blocked, blocked_model))
+                               "VALUES(?,?,?,?,?,?)", (blocked, blocked_model, "m", "BLOCKED", "ERROR", 0))
                 self.assertTrue(control.request_clear(w.store, target["producer"], "m", target["id"], 101)[0])
                 w.sup._drain.set()
                 self.assertTrue(w.sup._lane_has_drain_work(None))
