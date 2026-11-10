@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import sqlite3
 import time
@@ -732,6 +733,26 @@ class Store:
                                     (batch_id, followup_task, proof.get("baseline_run_id", -1))).fetchone()
                 if (proof.get("status") != "APPROVED" or followup_task not in (proof.get("followup_tasks") or [])
                         or followup is None or followup["state"] != "SAVED" or new_run is None):
+                    return False
+            elif isinstance(proof, dict) and task is not None:
+                baseline = proof.get("baseline_run_id")
+                if "baseline_run_id" not in proof:
+                    # Older persisted approvals predate the run-id boundary. Only a run started strictly after
+                    # their recorded approval can establish new progress; missing or invalid time fails closed.
+                    approved_at = proof.get("approved_at")
+                    if (isinstance(approved_at, bool) or not isinstance(approved_at, (int, float))
+                            or not math.isfinite(approved_at) or approved_at <= 0):
+                        return False
+                    new_run = c.execute(
+                        "SELECT 1 FROM runs WHERE batch_id=? AND task=? AND started_at>? AND ended_at IS NOT NULL AND exit_status='0' LIMIT 1",
+                        (batch_id, task, approved_at)).fetchone()
+                elif type(baseline) is int and baseline >= 0:
+                    new_run = c.execute(
+                        "SELECT 1 FROM runs WHERE batch_id=? AND task=? AND id>? AND ended_at IS NOT NULL AND exit_status='0' LIMIT 1",
+                        (batch_id, task, baseline)).fetchone()
+                else:
+                    return False
+                if new_run is None:
                     return False
             if (d is None or b is None or approval is None
                     or (task is not None and (row is None or row["state"] != "SAVED"))

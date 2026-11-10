@@ -1608,6 +1608,16 @@ class Maintenance:
             return stage2.task_path(task, "shared-defect.json")
         return None
 
+    def _c_report_task_pending(self, source, task: str) -> bool:
+        try:
+            rec = literary.read_active(Path(source["worktree"]), source, int(task))
+            if rec is None or rec.get("repair"):
+                return False
+            literary.read_view(Path(source["worktree"]), rec, int(task))
+            return bool(self.sup.cp._pending(source, rec))
+        except (literary.LiteraryError, OSError, TypeError, ValueError):
+            return False
+
     def _validate_report_task(self, source, evidence: dict, recovery: dict) -> bool:
         """Validate the exact task whose stable shared-defect file caused the automatic pause."""
         owner = evidence.get("task_report")
@@ -1648,6 +1658,11 @@ class Maintenance:
             return False
         if source["method"] == literary.METHOD and source["run_kind"] != "c_parallel":
             return False
+        if source["method"] == literary.METHOD and recovery.get("type") == "resume_report_task":
+            # A stopped worker may have saved before writing its report, while its task row is still FIXQ.
+            # The restart path accepts that checkpoint without a new run; it is not post-approval progress.
+            if not self._c_report_task_pending(source, task):
+                return False
         if source["method"] == STAGE2_METHOD and not str(source["run_kind"] or "").startswith("s2_"):
             return False
         try:
