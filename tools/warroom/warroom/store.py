@@ -1858,6 +1858,61 @@ class Store:
                       (issue_number, "QUEUED", now, now))
             return True
 
+    def link_recurrence(self, defect_id: int, issue_number: int, prior_defect_id) -> bool:
+        """REPORTED -> LINKED on the Issue that owns the failed recovery, and one follow-up attempt queued (#5245).
+
+        The superseded incident leaves the open-defect set (its approval/receipt kv rows are kept unchanged except that an
+        unverified status becomes RECURRENCE, so it is never reused). The Issue is requeued only when no attempt is live and
+        the operator has not cleared it. A repeated call changes nothing.
+        """
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            cur = c.execute("UPDATE defects SET state='LINKED', issue_number=?, updated_at=? WHERE id=? AND state='REPORTED'",
+                            (issue_number, now, defect_id))
+            if cur.rowcount != 1:
+                return False
+            if prior_defect_id is not None:
+                verified = False
+                for key in (f"no_code_approval_{prior_defect_id}", f"defect_recovery_{prior_defect_id}"):
+                    row = c.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+                    try:
+                        value = json.loads(row["value"]) if row else None
+                    except (TypeError, ValueError):
+                        value = None
+                    verified = verified or (isinstance(value, dict) and value.get("status") == "VERIFIED")
+                    if isinstance(value, dict) and value.get("status") not in ("VERIFIED", "RECURRENCE"):
+                        value.update(status="RECURRENCE", superseded_by=defect_id, recurrence_at=now)
+                        c.execute("UPDATE kv SET value=? WHERE key=?", (json.dumps(value, sort_keys=True), key))
+                if not verified:   # a verified recovery stays RELEASED: it remains prior evidence of later incidents
+                    c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason=?, updated_at=? WHERE id=? "
+                              "AND state IN ('RECOVERING','RELEASED','HELD','FIX_MERGED')",
+                              (f"복구가 확인되기 전 재발: 같은 Issue #{issue_number}의 defect #{defect_id}로 이어짐", now, prior_defect_id))
+            m = c.execute("SELECT * FROM maintenance WHERE issue_number=?", (issue_number,)).fetchone()
+            if m is None:
+                c.execute("INSERT INTO maintenance(issue_number,state,created_at,updated_at) VALUES(?,?,?,?)",
+                          (issue_number, "QUEUED", now, now))
+                self._stamp_queued(c, issue_number, now)
+                return True
+            live = c.execute(
+                "SELECT 1 FROM batches b WHERE b.method=? AND b.batch=? AND "
+                "(b.state NOT IN ('COMPLETE','ERROR','PAUSED') OR b.pid IS NOT NULL OR EXISTS "
+                "(SELECT 1 FROM runs r WHERE r.batch_id=b.id AND r.ended_at IS NULL)) LIMIT 1",
+                (MAINTENANCE_METHOD, str(issue_number))).fetchone()
+            if m["state"] in ("HELD", "DONE", "RECOVERING") and m["hold_reason"] != CLEARED_HOLD and not live:
+                c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                          (f"maintenance_prior_{issue_number}_{m['batch_id']}",
+                           json.dumps({k: m[k] for k in m.keys()}, sort_keys=True, default=str)))
+                c.execute("UPDATE maintenance SET state='QUEUED', batch_id=NULL, hold_reason=NULL, pr_number=NULL, "
+                          "merge_sha=NULL, updated_at=? WHERE issue_number=?", (now, issue_number))
+                self._stamp_queued(c, issue_number, now)
+            return True
+
+    def maintenance_attempt_count(self, issue_number: int) -> int:
+        with self._conn() as c:
+            return c.execute("SELECT COUNT(*) AS n FROM batches WHERE method=? AND batch=?",
+                             (MAINTENANCE_METHOD, str(issue_number))).fetchone()["n"]
+
     # --- Maintainer task record: one row per urgent Issue ---
     def ensure_maintenance(self, issue_number: int):
         now = time.time()
@@ -1879,6 +1934,71 @@ class Store:
         cols = ", ".join(f"{k}=?" for k in fields)
         with self._conn() as c:
             c.execute(f"UPDATE maintenance SET {cols} WHERE issue_number=?", (*fields.values(), issue_number))
+
+    def resume_maintainer_continuation(self, batch_id: int) -> bool:
+        """Give the free Maintainer slot to one unfinished attempt waiting in PAUSED/maintainer_continuation (#5245).
+
+        One transaction re-checks the single-execution boundary, the Issue's ownership of this attempt and the
+        operator controls (Stop, Clear, Retry pin). A produce attempt returns to PRODUCING with its worktree and session,
+        so the existing relaunch path resumes it with the recovery prompt. A fix attempt releases only the CLAIMED events
+        of its ended, unproven fix runs and returns to its PR watch, which re-reads the current PR HEAD and launches only
+        the events still unanswered there; proven HANDLED replies are kept.
+        """
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            b = c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if (b is None or b["method"] != MAINTENANCE_METHOD or b["state"] != "PAUSED"
+                    or b["pause_reason"] != "maintainer_continuation" or b["pid"] is not None
+                    or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND ended_at IS NULL", (batch_id,)).fetchone()):
+                return False
+            if c.execute(
+                    "SELECT 1 FROM batches x WHERE x.method=? AND "
+                    "(x.state IN ('PREPARE','PRODUCING','FIXING') OR x.pid IS NOT NULL OR EXISTS "
+                    "(SELECT 1 FROM runs r WHERE r.batch_id=x.id AND r.ended_at IS NULL)) LIMIT 1",
+                    (MAINTENANCE_METHOD,)).fetchone():
+                return False
+            m = c.execute("SELECT * FROM maintenance WHERE issue_number=?", (int(b["batch"]),)).fetchone()
+            if m is None or m["batch_id"] != batch_id or m["state"] != "ACTIVE":
+                return False
+            line = c.execute("SELECT force_stop,retry_batch FROM lines WHERE model=? AND method=?",
+                             (b["producer"], MAINTENANCE_METHOD)).fetchone()
+            if ((line is not None and (line["force_stop"] or line["retry_batch"] == batch_id))
+                    or c.execute("SELECT 1 FROM clear_requests WHERE batch_id=?", (batch_id,)).fetchone()
+                    or c.execute("SELECT 1 FROM kv WHERE key=?",
+                                 (f"stop_pin_{b['producer']}_{MAINTENANCE_METHOD}",)).fetchone()):
+                return False
+            raw = c.execute("SELECT value FROM kv WHERE key=?", (f"m_continuation_{batch_id}",)).fetchone()
+            try:
+                record = json.loads(raw["value"]) if raw else None
+            except (TypeError, ValueError):
+                record = None
+            if not isinstance(record, dict) or record.get("kind") not in ("produce", "fix"):
+                return False
+            if record["kind"] == "fix":
+                if b["pr_number"] is None:
+                    return False
+                c.execute("DELETE FROM handled_events WHERE batch_id=? AND pr=? AND status='CLAIMED' AND run_id IN "
+                          "(SELECT id FROM runs WHERE batch_id=? AND ended_at IS NOT NULL)",
+                          (batch_id, b["pr_number"], batch_id))
+                c.execute("DELETE FROM kv WHERE key=?", (f"fix_claim_{batch_id}",))
+                c.execute("DELETE FROM kv WHERE key=?", (f"last_poll_{batch_id}",))
+                state = "WAITING_REVIEW"
+            else:
+                state = "PRODUCING"
+            c.execute("UPDATE batches SET state=?, pause_reason='', error=NULL, retry_after=NULL, retries=0, "
+                      "updated_at=? WHERE id=?", (state, now, batch_id))
+            c.execute("DELETE FROM kv WHERE key=?", (f"m_continuation_{batch_id}",))
+            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                      (f"m_continuation_resumed_{batch_id}", json.dumps({**record, "resumed_at": now}, sort_keys=True)))
+            self._add_event(c, batch_id, f"Maintainer continuation resumed [{record.get('reason')}] -> {state}")
+            return True
+
+    @staticmethod
+    def _stamp_queued(c, issue_number: int, now: float) -> None:
+        """The time an Issue (re)entered the Maintainer queue; kept while it waits (row updated_at is not stable)."""
+        c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                  (f"m_queued_at_{issue_number}", repr(now)))
 
     def maintenance_batch_open(self) -> bool:
         """Whether the one Maintainer AI execution/modification slot is occupied.
@@ -1922,6 +2042,7 @@ class Store:
                                                  worktree, "PREPARE", "free", now, now)).lastrowid
             c.execute("UPDATE maintenance SET state='ACTIVE', batch_id=?, updated_at=? WHERE issue_number=?",
                       (bid, now, issue_number))
+            c.execute("DELETE FROM kv WHERE key=?", (f"m_queued_at_{issue_number}",))
             return bid
 
     def maintenance_drained(self) -> bool:
@@ -2000,6 +2121,7 @@ class Store:
                 cur = c.execute("UPDATE maintenance SET state='QUEUED', hold_reason=NULL, updated_at=? "
                                 "WHERE issue_number=? AND state='HELD' AND batch_id IS NULL", (now, issue_number))
                 if cur.rowcount == 1:
+                    self._stamp_queued(c, issue_number, now)
                     return True
             retry = self._undetermined_diagnosis_retry(c, issue_number)
             if retry is None:
@@ -2012,6 +2134,7 @@ class Store:
                             (now, issue_number, attempt["id"]))
             if cur.rowcount != 1:
                 return False
+            self._stamp_queued(c, issue_number, now)
             for defect in incidents:
                 c.execute("UPDATE defects SET state='LINKED', hold_reason=NULL, updated_at=? WHERE id=? AND state='HELD'",
                           (now, defect["id"]))

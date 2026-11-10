@@ -80,6 +80,21 @@ def run_maintainer_to_merge(w, issue, pr=50, merge_sha=MERGE):
     w.tick(3)   # merged=true -> MERGED -> CLEANUP -> COMPLETE
 
 
+def assert_continued(case, w, m, reason):
+    """#5245: an unaccepted no-PR result is neither completion nor a parked ERROR; the same attempt continues."""
+    current = w.store.batch(m["id"])
+    case.assertNotIn(current["state"], ("ERROR", "COMPLETE"), current["error"])
+    case.assertIsNone(w.store.get(f"m_diag_{m['id']}"))
+    case.assertEqual((w.store.maintenance(101)["state"], w.store.maintenance(101)["batch_id"]), ("ACTIVE", m["id"]))
+    rejection = json.loads((Path(m["worktree"]) / ".warroom-scratch/incident-diagnosis-rejection.json").read_text("utf-8"))
+    case.assertEqual(rejection["reason"], reason)
+    case.assertEqual(rejection["attempt"], m["id"])
+    for d in [x for x in w.store.defects() if x["source"] == "incident" and x["issue_number"] == 101]:
+        case.assertEqual(d["state"], "LINKED")   # nothing resolved or handed off
+        source = w.store.batch(d["batch_id"])
+        case.assertEqual((source["state"], source["pause_reason"]), ("PAUSED", "shared_defect"))
+
+
 class SharedDefectFlow(unittest.TestCase):
     def setUp(self):
         self.w = world()
@@ -959,48 +974,44 @@ class AutonomousIncident(unittest.TestCase):
         self.assertFalse(any(current_marker in c["body"] for c in w.gh.issue_comments_[101]))
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick(3)
-        self.assertEqual(w.store.batch(second["id"])["state"], "ERROR")
-        self.assertIsNone(w.store.get(f"m_diag_{second['id']}"))
-        self.assertEqual(w.store.maintenance(101)["batch_id"], second["id"])
+        assert_continued(self, w, second, "comment_missing")
 
-    def test_classification_without_a_proven_blocker_keeps_the_maintainer_error(self):
-        for i, outcome in enumerate(("no_code_fix", "external", "undetermined", "recurrence")):
+    def test_classification_without_a_proven_blocker_is_refused_and_continues(self):
+        for i, (outcome, reason) in enumerate((("no_code_fix", "result_schema"), ("external", "result_schema"),
+                                               ("undetermined", "undetermined_unproven"),
+                                               ("recurrence", "result_schema"))):
             if i:
                 self.tearDown()
                 self.setUp()
             w, m = self.diagnose(outcome=outcome)
-            self.assertEqual(m["state"], "ERROR", outcome)
-            self.assertEqual(w.store.maintenance(101)["state"], "ACTIVE", outcome)
+            assert_continued(self, w, m, reason)
             d, = incidents(w)
             self.assertEqual(d["state"], "LINKED", outcome)
             self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED", outcome)
 
-    def test_a_fabricated_blocker_does_not_release_the_slot(self):
+    def test_a_fabricated_blocker_is_refused_and_continues(self):
         w, m = self.diagnose(blocked=False, blocker={"observation": "checkpoint", "reason": "invented"})
-        self.assertEqual(m["state"], "ERROR")
-        self.assertEqual(w.store.maintenance(101)["state"], "ACTIVE")
+        assert_continued(self, w, m, "undetermined_unproven")
         d, = incidents(w)
         self.assertEqual(d["state"], "LINKED")
         self.assertEqual(w.store.batch(d["batch_id"])["state"], "PAUSED")
 
     def test_noncritical_unknown_observation_does_not_prove_an_evidence_blocker(self):
         w, m = self.diagnose(blocked=True, unknown_observation="events")
-        self.assertEqual(m["state"], "ERROR")
-        self.assertEqual(w.store.maintenance(101)["state"], "ACTIVE")
+        assert_continued(self, w, m, "undetermined_unproven")
 
     def test_prior_attempt_marker_cannot_authorize_a_new_handoff(self):
         w, m = self.diagnose(blocked=True, stale_marker=True)
-        self.assertEqual(m["state"], "ERROR")
-        self.assertEqual(w.store.maintenance(101)["state"], "ACTIVE")
+        assert_continued(self, w, m, "comment_missing")
 
-    def test_diagnosis_missing_or_with_a_commit_keeps_the_existing_error(self):
-        for kwargs in ({"valid": False}, {"commit": True, "blocked": True}):
+    def test_diagnosis_missing_or_with_a_commit_continues_with_its_reason(self):
+        for kwargs, reason in (({"valid": False}, "no_pr_no_result"),
+                               ({"commit": True, "blocked": True}, "handoff_worktree_not_clean")):
             with self.subTest(kwargs):
                 self.tearDown()
                 self.setUp()
                 w, m = self.diagnose(**kwargs)
-                self.assertEqual(m["state"], "ERROR")
-                self.assertIn("PR을 찾지 못했습니다", m["error"])
+                assert_continued(self, w, m, reason)
 
     def test_fix_to_supervisor_code_waits_until_the_running_process_has_it(self):
         w = self.w
@@ -1083,7 +1094,7 @@ class AutonomousIncidentReview(unittest.TestCase):
         w.store.set(f"m_diag_{m['id']}", json.dumps({"issue": 102, "outcome": "undetermined",
                                                      "base": w.git.local_head, "branch": m["branch"],
                                                      "worktree": m["worktree"]}))
-        self.assertFalse(w.sup.maint.finish_diagnosis(m))
+        self.assertEqual(w.sup.maint.finish_diagnosis(m).kind, "BLOCKED")
         self.assertTrue(wt.exists())
         self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
 
@@ -1869,7 +1880,8 @@ class IncidentRecoveryProof(unittest.TestCase):
     # ---- recurrence ---------------------------------------------------------------------------------------------------
     EVIDENCE = {"kind": "boundary", "site": "d-head", "base": HEAD1, "head": MERGE}
 
-    def test_same_structured_evidence_after_the_fix_is_not_received_again_and_says_so_once(self):
+    def test_same_structured_evidence_after_the_fix_continues_on_the_same_issue_once(self):
+        """#5245: the same evidence after a merged fix is not parked for the operator; the fixing Issue continues."""
         w = self.w
         b = make_batch(w, "d", run_kind="d_chunk_resume", session_id="ses_1")
         w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
@@ -1887,9 +1899,22 @@ class IncidentRecoveryProof(unittest.TestCase):
         for _ in range(3):
             w.sup.maint._intake_errors()
         w.sup.maint.step()
-        self.assertEqual((len(incidents(w)), w.store.batch(b["id"])["state"], w.store.batch(b["id"])["error_seq"]), (1, "ERROR", 2))
+        w.sup.maint.step()
+        self.assertEqual((len(incidents(w)), w.store.batch(b["id"])["state"], w.store.batch(b["id"])["error_seq"]),
+                         (2, "PAUSED", 2))
+        again = incidents(w)[-1]
+        self.assertEqual((again["event_key"], again["state"], again["issue_number"]),
+                         (f"incident:{b['id']}:e2", "LINKED", d["issue_number"]))   # same Issue, no new one
+        superseded = w.store.defect(d["id"])   # its recovery was never verified: superseded, receipt kept as evidence
+        self.assertEqual(superseded["state"], "OVERRIDDEN")
+        self.assertIn(f"defect #{again['id']}", superseded["hold_reason"])
+        receipt = json.loads(w.store.get(f"defect_recovery_{d['id']}"))
+        self.assertEqual((receipt["status"], receipt["superseded_by"]), ("RECURRENCE", again["id"]))
+        self.assertIn(w.store.maintenance(d["issue_number"])["state"], ("QUEUED", "ACTIVE"))
         bodies = [c["body"] for c in w.gh.issue_comments_.get(d["issue_number"], [])]
-        self.assertEqual(sum(f"incident-recurrence-{b['id']}-2" in x for x in bodies), 1)
+        self.assertEqual(sum(f"incident:{b['id']}:e2" in x for x in bodies), 1)
+        w.sup.maint._intake_errors()   # the same event seen again creates nothing more
+        self.assertEqual(len(incidents(w)), 2)
         # a different fingerprint, and one with no evidence at all, are new incidents that list the earlier one
         w.store.update(b["id"], state="PRODUCING", error=None)
         w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="elsewhere")

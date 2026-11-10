@@ -1188,18 +1188,6 @@ def _candidate_content_issues(stderr: str, sense_ids: list[str]) -> tuple[int, l
     return issue_count, valid
 
 
-def clear_candidates(runner, env, worktree, b, sense_ids: list[str]) -> dict:
-    """Persist an empty candidate list for exact source-bound senses, preserving checkpoint evidence."""
-    n = names(b)
-    data = _json(cli(runner, env, worktree, "clear-candidates", "--checkpoint", n.checkpoint,
-                     "--canonical", n.canonical, "--sense-ids", ",".join(sense_ids)),
-                 "literary clear-candidates")
-    if data.get("status") != "CLEARED" or data.get("senses") != len(sense_ids) \
-            or not isinstance(data.get("candidates"), int) or data["candidates"] < 0:
-        raise LiteraryError("clear-candidates 결과가 정확한 sense 폴백을 증명하지 않습니다")
-    return data
-
-
 def _coverage(data: dict) -> dict:
     """records/senses/candidates from `export` (records, senses, candidates) or `validate` (recordCount, ...)."""
     pick = ((("records", "senses", "candidates")), (("recordCount", "senseCount", "candidateCount")))

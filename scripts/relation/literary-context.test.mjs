@@ -1149,6 +1149,46 @@ test('a complete v2 evidence checkpoint exports its KEEP candidates without the 
   }
 });
 
+test('a resumable v2 checkpoint gets the same exact local Candidate v1 removal, never a whole-sense clear (#5245)', async () => {
+  // Before #5245 the local removal skipped v2 checkpoints, so export rejected them and the Supervisor's only fallback
+  // (clear-candidates, v3-only) could not run either: the batch stopped. Both v2 sense shapes are repaired here.
+  const fixture = await makeFixture({ unitCount: 1, firstForm: '구름', firstSenseGlosses: ['첫 뜻', '두 번째 뜻'] });
+  try {
+    const items = (await chunk(fixture)).items;
+    await submit(fixture, [{ sense_id: items[0].sense_id, verified: [items[0].contexts[0].k], candidates: ['서리'] }]);
+    const checkpoint = await load(fixture);
+    checkpoint.contract = 'literary-checkpoint-v2';
+    const submitted = checkpoint.records[0].senses[0].submission;
+    const verified = structuredClone(submitted.verified);
+    submitted.candidates.push('구름');   // exact source-lemma repeat in a chunk-submitted sense
+    const sweep = { results: { image: ['겨울 아침', '구름'], action: [], emotion: [], sensation: [], scene_situation: [], causality: [], metaphor_contrast: [] } };
+    const reviewed = checkpoint.records[0].senses[1];
+    Object.assign(reviewed, {
+      search: { status: 'SEARCHED', total_hits: 1 },
+      contexts: [{ locator_key: 'k', judgment: 'VERIFIED', sweeps: { 1: sweep, 2: { ...sweep, independent_read_attested: true } } }],
+      candidate_reviews: [{ normalized: '겨울 아침', candidate: '겨울 아침', decision: 'KEEP', kind: 'phrase' },
+        { normalized: '구름', candidate: '구름', decision: 'KEEP', kind: 'word' }],
+    });
+    delete reviewed.submission;
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
+
+    const output = await exportOutput(fixture);
+    assert.equal(output.coverage.candidates, 2);
+    const repaired = await load(fixture);
+    assert.equal(repaired.contract, 'literary-checkpoint-v2');
+    assert.deepEqual(repaired.records[0].senses[0].submission.candidates, ['서리']);
+    assert.deepEqual(repaired.records[0].senses[0].submission.verified, verified);
+    assert.deepEqual(repaired.records[0].senses[1].candidate_reviews.map((review) => [review.candidate, review.decision]),
+      [['겨울 아침', 'KEEP'], ['구름', 'REMOVE']]);
+    assert.deepEqual(repaired.records[0].senses[1].contexts, checkpoint.records[0].senses[1].contexts);
+    const rows = (await readFile(path.join(fixture.scratchDirectory, '001_01_c_codex.jsonl'), 'utf8'))
+      .trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepEqual(rows[0].senses.map((sense) => sense.candidates), [['서리'], ['겨울 아침']]);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('export removes one normalized duplicate and reuses the checkpoint output after later edits', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
   try {

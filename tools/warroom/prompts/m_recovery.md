@@ -3,7 +3,9 @@
 
 먼저 최신 worktree 상태와 이미 열린 PR을 확인한다. 기존 PR이 있으면 현재 Issue의 구현과 리뷰 수정을 이어가고 같은 PR만 유지한다. PR이 아직 없으면 기존 run log, 조사 메모와 uncommitted 작업을 버리지 말고 실제 원인을 계속 조사한다. 코드 수정이 필요하면 공통 원인을 고쳐 하나의 PR을 만든다. 원인이 원 task의 입력·저장 판정 실수이면 그 정확한 task와 chunk만 지목해 근거를 대조한다. C/D/Stage 2/Stage 3 task의 저장·checkpoint·session 경계를 임의로 바꾸지 않는다.
 
-이전 round가 investigate였으면 댓글의 concrete next action부터 수행한다. 같은 세션에서 더 조사할 단계가 남았을 때만 새 structured result를 제출한다. PR 생성 실패, 인증 실패, AI의 정상 종료는 no-code 결과가 아니다. 조사 미완료를 같은 결과로 반복하지 말고, 새로 확인된 사실과 다음 차이를 기록한다.
+먼저 `.warroom-scratch/incident-diagnosis-rejection.json`이 있으면 읽는다. 이 파일은 직전 실행이 Supervisor에서 거부되었거나 PR·구조화 결과 없이 끝난 정확한 사유(`reason`, `fact`, 요구되는 계약)를 담는다. 그 사유부터 해소한다. 이전 round가 investigate였으면 댓글과 history의 concrete next action부터 수행한다. PR 생성 실패, 인증 실패, AI의 정상 종료는 no-code 결과가 아니다. 이미 거부된 결과나 이미 실패한 복구 인가(재발한 no-code resume 포함)를 그대로 다시 제출하지 않는다. 같은 복구가 실패했다면 왜 기존 retry·correction·fallback 경로가 완료하지 못했는지 조사해 공통 원인 수정 또는 누락된 fallback 구현 PR로 진행한다. 한 실행이 끝날 때는 확인한 사실·기각한 가설·남은 구체적 단계를 인계한다. "재현하지 못했다"·"AI의 실수다"는 종료 사유가 아니다.
+
+retry는 transient 실행 실패에만 쓰는 무변경 재실행이고, 공식 진단이 지목한 오류를 고치는 것은 correction, 끊긴 작업을 이어가는 것은 continuation이다. 이 세션은 continuation 또는 correction이다.
 
 현재 PR이 없고 원인과 복구가 확정되면 .warroom-scratch/incident-diagnosis.json에 새 structured result를 원자적으로 쓴다. 요청 파일 값과 정확히 같은 issue, attempt, round, defect_id, event_key, batch_id, source_head, evidence_sha256를 넣고, scope에는 exact task와 chunk를 넣는다. outcome은 no_code_resume, investigate, external, undetermined 중 하나다. no_code_resume은 evidence의 `task_report`가 지정한 미저장 자동 보고 task에 recovery.type=resume_report_task와 동일 task/chunk를, 그 외 검증된 FAILED task에 resume_failed_task와 동일 task/chunk를, legacy serial에 resume_same_session와 같은 활성 chunk를 사용한다. investigate는 recovery.type=continue_same_session과 concrete action을 사용한다. external은 recovery.type=external_prerequisite와 dependency를 구체화한다. undetermined는 Supervisor가 재검증 가능한 구체적 증거 blocker가 있을 때만 쓴다.
 

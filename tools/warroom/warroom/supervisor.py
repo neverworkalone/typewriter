@@ -36,6 +36,7 @@ from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked, ResourceFenced
 from .lanes import Lanes
 from .launch_gate import LaunchDenied, LaunchGate
+from . import maintenance as maint_results
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
 from .usage import submit_attempts
@@ -111,6 +112,11 @@ def _single_launch_scope(fn):
         with self.launch_gate.permit():
             return fn(self, *args, **kwargs)
     return wrapped
+
+
+class FixIncomplete(str):
+    """A review-fix outcome whose reply/completion record is missing (#5245). It is still a plain problem text for every
+    producer; the Maintainer continues the same attempt with it instead of parking an ERROR."""
 
 
 class Supervisor:
@@ -1402,7 +1408,8 @@ class Supervisor:
     def _clear_teardown(self, b, req):
         branch, wt = b["branch"], Path(b["worktree"])
         maint = b["method"] == MAINTENANCE_METHOD
-        if branch != (f"maint-{b['batch']}" if maint else f"{b['method']}-{b['producer']}-{b['shard']}-{b['batch']}"):
+        if not (re.fullmatch(rf"maint-{re.escape(str(b['batch']))}(?:-[0-9]+)?", branch) if maint
+                else branch == f"{b['method']}-{b['producer']}-{b['shard']}-{b['batch']}"):
             raise RecoveryBlocked(f"브랜치 {branch!r}가 War Room 소유 이름이 아닙니다")
         if maint:   # the Issue's task row must still point at exactly this execution (never another Issue's)
             row = self.store.maintenance(int(b["batch"])) if str(b["batch"]).isdigit() else None
@@ -2822,11 +2829,14 @@ class Supervisor:
                                 or info.get("state") != "open" or info.get("merged")):
                             return self._fail(b, "ERROR", "Maintainer PR 소유권 확인 실패. 보존합니다.")
                         if problem := self._complete_producer_fix_events(b, info):
-                            return self._fail(b, "ERROR", problem)
+                            return self._maintainer_fix_problem(b, problem)
                     self._to_review(b, info)
                 return
             if b["method"] == MAINTENANCE_METHOD:
-                return self._fail(b, "ERROR", "Maintainer 수정 실행의 완료 증거가 없습니다. 자동 재실행하지 않고 보존합니다.")
+                # Never relaunch blindly, never park it (#5245): the continuation queue releases only this attempt's
+                # unproven CLAIMED events and returns the PR watch to the current HEAD's unanswered events.
+                return self.maint.continue_later(b, "fix_incomplete", "Maintainer 수정 실행의 완료 증거가 없습니다. "
+                                                 + self._maintainer_run_facts(b), "fix")
             if b["method"] == STAGE2_METHOD and b["run_kind"] == "fix_resume" and self.store.get(f"s2_unpushed_fix_resume_{b['id']}"):
                 return self._fail(b, "ERROR", "Stage 2 리뷰 수정 재개 결과가 확인되지 않아 새 세션을 시작하지 않습니다. worktree와 PR을 보존합니다.")
             if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD):
@@ -3310,8 +3320,8 @@ class Supervisor:
             if b["state"] == "PRODUCING":
                 info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
                 if info is None:
-                    if b["method"] == MAINTENANCE_METHOD and self.maint.finish_diagnosis(b):
-                        return   # proof-backed blocked handoff (#3409): incident HELD/PAUSED, not production completion
+                    if b["method"] == MAINTENANCE_METHOD:
+                        return self._maintainer_without_pr(b)
                     refusal = self._adapter(b["producer"]).policy_refusal(Path(b["log_file"]))
                     if refusal:   # the local CLI policy stopped the PR step: keep everything, wait for the operator
                         return self._fail(b, "PAUSED", f"{refusal}. PR이 만들어지지 않았습니다. 로컬 설정을 확인한 뒤 "
@@ -3342,6 +3352,8 @@ class Supervisor:
                 if info.get("state") != "open" or info.get("merged"):
                     return self._fail(b, "ERROR", "리뷰 수정 완료 시 소유 PR이 열린 상태가 아닙니다. worktree·PR을 보존합니다.")
                 if problem := self._complete_producer_fix_events(b, info if b["method"] == MAINTENANCE_METHOD else None):
+                    if b["method"] == MAINTENANCE_METHOD:
+                        return self._maintainer_fix_problem(b, problem)
                     return self._fail(b, "ERROR", problem)
             if b["method"] == STAGE2_METHOD:
                 if problem := self._stage2_fix_result_problem(b, info):
@@ -3353,6 +3365,64 @@ class Supervisor:
             elif info["head_sha"] == b["head_sha"]:
                 self.store.log(b["id"], "수정 실행이 끝났지만 새 HEAD 없음 (코멘트로만 응답했을 수 있음)", "warn")
         self._to_review(b, info)
+
+    def _maintainer_fix_problem(self, b, problem: str) -> None:
+        """A missing reply or completion record of a Maintainer fix continues the attempt; other problems stop it."""
+        if isinstance(problem, FixIncomplete):
+            return self.maint.continue_later(self.store.batch(b["id"]), "fix_incomplete",
+                                             f"{problem} {self._maintainer_run_facts(b)}", "fix")
+        return self._fail(b, "ERROR", problem)
+
+    def _maintainer_without_pr(self, b) -> None:
+        """A Maintainer run ended without an adoptable PR: hand it off, continue it, or stop at a boundary (#5245).
+
+        A run ending (exit 0, a "cannot" answer, a comment) is never completion and never a parked ERROR by itself.
+        Only a verified handoff completes the attempt; an integrity/ownership boundary stops it with its reason; every
+        other case continues the same attempt with the exact reason through the continuation queue.
+        """
+        result = self.maint.finish_diagnosis(b)
+        if result.kind in (maint_results.HANDED_OFF, maint_results.DEFERRED):
+            return   # proof-backed handoff (#3409) or a later re-judgement: not production completion
+        if result.kind == maint_results.BLOCKED:
+            current = self.store.batch(b["id"])
+            if current is not None and current["state"] == "PRODUCING":
+                self._fail(current, "ERROR", f"Maintainer 결과를 받을 수 없는 무결성·소유권 경계 [{result.reason}]: "
+                           f"{result.fact}. worktree·증거를 보존합니다. 경계를 확인한 뒤 운영자 Retry로 같은 attempt를 재개합니다.")
+            return
+        if result.kind == maint_results.NOT_DIAGNOSIS or result.reason == "no_pr_no_result":
+            refusal = self._adapter(b["producer"]).policy_refusal(Path(b["log_file"]))
+            if refusal:   # the local CLI policy stopped the PR step: an independently confirmed external condition
+                return self._fail(b, "PAUSED", f"{refusal}. PR이 만들어지지 않았습니다. 로컬 설정을 확인한 뒤 "
+                                  "Retry 하세요 (worktree·브랜치·세션 보존).")
+            result = maint_results.DiagnosisResult(maint_results.CONTINUE, "no_pr_no_result",
+                                                   "PR도 구조화 진단 결과도 없이 실행이 끝났습니다. " + self._maintainer_run_facts(b))
+        self.maint.continue_later(b, result.reason, result.fact, "produce")
+
+    def _maintainer_run_facts(self, b) -> str:
+        """Observed facts of the ended run, for the next run's handoff; an unobservable fact is stated as unknown."""
+        facts = []
+        runs = self.store.runs(b["id"])
+        facts.append(f"exit={runs[0]['exit_status'] if runs else 'unknown'}")
+        try:
+            cls = self._classify_run(b["producer"], b["log_file"])
+            if cls:
+                facts.append(f"run_class={cls}")
+        except Exception:
+            facts.append("run_class=unknown")
+        wt = Path(b["worktree"])
+        try:
+            base = self.store.get(f"m_base_head_{b['id']}")
+            head = self.git.head(wt)
+            facts.append(f"head={'시작 HEAD 그대로' if head == base else (head or 'unknown')[:12]}")
+            facts.append(f"remote_branch={'있음' if self.git.remote_head(b['branch']) else '없음'}")
+            dirty = self.git.dirty(wt).strip()
+            facts.append(f"uncommitted={len(dirty.splitlines()) if dirty else 0}")
+        except Exception:
+            facts.append("git=unknown")
+        cause = self.maint.resolved_note(b, short=True)
+        if cause:
+            facts.append(cause)
+        return ", ".join(facts)
 
     def _stage3_fix_result_problem(self, b, info) -> str | None:
         """Accept a Stage 3 review fix only when its owned PR still has the shard scope and verify passes on its HEAD."""
@@ -7540,13 +7610,13 @@ class Supervisor:
             except (TypeError, ValueError):
                 return self._fail(b, "ERROR", "Candidate v1 복구 진행 상태가 손상되어 자동 재호출을 중단합니다.")
             if current_issues >= previous_issues:
-                try:
-                    cleared = literary.clear_candidates(self.runner, self._c_env(b), wt, b, list(exp.repair_ids))
-                except (literary.LiteraryError, OSError, ValueError) as e:
-                    return self._fail(b, "ERROR", f"정확한 Sense 후보 비우기 실패: {e}. worktree를 보존합니다.")
+                # Export already removes every exact, source-bound content error itself (v3 and resumable v2, #5245).
+                # One left after the AI correction is a defect of that shared path, not a reason to empty valid
+                # candidates of whole Senses: stop with the evidence so the incident intake hands it to the Maintainer.
                 self.store.delete(key)
-                self.store.log(b["id"], f"Candidate v1 내용 오류가 줄지 않아 해당 Sense 후보를 비웠습니다 ({cleared['senses']} senses / {cleared['candidates']} candidates)", "warn")
-                return self._c_finalize(b)
+                return self._fail(b, "ERROR", f"Candidate v1 내용 오류 {current_issues}건이 export의 후보 국소 제거와 Sense "
+                                  f"재판정 후에도 남았습니다 (sense {list(exp.repair_ids)}). 정상 후보를 비우지 않고 "
+                                  f"checkpoint·worktree를 보존합니다: {exp.diagnostic[-300:]}")
         with self.launch_gate.permit():   # the repair round is reserved only by an admitted launch
             self.store.set(key, str(current_issues))
             try:
@@ -8776,7 +8846,7 @@ class Supervisor:
                     or run is None or claim.get("run_id") != run["id"] or not run["kind"].startswith("fix")
                     or run["ended_at"] is None or str(run["exit_status"]) != "0"
                     or self.store.get(f"verified_completion_run_{b['id']}") != str(run["id"])):
-                return "수정 완료 증거가 현재 PR/HEAD에 배정된 fix 실행과 일치하지 않습니다. 리뷰 이벤트는 미완료로 보존했습니다."
+                return FixIncomplete("수정 완료 증거가 현재 PR/HEAD에 배정된 fix 실행과 일치하지 않습니다. 리뷰 이벤트는 미완료로 보존했습니다.")
             conflict_keys = [key for key in claim["event_keys"] if key.startswith("conflict:")]
             if conflict_keys:
                 current = self.gh.pull(b["pr_number"])
@@ -8828,10 +8898,10 @@ class Supervisor:
                              completed_at=self.clock() if event_replies else None)
                 self.store.set(f"fix_claim_{b['id']}", json.dumps(claim, sort_keys=True))
                 if not event_replies:
-                    return (f"fix 실행 #{run['id']}의 성공 응답은 확인했지만 PR #{b['pr_number']}에 리뷰 이벤트 키가 표시된 "
-                            "실행 후 답글이 없습니다. 이벤트는 미완료로 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
-                return (f"fix 실행 #{run['id']}의 PR 답글은 확인했지만 답변 증거가 없는 리뷰 이벤트가 남았습니다: "
-                        f"{', '.join(missing)}. 표시된 이벤트만 완료 처리하고 나머지는 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
+                    return FixIncomplete(f"fix 실행 #{run['id']}의 성공 응답은 확인했지만 PR #{b['pr_number']}에 리뷰 이벤트 키가 표시된 "
+                                         "실행 후 답글이 없습니다. 이벤트는 미완료로 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
+                return FixIncomplete(f"fix 실행 #{run['id']}의 PR 답글은 확인했지만 답변 증거가 없는 리뷰 이벤트가 남았습니다: "
+                                     f"{', '.join(missing)}. 표시된 이벤트만 완료 처리하고 나머지는 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
             reply_ids = {key: reply_id for key, (_order, reply_id) in event_replies.items()}
             claim.update(status="HANDLED", reply_ids=reply_ids, completed_at=self.clock())
             self.store.set(f"fix_claim_{b['id']}", json.dumps(claim, sort_keys=True))
