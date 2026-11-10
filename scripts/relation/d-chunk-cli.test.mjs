@@ -508,6 +508,17 @@ test('recordEvidence: hits add up per search; completion needs a proven start', 
   assert.deepEqual(summary([exact, exact]), { searches: 1, hits: 2, allComplete: true }, 'an exact duplicate request never doubles hits');
 });
 
+test('cursor next on a sense of another record names the record that holds the recorded LIMITED search', () => {
+  const entries = [cursorEvidence('w2', ['색 상자', '색상 자'], null, 'cursor-one')];
+  const call = (recordId) => () => resolveRecordedCursor({ cursor: 'next', recordId, forms: ['색 상자', '색상 자'], boundary: null, entries,
+    senseRefs: new Map([['w2', ['s12']], ['w1', ['s11']]]) });
+  assert.equal(call('w2')(), 'cursor-one');
+  assert.throws(call('w1'), (error) => error instanceof InvalidCursorError
+    && /record w1/u.test(error.message) && /recorded for w2 \(s12\)/u.test(error.message) && /UNRECORDED/u.test(error.message));
+  assert.throws(() => resolveRecordedCursor({ cursor: 'next', recordId: 'w3', forms: ['x'], boundary: null, entries }),
+    (error) => !/recorded for/u.test(error.message));
+});
+
 test('recorded cursors require the exact active record, search and unconsumed LIMITED chain', () => {
   const first = cursorEvidence('w1', ['낭축'], 'both', 'cursor-one');
   const second = cursorEvidence('w1', ['낭축'], 'both', 'cursor-two', 'cursor-one');
