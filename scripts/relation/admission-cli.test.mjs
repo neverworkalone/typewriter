@@ -2836,6 +2836,12 @@ test('save-optional accepts multiple exact target links per candidate and reject
     /optional links not saved[\s\S]*repeats target/u,
   );
   assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'one duplicate target rejects all optional decisions');
+  await writeFile(path.join(root, input), `links @${view.digest}\nc1 R near 3 T2\nc1 R action 4 T3\n`);
+  await assert.rejects(
+    () => quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root })),
+    /action target w501\/w501-s3 has pos noun; expected verb or expression/u,
+  );
+  assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'a non-verb action target rejects all optional decisions');
   await writeFile(path.join(root, input), `links @${view.digest}\nc1 R near 3 T2\nc1 R mood 4 T3\n`);
   const saved = await quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root }));
   assert.deepEqual([saved.optional_review_complete, saved.optional_links_saved, saved.optional_candidates], [true, 2, 1]);
@@ -2959,6 +2965,58 @@ test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the
   const repeated = await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amendFile], { root }));
   assert.equal(repeated.already_applied, true);
   assert.deepEqual(await readFile(dropPath), amendedBytes, 'an idempotent retry preserves the amended Drop bytes');
+});
+
+test('action exact-ID targets must be verb/expression when saved, amended and Part-verified; stored violations stay amendable', async (t) => {
+  const root = await singleCandidateRepository(t, [{ recordId: 'w1', text: '각자' }, { recordId: 'w1', text: '유일' }]);
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const records = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  records.find((record) => record.id === 'w2').senses[0].pos = 'verb';
+  await writeFile(canonicalPath, jsonl(records));
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const checkpointPath = path.join(root, checkpoint);
+  const input = '.warroom-scratch/action-decisions.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const exact = (candidate, recordId, type) => ({ source_sense_id: 'w1-s1', candidate, disposition: 'relation', type, relevance: 4,
+    target_resolution: 'exact', target_record_id: recordId, target_sense_id: `${recordId}-s1` });
+  const save = (nounType) => writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id,
+    decisions: [exact('각자', 'w2', 'action'), exact('유일', 'w3', nounType)] }));
+
+  const beforeSave = await readFile(checkpointPath);
+  await save('action');
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })),
+    /w1-s1\/유일: action target w3\/w3-s1 has pos noun; expected verb or expression/u);
+  assert.deepEqual(await readFile(checkpointPath), beforeSave, 'a rejected action target saves nothing');
+  await save('scene');
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
+
+  // A checkpoint written before this rule: the stored violation must stay readable, mergeable and amendable.
+  const stored = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  const order = stored.items[0].candidates.map((candidate) => candidate.text);
+  Object.assign(stored.items[0].candidates[order.indexOf('유일')].decision, { type: 'action', reverse_type: 'action' });
+  await writeFile(checkpointPath, `${JSON.stringify(stored)}\n`);
+  await mergeForTest(root, checkpoint);
+  const verify = () => quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+  await assert.rejects(verify, /action relation w1-s1 -> w3\/w3-s1 targets pos noun; expected verb or expression/u);
+  // Only the Part verify enforces it: the shared row contract of already approved shards (build, Stage 3) is unchanged.
+  await quiet(() => run(['verify', '--shard', '001', '--relations-only', '--json'], { root }));
+
+  const amend = async (name, row) => {
+    const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+    await writeFile(path.join(root, name), `amend w1-s1 @${inspect.digest}\n${row}\n`);
+    return quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', name], { root }));
+  };
+  const verbAlias = order.indexOf('각자') + 1;
+  const nounAlias = order.indexOf('유일') + 1;
+  await amend('.warroom-scratch/amend-verb.txt', `c${verbAlias} R action 6 T${verbAlias}`);
+  await assert.rejects(verify, /targets pos noun/u, 'a stepwise amend leaves the remaining violation for the final verify');
+  const beforeAmend = await readFile(checkpointPath);
+  await assert.rejects(() => amend('.warroom-scratch/amend-noun-action.txt', `c${nounAlias} R action 5 T${nounAlias}`),
+    /action target w3\/w3-s1 has pos noun; expected verb or expression/u);
+  assert.deepEqual(await readFile(checkpointPath), beforeAmend);
+  await amend('.warroom-scratch/amend-noun.txt', `c${nounAlias} R association 5 T${nounAlias}`);
+  assert.equal((await verify()).missing, 0);
 });
 
 test('amend rejects stale scope, invalid batches, drift and a changed snapshot without partial writes', async (t) => {
