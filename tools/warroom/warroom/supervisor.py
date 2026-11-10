@@ -230,8 +230,8 @@ class Supervisor:
         for ln in lines:
             if ln["force_stop"]:
                 return True
-            req = self.store.clear_request(ln["model"], ln["method"])
-            if req is not None and req["status"] != "BLOCKED":
+            req = self.store.clear_request(ln["model"], ln["method"], actionable=True)
+            if req is not None:
                 return True
         for b in batches:
             if self._batch_has_open_work(b):
@@ -524,7 +524,12 @@ class Supervisor:
             return
         ln = self.store.line(model, MAINTENANCE_METHOD)
 
-        request = self.store.pin_clear(model, MAINTENANCE_METHOD)
+        # Clear belongs to the request owner, even when the active/default Maintainer model differs.
+        clear = next((request for line in self.store.lines() if line["method"] == MAINTENANCE_METHOD
+                      if (request := self.store.clear_request(line["model"], MAINTENANCE_METHOD, actionable=True))
+                      is not None), None)
+        request = (self.store.pin_clear(clear["model"], MAINTENANCE_METHOD, batch_id=clear["batch_id"])
+                   if clear is not None else None)
         if request is not None:
             clearing = self.store.batch(request["batch_id"])
             if clearing is not None and clearing["state"] == "CLEARING":
@@ -1493,7 +1498,7 @@ class Supervisor:
     def _clear(self, b) -> None:
         """Invariant: nothing is deleted before the AI process is gone and ownership of the worktree, every PR on the
         branch and the remote branch is proven; every step is idempotent, so a restart or retry resumes teardown."""
-        req = self.store.clear_request(b["producer"], b["method"])
+        req = self.store.clear_request(b["producer"], b["method"], batch_id=b["id"])
         if req is None or req["batch_id"] != b["id"]:
             return self._fail(b, "ERROR", "Clear 요청 기록을 찾을 수 없어 보존합니다.")
         if req["status"] == "BLOCKED":
@@ -1578,7 +1583,7 @@ class Supervisor:
             self.store.add_clear_note(b["id"], "원격 브랜치 삭제; ")
         self.git.discard_owned(wt, branch)
         self._remove_run_files(b)
-        note = self.store.clear_request(b["producer"], b["method"])["note"]
+        note = self.store.clear_request(b["producer"], b["method"], batch_id=b["id"])["note"]
         what = f"Maintainer urgent Issue #{b['batch']}" if maint else f"{b['method'].upper()} 배치 {b['shard']}_{b['batch']}"
         self.store.finish_clear(b, f"Clear 완료: {b['producer']}/{b['method'].upper()} {what} "
                                    f"(이전 상태 {req['prior_state']}, 기록 PR {('#' + str(b['pr_number'])) if b['pr_number'] else '없음'}); "
