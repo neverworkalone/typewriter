@@ -23,6 +23,7 @@ from typing import NamedTuple
 
 from . import auth, cparallel, dchunk, defects, dparallel, literary, progress, stage2, stage3
 from .config import maintainer_id, maintainer_problem
+from .github import GhTransient
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked, ResourceFenced
 from .store import MAINTENANCE_DIAGNOSIS_HOLD_PREFIX, MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
 
@@ -33,6 +34,9 @@ _SUPPORT_FILE = re.compile(r"(?:^|/)(?:fixtures?|helpers?)/|(?:^|/)(?:fakes|fake
 _DOC = re.compile(r"\.md$|^docs/|^tools/warroom/prompts/")
 VERIFY_TIMEOUT = 900
 OPEN_DEFECT = ("REPORTED", "LINKED", "FIX_MERGED", "HELD", "RECOVERING")
+# Query failures asking again can fix (#2810). The diagnosis path re-raises them before any broad `except`, so the
+# Supervisor's exit-0 pending gate re-judges the same ended run with backoff: no state change, no AI run (#5256).
+DIAGNOSIS_TRANSIENT = (GhTransient, GitTransient)
 CONTINUATION_PAUSE = "maintainer_continuation"   # PAUSED, slot returned, the same attempt resumes in queue order (#5245)
 REJECTION_FILE = ".warroom-scratch/incident-diagnosis-rejection.json"
 
@@ -1568,8 +1572,8 @@ class Maintenance:
                                             "summary": defects.public(summary.strip()), "blocker": blocker,
                                             "next_action": defects.public(next_action.strip()), "base": base,
                                             "branch": b["branch"], "worktree": str(wt)}, sort_keys=True))
-        except GitTransient:
-            return DiagnosisResult(DEFERRED)
+        except DIAGNOSIS_TRANSIENT:
+            raise   # a failed GitHub/Git query is re-judged from the same run by the caller's pending gate (#5256)
         except Exception as e:
             return _block("validation_exception", f"진단 결과 검증 중 예외: {e}")
         return _handled(self._complete_diagnosis(b, expected_defect_id))
@@ -1778,8 +1782,8 @@ class Maintenance:
                      "branch": b["branch"], "worktree": str(b["worktree"]), **approval}
             self.store.set(f"m_diag_{b['id']}", json.dumps(proof, sort_keys=True))
             return _handled(self._complete_no_code_diagnosis(b, proof))
-        except GitTransient:
-            return DiagnosisResult(DEFERRED)
+        except DIAGNOSIS_TRANSIENT:
+            raise   # never an integrity BLOCKED: the same result is verified again after the query backoff (#5256)
         except FileNotFoundError as e:
             return _block("evidence_missing", f"요청 파일 또는 보존 evidence가 없습니다: {e.filename}")
         except Exception as e:
@@ -1981,37 +1985,46 @@ class Maintenance:
     def continue_later(self, b, reason: str, fact: str, kind: str) -> None:
         """Hand an unfinished Maintainer attempt to the continuation queue: PAUSED, slot returned, work preserved.
 
-        `kind` is "produce" (no-PR diagnosis/implementation) or "fix" (an owned PR's review/CI/conflict fix). The
-        rejection file tells the next run exactly what was refused and which contract it must meet. The queue time is
-        written once and kept while the attempt waits, so unrelated row updates cannot reorder the queue.
+        `kind` is "produce" (no-PR diagnosis/implementation) or "fix" (an owned PR's review/CI/conflict fix). The DB
+        reservation is the authoritative handoff and commits atomically with the PAUSED state (#5256); the rejection file
+        only describes it to the next run and is rewritten from that record (here and again when the attempt resumes).
         """
-        wt = Path(b["worktree"])
+        current = self.store.batch(b["id"])
+        if current is None:
+            return
         contract = ("PR 또는 version 2 구조화 결과 중 하나가 필요하다" if kind == "produce" else
                     "현재 PR HEAD의 미처리 리뷰·CI·conflict 이벤트를 처리하고 답변 증거를 남긴다")
-        key = f"m_continuation_{b['id']}"
-        try:
-            prior = json.loads(self.store.get(key) or "null")
-        except (TypeError, ValueError):
-            prior = None
-        queued_at = prior.get("queued_at") if isinstance(prior, dict) else None
+        runs = self.store.runs(b["id"])
         record = {"version": 1, "attempt": b["id"], "issue": int(b["batch"]), "kind": kind, "reason": reason,
                   "fact": defects.public(str(fact))[:1000], "contract": contract,
-                  "queued_at": queued_at if isinstance(queued_at, (int, float)) else self.sup.clock(),
-                  "pr": b["pr_number"], "session": b["session_id"], "round": int(self.store.get(f"m_diagnosis_round_{b['id']}", "0"))}
-        try:
-            out = wt / REJECTION_FILE
-            out.parent.mkdir(parents=True, exist_ok=True)
-            tmp = out.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps({k: record[k] for k in ("version", "attempt", "issue", "kind", "reason", "fact",
-                                                              "contract", "round")}, ensure_ascii=False, sort_keys=True), "utf-8")
-            os.replace(tmp, out)
-        except OSError as e:   # the reason still lives in the DB record and the batch error; never drop the handoff
-            self.store.log(b["id"], f"재개 사유 파일을 쓰지 못했습니다(DB 기록으로 계속): {e}", "warn")
-        self.store.set(key, json.dumps(record, ensure_ascii=False, sort_keys=True))
+                  "pr": current["pr_number"], "session": current["session_id"],
+                  "round": int(self.store.get(f"m_diagnosis_round_{b['id']}", "0"))}
         msg = (f"Maintainer 작업 미완료 [{reason}]: {record['fact']} — 같은 attempt·worktree·session을 보존하고 "
                "재개 대기열에서 이어갑니다 (완료·방치 아님).")
-        self.sup._fail(self.store.batch(b["id"]), "PAUSED", msg)
-        self.store.update(b["id"], pause_reason=CONTINUATION_PAUSE)
+        outcome = self.store.reserve_maintainer_continuation(
+            b["id"], expected_state=current["state"], run_id=runs[0]["id"] if runs else None, record=record, error=msg)
+        if outcome == "REFUSED":
+            if self._due(f"m_continuation_refused_{b['id']}", 600):
+                self.store.log(b["id"], f"재개 대기 등록 보류 [{reason}]: 실행 상태·소유권 또는 운영자 제어가 우선합니다. "
+                               "상태를 바꾸지 않았습니다.", "warn")
+            return
+        self._write_rejection(current, self.store.get(f"m_continuation_{b['id']}"))
+
+    def _write_rejection(self, b, raw: str | None) -> None:
+        """Describe the DB handoff record to the next run; a failed write never loses the reservation itself."""
+        out = Path(b["worktree"]) / REJECTION_FILE
+        try:
+            record = json.loads(raw or "null")
+            out.unlink(missing_ok=True)   # never leave an older reason behind for the next run
+            if not isinstance(record, dict):
+                return
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tmp = out.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps({k: record.get(k) for k in ("version", "attempt", "issue", "kind", "reason", "fact",
+                                                                  "contract", "round")}, ensure_ascii=False, sort_keys=True), "utf-8")
+            os.replace(tmp, out)
+        except (OSError, TypeError, ValueError) as e:
+            self.store.log(b["id"], f"재개 사유 파일을 쓰지 못했습니다(DB 인계 기록으로 계속, 재개 시 다시 작성): {e}", "warn")
 
     def _queued_at(self, m) -> float:
         raw = self.store.get(f"m_queued_at_{m['issue_number']}")
@@ -2036,8 +2049,10 @@ class Maintenance:
     def _resume_continuation(self, b) -> None:
         if not self.store.resume_maintainer_continuation(b["id"]):
             return
-        record = json.loads(self.store.get(f"m_continuation_resumed_{b['id']}") or "{}")
+        raw = self.store.get(f"m_continuation_resumed_{b['id']}")
+        record = json.loads(raw or "{}")
         current = self.store.batch(b["id"])
+        self._write_rejection(current, raw)   # the next run reads the reason of THIS handoff, never a stale one
         self.store.log(b["id"], f"Maintainer 재개 대기열에서 같은 attempt를 이어갑니다 [{record.get('reason')}] → {current['state']}")
 
     def _complete_no_code_diagnosis(self, b, proof: dict) -> bool:
@@ -2107,10 +2122,7 @@ class Maintenance:
             batch = self.store.batch(d["batch_id"])
             if batch is None:
                 return {"observation": "batch", "reason": "접수된 원 배치 행이 없어 증거 소유권을 검증할 수 없습니다"}
-            try:
-                reason = self._preserved(batch, env["observed"], head_moves=False)
-            except GitTransient:
-                return None
+            reason = self._preserved(batch, env["observed"], head_moves=False)   # a transient query is re-judged (#5256)
             if reason:
                 return {"observation": "preservation", "reason": reason}
         return None
