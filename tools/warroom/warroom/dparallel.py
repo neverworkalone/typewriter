@@ -550,12 +550,19 @@ class ParallelD:
             sid = row["session_id"] if kind != NEW else None
             note = (f"이 청크 전용 공통 결함 보고 파일: `{defect_path(b, task)}` "
                     "(공유 코드·검증기의 결함을 발견했을 때만 이 경로에 쓰고, 다른 경로에는 쓰지 않는다).\n")
+            diag = None
             if kind == FIX:
                 diag = dchunk.read_rejection(wt, b, rec)
                 if diag is None and sid:
                     diag = dchunk.refresh_stale_search_rejection(
                         sup.runner, sup._d_env(b), wt, b, rec,
                         limit_to_previous=int(self.store.get(dchunk.fix_key(b["id"], n)) or 0) >= dchunk.MAX_FIXES)
+                if diag is None and sid and dchunk.corrected_decisions_valid(sup.runner, sup._d_env(b), wt, b, rec):
+                    # The stopped fix run already repaired the judgments: the official inspector accepts the current
+                    # decisions, so no rejection is left to bind. Continue the same session to save; never re-fix.
+                    kind = RESUME
+                    self.store.log(b["id"], f"[{task}] 수정된 판정이 이미 유효합니다 — 같은 세션에서 저장만 이어갑니다", "warn")
+            if kind == FIX:
                 if not sid or diag is None:
                     raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
                 sup._check_session_pin(b, sid, run)

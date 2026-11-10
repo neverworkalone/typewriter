@@ -471,6 +471,22 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
 
 
 
+def corrected_decisions_valid(runner, env, worktree, b, rec: dict) -> bool:
+    """True only when the official read-only inspector accepts the decision file now on disk for this exact active chunk
+    (a fix run repaired it but stopped before `save`). Any failure, rejection or unreadable state is False."""
+    folder = Path(worktree)
+    n = chunk_names(b, rec["chunk_no"])
+    try:
+        if read_active(folder, b, rec["chunk_no"]) != rec or not (folder / n.decisions).is_file() \
+                or has_search_failure(folder, b, rec["chunk_no"]):
+            return False
+        args = ["inspect", "--diagnostic", "--chunk", str(rec["chunk_no"]), "--in", str((folder / n.decisions).resolve()),
+                "--dir", str((folder / SCRATCH).resolve()), "--canonical-root", str(folder.resolve())]
+        return _json(cli(runner, env, folder, *args), "D corrected decision inspection").get("status") == "VALID"
+    except (DChunkError, OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def refresh_stale_search_rejection(runner, env, worktree, b, rec: dict, *, limit_to_previous=False, dry_run=False) -> dict | None:
     """Reinspect a rejection invalidated by later search or correction evidence.
 
