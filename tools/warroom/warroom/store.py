@@ -1167,9 +1167,16 @@ class Store:
             c.execute("UPDATE clear_requests SET status='REQUESTED', error=NULL WHERE batch_id=?", (batch_id,))
         return True, ""
 
-    def clear_request(self, model: str, method: str):
+    def clear_request(self, model: str, method: str, *, batch_id: int | None = None, actionable: bool = False):
+        query = "SELECT * FROM clear_requests WHERE model=? AND method=?"
+        args = [model, method]
+        if batch_id is not None:
+            query += " AND batch_id=?"
+            args.append(batch_id)
+        if actionable:
+            query += " AND status != BLOCKED"
         with self._conn() as c:
-            return c.execute("SELECT * FROM clear_requests WHERE model=? AND method=?", (model, method)).fetchone()
+            return c.execute(query + " ORDER BY requested_at, batch_id LIMIT 1", args).fetchone()
 
     def set_clear(self, batch_id: int, **fields) -> None:
         cols = ", ".join(f"{k}=?" for k in fields)
@@ -1189,12 +1196,17 @@ class Store:
                       "WHERE (model, method) IN (SELECT producer, method FROM batches WHERE id=?)",
                       (MAINTENANCE_METHOD, batch_id))
 
-    def pin_clear(self, model: str, method: str):
+    def pin_clear(self, model: str, method: str, *, batch_id: int | None = None):
         """Supervisor: atomically pin the requested batch ID as CLEARING and switch off everything that could start,
         retry or recover this Line. Returns the request, or None (no request / stale one dropped)."""
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
-            req = c.execute("SELECT * FROM clear_requests WHERE model=? AND method=?", (model, method)).fetchone()
+            query = "SELECT * FROM clear_requests WHERE model=? AND method=?"
+            args = [model, method]
+            if batch_id is not None:
+                query += " AND batch_id=? AND status != BLOCKED"
+                args.append(batch_id)
+            req = c.execute(query + " ORDER BY requested_at, batch_id LIMIT 1", args).fetchone()
             if req is None:
                 return None
             b = c.execute("SELECT state FROM batches WHERE id=? AND producer=? AND method=?",

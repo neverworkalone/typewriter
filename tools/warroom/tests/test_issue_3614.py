@@ -290,6 +290,29 @@ class MaintainerQueue(unittest.TestCase):
         self.assertEqual(w.store.maintenance(101)["state"], "HELD")
         self.assertEqual(w.store.peek_line("aaa", "m")["run"], 0)
 
+    def test_blocked_clear_does_not_starve_other_requests(self):
+        for blocked_model in ("aaa", "sonnet"):
+            with self.subTest(blocked_model=blocked_model):
+                w = world()
+                self.addCleanup(w.tmp.cleanup)
+                produce_and_report(w)
+                w.tick()
+                target = maintainer_row(w)
+                w.store.update(target["id"], state="ERROR", pid=None)
+                w.store.finish_runs(target["id"], 0)
+                blocked = w.store.create_batch(method="m", producer=blocked_model, shard="", batch="102",
+                                               branch="maint-102", worktree=str(w.paths.worktrees / "maint-102"),
+                                               state="CLEARING")
+                with w.store._conn() as db:
+                    db.execute("INSERT INTO clear_requests(batch_id,model,method,status,prior_state,requested_at) "
+                               "VALUES(?,?,m,BLOCKED,ERROR,0)", (blocked, blocked_model))
+                self.assertTrue(control.request_clear(w.store, target["producer"], "m", target["id"], 101)[0])
+                w.sup._drain.set()
+                self.assertTrue(w.sup._lane_has_drain_work(None))
+                w.sup._tick_maintenance(collection_only=True)
+                self.assertIsNone(w.store.batch(target["id"]))
+                self.assertEqual(w.store.clear_request(blocked_model, "m", batch_id=blocked)["status"], "BLOCKED")
+
     def test_stale_pinned_stop_does_not_stop_next_maintainer_execution(self):
         w = self.w
         produce_and_report(w)
