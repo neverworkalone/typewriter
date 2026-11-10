@@ -594,6 +594,42 @@ class ClearRealGit(unittest.TestCase):
         self.assertIsNone(w.store.batch(bid))
         self.assertIsNone(w.store.clear_request("deepseek", "a"))
 
+    def test_restart_ownership_uses_exact_clear_among_multiple_requests(self):
+        from warroom.gitops import Git
+        from warroom.shell import Runner
+        from warroom.restart_controller import _worktree_ownership_problem
+        from tests.test_gitops_adapter import ENV
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.paths.repo_root = self.repo
+        git = Git(Runner(), self.repo, ENV, w.paths.worktrees)
+        git.fetch_base("master")
+        first_branch = "a-deepseek-001-02"
+        first_wt = w.paths.worktrees / first_branch
+        target_wt = w.paths.worktrees / BRANCH
+        git.create_worktree(first_wt, first_branch, "master")
+        git.create_worktree(target_wt, BRANCH, "master")
+        w.store.line("deepseek", "a")
+        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01",
+                                   branch=BRANCH, worktree=str(target_wt))
+        w.store.update(bid, state="ERROR")
+        self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
+        with w.store._conn() as db:
+            first = db.execute(
+                "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,model_tier,created_at,updated_at) "
+                "SELECT method,producer,shard,?,?,?,?,model_tier,created_at,updated_at FROM batches WHERE id=?",
+                ("02", first_branch, str(first_wt), "CLEARING", bid)).lastrowid
+            db.execute("INSERT INTO clear_requests(batch_id,model,method,status,prior_state,requested_at) "
+                       "VALUES(?,?,?,?,?,?)", (first, "deepseek", "a", "BLOCKED", "ERROR", 0))
+        git.discard_owned(target_wt, BRANCH)
+        self.assertIsNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
+        self.assertEqual(w.store.clear_request("deepseek", "a", batch_id=first)["status"], "BLOCKED")
+        self.assertEqual(w.store.clear_request("deepseek", "a", batch_id=bid)["status"], "REQUESTED")
+        w.store.set_clear(bid, status="BLOCKED")
+        self.assertIsNotNone(_worktree_ownership_problem(w.paths, w.store, recovering_stopped_supervisor=True))
+        self.assertEqual(w.store.clear_request("deepseek", "a", batch_id=first)["status"], "BLOCKED")
+        git.discard_owned(first_wt, first_branch)
+
     def test_restart_hands_unpinned_clear_to_new_supervisor(self):
         from warroom.gitops import Git
         from warroom.shell import Runner
