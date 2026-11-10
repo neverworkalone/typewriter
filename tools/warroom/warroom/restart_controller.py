@@ -581,7 +581,7 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
         # A durable loaded record outlives its process: let the normal launcher recover a stopped Supervisor.
         return ("locked", None) if live else None
 
-    tui_root = _tmux(["show-environment", "-t", "warroom", ROOT_ENV], timeout=2)
+    tui_root = _tmux(["show-environment", "-t", "=warroom", ROOT_ENV], timeout=2)   # exact: never `warroom-supervisor`
     if tui_root.returncode == 0 and tui_root.stdout.strip().partition("=")[2] != str(root):
         for _path, request in pending:
             _set_waiting(paths, request, "live TUI runtime root does not match the operating checkout")
