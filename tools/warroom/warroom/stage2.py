@@ -808,6 +808,30 @@ def single_candidate_failure_alias(diagnostic: str, chunk_id: str, candidate: di
     return alias
 
 
+_ACTION_POS_PROBLEM = re.compile(
+    r"^(?P<alias>c\d+)\s.+?: action target \S+ has pos \S+; expected verb or expression"
+    r"\s+->\s+.*?\|\s*(?P=alias) R <type> <tier> none (?P<targets>T\d+(?:,T\d+)*)\s*\|", re.M)
+_ACTION_EXACT_ROW = re.compile(r"^(?P<alias>c\d+)[ \t]+R[ \t]+action[ \t]+(?P<tier>[1-9])[ \t]+(?P<target>T\d+)$")
+
+
+def action_target_text_only_rows(rows: list[str], diagnostic: str) -> tuple[list[str], list[str]]:
+    """Deterministic repair of `action` rows whose exact target is not a verb/expression Sense (official save-chunk
+    `action target ... has pos ...`). The row keeps its type and tier; only the exact binding becomes the text-only
+    form the CLI itself offers, listing every same-spelling target alias it printed. Returns (rows, changed aliases)."""
+    wanted = {}
+    for match in _ACTION_POS_PROBLEM.finditer(diagnostic if isinstance(diagnostic, str) else ""):
+        wanted[match.group("alias")] = match.group("targets")
+    out, changed = [], []
+    for row in rows:
+        exact = _ACTION_EXACT_ROW.match(row)
+        if exact and exact.group("alias") in wanted and exact.group("target") in wanted[exact.group("alias")].split(","):
+            out.append(f"{exact.group('alias')} R action {exact.group('tier')} none {wanted[exact.group('alias')]}")
+            changed.append(exact.group("alias"))
+        else:
+            out.append(row)
+    return out, changed
+
+
 def joined_decision_rows_problem(rows: list[str]) -> str | None:
     """Short format-only diagnostic when a decision row contains another complete row after horizontal whitespace."""
     malformed = [(row, [] if _DECISION_ROW.fullmatch(row) else
