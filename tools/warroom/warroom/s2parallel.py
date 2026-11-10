@@ -371,6 +371,17 @@ class ParallelStage2:
         task = row["task"]
         if "view changed since it was launched" in detail:
             return self._task_failed(b, row, data, f"[{task}] 실행 시 입력 view가 바뀌어 저장하지 않았습니다. 응답을 보존합니다: {detail[:400]}")
+        if not data.get("action_text_only"):   # once per task: a non-verb exact `action` target never consumes AI/f budget
+            wt = self._wt(b)
+            rel = stage2.task_path(task, "decisions.txt")
+            current = stage2.read_rows(wt, rel)
+            repaired, changed = stage2.action_target_text_only_rows(current, detail)
+            if changed:
+                stage2.write_decisions(wt, task, repaired, rel)
+                data["action_text_only"] = changed
+                self.store.log(b["id"], f"[{task}] action 정확 대상이 동사/표현이 아니어서 같은 type·tier의 text-only 행으로 "
+                                        f"결정적으로 바꿔 다시 저장합니다: {', '.join(changed)}")
+                return self._set(b, task, data, state="RESPONDED")
         aliases = stage2.candidate_local_failure_aliases(detail, task)
         correction = data.get("correction")
         if correction is None:
