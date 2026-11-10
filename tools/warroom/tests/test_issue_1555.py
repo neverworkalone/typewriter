@@ -1608,7 +1608,7 @@ class IncidentRecoveryProof(unittest.TestCase):
             self.assertTrue(w.sup.dp._launch(b, w.store.task_row(b["id"], "001"), round_))
         self.assertEqual(w.store.batch(b["id"])["state"], "PRODUCING")
         self.assertEqual(w.adapter.launches[-1]["prompt"], "resume prompt")
-        self.assertEqual(w.store.runs(b["id"])[-1]["kind"], "d_chunk_resume")
+        self.assertEqual(w.store.runs(b["id"])[0]["kind"], "d_chunk_resume")   # runs() is newest-first
         # an invalid/unknown inspection still fails closed
         w.store.update_task(b["id"], "001", state="FIXQ")
         with mock.patch.object(dchunk, "read_active", return_value=active), \
