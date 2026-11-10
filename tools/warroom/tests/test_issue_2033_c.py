@@ -950,7 +950,9 @@ class Finalization(unittest.TestCase):
         self.assertIsNone(w.store.get(f"c_repair_issue_count_{b['id']}"))
         self.assertEqual(len(w.gh.created_prs), 1)
 
-    def test_candidate_repair_with_no_reduction_falls_back_to_empty_exact_sense(self):
+    def test_candidate_repair_with_no_reduction_keeps_valid_candidates_and_stops_with_evidence(self):
+        """#5245: export already removes exact content errors locally; one surviving the AI correction is a shared-path
+        defect for the incident intake, never a reason to empty every candidate of the Sense."""
         w = self.w
         issues = [{"record_id": "r0001", "canonical_record_id": "r0001", "sense_id": "s0002",
                    "candidate": "repeat-s0002", "candidate_index": 0, "kind": "source_lemma_repeat"}]
@@ -972,9 +974,10 @@ class Finalization(unittest.TestCase):
         w.tick()
 
         b = w.row("deepseek", "c")
-        self.assertEqual((b["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 2))
-        self.assertEqual(w.runner.literary.clears, [["s0002"]])
-        self.assertEqual(len(w.gh.created_prs), 1)
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 2))
+        self.assertIn("정상 후보를 비우지 않고", b["error"])
+        self.assertEqual(w.runner.literary.clears, [])
+        self.assertEqual(getattr(w.gh, "created_prs", []), [])
 
     def test_candidate_validation_without_exact_content_evidence_stops_without_empty_fallback(self):
         w = self.w

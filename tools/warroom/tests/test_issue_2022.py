@@ -5,6 +5,7 @@ removes only a proven-owned execution (fail closed otherwise) while the urgent I
 origin batch stay untouched and nothing restarts without an explicit Retry. Fake AI/GitHub/git only.
 """
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from tests.fakes import HEAD1
@@ -216,8 +217,9 @@ class MaintainerControls(World2022):
         _, m = start_maintainer(w)
         run_id = w.store.runs(m["id"])[0]["id"]
         w.adapter.finish(m["pid"])
-        w.tick()
-        self.assertEqual(maintainer_row(w)["state"], "ERROR")
+        with mock.patch.object(w.sup.maint, "_start"):   # #5245: no PR yet → the attempt waits in the continuation queue
+            w.tick()
+        self.assertEqual((maintainer_row(w)["state"], maintainer_row(w)["pause_reason"]), ("PAUSED", "maintainer_continuation"))
         self.assertEqual(w.store.get("verified_completion_run_" + str(m["id"])), str(run_id))
 
         open_pr(w)
@@ -238,8 +240,9 @@ class MaintainerControls(World2022):
         source, m = start_maintainer(w)
         run_id = w.store.runs(m["id"])[0]["id"]
         w.adapter.finish(m["pid"])
-        w.tick()
-        self.assertEqual(maintainer_row(w)["state"], "ERROR")
+        with mock.patch.object(w.sup.maint, "_start"):   # #5245: no PR yet → the attempt waits in the continuation queue
+            w.tick()
+        self.assertEqual((maintainer_row(w)["state"], maintainer_row(w)["pause_reason"]), ("PAUSED", "maintainer_continuation"))
         self.assertEqual(w.store.get("verified_completion_run_" + str(m["id"])), str(run_id))
 
         w.pr_info(50, HEAD1, state="closed", merged=True, head_ref="maint-101", merge_sha=MERGE)
@@ -267,8 +270,9 @@ class MaintainerControls(World2022):
         _, m = start_maintainer(w)
         run_id = w.store.runs(m["id"])[0]["id"]
         w.adapter.finish(m["pid"])
-        w.tick()
-        self.assertEqual(maintainer_row(w)["state"], "ERROR")
+        with mock.patch.object(w.sup.maint, "_start"):   # #5245: no PR yet → the attempt waits in the continuation queue
+            w.tick()
+        self.assertEqual((maintainer_row(w)["state"], maintainer_row(w)["pause_reason"]), ("PAUSED", "maintainer_continuation"))
         self.assertEqual(w.store.get("verified_completion_run_" + str(m["id"])), str(run_id))
 
         for number in (50, 51):

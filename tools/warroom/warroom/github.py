@@ -208,6 +208,11 @@ class GhClient:
         if not r.ok:
             raise self._fail(f"gh issue edit {n} --title", r)
 
+    def reopen_issue(self, n: int) -> None:
+        r = self.runner.run(["gh", "issue", "reopen", str(n), "--repo", self.repo], env=self.env, timeout=60)
+        if not r.ok:
+            raise self._fail(f"gh issue reopen {n}", r)
+
     def urgent_issues(self) -> list[dict]:
         """Every `urgent` Issue, open and closed, with its body. A list call (not search): it is consistent
         right after an Issue is created, so a just-created Issue is always found again (no duplicate)."""

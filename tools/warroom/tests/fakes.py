@@ -959,6 +959,9 @@ class FakeGh:
     def edit_issue_title(self, n, title):
         self.issues[n]["title"] = title
 
+    def reopen_issue(self, n):
+        self.issues[n]["state"] = "open"
+
     def comment_issue(self, n, body):
         self.issue_comments_.setdefault(n, []).append({"body": body})
 

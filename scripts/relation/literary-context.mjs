@@ -2088,9 +2088,10 @@ function validateCandidateRows({ checkpoint, candidateRows, context }) {
   }
 }
 
-/** Apply only exact, source-bound Candidate v1 content errors to a v3 checkpoint. */
+/** Apply only exact, source-bound Candidate v1 content errors to a v3 checkpoint, or to a resumable legacy v2 one. */
 function removeValidatedCandidateIssues(checkpoint, candidateRows, issues) {
-  if (checkpoint.contract !== CHECKPOINT_CONTRACT || !Array.isArray(issues) || issues.length === 0) return 0;
+  if (![CHECKPOINT_CONTRACT, LEGACY_CHECKPOINT_CONTRACT].includes(checkpoint.contract)
+    || !Array.isArray(issues) || issues.length === 0) return 0;
   const bySense = new Map();
   for (const issue of issues) {
     if (!issue || !['source_lemma_repeat', 'thousands_comma_fragment', 'duplicate_candidate'].includes(issue.kind)
@@ -2101,23 +2102,43 @@ function removeValidatedCandidateIssues(checkpoint, candidateRows, issues) {
     const candidateSense = row?.senses?.find((item) => item.sense_id === issue.sense_id);
     if (!row || !candidateSense || candidateSense.candidates[issue.candidate_index] !== issue.candidate) return 0;
     const key = `${issue.record_id}\0${issue.sense_id}`;
-    const indexes = bySense.get(key) ?? { recordId: issue.record_id, senseId: issue.sense_id, indexes: new Set() };
+    const indexes = bySense.get(key) ?? { recordId: issue.record_id, senseId: issue.sense_id, indexes: new Set(), candidates: new Map() };
     if (indexes.indexes.has(issue.candidate_index)) return 0;
     indexes.indexes.add(issue.candidate_index);
+    indexes.candidates.set(issue.candidate_index, issue.candidate);
     bySense.set(key, indexes);
   }
 
-  let removed = 0;
-  for (const { recordId, senseId, indexes } of bySense.values()) {
+  // Check every target before changing any sense: a partial removal never reaches the checkpoint.
+  const plans = [];
+  for (const { recordId, senseId, indexes, candidates } of bySense.values()) {
     const record = checkpoint.records.find((item) => item.record_id === recordId);
     const sense = record?.senses?.find((item) => item.sense_id === senseId);
     const saved = sense?.submission;
-    if (!saved || saved.status !== 'SUBMITTED' || !Array.isArray(saved.candidates)) return 0;
-    const before = saved.candidates.length;
-    saved.candidates = saved.candidates.filter((_, index) => !indexes.has(index));
-    removed += before - saved.candidates.length;
+    if (saved) {
+      if (saved.status !== 'SUBMITTED' || !Array.isArray(saved.candidates)) return 0;
+      plans.push(() => {
+        const before = saved.candidates.length;
+        saved.candidates = saved.candidates.filter((_, index) => !indexes.has(index));
+        return before - saved.candidates.length;
+      });
+      continue;
+    }
+    // A legacy v2 sense without a chunk submission exports its KEEP reviews: the exact rejected candidate's own review
+    // becomes REMOVE; every other review, context and sweep stays as it is.
+    if (checkpoint.contract !== LEGACY_CHECKPOINT_CONTRACT || !Array.isArray(sense?.candidate_reviews)) return 0;
+    const reviews = [];
+    for (const candidate of candidates.values()) {
+      const review = sense.candidate_reviews.find((item) => item.normalized === normalizeCandidate(candidate) && item.decision === 'KEEP');
+      if (!review || reviews.includes(review)) return 0;
+      reviews.push(review);
+    }
+    plans.push(() => {
+      for (const review of reviews) review.decision = 'REMOVE';
+      return reviews.length;
+    });
   }
-  return removed;
+  return plans.reduce((removed, apply) => removed + apply(), 0);
 }
 
 /** Export after every sense is read and submitted (or has zero hits); Candidate v1 runs once over the whole batch. */
