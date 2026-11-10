@@ -1,6 +1,6 @@
 PR #{{pr}} (branch `{{branch}}`, current head {{head}}) has new review feedback.
 
-Only an effective blocking `-1` review event calls for a producer response. **Never respond to `+1` or `+2` PASS reviews:** no PR or inline comments, acknowledgments, status messages, commits, or requests for another review. If only PASS events are presented, exit silently without touching files. For a `-1`, make accepted corrections or leave a concise evidence-based disagreement for the reviewer to assess on re-review.
+Only an effective blocking `-1` review event calls for a producer response. **Never respond to `+1` or `+2` PASS reviews:** no PR or inline comments, acknowledgments, status messages, commits, or requests for another review. If only PASS events are presented, exit silently without touching files. For a `-1`, make accepted corrections or leave a concise evidence-based disagreement for the reviewer to assess on re-review. Do not leave review findings unresolved merely because a broader review request cannot be completed; correct the specific findings or rebut the unsupported scope with evidence.
 
 {{session_note}} Keep the assigned worktree, branch, and current HEAD; never merge, rebase, reset, or switch branches. Do not create another PR, request review, or merge.
 
