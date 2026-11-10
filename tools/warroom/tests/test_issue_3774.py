@@ -229,7 +229,7 @@ class CodeUpdate(RestartWorld, unittest.TestCase):
         rc.record_runtime(w.paths, HEAD1, configured_workers=16, workers=16, instance=w.sup.phase_instance)
         seen = []
 
-        def forward(root, head, target):
+        def forward(paths, root, head, target):
             seen.append((state["alive"], head, target))
             state["head"] = target
 
@@ -329,8 +329,22 @@ class RealCheckoutUpdate(unittest.TestCase):
         self.assertEqual(self.target(new), (new, None))
         self.assertEqual(self.sha(self.op), self.head)                              # deciding touched no file
         self.assertFalse((self.op / "tools" / "fix.py").exists())
-        self.assertIsNone(rc._fast_forward(self.op, self.head, new))
+        self.assertIsNone(rc._fast_forward(self.paths, self.op, self.head, new))
         self.assertEqual(self.sha(self.op), new)
+
+    def test_a_checkout_that_moved_after_planning_is_never_advanced(self):
+        """Planned on master; while the previous instance was leaving, the checkout went to another clean branch of the
+        same ancestor, or master itself moved. Neither is fast-forwarded."""
+        new = self.publish()
+        self.assertEqual(self.target(new), (new, None))
+        self.git(self.op, "checkout", "-q", "-b", "side")
+        self.assertIn("master 브랜치가 아닙니다", rc._fast_forward(self.paths, self.op, self.head, new))
+        self.assertEqual((self.sha(self.op), self.git(self.op, "rev-parse", "master")), (self.head, self.head))
+        self.assertFalse((self.op / "tools" / "fix.py").exists())
+        self.git(self.op, "checkout", "-q", "master")
+        moved = self.commit(self.op, "local.txt", "moved")
+        self.assertIn("계획한 commit과 다릅니다", rc._fast_forward(self.paths, self.op, self.head, new))
+        self.assertEqual(self.sha(self.op), moved)
 
     def test_refusals_leave_the_checkout_exactly_as_it_was(self):
         new = self.publish()
@@ -340,7 +354,7 @@ class RealCheckoutUpdate(unittest.TestCase):
         (self.op / "tools").mkdir()
         (self.op / "tools" / "fix.py").write_text("mine")                           # untracked, would be overwritten
         self.assertIn("추적되지 않는 파일", self.target(new)[1])
-        self.assertIn("추적되지 않는 파일", rc._fast_forward(self.op, self.head, new))   # re-checked right before the merge
+        self.assertIn("추적되지 않는 파일", rc._fast_forward(self.paths, self.op, self.head, new))   # re-checked right before the merge
         self.assertEqual(((self.op / "tools" / "fix.py").read_text(), self.sha(self.op)), ("mine", self.head))
         (self.op / "tools" / "fix.py").unlink()
         with mock.patch.object(rc, "_boot_problem", return_value="ImportError: x"):
@@ -431,6 +445,56 @@ class KwarEntry(unittest.TestCase):
                 self.assertEqual(calls[0], "python -m warroom.restart_controller --replace")
                 self.assertEqual(any(c.startswith("tmux new-session") for c in calls), code == 0)
                 self.assertFalse(any("kill" in c for c in calls))                   # nothing is killed by hand
+
+
+class SerialSupervisorStopping(RestartWorld, unittest.TestCase):
+    """workers=1: the same boundary as the Coordinator's - nothing new is dispatched or launched once STOPPING is recorded."""
+
+    def stop(self, w):
+        self.assertIsNotNone(w.store.cas_restart_phase(w.store.restart_phase(), "STOPPING", "r", stopping_at=1.0))
+
+    def test_stopping_recorded_before_the_next_tick_dispatches_nothing(self):
+        w = self.world(records=25)
+        self.plan_all(w, [1])
+        w.start("single", "deepseek", "d")
+        self.stop(w)                                              # recorded while the serial loop was asleep
+        with mock.patch.object(w.sup, "tick", wraps=w.sup.tick) as tick, mock.patch("warroom.supervisor.time.sleep"):
+            w.sup.run_forever(interval=0.01)                      # returns: it left
+        self.assertFalse(tick.called)
+        self.assertEqual((w.adapter.launches, w.store.incomplete_batches()), ([], []))
+
+    def test_stopping_recorded_during_a_tick_stops_the_remaining_lines_and_every_new_launch(self):
+        w = self.world(records=25)
+        self.plan_all(w, [1])
+        w.start("single", "deepseek", "d")
+        for name in ("aaa", "zzz"):
+            w.store.line(name, "a")
+        seen, real = [], w.sup._tick_line
+
+        def tick_line(model, method):
+            seen.append((model, method))
+            if len(seen) == 1:
+                self.stop(w)                                      # the Controller's CAS lands in the middle of the tick
+            return real(model, method)
+        with mock.patch.object(w.sup, "_tick_line", side_effect=tick_line), mock.patch("warroom.supervisor.time.sleep"):
+            w.sup.run_forever(interval=0.01)
+        self.assertEqual(len(seen), 1)                            # no further Line of that tick, and no further tick
+        self.assertEqual(w.adapter.launches, [])
+
+    def test_a_line_already_inside_its_tick_is_denied_the_launch_permit(self):
+        w = self.world(records=25)
+        self.plan_all(w, [1])
+        w.start("single", "deepseek", "d")
+        self.stop(w)
+        try:
+            w.sup._tick_line_locked(*LINE)                        # past every dispatch check: only the gate is left
+        except LaunchDenied:
+            pass
+        self.assertEqual(w.adapter.launches, [])                  # STOPPING was read at the permit, before any spawn
+        self.assertFalse(w.sup.launch_gate.is_open or w.sup.accepting_new_work())
+        with self.assertRaises(LaunchDenied):
+            with w.sup.launch_gate.permit():
+                pass
 
 
 class FinalizationBoundary(RestartWorld, unittest.TestCase):

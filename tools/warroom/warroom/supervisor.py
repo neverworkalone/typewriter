@@ -123,6 +123,7 @@ class Supervisor:
         self.clock = clock
         self.lanes = Lanes()
         self.launch_gate = LaunchGate()
+        self.launch_gate.guard = self._stop_requested   # an in-flight tick admits no new AI once STOPPING is recorded
         for ad in (adapter.values() if isinstance(adapter, dict) else [adapter]):
             if hasattr(ad, 'required_launch_gate'):   # every AI spawn must run inside a permit (#3787)
                 ad.required_launch_gate = self.launch_gate
@@ -134,6 +135,7 @@ class Supervisor:
         self.phase_instance = (fence.instance if fence is not None else None) or str(uuid.uuid4())
         self._drain = threading.Event()   # STOPPING: no new production, batch, Finalization or review-fix
         self._submit_hold = False         # STOPPING: the Coordinator submits no Worker at all
+        self._stop_seen = False           # this process has read its own STOPPING (any thread)
         self._interval = 5.0
         self._submitted_at: dict = {}
         self._slow_logged: set = set()
@@ -189,14 +191,25 @@ class Supervisor:
         own DB, checkpoint, process, Git and PR facts, exactly as after a crash."""
         if self._submit_hold:
             return True
-        cur = self.store.restart_phase()
-        if cur is None or cur.get("instance") != self.phase_instance or cur.get("phase") != "STOPPING":
+        if not self._stop_requested():
             return False
-        self._drain.set()                 # memory boundary first: in-flight Workers start nothing new from here
-        self.launch_gate.begin_close()    # non-blocking: every new AI permit is denied as of this return
         self._submit_hold = True
         self.store.log(None, "Restart: STOPPING — 새 Worker·AI·배치·Finalization을 시작하지 않고, 진행 중 Worker가 반환되면 "
                        "종료합니다 (남은 작업은 새 instance가 이어서 처리)", "warn")
+        return True
+
+    def _stop_requested(self) -> bool:
+        """Has the Controller recorded STOPPING for THIS instance? Read from the Store by whichever thread asks (the
+        Coordinator, the serial loop, and the LaunchGate before every admission), so a tick already under way starts no
+        new AI either. The first reader closes the memory boundary and the gate; nothing reopens them."""
+        if self._stop_seen:
+            return True
+        cur = self.store.restart_phase()
+        if cur is None or cur.get("instance") != self.phase_instance or cur.get("phase") != "STOPPING":
+            return False
+        self._drain.set()          # memory boundary first: no new batch, Finalization or review-fix from here
+        self.launch_gate.shut()    # every later AI permit is denied, also for a thread inside a wider permit
+        self._stop_seen = True
         return True
 
     def _batch_has_open_work(self, b) -> bool:
@@ -252,6 +265,8 @@ class Supervisor:
         for ln in self.store.lines():
             if ln["method"] == MAINTENANCE_METHOD:
                 continue   # Maintainer has one serialized AI slot but may own several independent PR watches
+            if self._stop_requested():
+                return   # STOPPING was recorded during this tick: no further Line is dispatched
             try:
                 self._tick_line(ln["model"], ln["method"])
             except Exception:  # one Line's failure never stalls the others
@@ -9912,13 +9927,15 @@ class Supervisor:
     # ---- daemon --------------------------------------------------------
     def run_forever(self, interval: float = 5.0) -> None:
         while True:
+            if self._stopping():   # checked BEFORE every dispatch: the serial loop has no in-flight Worker between ticks
+                self.store.log(None, "Restart: 이 instance를 종료합니다")
+                return
             try:
                 self.tick()
             except Exception:
                 self.store.log(None, "supervisor tick 예외:\n" + traceback.format_exc()[-800:], "error")
-            if self._stopping():   # the serial loop has no in-flight Worker between ticks: leave at once
-                self.store.log(None, "Restart: 이 instance를 종료합니다")
-                return
+            if self._stop_seen:
+                continue   # STOPPING arrived during the tick: leave now instead of sleeping first
             time.sleep(interval)
 
 

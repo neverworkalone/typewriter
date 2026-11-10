@@ -15,6 +15,7 @@ class LaunchGate:
         self._active = 0
         self._closing = 0
         self._local = threading.local()
+        self.guard = None   # optional () -> bool asked before every admission: True shuts the gate for good (#5162)
 
     @property
     def is_open(self):
@@ -38,8 +39,18 @@ class LaunchGate:
             finally:
                 self._local.unit = inside
 
+    def shut(self):
+        """Deny every later permit. Unlike `begin_close` it may be called by a thread that holds a permit: that thread's
+        own running unit finishes, and nothing new is admitted - not even by it."""
+        with self._condition:
+            self._open = False
+            self._condition.notify_all()
+
     @contextmanager
     def permit(self, recheck=False):
+        guard = self.guard
+        if guard is not None and (recheck or not getattr(self._local, 'depth', 0)) and guard():
+            self.shut()
         with self._condition:
             depth = getattr(self._local, 'depth', 0)
             if not depth:

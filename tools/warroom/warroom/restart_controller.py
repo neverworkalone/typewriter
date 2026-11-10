@@ -349,9 +349,9 @@ def _update_target(paths: Paths, root: Path, head: str, wanted: list[str]) -> tu
         base = load_config(paths)["base_branch"]
     except (OSError, ValueError, KeyError) as error:
         return None, f"config.json을 읽을 수 없습니다: {error}"
-    branch = _git(["symbolic-ref", "--quiet", "--short", "HEAD"], root)
-    if branch.returncode or branch.stdout.strip() != base:
-        return None, f"운영 checkout이 {base} 브랜치가 아닙니다"
+    problem = _branch_problem(root, base, head)
+    if problem:
+        return None, problem
     fetched = _git(["fetch", "origin", base], root, timeout=120)
     if fetched.returncode:
         return None, f"git fetch origin {base} 실패: {fetched.stderr.strip()[:200]}"
@@ -370,6 +370,16 @@ def _update_target(paths: Paths, root: Path, head: str, wanted: list[str]) -> tu
     return (None, problem) if problem else (target, None)
 
 
+def _branch_problem(root: Path, base: str, head: str) -> str | None:
+    """The operating checkout must be ON the base branch AT the commit the update was planned from."""
+    branch = _git(["symbolic-ref", "--quiet", "--short", "HEAD"], root)
+    if branch.returncode or branch.stdout.strip() != base:
+        return f"운영 checkout이 {base} 브랜치가 아닙니다"
+    if _head(root) != head:
+        return "운영 checkout의 HEAD가 갱신을 계획한 commit과 다릅니다"
+    return None
+
+
 def _checkout_problem(root: Path, head: str, target: str) -> str | None:
     """Why `git merge --ff-only target` must not be tried on this working tree (checked again right before it)."""
     status = _git(["status", "--porcelain", "--untracked-files=no"], root, timeout=60)
@@ -386,10 +396,16 @@ def _checkout_problem(root: Path, head: str, target: str) -> str | None:
     return None
 
 
-def _fast_forward(root: Path, head: str, target: str) -> str | None:
-    """Apply the update decided earlier, now that no Supervisor runs. Never reset, stash or force: a refusal leaves the
-    checkout exactly as it was and the next instance starts on the current code."""
-    problem = _checkout_problem(root, head, target)
+def _fast_forward(paths: Paths, root: Path, head: str, target: str) -> str | None:
+    """Apply the update decided earlier, now that no Supervisor runs. The branch, the HEAD and the working tree are all
+    examined again right here: the previous instance may have taken up to the whole grace to leave, and a checkout that
+    moved meanwhile (another branch, another commit) is never advanced. Never reset, stash or force: a refusal leaves
+    the checkout exactly as it was and the next instance starts on the current code."""
+    try:
+        base = load_config(paths)["base_branch"]
+    except (OSError, ValueError, KeyError) as error:
+        return f"config.json을 읽을 수 없습니다: {error}"
+    problem = _branch_problem(root, base, head) or _checkout_problem(root, head, target)
     if problem:
         return problem
     merged = _git(["merge", "--ff-only", target], root, timeout=300)
@@ -678,7 +694,7 @@ def handle_pending_restart(paths: Paths, store: Store) -> tuple[str, str | None]
 
     # 3. No Supervisor runs now: this is the only moment the operating checkout changes.
     if target is not None and head is not None and target != head:
-        problem = _fast_forward(root, head, target)
+        problem = _fast_forward(paths, root, head, target)
         if problem:
             for _path, request in behind:
                 _set_waiting(paths, request, f"코드 갱신 보류(현재 코드로 계속 운영): {problem}",
