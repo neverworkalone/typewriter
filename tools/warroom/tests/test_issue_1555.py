@@ -1586,6 +1586,37 @@ class IncidentRecoveryProof(unittest.TestCase):
             self.assertTrue(refresh.call_args.kwargs["limit_to_previous"])
         self.assertEqual(w.adapter.launches[-1]["prompt"], prompts.d_chunk_fix(b, 1, "remaining rejected sense\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\ns1 [record=w1] w1-s1 · 표제어"))
 
+    def test_parallel_d_queued_fix_with_already_valid_decisions_resumes_to_save(self):
+        """#5171: a fix run repaired the judgments but stopped before save; no rejection is left to bind, so the queued
+        fix must continue the same session as a resume instead of ending in a prompt error."""
+        from unittest import mock
+        w = self.w
+        b = make_batch(w, "d", run_kind="d_parallel")
+        w.store.add_tasks(b["id"], [("001", "001")])
+        w.store.update_task(b["id"], "001", state="FIXQ", session_id="ses_1", data=json.dumps({"kind": "fix"}))
+        w.store.add_run(b["id"], "d_chunk_fix", "ses_1", None, "old.log", "old.exit",
+                        model="p/free-x-free", effort="high", task="001")
+        w.store.set(dchunk.fix_key(b["id"], 1), str(dchunk.MAX_FIXES))
+        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
+        round_ = dparallel._Round(w.sup.dp, b)
+        w.adapter.plan.append({"code": 0, "session": "ses_1"})
+        with mock.patch.object(dchunk, "read_active", return_value=active), \
+             mock.patch.object(dchunk, "read_rejection", return_value=None), \
+             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=None), \
+             mock.patch.object(dchunk, "corrected_decisions_valid", return_value=True), \
+             mock.patch.object(w.sup, "_d_chunk_prompt", return_value=("resume prompt", None)):
+            self.assertTrue(w.sup.dp._launch(b, w.store.task_row(b["id"], "001"), round_))
+        self.assertEqual(w.store.batch(b["id"])["state"], "PRODUCING")
+        self.assertEqual(w.adapter.launches[-1]["prompt"], "resume prompt")
+        self.assertEqual(w.store.runs(b["id"])[0]["kind"], "d_chunk_resume")   # runs() is newest-first
+        # an invalid/unknown inspection still fails closed
+        w.store.update_task(b["id"], "001", state="FIXQ")
+        with mock.patch.object(dchunk, "read_active", return_value=active), \
+             mock.patch.object(dchunk, "read_rejection", return_value=None), \
+             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=None), \
+             mock.patch.object(dchunk, "corrected_decisions_valid", return_value=False):
+            self.assertFalse(w.sup.dp._launch(b, w.store.task_row(b["id"], "001"), round_))
+
     def test_parallel_c_retry_predicts_the_actual_correction_prompt(self):
         from unittest import mock
         from warroom import literary, cparallel
