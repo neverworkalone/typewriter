@@ -319,6 +319,32 @@ class ParallelStage2Recovery(Helpers, unittest.TestCase):
         w.tick()
         self.assertEqual(len(w.adapter.launches), 2)
 
+    def test_retry_after_failed_correction_run_resumes_the_correction_not_the_rejected_save(self):
+        # #5204: the correction run died (usage limit) before fixing anything. A resume must relaunch the correction in
+        # its own session; re-saving the still-rejected answer would fail "수정 증거가 완전하지 않아" without any AI fix.
+        w = self.world([("s", 3)])
+        self.launch(w, 2)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.respond(w, task, drop_rows(task, 3, bad=(2,)))
+        w.tick()
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
+        w.sup._classify_run = lambda _producer, _log: "usage_limit"
+        self.finish_code(w, task, 1, "limit\n")
+        w.tick(2)
+        self.assertEqual((w.store.active_batch("claude", S2)["state"], self.tasks(w)[task]["state"]), ("ERROR", "FAILED"))
+        w.sup._classify_run = lambda _producer, _log: "unknown"
+        saves = len(w.git.task_save_calls)
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(2)
+        self.assertEqual(len(w.git.task_save_calls), saves)   # the rejected answer is not saved again
+        self.assertEqual(self.tasks(w)[task]["state"], "RUNNING")
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
+        self.assertIn("c2", w.adapter.launches[-1]["prompt"])
+        self.respond(w, task, f"chunk {task}\nc2 D e")
+        w.tick()
+        self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
+
     def test_restart_after_technical_drop_save_resaves_with_persisted_evidence(self):
         w = self.world([("s", 3)])
         self.launch(w, 1)

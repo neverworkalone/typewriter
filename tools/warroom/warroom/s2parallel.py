@@ -534,6 +534,12 @@ class ParallelStage2:
                 continue
             data.pop("ack"), data.pop("error", None)
             wt = self._wt(b)
+            correction = data.get("correction") or {}
+            if data.get("kind") == "fix" and correction and not correction.get("fix_applied") and row["session_id"]:
+                # #5204: the correction run itself failed (e.g. usage limit). The answer file is the rejected one, so
+                # re-saving it would burn the correction budget without an AI fix; resume the correction session.
+                self._set(b, row["task"], data, state="FIXQ", run_id=None)
+                continue
             if stage2.decision_file_state(wt, row["task"], stage2.task_path(row["task"], "decisions.txt")) == "current":
                 self._set(b, row["task"], data, state="RESPONDED")   # saved again from the preserved answer, no new AI
             else:
