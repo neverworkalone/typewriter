@@ -8512,7 +8512,8 @@ class Supervisor:
             return self._fail(b, "ERROR", f"Stage 1 A/B 상태 확인 실패: {e}. worktree를 보존합니다.")
         retry = st["tries"] > 0 or bool(repair) or bool(st["recovery_answer"])
         self.store.update(b["id"], session_id=st["sid"] if retry and st["sid"] and not repair else None)
-        return self._launch(self.store.batch(b["id"]), "ab_chunk_retry" if retry else "ab_chunk_new")
+        launch_batch = self.store.batch(b["id"]) if st["recovery_answer"] and st["tries"] == 0 else b
+        return self._launch(launch_batch, "ab_chunk_retry" if retry else "ab_chunk_new")
 
     def _ab_chunk_prompt(self, b, kind: str, remote="?") -> tuple[str, dict, bool]:
         """(prompt, run-start baseline, resume?) for the active chunk. A correction resumes only that chunk's own session."""
