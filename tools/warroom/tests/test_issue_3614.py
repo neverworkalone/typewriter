@@ -845,7 +845,7 @@ class RestartHandoff(unittest.TestCase):
     def test_operator_reload_is_not_an_incident_and_requires_clean_containing_checkout(self):
         result = mock.Mock(returncode=0, stdout=HEAD1)
         clean = mock.Mock(returncode=0, stdout="")
-        with mock.patch("warroom.restart_controller._git", side_effect=[result, clean]), \
+        with mock.patch("warroom.restart_controller._git", side_effect=[result, clean, clean, result]), \
              mock.patch("warroom.restart_controller._ancestor", return_value=True):
             path = request_operator_restart(self.w.paths, HEAD1)
         request = json.loads(path.read_text())
@@ -858,6 +858,23 @@ class RestartHandoff(unittest.TestCase):
         with mock.patch("warroom.restart_controller._git", side_effect=[result, dirty]):
             with self.assertRaises(ValueError):
                 request_operator_restart(self.w.paths, HEAD1)
+
+    def test_operator_reload_accepts_only_merged_remote_code_before_checkout_update(self):
+        head = mock.Mock(returncode=0, stdout=HEAD1)
+        clean = mock.Mock(returncode=0, stdout="")
+        fetched = mock.Mock(returncode=0, stdout="")
+        tip = mock.Mock(returncode=0, stdout="b" * 40)
+        wanted = "a" * 40
+        with mock.patch("warroom.restart_controller._git", side_effect=[head, clean, fetched, tip]), \
+             mock.patch("warroom.restart_controller._ancestor", side_effect=[True, True]):
+            path = request_operator_restart(self.w.paths, wanted)
+        self.assertEqual(json.loads(path.read_text())["merge_sha"], wanted)
+        path.unlink()
+        with mock.patch("warroom.restart_controller._git", side_effect=[head, clean, fetched, tip]), \
+             mock.patch("warroom.restart_controller._ancestor", side_effect=[True, False]):
+            with self.assertRaises(ValueError):
+                request_operator_restart(self.w.paths, wanted)
+        self.assertFalse(path.exists())
 
     def test_restart_request_and_loaded_sha_survive_process_boundaries(self):
         w = self.w
