@@ -536,8 +536,9 @@ class AdapterPolicy(unittest.TestCase):
             log = Path(d) / "run.log"
             log.write_text("\n".join(json.dumps(e) for e in events) + "\n")
             ad = CodexCLIAdapter()
-            self.assertEqual(ad.run_problem(log, None, "th_1")[0], "PAUSED")             # the regular policy still pauses
+            self.assertIsNone(ad.run_problem(log, None, "th_1"))                         # #5471: never a live-run stop
             self.assertIsNone(ad.run_problem(log, None, "th_1", tolerate_denied=True))  # answer-only: judged by effects + answer
+            self.assertEqual(len(ad.denied_actions(log)), 1)                            # kept for the exit verdict
 
 
 if __name__ == "__main__":

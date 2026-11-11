@@ -271,17 +271,31 @@ class RunProblem(unittest.TestCase):
             with self.subTest(sandbox=sandbox, approval=approval):
                 self.assertIsNone(self.check([started(), completed()], contexts=[context(sandbox=sandbox, approval=approval)]))
 
-    def test_a_command_refused_by_the_local_policy_pauses_the_run(self):
+    def denied(self, events):
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text(lines(*events))
+            return CodexCLIAdapter().denied_actions(log)
+
+    def test_a_permission_failed_command_is_kept_as_evidence_without_stopping_the_run(self):
+        """#5471: the failed command stays a failure (evidence for the exit verdict); it no longer pauses the live run."""
         refused = [
             [started(), command("error: Unable to create index.lock: Operation not permitted")],
             [started(), command("fatal: could not write: Permission denied", cmd="gh pr create")],
             [started(), command("action requires approval before running", cmd="git push")],
         ]
         for events in refused:
-            with self.subTest(events=events[-1]["item"]["command"]):
-                problem = self.check(events, contexts=[context()])
-                self.assertEqual(problem[0], "PAUSED")
-                self.assertIn("로컬 Codex 정책이 명령을 거부했습니다", problem[1])
+            item = events[-1]["item"]
+            with self.subTest(events=item["command"]):
+                self.assertIsNone(self.check(events, contexts=[context()]))
+                denied, = self.denied(events)
+                self.assertEqual((denied["tool_input"]["command"], denied["exit_code"]), (item["command"], 1))
+                self.assertIn(item["aggregated_output"], denied["evidence"])
+
+    def test_denied_actions_is_unknown_without_this_runs_log(self):
+        self.assertIsNone(CodexCLIAdapter().denied_actions(Path("/nonexistent/l.log")))
+        self.assertIsNone(self.denied([command("Operation not permitted")]))   # the thread never started
+        self.assertEqual(self.denied([started(), completed()]), [])
 
     def test_shell_globbing_errors_and_nice_diagnostic_do_not_pause(self):
         logs = [
@@ -302,35 +316,38 @@ class RunProblem(unittest.TestCase):
                 log.write_text(lines(started(), command(output, exit_code, command_text)))
                 with mock.patch.dict(os.environ, {"CODEX_HOME": str(Path(d) / "empty")}):
                     self.assertIsNone(CodexCLIAdapter().policy_refusal(log))
+                    self.assertEqual(CodexCLIAdapter().denied_actions(log), [])
                     problem = CodexCLIAdapter().run_problem(log, PIN, THREAD)
                 self.assertIsNone(problem)
 
-    def test_zsh_reported_ps_execution_denial_still_pauses(self):
+    def test_zsh_reported_ps_execution_denial_is_evidence_not_a_stop(self):
         output = "zsh:1: operation not permitted: ps"
         shell_command = ('/bin/zsh -lc "ps -axo pid,etime,command | rg '
                          "'search_literature\\\\.py' | rg -v 'rg search_literature'\"")
         events = [started(), command(output, 1, shell_command)]
-        problem = self.check(events)
-        self.assertEqual(problem[0], "PAUSED")
+        self.assertIsNone(self.check(events))
+        denied, = self.denied(events)
         for evidence in ("ps -axo", "exit=1", output):
-            self.assertIn(evidence, problem[1])
+            self.assertIn(evidence, denied["evidence"])
         with tempfile.TemporaryDirectory() as d:
             log = Path(d) / "l.log"
             log.write_text(lines(*events))
-            self.assertIn("정책이 명령을 거부했습니다", CodexCLIAdapter().policy_refusal(log))
+            self.assertIn("권한으로 명령이 실패했습니다", CodexCLIAdapter().policy_refusal(log))
 
     def test_real_denial_is_retained_alongside_zsh_diagnostics_with_evidence(self):
         output = ("zsh:1: nice(5) failed: operation not permitted\n"
                   "zsh:1: no matches found: repos/example?state=open\n"
                   "fatal: Unable to create '/repo/.git/worktrees/wt/index.lock': Operation not permitted")
-        problem = self.check([started(), command(output, 128, "git add -- data/file.jsonl")])
-        self.assertEqual(problem[0], "PAUSED")
+        events = [started(), command(output, 128, "git add -- data/file.jsonl")]
+        self.assertIsNone(self.check(events))
+        denied, = self.denied(events)
         for evidence in ("git add -- data/file.jsonl", "exit=128", "index.lock': Operation not permitted"):
-            self.assertIn(evidence, problem[1])
+            self.assertIn(evidence, denied["evidence"])
 
     def test_policy_text_in_a_successful_command_is_not_a_refusal(self):
         events = [started(), command("Operation not permitted (printed and handled)", exit_code=0), completed()]
         self.assertIsNone(self.check(events, contexts=[context()]))
+        self.assertEqual(self.denied(events), [])
 
     def test_session_id_comes_from_thread_started(self):
         with tempfile.TemporaryDirectory() as d:
@@ -429,8 +446,8 @@ class Classification(unittest.TestCase):
 
 class PolicyRefusal(unittest.TestCase):
     def test_table(self):
-        cases = [  # the refusal shows in agent text too (not only in a command item)
-            ("Exit code: 128 — fatal: Unable to create index.lock: Operation not permitted", True),
+        cases = [  # agent text is a diagnostic clue only: never a refusal without a failed command item (#5471)
+            ("Exit code: 128 — fatal: Unable to create index.lock: Operation not permitted", False),
             ("the command was denied by the sandbox policy", False),
             ("all checks passed", False),
             ("Operation not permitted was printed by the test; the check passed with exit code 0", False),
@@ -469,14 +486,17 @@ class PolicyRefusal(unittest.TestCase):
                 "zsh:1: no matches found: repos/example?state=open"}}, completed()))
             self.assertIsNone(CodexCLIAdapter().policy_refusal(log))
 
-    def test_agent_reported_refusal_keeps_exit_and_cause(self):
+    def test_agent_report_never_replaces_the_failed_command_evidence(self):
+        report = {"type": "item.completed", "item": {
+            "type": "agent_message", "text": "Exit code: 128\nfatal: index.lock: Operation not permitted"}}
         with tempfile.TemporaryDirectory() as d:
             log = Path(d) / "l.log"
-            log.write_text(lines(started(), {"type": "item.completed", "item": {
-                "type": "agent_message", "text": "Exit code: 128\nfatal: index.lock: Operation not permitted"}}, completed()))
+            log.write_text(lines(started(), report, completed()))
+            self.assertIsNone(CodexCLIAdapter().policy_refusal(log))
+            log.write_text(lines(started(), command("fatal: index.lock: Operation not permitted", 128, "git commit"),
+                                 report, completed()))
             reason = CodexCLIAdapter().policy_refusal(log)
-            self.assertIsNotNone(reason)
-            for evidence in ("exit=128", "fatal: index.lock: Operation not permitted"):
+            for evidence in ("git commit", "exit=128", "fatal: index.lock: Operation not permitted"):
                 self.assertIn(evidence, reason)
 
     def test_other_adapters_never_report_a_refusal(self):
@@ -493,6 +513,7 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
         run_problem = CodexCLIAdapter.run_problem
         policy_refusal = CodexCLIAdapter.policy_refusal
         completion_problem = CodexCLIAdapter.completion_problem
+        denied_actions = CodexCLIAdapter.denied_actions
 
     def world(self):
         w = World()
@@ -515,14 +536,14 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
         finally:
             w.tmp.cleanup()
 
-    def test_no_pr_after_a_policy_refusal_pauses_instead_of_erroring(self):
+    def test_no_pr_after_a_permission_failed_command_pauses_instead_of_erroring(self):
         w = self.world()
         try:
             with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
                 rollout_home(Path(home), THREAD, [context()])          # the turn was recorded, as Codex does
                 w.start("single", "codex", "a")
-                w.adapter.plan.append({"code": 0, "text": lines(started(), {"type": "item.completed", "item": {
-                    "type": "agent_message", "text": "Exit code: 128 Operation not permitted"}}, completed())})
+                w.adapter.plan.append({"code": 0, "text": lines(
+                    started(), command("Operation not permitted", 128, "git commit"), completed())})
                 w.tick()
                 w.adapter.finish(w.adapter.launches[-1]["pid"])
                 w.tick()
@@ -545,22 +566,202 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
         finally:
             w.tmp.cleanup()
 
-    def test_refused_command_pauses_and_keeps_the_batch(self):
+    def test_permission_failed_command_keeps_the_live_run_and_the_exit_gate_decides(self):
+        """#5471 old-fails/new-passes: a live run is not stopped by one failed command; without its result it is never
+        accepted (kept, no automatic retry)."""
         w = self.world()
         try:
             with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
                 w.start("single", "codex", "a")
-                w.adapter.plan.append({"code": 0, "text": lines(started(), command("Operation not permitted"))})
                 w.tick()
-                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                pid = w.adapter.launches[-1]["pid"]
+                run = w.adapter.running[pid]
+                run["text"] = lines(started(), command("Operation not permitted"))
+                run["log"].parent.mkdir(parents=True, exist_ok=True)
+                run["log"].write_text(run["text"])                  # the failure is in the live log
+                w.tick()
+                self.assertIn(pid, w.adapter.running)              # not stopped
+                self.assertEqual(w.row("codex", "a")["state"], "PRODUCING")
+                w.adapter.finish(pid)
                 w.tick()
             row = w.row("codex", "a")
-            self.assertEqual(row["state"], "PAUSED")
+            self.assertEqual(row["state"], "ERROR")                # no turn.completed: never accepted as finished
+            self.assertIn("turn.completed", row["error"])
             self.assertIsNotNone(row["worktree"])                  # worktree, branch and session are kept
             self.assertEqual(len(w.adapter.launches), 1)           # no automatic retry
         finally:
             w.tmp.cleanup()
 
+
+
+class MaintainerPermissionFailure(unittest.TestCase):
+    """#5471: the real Codex log parsing feeds the Maintainer's own exit gates. A permission-failed command never stops the
+    live run; the owned-PR, review-fix and no-PR diagnosis gates decide, and missing proof still fails closed."""
+    PS = command("zsh:1: operation not permitted: ps", 1, '/bin/zsh -lc "ps -axo pid,command"')
+
+    def setUp(self):
+        from tests.test_issue_1555 import world
+        self.w = world()
+        self.addCleanup(self.w.tmp.cleanup)
+        for name in ("run_problem", "policy_refusal", "denied_actions"):
+            setattr(self.w.adapter, name, getattr(CodexCLIAdapter, name).__get__(self.w.adapter))
+        home = tempfile.TemporaryDirectory()
+        self.addCleanup(home.cleanup)
+        env = mock.patch.dict(os.environ, {"CODEX_HOME": home.name})
+        env.start()
+        self.addCleanup(env.stop)
+
+    def maintainer(self):
+        from tests.test_issue_1555 import maintainer_row, produce_and_report
+        produce_and_report(self.w)
+        self.w.tick()
+        m = maintainer_row(self.w)
+        self.assertEqual(m["state"], "PRODUCING")
+        return m
+
+    def fail_command_live(self):
+        """The live run logs a permission-failed command; War Room keeps it running."""
+        w = self.w
+        pid = w.adapter.launches[-1]["pid"]
+        run = w.adapter.running[pid]
+        run["text"] = lines(started(), self.PS)
+        run["log"].parent.mkdir(parents=True, exist_ok=True)
+        run["log"].write_text(run["text"])
+        return pid
+
+    def open_pr(self, head=None):
+        from tests.fakes import HEAD1
+        self.w.pr_info(50, head or HEAD1, head_ref="maint-101")
+        self.w.gh.by_branch["maint-101"] = [{"number": 50, "state": "OPEN", "headRefOid": head or HEAD1}]
+
+    def notes(self, m):
+        return [e["msg"] for e in self.w.store.events_after(0, 5000)
+                if e["batch_id"] == m["id"] and "권한 관련 명령 실패" in e["msg"]]
+
+    def test_live_run_continues_and_its_pushed_pr_is_handed_to_review(self):
+        w = self.w
+        m = self.maintainer()
+        pid = self.fail_command_live()
+        w.tick()
+        self.assertIn(pid, w.adapter.running)                          # old: stop() + PAUSED here
+        self.assertEqual(w.store.batch(m["id"])["state"], "PRODUCING")
+        self.open_pr()
+        w.adapter.finish(pid)
+        w.tick()
+        current = w.store.batch(m["id"])
+        self.assertEqual((current["state"], current["pr_number"]), ("WAITING_REVIEW", 50), current["error"])
+        self.assertEqual(len(self.notes(m)), 1)
+        self.assertIn("ps -axo", self.notes(m)[0])
+
+    def test_unpushed_head_after_the_failure_still_pauses_with_its_evidence(self):
+        from tests.fakes import HEAD2
+        w = self.w
+        m = self.maintainer()
+        pid = self.fail_command_live()
+        self.open_pr(HEAD2)
+        w.adapter.finish(pid)
+        w.tick()
+        current = w.store.batch(m["id"])
+        self.assertEqual(current["state"], "PAUSED")
+        self.assertIn("완료 증거 없음", current["error"])
+        self.assertIn("ps -axo", current["error"])
+
+    def test_no_pr_and_no_result_pauses_on_the_command_evidence_not_a_continuation(self):
+        w = self.w
+        m = self.maintainer()
+        w.adapter.finish(self.fail_command_live())
+        w.tick(3)
+        current = w.store.batch(m["id"])
+        self.assertEqual(current["state"], "PAUSED")
+        self.assertIn("권한으로 명령이 실패했습니다", current["error"])
+        self.assertIsNone(w.store.get(f"m_continuation_{m['id']}"))
+        self.assertEqual(len(self.notes(m)), 1)                         # reached the no-PR diagnosis path
+
+    def test_no_pr_with_a_valid_structured_result_reaches_the_diagnosis_continuation(self):
+        from tests import test_issue_3614 as t3614
+        from tests.test_issue_5245 import StructuredContinuation
+        w = self.w
+        case = StructuredContinuation()
+        case.w = w
+        case.batch_id, case.defect_id, case.m, case.request = t3614.NoCodeRecovery.prepare_failed_d_task(case)
+        StructuredContinuation.submit(case)
+        launches = len(w.adapter.launches)
+        w.adapter.running[w.adapter.launches[-1]["pid"]]["text"] = lines(started(), self.PS)
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick(3)
+        current = w.store.batch(case.m["id"])
+        self.assertEqual(current["state"], "PRODUCING", current["error"])   # the same attempt continued
+        self.assertGreater(len(w.adapter.launches), launches)
+        self.assertEqual(int(w.store.get(f"m_diagnosis_round_{case.m['id']}")), 1)
+
+    def fixing(self):
+        from tests.fakes import HEAD1
+        from tests.test_supervisor import review
+        w = self.w
+        m = self.maintainer()
+        self.open_pr()
+        w.adapter.running[w.adapter.launches[-1]["pid"]]["text"] = lines(started())
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.store.batch(m["id"])["state"], "WAITING_REVIEW")
+        w.gh.reviews_ = [review(71, HEAD1, "-1 correct the issue-scoped fix")]
+        w.store.delete(f"last_poll_{m['id']}")
+        w.tick()
+        self.assertEqual(w.store.batch(m["id"])["state"], "FIXING")
+        return w.store.batch(m["id"])
+
+    def test_fix_run_with_a_failed_command_reaches_the_fix_gate_and_continues(self):
+        """Old: "리뷰 피드백 수정 실행의 권한 거부" PAUSED. New: the regular fix gate (missing reply → continuation)."""
+        from tests.test_issue_5245 import rejection
+        from warroom.maintenance import CONTINUATION_PAUSE
+        w = self.w
+        m = self.fixing()
+        w.adapter.running[w.adapter.launches[-1]["pid"]]["text"] = lines(started(), self.PS)
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        with mock.patch.object(w.sup.maint, "_start"):
+            w.tick(4)
+        current = w.store.batch(m["id"])
+        self.assertEqual((current["state"], current["pause_reason"], current["paused_from"]),
+                         ("PAUSED", CONTINUATION_PAUSE, "FIXING"), current["error"])
+        self.assertEqual(rejection(m)["reason"], "fix_incomplete")
+        self.assertEqual(len(self.notes(m)), 1)
+
+    def ended_fix(self):
+        w = self.w
+        m = self.fixing()
+        w.adapter.running[w.adapter.launches[-1]["pid"]]["text"] = lines(started(), self.PS)
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.store.finish_runs(m["id"], 0, clear_pid=True)
+        return w.store.batch(m["id"])
+
+    def test_retry_is_consumed_only_when_the_fix_gate_judges_the_preserved_result(self):
+        from tests.test_issue_5245 import rejection
+        w = self.w
+        b = self.ended_fix()
+        launches = len(w.adapter.launches)
+        with mock.patch.object(w.sup.maint, "_start"):
+            self.assertTrue(w.sup._retry_denied_success(b))             # fix gate: missing reply → continuation
+        self.assertEqual(rejection(b)["reason"], "fix_incomplete")
+        self.assertEqual(len(w.adapter.launches), launches)
+
+    def test_retry_with_unfinished_work_takes_the_regular_relaunch_path(self):
+        w = self.w
+        b = self.ended_fix()
+        w.git.dirty_text = " M tools/warroom/warroom/supervisor.py"
+        self.assertFalse(w.sup._retry_denied_success(b))
+        self.assertEqual(w.store.batch(b["id"])["state"], "FIXING")     # nothing consumed or failed
+
+    def test_head_lag_recheck_continues_a_fix_with_a_missing_reply(self):
+        """The HEAD-lag recheck uses the same Maintainer fix problem routing (old: ERROR)."""
+        from tests.test_issue_5245 import rejection
+        w = self.w
+        b = self.ended_fix()
+        w.store.set(f"headlag_{b['id']}", "expired")
+        with mock.patch.object(w.sup.maint, "_start"):
+            w.sup._recheck_fix_head(b)
+        current = w.store.batch(b["id"])
+        self.assertNotEqual(current["state"], "ERROR", current["error"])
+        self.assertEqual(rejection(b)["reason"], "fix_incomplete")
 
 
 class SupervisorGitDir(unittest.TestCase):
