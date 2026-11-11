@@ -188,6 +188,26 @@ class MaintainerControls(World2022):
         self.assertEqual(maintainer_row(w)["state"], "PRODUCING")
         self.assertEqual(len([x for x in w.store.all_batches() if x["method"] == "m"]), 1)
 
+    def test_retry_collects_merged_pr_without_relaunch_and_preserves_failure_on_query_error(self):
+        w = self.w
+        _, m = start_maintainer(w)
+        w.adapter.finish(m["pid"])
+        w.store.finish_runs(m["id"], 1)
+        open_pr(w)
+        w.store.update(m["id"], state="PAUSED", paused_from="FIXING", pid=None,
+                       pr_number=50, head_sha=HEAD1, error="permission denied")
+        self.assertTrue(control.retry_maintainer(w.store, 101, m["id"]))
+        launches = len(w.adapter.launches)
+        w.gh.fail_pull = True
+        w.sup._tick_maintenance()
+        self.assertEqual(w.store.batch(m["id"])["state"], "PAUSED")
+        self.assertEqual(len(w.adapter.launches), launches)
+        w.gh.fail_pull = False
+        w.pr_info(50, HEAD1, state="closed", merged=True, head_ref="maint-101", merge_sha=MERGE)
+        w.sup._tick_maintenance()
+        self.assertEqual(w.store.batch(m["id"])["state"], "MERGED")
+        self.assertEqual(len(w.adapter.launches), launches)
+
     def test_retry_is_consumed_on_its_producer_when_other_model_sorts_first(self):
         w = self.w
         _, m = start_maintainer(w)

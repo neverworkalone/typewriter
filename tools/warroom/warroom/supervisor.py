@@ -1001,7 +1001,8 @@ class Supervisor:
             if not self.store.get(f"defect_hold_{b['id']}"):
                 return self.store.set_line(b["producer"], b["method"], retry_batch=None)
             self._override_defect(b)
-        elif ln["retry_batch"] != b["id"] and self._recover_if_merged(b):
+        elif ((ln["retry_batch"] != b["id"] or b["pr_number"])
+              and self._recover_if_merged(b, force=ln["retry_batch"] == b["id"])):
             return
         elif (ln["retry_batch"] == b["id"] and not b["pr_number"]
               and self._complete_progress(b) and not self._verified_late_producer_exit(b)):
@@ -1141,7 +1142,7 @@ class Supervisor:
                 self._fail(b, "ERROR", f"실패 배치의 기존 PR 재발견/머지 확인이 불명확합니다: {e}. "
                            "worktree와 실행 상태를 보존하며 AI를 재실행하지 않습니다.")
                 return True
-            return False
+            return force  # an explicit retry must not relaunch while the owned PR state is unknown
         if info is None:
             if self.store.get(f"no_pr_recovery_{b['id']}") != "1":
                 self.store.log(b["id"], "완료 기록이 남은 소유 브랜치에서 기존 PR을 찾지 못했습니다. "
@@ -1154,6 +1155,9 @@ class Supervisor:
             return self._handoff_recovered_pr(b, info, "PAUSED/ERROR 상태에서")
         if not info["merged"]:
             return False
+        if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
+            self.store.log(b["id"], "머지된 PR 소유권이 배치와 일치하지 않아 복구하지 않습니다", "error")
+            return True
         return self._enter_merged(b, info, f"{b['state']} 상태에서")
 
     def _handoff_recovered_pr(self, b, info, context: str) -> bool:
