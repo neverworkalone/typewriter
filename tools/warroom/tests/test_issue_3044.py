@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from tests.test_issue_1684 import S2
@@ -317,6 +318,54 @@ class Stage2RepairCandidateProblems(unittest.TestCase):
 
     def state(self, w, batch):
         return json.loads(w.store.get(stage2.repair_state_key(batch["id"])))["current"]
+
+    def test_unprojected_duplicate_requests_independent_judgment_and_preserves_other_rows(self):
+        w, batch = self.start(lambda decision: None)
+        initial = {"decisions": [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD}
+                                 for name in self.NAMES[1:]], "peer_adjustments": [],
+                   "unresolved": [{"source_sense_id": "source-sense", "candidate": self.NAMES[0],
+                                   "reason": "the existing row does not project this form"}]}
+        self.run_text(w, f"repair @{FP}\n" + json.dumps(initial))
+        correction = self.state(w, batch)["response_correction"]
+        self.assertEqual(correction["requested_keys"], ["source-sense\u0000candidate-0"])
+        self.assertEqual(correction["diagnostics"][0]["condition"], "independent_judgment")
+        self.assertEqual([row["candidate"] for row in correction["accepted_answer"]["decisions"]], self.NAMES[1:])
+        self.assertEqual(w.git.stage2_repair_calls, [])
+        self.run_text(w, ordinary_text(FP, {self.NAMES[0]: {"disposition": "drop", "reason": "e"}}))
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
+        self.assertEqual(len(w.git.stage2_repair_calls), 1)
+        self.assertEqual({row["candidate"] for row in w.git.stage2_repair_calls[0]["decisions"]}, set(self.NAMES))
+
+    def test_still_unresolved_correction_does_not_force_a_decision(self):
+        w, batch = self.start(lambda decision: None)
+        unresolved = {"source_sense_id": "source-sense", "candidate": self.NAMES[0], "reason": "insufficient evidence"}
+        rows = [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD} for name in self.NAMES[1:]]
+        self.run_text(w, f"repair @{FP}\n" + json.dumps({"decisions": rows, "peer_adjustments": [], "unresolved": [unresolved]}))
+        self.run_text(w, f"repair @{FP}\n" + json.dumps({"decisions": [], "peer_adjustments": [], "unresolved": [unresolved]}))
+        self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+        self.assertEqual(w.git.stage2_repair_calls, [])
+
+    def test_previously_rejected_unresolved_response_is_rebound_to_same_run(self):
+        from warroom.supervisor import Stage2RepairUnresolvedError
+        w, batch = self.start(lambda decision: None)
+        unresolved = {"source_sense_id": "source-sense", "candidate": self.NAMES[0], "reason": "not projected"}
+        rows = [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD} for name in self.NAMES[1:]]
+        text = f"repair @{FP}\n" + json.dumps({"decisions": rows, "peer_adjustments": [], "unresolved": [unresolved]})
+        with patch.object(w.sup, "_stage2_repair_validate_response", side_effect=Stage2RepairUnresolvedError("unresolved: not projected")):
+            self.run_text(w, text)
+        batch = w.store.batch(batch["id"])
+        self.assertEqual(batch["state"], "ERROR")
+        state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+        attempt = state["current"]["attempt_log"][-1]
+        self.assertEqual(attempt["reason_code"], "unresolved")
+        self.assertIsNone(w.sup._stage2_repair_replay_missing_response(batch, state))
+        correction = state["current"]["response_correction"]
+        self.assertEqual(correction["source_run_id"], attempt["run_id"])
+        self.assertEqual(correction["response_sha256"], attempt["response_sha256"])
+        self.assertTrue(correction["source_replayed"])
+        w.sup._launch_stage2_repair_page(batch)
+        self.assertIn("independent_judgment", w.adapter.launches[-1]["prompt"])
+        self.assertEqual(w.git.stage2_repair_calls, [])
 
     def test_new_problems_are_batched_once_and_valid_rows_are_preserved(self):
         for field_path, condition in (("decision.target_resolution", "required"), ("decision.type", "enum"),

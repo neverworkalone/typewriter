@@ -4381,7 +4381,7 @@ class Supervisor:
                             or previous.get("run_id") != correction.get("source_run_id") \
                             or previous.get("response_sha256") != correction.get("response_sha256") \
                             or (previous.get("reason_code") not in {"coverage", "schema"}
-                                and not (previous.get("reason_code") == "content"
+                                and not (previous.get("reason_code") in {"content", "unresolved"}
                                          and correction.get("source_replayed") is True)):
                         return self._fail(b, "ERROR", "Stage 2 repair correction is not bound to its rejected source attempt; preserving all evidence")
             current["attempts"] = current.get("attempts", 0) + 1
@@ -4580,9 +4580,10 @@ class Supervisor:
         attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
         error = current.get("last_error")
         if not isinstance(attempt, dict) or attempt.get("status") != "rejected" \
-                or attempt.get("reason_code") != "content" \
-                or not isinstance(error, str) \
-                or not error.startswith("repair response does not cover every requested candidate ("):
+                or not isinstance(error, str) or not (
+                    attempt.get("reason_code") == "content"
+                    and error.startswith("repair response does not cover every requested candidate (")
+                    or attempt.get("reason_code") == "unresolved" and error.startswith("unresolved:")):
             return None
         groups, cursor = current.get("groups"), current.get("cursor")
         if not isinstance(groups, list) or type(cursor) is not int or not 0 <= cursor < len(groups):
@@ -4610,7 +4611,7 @@ class Supervisor:
             return "Previously rejected Stage 2 repair response has no complete output"
         except (Stage2RepairSchemaError, Stage2RepairMissingCandidatesError) as correction_error:
             correction = self._stage2_repair_correction(current)
-            if not isinstance(correction, dict) or correction.get("kind") not in {"coverage", "schema_and_coverage"} \
+            if not isinstance(correction, dict) or correction.get("kind") not in {"coverage", "schema_and_coverage", "problems"} \
                     or correction.get("requested_keys") != sorted(set(correction.get("requested_keys", []))):
                 return f"Rejected Stage 2 repair response did not produce an exact missing-candidate scope: {correction_error}"
             correction["source_run_id"] = run_id
@@ -4865,15 +4866,24 @@ class Supervisor:
                 else:
                     valid_direct_rows.append(row)
             seen.add(key)
+        unresolved_for_correction = []
+        unresolved_seen = set()
         for row in unresolved_rows:
             if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "reason"} \
                     or not isinstance(row.get("reason"), str) or not row["reason"].strip():
                 raise Stage2RepairContentError("unresolved repair items need an exact candidate key and reason")
             key = (row["source_sense_id"], row["candidate"])
-            if key not in required or key not in response_keys or key in seen:
+            if key not in required or key not in response_keys or key in seen or key in unresolved_seen:
                 raise Stage2RepairContentError("unresolved response contains a duplicate or out-of-page candidate")
-            seen.add(key)
-        if unresolved_rows:
+            unresolved_seen.add(key)
+            group = next(group for group in page if key in {
+                (candidate["source_sense_id"], candidate["candidate"]) for candidate in group.get("candidates", [])})
+            if correction is None and not required[key]["already_accounted"] and any(
+                    conflict.get("code") == "id-pair-conflict" for conflict in group.get("conflicts", [])):
+                unresolved_for_correction.append(row)
+            else:
+                seen.add(key)
+        if len(unresolved_for_correction) != len(unresolved_rows):
             current["last_error"] = "unresolved: " + "; ".join(
                 f"{row['source_sense_id']}/{row['candidate']}: {row['reason']}" for row in unresolved_rows[:8])
             raise Stage2RepairUnresolvedError(current["last_error"])
@@ -4882,7 +4892,8 @@ class Supervisor:
                 not isinstance(row, dict) or f"{row.get('source_sense_id')}\u0000{row.get('candidate')}" not in requested_peer_keys
                 for row in peer_rows)):
             raise Stage2RepairContentError("repair-correction response may contain only the requested candidate and peer rows")
-        missing = sorted(response_keys - seen)
+        unresolved_keys = {(row["source_sense_id"], row["candidate"]) for row in unresolved_for_correction}
+        missing = sorted(response_keys - seen - unresolved_keys)
 
         def affected_for(rows):
             affected = {}
@@ -4940,6 +4951,11 @@ class Supervisor:
                      "message": row["code"], "source": "wrapper"} for row in schema_diagnostics]
         problems += [{"candidate_key": f"{sense_id}\u0000{name}", "field_path": "row", "condition": "required",
                       "message": "the candidate row is missing", "source": "missing"} for sense_id, name in missing]
+        problems += [{"candidate_key": f"{row['source_sense_id']}\u0000{row['candidate']}",
+                      "field_path": "decision", "condition": "independent_judgment",
+                      "message": "Reconsider independent editorial value without assuming duplicate projection; "
+                                 "if no supported decision resolves the conflict, remain unresolved. Previous reason: " + row["reason"],
+                      "source": "semantic_contract"} for row in unresolved_for_correction]
         given_peer_texts = {key_text(row) for row in peer_rows}
         problems += [{"candidate_key": key, "field_path": "row", "condition": "required",
                       "message": "the peer adjustment row is missing", "source": "missing"}
@@ -4992,7 +5008,7 @@ class Supervisor:
                 requested = [p for p in problems if p["candidate_key"] in correction_keys or p["candidate_key"] in correction_peer_keys]
                 wrapper_requested = [p for p in requested if p["source"] == "wrapper"]
                 missing_requested = [p for p in requested if p["source"] == "missing"]
-                if any(p["source"] == "cli" for p in requested) or correction_peer_keys:
+                if any(p["source"] in {"cli", "semantic_contract"} for p in requested) or correction_peer_keys:
                     correction_kind = "problems"
                 elif wrapper_requested and missing_requested:
                     correction_kind = "schema_and_coverage"
@@ -5002,8 +5018,9 @@ class Supervisor:
                     correction_kind = "coverage"
                 diagnostics = []
                 for problem in requested:
-                    if problem["source"] == "cli":
-                        diagnostics.append({"candidate_key": problem["candidate_key"], "code": "cli_problem",
+                    if problem["source"] in {"cli", "semantic_contract"}:
+                        diagnostics.append({"candidate_key": problem["candidate_key"],
+                            "code": "cli_problem" if problem["source"] == "cli" else "independent_judgment",
                             "field_path": problem["field_path"], "condition": problem["condition"],
                             "message": problem["message"], "required_fields": [], "actual_fields": []})
                 diagnostics += [row for row in schema_diagnostics if row["candidate_key"] in correction_keys]
