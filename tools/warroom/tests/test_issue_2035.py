@@ -222,11 +222,24 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(b["state"], "ERROR")
         self.assertEqual(len(w.adapter.launches), 4)
         self.assertFalse((w.wt() / stage1ab.names(b).directory / "candidates/chunk-001.jsonl").exists())
-        w.ai(w.block(1), session="ses_1")
-        self.assertTrue(control.retry(w.store, "deepseek", "a"))              # the cap survives a restart/Retry
+        # An explicit operator Retry grants one fresh session, preserving the rejected answer as evidence.
+        answer = w.wt() / stage1ab.answer_path(b, 1)
+        answer.write_text("chunk 001\nS1\t기존후보\n", "utf-8")
+        w.ai(w.block(1), session="ses_recovery")
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
         w.tick(2)
-        self.assertEqual(w.row_()["state"], "ERROR")
-        self.assertEqual(len(w.adapter.launches), 4)
+        self.assertEqual(len(w.adapter.launches), 5)
+        self.assertEqual(w.adapter.launches[-1]["kind"], "start")
+        self.assertIn(prompts.VIEW_BEGIN, w.adapter.launches[-1]["prompt"])
+        self.assertIn("기존후보", w.adapter.launches[-1]["prompt"])
+        backups = list(answer.parent.glob("answer-001.tsv.recovery-*"))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].read_text("utf-8"), "chunk 001\nS1\t기존후보\n")
+        w.finish_last()
+        w.tick()
+        cp = stage1ab.checkpoint(w.wt(), w.row_())
+        self.assertTrue(stage1ab.chunk_saved(w.wt(), w.row_(), cp["chunks"][0]))
+        self.assertEqual(backups[0].read_text("utf-8"), "chunk 001\nS1\t기존후보\n")
 
 
     def test_three_source_lemma_repeats_are_removed_together_and_other_rows_are_preserved(self):

@@ -310,6 +310,25 @@ class Store:
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
             c.execute("DELETE FROM kv WHERE key=?", (exit_verdict_key(batch_id),))
 
+    def begin_ab_operator_recovery(self, b, key: str, value: str) -> bool:
+        """Consume one pinned Retry and its new chunk state in the same transaction."""
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            row = c.execute("SELECT state,pid,run_kind FROM batches WHERE id=?", (b["id"],)).fetchone()
+            line = c.execute("SELECT retry_batch,force_stop FROM lines WHERE model=? AND method=?",
+                             (b["producer"], b["method"])).fetchone()
+            if (row is None or row["state"] != "ERROR" or row["pid"] is not None
+                    or row["run_kind"] != b["run_kind"] or line is None
+                    or line["retry_batch"] != b["id"] or line["force_stop"]
+                    or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND ended_at IS NULL", (b["id"],)).fetchone()):
+                return False
+            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+            c.execute("DELETE FROM kv WHERE key=?", (exit_verdict_key(b["id"]),))
+            c.execute("UPDATE lines SET retry_batch=NULL,run=1 WHERE model=? AND method=?", (b["producer"], b["method"]))
+            c.execute("UPDATE batches SET state='PRODUCING',error=NULL,retries=0,retry_after=NULL,"
+                      "pause_reason='',defect_id=NULL WHERE id=?", (b["id"],))
+            return True
+
     # --- restart_phase: {instance, phase, request, seq[, stopping_at]}, changed only by an exact-match CAS (#3774, #5162) ---
     def restart_phase(self) -> dict | None:
         raw = self.get(RESTART_PHASE_KEY)
