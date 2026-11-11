@@ -1870,14 +1870,12 @@ async function inspectSelectedCheckpoint(checkpoint, out, root, selected, digest
   try {
     pages = selectedInspectPages(checkpoint, selected, digest, pageSize);
   } catch (error) {
-    if (!String(error.message).includes('one inspect Q summary row exceeds its output limit')) throw error;
-    const full = await inspectCheckpoint(checkpoint, out, root, selected.senseIds, null, null, 'compact', page, pageSize);
-    const [header, ...body] = full.text.split('\n');
-    const withNote = `${header}\n# selection fallback: full source-sense inspect\n${body.join('\n')}`;
-    const text = Buffer.byteLength(withNote, 'utf8') <= INSPECT_PAGE_MAX_BYTES && withNote.length <= INSPECT_PAGE_MAX_CHARS
-      ? withNote : full.text;
-    await writeOutput(out, root, text);
-    return { ...full, text, selection_fallback: true };
+    if (String(error.message).includes('page exceeds its output limit') ||
+        String(error.message).includes('one inspect Q summary row exceeds its output limit')) {
+      pages = partitionInspectLines(checkpoint, selected, digest, pageSize);
+    } else {
+      throw error;
+    }
   }
   if (page > pages.length) throw new Error(`inspect page ${page} is outside 1..${pages.length}`);
   const text = pages[page - 1];
@@ -1952,12 +1950,135 @@ function assertBoundedInspectPage(text, label) {
   }
 }
 
+// Oversized context is partitioned into complete rows, never truncated. Each page
+// belongs to the same inspection snapshot and retains its original aliases.
+function partitionInspectLines(checkpoint, selected, digest) {
+  const model = inspectModel(selected);
+  const lines = [];
+  const seenTargets = new Set();
+  const seenSenses = new Set();
+  for (const row of model.candidates) {
+    const text = selectedInspectDetailPage(checkpoint, selected, digest, [row], 1, 1);
+    let includePeers = false;
+    for (const line of text.split('\n').slice(4)) {
+      if (!line) continue;
+      if (/^T\d+\t/u.test(line)) {
+        const alias = line.split('\t', 1)[0];
+        if (seenTargets.has(alias)) continue;
+        seenTargets.add(alias);
+      } else if (line.startsWith('S\t')) {
+        const sense = line.split('\t')[1];
+        includePeers = !seenSenses.has(sense);
+        if (!includePeers) continue;
+        seenSenses.add(sense);
+      } else if (line.startsWith('P\t') && !includePeers) continue;
+      lines.push(line);
+    }
+  }
+  if (selected.selective) {
+    const keys = new Set(selected.candidates.map(({ item, candidate }) => `${item.sense_id}\u0000${candidate.text}`));
+    for (const row of inspectModel({ ...selected, candidates: selected.allCandidates }).candidates) {
+      if (!keys.has(`${row.item.sense_id}\u0000${row.candidate.text}`)) {
+        lines.push(['Q', row.alias, row.candidate.text, ...compactReviewSummary(row)].map(compactField).join('\t'));
+      }
+    }
+  }
+  const header = (page, total) => `inspect ${selected.senseIds.join(',')} @${digest}\n` +
+    `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${total} · context fragments\n` +
+    `# optional_review_complete ${checkpoint.optional_review_complete === true}\n` +
+    '# F row-id part/total JSON-string: concatenate decoded fragments to reconstruct the complete row\n';
+  const boundedLines = [];
+  for (const [index, line] of lines.entries()) {
+    const single = header(999999, 999999) + line + '\n';
+    if (Buffer.byteLength(single, 'utf8') <= INSPECT_PAGE_MAX_BYTES && single.length <= INSPECT_PAGE_MAX_CHARS) {
+      boundedLines.push(line);
+    } else {
+      const chars = Array.from(line);
+      const count = Math.ceil(chars.length / 4000);
+      for (let i = 0; i < count; i += 1) {
+        boundedLines.push(`F\t${index + 1}\t${i + 1}/${count}\t${JSON.stringify(chars.slice(i * 4000, (i + 1) * 4000).join(''))}`);
+      }
+    }
+  }
+  const groups = [[]];
+  for (const line of boundedLines) {
+    let group = groups.at(-1);
+    let text = header(999999, 999999) + [...group, line].join('\n') + '\n';
+    if (Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS) {
+      if (!group.length) throw new Error('inspect context row exceeds output limit and cannot be partitioned');
+      group = []; groups.push(group);
+      text = header(999999, 999999) + line + '\n';
+      if (Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS) {
+        throw new Error('inspect context row exceeds output limit and cannot be partitioned');
+      }
+    }
+    group.push(line);
+  }
+  return groups.map((group, i) => header(i + 1, groups.length) + group.join('\n') + '\n');
+}
+
 function assertPrimaryComplete(checkpoint) {
   if (!checkpoint.complete) throw new Error('Stage 1 inputs are incomplete for this Part');
   if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} first`);
   if (checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) {
     throw new Error(`primary decisions are incomplete: ${checkpointProgress(checkpoint)}`);
   }
+}
+
+// A conservative per-page bound, calculated from individual values rather than
+// rendering or serializing every page. Shared objects (notably peers) are
+// measured once. Overestimates only choose the lossless fragmented path.
+function inspectNeedsPartition(checkpoint, selected, model, pageSize) {
+  const cache = new WeakMap();
+  function size(value) {
+    if (value === undefined) return [0, 0];
+    if (value === null || typeof value !== 'object') {
+      const text = JSON.stringify(value);
+      return [Buffer.byteLength(text, 'utf8'), text.length];
+    }
+    if (cache.has(value)) return cache.get(value);
+    let bytes = 2; let chars = 2;
+    for (const [key, child] of Object.entries(value)) {
+      if (child === undefined) continue;
+      const [b, c] = size(child);
+      const name = Array.isArray(value) ? '' : JSON.stringify(key) + ':';
+      bytes += Buffer.byteLength(name, 'utf8') + b + 1;
+      chars += name.length + c + 1;
+    }
+    const result = [bytes, chars];
+    cache.set(value, result);
+    return result;
+  }
+  const scope = size([checkpoint.shard, checkpoint.batch, checkpoint.part, selected.senseIds, 'x'.repeat(64)]);
+  let bytes = scope[0] + 1024; let chars = scope[1] + 1024;
+  for (const [index, row] of model.candidates.entries()) {
+    if (index && index % pageSize === 0) { bytes = scope[0] + 1024; chars = scope[1] + 1024; }
+    const item = row.item;
+    const source = size([item.sense_id, item.record_id, item.lemma, item.pos, item.gloss,
+      item.reference_gloss, item.approved_peers ?? []]);
+    const candidate = size(row.candidate);
+    const aliasAllowance = 256 + row.targetAliases.length * 32;
+    bytes += source[0] + candidate[0] + aliasAllowance;
+    chars += source[1] + candidate[1] + aliasAllowance;
+    if (bytes > INSPECT_PAGE_MAX_BYTES || chars > INSPECT_PAGE_MAX_CHARS) return true;
+  }
+  return false;
+}
+
+function inspectJsonItem(checkpoint, row) {
+  return {
+    alias: row.alias, source_sense_id: row.item.sense_id, source_record_id: row.item.record_id,
+    lemma: row.item.lemma, pos: row.item.pos, gloss: row.item.gloss,
+    ...(row.item.reference_gloss === undefined ? {} : { reference_gloss: row.item.reference_gloss }),
+    approved_peers: row.item.approved_peers ?? [], candidate: row.candidate.text,
+    producers: row.candidate.producers, same_spelling_targets: row.candidate.same_spelling_targets,
+    decision: presentedDecision(checkpoint, row.candidate.decision),
+    additional_relations: (row.candidate.additional_relations ?? []).map((decision) => presentedDecision(checkpoint, decision)),
+    ...(row.candidate.already_accounted === true ? {
+      already_accounted: true, existing_target_sense_ids: row.candidate.existing_target_sense_ids,
+      unlinked_target_sense_ids: row.candidate.unlinked_target_sense_ids,
+    } : {}),
+  };
 }
 
 async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidateText, selectPath, format, page, pageSize) {
@@ -1969,34 +2090,25 @@ async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidat
     return inspectSelectedCheckpoint(checkpoint, out, root, selected, digest, page, pageSize);
   }
   const model = inspectModel(selected);
-  const totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
-  if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
+  let totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
+  const oversized = inspectNeedsPartition(checkpoint, selected, model, pageSize);
   if (format === 'compact') {
+    if (oversized) {
+      const pages = partitionInspectLines(checkpoint, selected, digest, pageSize);
+      totalPages = pages.length;
+      if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
+      const text = pages[page - 1];
+      await writeOutput(out, root, text);
+      return { digest, page, total_pages: totalPages, text };
+    }
+  }
+  if (format === 'compact') {
+    if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
     const text = renderInspect(checkpoint, selected, digest, page, pageSize);
     assertBoundedInspectPage(text, 'inspect');
     await writeOutput(out, root, text);
     return { digest, page, total_pages: totalPages, text };
   }
-  const items = model.candidates.slice((page - 1) * pageSize, page * pageSize).map((row) => ({
-    alias: row.alias,
-    source_sense_id: row.item.sense_id,
-    source_record_id: row.item.record_id,
-    lemma: row.item.lemma,
-    pos: row.item.pos,
-    gloss: row.item.gloss,
-    ...(row.item.reference_gloss === undefined ? {} : { reference_gloss: row.item.reference_gloss }),
-    approved_peers: row.item.approved_peers ?? [],
-    candidate: row.candidate.text,
-    producers: row.candidate.producers,
-    same_spelling_targets: row.candidate.same_spelling_targets,
-    decision: presentedDecision(checkpoint, row.candidate.decision),
-    additional_relations: (row.candidate.additional_relations ?? []).map((decision) => presentedDecision(checkpoint, decision)),
-    ...(row.candidate.already_accounted === true ? {
-      already_accounted: true,
-      existing_target_sense_ids: row.candidate.existing_target_sense_ids,
-      unlinked_target_sense_ids: row.candidate.unlinked_target_sense_ids,
-    } : {}),
-  }));
   const payload = {
     inspect: true,
     shard: checkpoint.shard,
@@ -2008,8 +2120,26 @@ async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidat
     total_pages: totalPages,
     total_candidates: model.candidates.length,
     optional_review_complete: checkpoint.optional_review_complete === true,
-    items,
+    items: oversized ? [] : model.candidates.slice((page - 1) * pageSize, page * pageSize)
+      .map((row) => inspectJsonItem(checkpoint, row)),
   };
+  // The normal JSON shape remains unchanged for small views. For an oversized
+  // view, concatenate `json_fragment` in page order and parse it as JSON.
+  if (oversized) {
+    const complete = JSON.stringify({ ...payload, page: 1, total_pages: 1,
+      items: model.candidates.map((row) => inspectJsonItem(checkpoint, row)) });
+    const chars = Array.from(complete);
+    const fragments = [];
+    // At most six JSON characters per code point, even for escaped controls.
+    for (let i = 0; i < chars.length; i += 4000) fragments.push(chars.slice(i, i + 4000).join(''));
+    if (page > fragments.length) throw new Error(`inspect page ${page} is outside 1..${fragments.length}`);
+    const result = { inspect: true, digest, page, total_pages: fragments.length, json_fragment: fragments[page - 1] };
+    const text = `${JSON.stringify(result)}\n`;
+    assertBoundedInspectPage(text, 'inspect');
+    await writeOutput(out, root, text);
+    return result;
+  }
+  if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
   const text = `${JSON.stringify(payload)}\n`;
   assertBoundedInspectPage(text, 'inspect');
   await writeOutput(out, root, text);
