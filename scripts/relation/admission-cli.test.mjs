@@ -2744,6 +2744,40 @@ test('inspect --select keeps detailed current rows for a full-sense review targe
     'a prose-full Sense is not reduced to a Q summary when another Sense has selected candidates');
 });
 
+test('normal inspect renders and serializes only the requested page', async (t) => {
+  const { root } = await sixCandidateRepository(t);
+  const candidatePath = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const rows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map(JSON.parse);
+  rows.find((row) => row.record_id === 'w1').senses[0].candidates = Array.from({ length: 250 }, (_, i) => `후보${i}`);
+  await writeFile(candidatePath, jsonl(rows));
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const args = ['inspect', '--checkpoint', '.warroom-scratch/relation-admission-001-01-01.json',
+    '--source-sense-id', 'w1-s1', '--page-size', '40', '--page', '4'];
+  const originalByteLength = Buffer.byteLength;
+  let compactPages = 0;
+  Buffer.byteLength = function (value, ...rest) {
+    if (typeof value === 'string' && value.startsWith('inspect w1-s1 @')) compactPages += 1;
+    return originalByteLength.call(this, value, ...rest);
+  };
+  try {
+    const result = await quiet(() => run([...args, '--format', 'compact'], { root }));
+    assert.equal(result.total_pages, 7);
+    assert.equal(compactPages, 1);
+  } finally { Buffer.byteLength = originalByteLength; }
+  const originalStringify = JSON.stringify;
+  let jsonPages = 0;
+  JSON.stringify = function (value, ...rest) {
+    if (value?.inspect === true && Array.isArray(value.items)) jsonPages += 1;
+    return originalStringify.call(this, value, ...rest);
+  };
+  try {
+    const result = await quiet(() => run([...args, '--format', 'json'], { root }));
+    assert.equal(result.total_pages, 7);
+    assert.equal(result.items.length, 40);
+    assert.equal(jsonPages, 1);
+  } finally { JSON.stringify = originalStringify; }
+});
+
 test('inspect partitions oversized peer context without changing its snapshot or amend aliases', async (t) => {
   const { root, checkpoint, sourceCandidates } = await prepareSixPart(t, { emptyRelation: true });
   await saveAllPrimaryAsDrops(root, checkpoint);

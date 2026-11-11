@@ -2025,6 +2025,62 @@ function assertPrimaryComplete(checkpoint) {
   }
 }
 
+// A conservative per-page bound, calculated from individual values rather than
+// rendering or serializing every page. Shared objects (notably peers) are
+// measured once. Overestimates only choose the lossless fragmented path.
+function inspectNeedsPartition(checkpoint, selected, model, pageSize) {
+  const cache = new WeakMap();
+  function size(value) {
+    if (value === undefined) return [0, 0];
+    if (value === null || typeof value !== 'object') {
+      const text = JSON.stringify(value);
+      return [Buffer.byteLength(text, 'utf8'), text.length];
+    }
+    if (cache.has(value)) return cache.get(value);
+    let bytes = 2; let chars = 2;
+    for (const [key, child] of Object.entries(value)) {
+      if (child === undefined) continue;
+      const [b, c] = size(child);
+      const name = Array.isArray(value) ? '' : JSON.stringify(key) + ':';
+      bytes += Buffer.byteLength(name, 'utf8') + b + 1;
+      chars += name.length + c + 1;
+    }
+    const result = [bytes, chars];
+    cache.set(value, result);
+    return result;
+  }
+  const scope = size([checkpoint.shard, checkpoint.batch, checkpoint.part, selected.senseIds, 'x'.repeat(64)]);
+  let bytes = scope[0] + 1024; let chars = scope[1] + 1024;
+  for (const [index, row] of model.candidates.entries()) {
+    if (index && index % pageSize === 0) { bytes = scope[0] + 1024; chars = scope[1] + 1024; }
+    const item = row.item;
+    const source = size([item.sense_id, item.record_id, item.lemma, item.pos, item.gloss,
+      item.reference_gloss, item.approved_peers ?? []]);
+    const candidate = size(row.candidate);
+    const aliasAllowance = 256 + row.targetAliases.length * 32;
+    bytes += source[0] + candidate[0] + aliasAllowance;
+    chars += source[1] + candidate[1] + aliasAllowance;
+    if (bytes > INSPECT_PAGE_MAX_BYTES || chars > INSPECT_PAGE_MAX_CHARS) return true;
+  }
+  return false;
+}
+
+function inspectJsonItem(checkpoint, row) {
+  return {
+    alias: row.alias, source_sense_id: row.item.sense_id, source_record_id: row.item.record_id,
+    lemma: row.item.lemma, pos: row.item.pos, gloss: row.item.gloss,
+    ...(row.item.reference_gloss === undefined ? {} : { reference_gloss: row.item.reference_gloss }),
+    approved_peers: row.item.approved_peers ?? [], candidate: row.candidate.text,
+    producers: row.candidate.producers, same_spelling_targets: row.candidate.same_spelling_targets,
+    decision: presentedDecision(checkpoint, row.candidate.decision),
+    additional_relations: (row.candidate.additional_relations ?? []).map((decision) => presentedDecision(checkpoint, decision)),
+    ...(row.candidate.already_accounted === true ? {
+      already_accounted: true, existing_target_sense_ids: row.candidate.existing_target_sense_ids,
+      unlinked_target_sense_ids: row.candidate.unlinked_target_sense_ids,
+    } : {}),
+  };
+}
+
 async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidateText, selectPath, format, page, pageSize) {
   const selected = selectPath === null
     ? requestedCheckpointCandidates(checkpoint, sourceSenseIds, candidateText)
@@ -2035,9 +2091,8 @@ async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidat
   }
   const model = inspectModel(selected);
   let totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
+  const oversized = inspectNeedsPartition(checkpoint, selected, model, pageSize);
   if (format === 'compact') {
-    const oversized = Array.from({ length: totalPages }, (_, i) => renderInspect(checkpoint, selected, digest, i + 1, pageSize))
-      .some((text) => Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS);
     if (oversized) {
       const pages = partitionInspectLines(checkpoint, selected, digest, pageSize);
       totalPages = pages.length;
@@ -2054,26 +2109,6 @@ async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidat
     await writeOutput(out, root, text);
     return { digest, page, total_pages: totalPages, text };
   }
-  const allItems = model.candidates.map((row) => ({
-    alias: row.alias,
-    source_sense_id: row.item.sense_id,
-    source_record_id: row.item.record_id,
-    lemma: row.item.lemma,
-    pos: row.item.pos,
-    gloss: row.item.gloss,
-    ...(row.item.reference_gloss === undefined ? {} : { reference_gloss: row.item.reference_gloss }),
-    approved_peers: row.item.approved_peers ?? [],
-    candidate: row.candidate.text,
-    producers: row.candidate.producers,
-    same_spelling_targets: row.candidate.same_spelling_targets,
-    decision: presentedDecision(checkpoint, row.candidate.decision),
-    additional_relations: (row.candidate.additional_relations ?? []).map((decision) => presentedDecision(checkpoint, decision)),
-    ...(row.candidate.already_accounted === true ? {
-      already_accounted: true,
-      existing_target_sense_ids: row.candidate.existing_target_sense_ids,
-      unlinked_target_sense_ids: row.candidate.unlinked_target_sense_ids,
-    } : {}),
-  }));
   const payload = {
     inspect: true,
     shard: checkpoint.shard,
@@ -2085,15 +2120,14 @@ async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidat
     total_pages: totalPages,
     total_candidates: model.candidates.length,
     optional_review_complete: checkpoint.optional_review_complete === true,
-    items: allItems.slice((page - 1) * pageSize, page * pageSize),
+    items: oversized ? [] : model.candidates.slice((page - 1) * pageSize, page * pageSize)
+      .map((row) => inspectJsonItem(checkpoint, row)),
   };
   // The normal JSON shape remains unchanged for small views. For an oversized
   // view, concatenate `json_fragment` in page order and parse it as JSON.
-  const normalPages = Array.from({ length: totalPages }, (_, i) => JSON.stringify({
-    ...payload, page: i + 1, items: allItems.slice(i * pageSize, (i + 1) * pageSize),
-  }));
-  if (normalPages.some((value) => Buffer.byteLength(value, 'utf8') > INSPECT_PAGE_MAX_BYTES || value.length > INSPECT_PAGE_MAX_CHARS)) {
-    const complete = JSON.stringify({ ...payload, page: 1, total_pages: 1, items: allItems });
+  if (oversized) {
+    const complete = JSON.stringify({ ...payload, page: 1, total_pages: 1,
+      items: model.candidates.map((row) => inspectJsonItem(checkpoint, row)) });
     const chars = Array.from(complete);
     const fragments = [];
     // At most six JSON characters per code point, even for escaped controls.
