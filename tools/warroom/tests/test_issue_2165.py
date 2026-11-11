@@ -8,7 +8,7 @@ from tests.test_issue_1684 import S2
 from tests.test_issue_1908 import s2_world, write_state
 from warroom import control, prbody, prompts, stage2, stage3
 from warroom.adapters import PREFLIGHT_PENDING
-from warroom.gitops import IntegrationBlocked
+from warroom.gitops import InspectContextFailure, IntegrationBlocked
 
 
 def answer(text):
@@ -16,6 +16,17 @@ def answer(text):
 
 
 class Stage2Finalization(unittest.TestCase):
+    def test_fix_prompt_reports_shared_defects_and_inspect_failure_is_not_context(self):
+        w, b = self.start_optional_part(sense_id='w1-s1')
+        checkpoint = stage2.checkpoint(b['worktree'], b['shard'], b['batch'])
+        for resumed in (False, True):
+            card = prompts.fix(b, [], resumed, checkpoint=checkpoint)
+            self.assertIn('.warroom-scratch/shared-defect.json', card)
+            self.assertIn('shared-defect.md', card)
+        with patch.object(w.git, 'stage2_inspect', side_effect=InspectContextFailure('cwd=x argv=inspect exit=1')):
+            with self.assertRaisesRegex(InspectContextFailure, 'exit=1'):
+                w.sup._s2_fix_context(b, [{'body': 'w1-s1'}])
+
     def test_paused_stage2_review_fix_proves_only_its_rendered_prompts(self):
         w, b = self.start_optional_part()
         for kind in ("fix_new", "fix_resume"):

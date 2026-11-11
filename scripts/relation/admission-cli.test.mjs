@@ -2744,6 +2744,39 @@ test('inspect --select keeps detailed current rows for a full-sense review targe
     'a prose-full Sense is not reduced to a Q summary when another Sense has selected candidates');
 });
 
+test('inspect partitions oversized peer context without changing its snapshot or amend aliases', async (t) => {
+  const { root, checkpoint, sourceCandidates } = await prepareSixPart(t, { emptyRelation: true });
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  const cpPath = path.join(root, checkpoint);
+  const cp = JSON.parse(await readFile(cpPath, 'utf8'));
+  const peers = Array.from({ length: 250 }, (_, i) => ({ type: 'near', relevance: 3, text: `peer-${i}-${'별'.repeat(50)}` }));
+  cp.items.find((item) => item.sense_id === 'w1-s1').approved_peers = peers;
+  await writeFile(cpPath, `${JSON.stringify(cp)}\n`);
+  const before = await readFile(cpPath);
+  const base = ['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--candidate', sourceCandidates[0], '--page-size', '1'];
+  const readPages = async (format) => {
+    const first = await quiet(() => run([...base, '--format', format], { root }));
+    const pages = [first];
+    for (let page = 2; page <= first.total_pages; page += 1) {
+      pages.push(await quiet(() => run([...base, '--format', format, '--page', String(page)], { root })));
+    }
+    assert.ok(pages.length > 1);
+    for (const item of pages) assert.equal(item.digest, first.digest);
+    return pages;
+  };
+  const compact = await readPages('compact');
+  const text = compact.map((p) => p.text).join('');
+  for (const peer of peers) assert.equal(text.split(peer.text).length - 1, 1);
+  assert.match(text, /\nS\tw1-s1\t/u);
+  assert.match(text, /\nc1\t/u);
+  for (const p of compact) assert.ok(Buffer.byteLength(p.text, 'utf8') <= 36_000 && p.text.length <= 28_000);
+  const jsonPages = await readPages('json');
+  const decoded = JSON.parse(jsonPages.map((p) => p.json_fragment).join(''));
+  assert.deepEqual(decoded.items[0].approved_peers, peers);
+  assert.equal(decoded.digest, compact[0].digest);
+  assert.deepEqual(await readFile(cpPath), before);
+});
+
 test('premerge preparation resumes only from matching source hashes and distinguishes empty files from absence', async (t) => {
   const { root } = await prepareSixPart(t, { emptyRelation: true });
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

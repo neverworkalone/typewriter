@@ -1870,14 +1870,12 @@ async function inspectSelectedCheckpoint(checkpoint, out, root, selected, digest
   try {
     pages = selectedInspectPages(checkpoint, selected, digest, pageSize);
   } catch (error) {
-    if (!String(error.message).includes('one inspect Q summary row exceeds its output limit')) throw error;
-    const full = await inspectCheckpoint(checkpoint, out, root, selected.senseIds, null, null, 'compact', page, pageSize);
-    const [header, ...body] = full.text.split('\n');
-    const withNote = `${header}\n# selection fallback: full source-sense inspect\n${body.join('\n')}`;
-    const text = Buffer.byteLength(withNote, 'utf8') <= INSPECT_PAGE_MAX_BYTES && withNote.length <= INSPECT_PAGE_MAX_CHARS
-      ? withNote : full.text;
-    await writeOutput(out, root, text);
-    return { ...full, text, selection_fallback: true };
+    if (String(error.message).includes('page exceeds its output limit')) {
+      pages = partitionInspectLines(checkpoint, selected, digest, pageSize);
+    } else {
+      if (!String(error.message).includes('one inspect Q summary row exceeds its output limit')) throw error;
+      throw new Error('inspect Q summary row exceeds output limit and cannot be partitioned');
+    }
   }
   if (page > pages.length) throw new Error(`inspect page ${page} is outside 1..${pages.length}`);
   const text = pages[page - 1];
@@ -1952,6 +1950,59 @@ function assertBoundedInspectPage(text, label) {
   }
 }
 
+// Oversized context is partitioned into complete rows, never truncated. Each page
+// belongs to the same inspection snapshot and retains its original aliases.
+function partitionInspectLines(checkpoint, selected, digest) {
+  const model = inspectModel(selected);
+  const lines = [];
+  const seenTargets = new Set();
+  const seenSenses = new Set();
+  for (const row of model.candidates) {
+    const text = selectedInspectDetailPage(checkpoint, selected, digest, [row], 1, 1);
+    let includePeers = false;
+    for (const line of text.split('\n').slice(4)) {
+      if (!line) continue;
+      if (/^T\d+\t/u.test(line)) {
+        const alias = line.split('\t', 1)[0];
+        if (seenTargets.has(alias)) continue;
+        seenTargets.add(alias);
+      } else if (line.startsWith('S\t')) {
+        const sense = line.split('\t')[1];
+        includePeers = !seenSenses.has(sense);
+        if (!includePeers) continue;
+        seenSenses.add(sense);
+      } else if (line.startsWith('P\t') && !includePeers) continue;
+      lines.push(line);
+    }
+  }
+  if (selected.selective) {
+    const keys = new Set(selected.candidates.map(({ item, candidate }) => `${item.sense_id}\u0000${candidate.text}`));
+    for (const row of inspectModel({ ...selected, candidates: selected.allCandidates }).candidates) {
+      if (!keys.has(`${row.item.sense_id}\u0000${row.candidate.text}`)) {
+        lines.push(['Q', row.alias, row.candidate.text, ...compactReviewSummary(row)].map(compactField).join('\t'));
+      }
+    }
+  }
+  const header = (page, total) => `inspect ${selected.senseIds.join(',')} @${digest}\n` +
+    `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${total} · context fragments\n` +
+    `# optional_review_complete ${checkpoint.optional_review_complete === true}\n`;
+  const groups = [[]];
+  for (const line of lines) {
+    let group = groups.at(-1);
+    let text = header(999999, 999999) + [...group, line].join('\n') + '\n';
+    if (Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS) {
+      if (!group.length) throw new Error('inspect context row exceeds output limit and cannot be partitioned');
+      group = []; groups.push(group);
+      text = header(999999, 999999) + line + '\n';
+      if (Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS) {
+        throw new Error('inspect context row exceeds output limit and cannot be partitioned');
+      }
+    }
+    group.push(line);
+  }
+  return groups.map((group, i) => header(i + 1, groups.length) + group.join('\n') + '\n');
+}
+
 function assertPrimaryComplete(checkpoint) {
   if (!checkpoint.complete) throw new Error('Stage 1 inputs are incomplete for this Part');
   if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} first`);
@@ -1969,15 +2020,27 @@ async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidat
     return inspectSelectedCheckpoint(checkpoint, out, root, selected, digest, page, pageSize);
   }
   const model = inspectModel(selected);
-  const totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
-  if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
+  let totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
   if (format === 'compact') {
+    const oversized = Array.from({ length: totalPages }, (_, i) => renderInspect(checkpoint, selected, digest, i + 1, pageSize))
+      .some((text) => Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS);
+    if (oversized) {
+      const pages = partitionInspectLines(checkpoint, selected, digest, pageSize);
+      totalPages = pages.length;
+      if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
+      const text = pages[page - 1];
+      await writeOutput(out, root, text);
+      return { digest, page, total_pages: totalPages, text };
+    }
+  }
+  if (format === 'compact') {
+    if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
     const text = renderInspect(checkpoint, selected, digest, page, pageSize);
     assertBoundedInspectPage(text, 'inspect');
     await writeOutput(out, root, text);
     return { digest, page, total_pages: totalPages, text };
   }
-  const items = model.candidates.slice((page - 1) * pageSize, page * pageSize).map((row) => ({
+  const allItems = model.candidates.map((row) => ({
     alias: row.alias,
     source_sense_id: row.item.sense_id,
     source_record_id: row.item.record_id,
@@ -2008,8 +2071,27 @@ async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidat
     total_pages: totalPages,
     total_candidates: model.candidates.length,
     optional_review_complete: checkpoint.optional_review_complete === true,
-    items,
+    items: allItems.slice((page - 1) * pageSize, page * pageSize),
   };
+  // The normal JSON shape remains unchanged for small views. For an oversized
+  // view, concatenate `json_fragment` in page order and parse it as JSON.
+  const normalPages = Array.from({ length: totalPages }, (_, i) => JSON.stringify({
+    ...payload, page: i + 1, items: allItems.slice(i * pageSize, (i + 1) * pageSize),
+  }));
+  if (normalPages.some((value) => Buffer.byteLength(value, 'utf8') > INSPECT_PAGE_MAX_BYTES || value.length > INSPECT_PAGE_MAX_CHARS)) {
+    const complete = JSON.stringify({ ...payload, page: 1, total_pages: 1, items: allItems });
+    const chars = Array.from(complete);
+    const fragments = [];
+    // At most six JSON characters per code point, even for escaped controls.
+    for (let i = 0; i < chars.length; i += 4000) fragments.push(chars.slice(i, i + 4000).join(''));
+    if (page > fragments.length) throw new Error(`inspect page ${page} is outside 1..${fragments.length}`);
+    const result = { inspect: true, digest, page, total_pages: fragments.length, json_fragment: fragments[page - 1] };
+    const text = `${JSON.stringify(result)}\n`;
+    assertBoundedInspectPage(text, 'inspect');
+    await writeOutput(out, root, text);
+    return result;
+  }
+  if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
   const text = `${JSON.stringify(payload)}\n`;
   assertBoundedInspectPage(text, 'inspect');
   await writeOutput(out, root, text);

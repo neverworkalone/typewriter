@@ -6,6 +6,8 @@ Only an effective blocking `-1` review event calls for a producer response. **Ne
 
 Run commands from the worktree root. Use `.warroom-scratch/...` as paths; do not `cd .warroom-scratch`. Create `.warroom-scratch/amend-decisions.txt` using any available, permitted file-writing method (a file tool or the shell); do not require a tool named Write. If writing is actually denied, report that instead of working around it. `amend --help` is not implemented; use the command and arguments below.
 
+If a reproducible shared-layer defect blocks this work, including an official CLI failure on valid input, follow `tools/warroom/prompts/shared-defect.md`: write the actual case, command and return value, and suspected layer to `.warroom-scratch/shared-defect.json`, then stop. Root-cause analysis is not required for this report. Do not treat an unresolved blocker as a completed fix.
+
 ## Source-bound review work
 
 - **Shared judgment policy for this checkpoint:**
