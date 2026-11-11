@@ -1870,11 +1870,11 @@ async function inspectSelectedCheckpoint(checkpoint, out, root, selected, digest
   try {
     pages = selectedInspectPages(checkpoint, selected, digest, pageSize);
   } catch (error) {
-    if (String(error.message).includes('page exceeds its output limit')) {
+    if (String(error.message).includes('page exceeds its output limit') ||
+        String(error.message).includes('one inspect Q summary row exceeds its output limit')) {
       pages = partitionInspectLines(checkpoint, selected, digest, pageSize);
     } else {
-      if (!String(error.message).includes('one inspect Q summary row exceeds its output limit')) throw error;
-      throw new Error('inspect Q summary row exceeds output limit and cannot be partitioned');
+      throw error;
     }
   }
   if (page > pages.length) throw new Error(`inspect page ${page} is outside 1..${pages.length}`);

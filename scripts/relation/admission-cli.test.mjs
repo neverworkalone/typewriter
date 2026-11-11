@@ -2752,6 +2752,8 @@ test('inspect partitions oversized peer context without changing its snapshot or
   const cp = JSON.parse(await readFile(cpPath, 'utf8'));
   const peers = Array.from({ length: 250 }, (_, i) => ({ type: 'near', relevance: 3, text: `peer-${i}-${'별'.repeat(50)}` }));
   cp.items.find((item) => item.sense_id === 'w1-s1').approved_peers = peers;
+  const longGloss = '뜻'.repeat(15_000);
+  cp.items.find((item) => item.sense_id === 'w1-s1').gloss = longGloss;
   await writeFile(cpPath, `${JSON.stringify(cp)}\n`);
   const before = await readFile(cpPath);
   const base = ['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--candidate', sourceCandidates[0], '--page-size', '1'];
@@ -2768,12 +2770,16 @@ test('inspect partitions oversized peer context without changing its snapshot or
   const compact = await readPages('compact');
   const text = compact.map((p) => p.text).join('');
   for (const peer of peers) assert.equal(text.split(peer.text).length - 1, 1);
-  assert.match(text, /\nS\tw1-s1\t/u);
+  const fragments = text.split('\n').filter((line) => line.startsWith('F\t')).map((line) => line.split('\t'));
+  assert.ok(fragments.length > 1);
+  assert.match(fragments.map((parts) => JSON.parse(parts[3])).join(''), /^S\tw1-s1\t/u);
+  assert.ok(fragments.map((parts) => JSON.parse(parts[3])).join('').includes(longGloss));
   assert.match(text, /\nc1\t/u);
   for (const p of compact) assert.ok(Buffer.byteLength(p.text, 'utf8') <= 36_000 && p.text.length <= 28_000);
   const jsonPages = await readPages('json');
   const decoded = JSON.parse(jsonPages.map((p) => p.json_fragment).join(''));
   assert.deepEqual(decoded.items[0].approved_peers, peers);
+  assert.equal(decoded.items[0].gloss, longGloss);
   assert.equal(decoded.digest, compact[0].digest);
   assert.deepEqual(await readFile(cpPath), before);
   const selection = '.warroom-scratch/large-select.json';

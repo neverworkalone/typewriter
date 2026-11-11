@@ -16,6 +16,7 @@ If a reproducible shared-layer defect blocks this work, including an official CL
 
 - Assess each review event against the current PR HEAD, the policy card above, and the supplied `source_context`. The context contains exact candidate pairs from events where that Sense has no prose mention, plus full-Sense detail for every Part source Sense mentioned outside a tuple span or named by an unmatched tuple. Its Q rows are comparison context, not extra review targets.
 - Use the supplied context first. If a concrete finding still lacks necessary source or target information, use one narrow read-only `inspect` for only the required Sense or candidate. Do not reread docs or scripts, and do not inspect each candidate separately.
+- Read every page of one inspect scope together. If a row is split into `F` records, decode each JSON string and join the parts with the same row-id in part order to recover the complete row. Keep the digest and aliases from that same scope and snapshot.
 - Make semantic judgments yourself. Apply all accepted candidate changes together in one `.warroom-scratch/amend-decisions.txt` file and run:
 
   `node scripts/relation/admission-cli.mjs amend --checkpoint .warroom-scratch/relation-admission-{{shard}}-{{batch}}-{{part}}.json --in .warroom-scratch/amend-decisions.txt`
