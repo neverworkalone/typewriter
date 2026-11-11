@@ -2,13 +2,14 @@
 import json
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from tests.test_issue_1684 import S2
 from tests.test_issue_1908 import s2_world, write_state
 from warroom import control, prbody, prompts, stage2, stage3
 from warroom.adapters import PREFLIGHT_PENDING
-from warroom.gitops import InspectContextFailure, IntegrationBlocked
+from warroom.gitops import Git, InspectContextFailure, IntegrationBlocked
+from warroom.shell import Result
 
 
 def answer(text):
@@ -16,6 +17,16 @@ def answer(text):
 
 
 class Stage2Finalization(unittest.TestCase):
+    def test_inspect_unpartitionable_failure_keeps_command_and_exit(self):
+        runner = Mock()
+        runner.run.return_value = Result(1, err='inspect context row exceeds output limit and cannot be partitioned')
+        git = Git(runner, Path('/repo'), {}, Path('/worktrees'))
+        with self.assertRaises(InspectContextFailure) as caught:
+            git.stage2_inspect(Path('/worktree'), '001', '01', '02', ['w1-s1'])
+        self.assertIn('cwd=/worktree', str(caught.exception))
+        self.assertIn("'--source-sense-id', 'w1-s1'", str(caught.exception))
+        self.assertIn('exit=1', str(caught.exception))
+
     def test_fix_prompt_reports_shared_defects_and_inspect_failure_is_not_context(self):
         w, b = self.start_optional_part(sense_id='w1-s1')
         checkpoint = stage2.checkpoint(b['worktree'], b['shard'], b['batch'])

@@ -2789,6 +2789,18 @@ test('inspect partitions oversized peer context without changing its snapshot or
   ], { root }));
   assert.equal(selectedFirst.digest, compact[0].digest);
   assert.ok(selectedFirst.total_pages > 1);
+  const selectedPages = [selectedFirst.text];
+  for (let page = 2; page <= selectedFirst.total_pages; page += 1) {
+    const result = await quiet(() => run([
+      'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--select', selection,
+      '--page-size', '1', '--format', 'compact', '--page', String(page),
+    ], { root }));
+    assert.equal(result.digest, selectedFirst.digest);
+    selectedPages.push(result.text);
+  }
+  const selectedText = selectedPages.join('');
+  for (const peer of peers) assert.equal(selectedText.split(peer.text).length - 1, 1);
+  assert.match(selectedText, /\nQ\tc2\t/u);
   const amend = '.warroom-scratch/large-amend.txt';
   await writeFile(path.join(root, amend), `amend w1-s1 @${compact[0].digest}\nc1 D e\n`);
   await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amend], { root }));
