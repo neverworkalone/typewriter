@@ -211,6 +211,11 @@ class Git:
     def head(self, path: Path) -> str:
         return self._git("rev-parse", "HEAD", cwd=path).out.strip()
 
+    def file_at_revision(self, path: Path, revision: str, name: str) -> bytes:
+        if not re.fullmatch(r"[a-f0-9]{40}", revision) or not re.fullmatch(r"data/relations/relation-\d{3}\.jsonl", name):
+            raise GitError("invalid foreign Relation revision or path")
+        return self._git("show", f"{revision}:{name}", cwd=path).out.encode("utf-8")
+
     def remote_head(self, branch: str) -> str | None:
         """Actual SHA of origin's `branch` (None: no such remote branch); raises GitError if it cannot be queried."""
         res = self._git("ls-remote", "--heads", "origin", f"refs/heads/{branch}", net=True)

@@ -3,9 +3,11 @@
 Fake AI/GitHub/git: this proves the state machine, selection and exclusivity logic, not a real model run or real
 `admission-cli` output (the real verify is a node process on a detached master checkout).
 """
+import base64
 import json
 import sqlite3
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from tests.fakes import HEAD1, World
@@ -480,6 +482,34 @@ class StageTwoLifecycle(unittest.TestCase):
         control.request_clear(w.store, "claude", S2, b["id"])
         w.tick(2)
         self.assertEqual((w.gh.closed, w.store.active_batch("claude", S2)["state"]), ([], "CLEARING"))
+
+    def test_foreign_amend_scope_requires_checkpoint_and_commit_proof_and_claims_both_shards(self):
+        w = self.w
+        self.to_review()
+        b = w.store.active_batch("claude", S2)
+        info = w.gh.pull(b["pr_number"])
+        old, new = b"old\n", b"new\n"
+        initial = "c" * 40
+        w.store.set(f"s2_commit_head_{b['id']}", initial)
+        foreign = "data/relations/relation-002.jsonl"
+        files = w.gh.files[b["pr_number"]] + [{"path": foreign}]
+        journal = Path(b["worktree"]) / ".warroom-scratch/relation-admission-001-01-01.amend-state.json"
+        journal.write_text(json.dumps({"version": 2, "foreign": {"relation-002.jsonl": {
+            "baseline": {"exists": True, "bytes": base64.b64encode(old).decode()},
+            "new": {"exists": True, "bytes": base64.b64encode(new).decode()},
+        }}}), "utf-8")
+        w.git.file_at_revision = lambda path, revision, name: old if revision == initial else new
+        self.assertEqual(w.sup._stage2_foreign_paths(b, info, files), {row["path"] for row in files})
+        w.git.local_verify_ok = False
+        with self.assertRaisesRegex(Exception, "checkpoint"):
+            w.sup._stage2_foreign_paths(b, info, files)
+        w.git.local_verify_ok = True
+        w.git.file_at_revision = lambda path, revision, name: b"different"
+        with self.assertRaisesRegex(Exception, "commit"):
+            w.sup._stage2_foreign_paths(b, info, files)
+        w.gh.open = [{"number": 55, "files": [{"path": foreign}]}]
+        claims = set(batches.pr_claims(b, {"number": info["number"], "files": files}))
+        self.assertEqual(w.sup._duplicate_claim(b, info["number"], claims), 55)
 
     def test_a_rival_pr_on_the_same_shard_stops_before_review(self):
         w = self.w
