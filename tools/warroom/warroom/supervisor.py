@@ -119,6 +119,11 @@ class FixIncomplete(str):
     producer; the Maintainer continues the same attempt with it instead of parking an ERROR."""
 
 
+class NoOwnedPR(str):
+    """A denial-completion reason meaning only "the owned branch has no PR". Plain text for every producer; a Maintainer
+    run then reaches its own no-PR diagnosis path instead of pausing on the missing PR alone (#5471)."""
+
+
 class Supervisor:
     def __init__(self, paths, cfg, store, runner, adapter, gh, git, env, clock=time.time, fence=None):
         self.paths, self.cfg, self.store = paths, cfg, store
@@ -2695,8 +2700,8 @@ class Supervisor:
     def _retry_denied_success(self, b) -> bool:
         """Retry after a denial pause: if the last exited run was a successful one (own session/result evidence) whose only
         problem was its permission denials, re-run the same completion evidence check instead of relaunching the AI."""
-        if b["state"] == "FIXING":   # a fix denial is never cleared (see _denied_run_problem): Retry re-runs the fix
-            return False
+        if b["state"] == "FIXING" and b["method"] != MAINTENANCE_METHOD:
+            return False   # a fix denial is never cleared for other producers (see _denied_run_problem): Retry re-runs it
         runs = self.store.runs(b["id"])
         # "unknown": the exit file was lost (e.g. a Supervisor restart). "stopped": the pre-#1832 denial pause stopped the
         # still-live CLI right after its final result. In both the log's own final success result, session and denial
@@ -2709,6 +2714,17 @@ class Supervisor:
             return False
         if ad.completion_problem(log, self._recorded_run(b), b["session_id"], b["worktree"], self.env):
             return False   # not a clean success otherwise: the regular handling decides
+        if b["state"] == "FIXING":
+            # Maintainer fix: consume the Retry only when the preserved result alone can be handed off (or the regular fix
+            # gate records its continuation); anything that needs the work resumed takes the regular relaunch path.
+            why = self._maintainer_fix_retry_problem(b)
+            if why is not None:
+                self.store.log(b["id"], f"권한 관련 실패 후 Retry: 수정 완료 근거 없음({why}) — 기존 재개 경로로 진행", "warn")
+                return False
+            self.store.log(b["id"], "권한 관련 실패 후 Retry: 보존된 수정 결과(소유 PR·push된 HEAD)를 기존 리뷰 수정 완료 검증으로 판정합니다", "warn")
+            self.store.set(f"verified_completion_run_{b['id']}", str(runs[0]["id"]))
+            self._run_ok(b)
+            return True
         why = self._denied_run_problem(b)
         if why is not None:
             # No proof the required work finished: the operator's explicit Retry takes the regular relaunch path
@@ -2719,6 +2735,26 @@ class Supervisor:
         self.store.set(f"verified_completion_run_{b['id']}", str(runs[0]["id"]))
         self._run_ok(b)
         return True
+
+    def _maintainer_fix_retry_problem(self, b) -> str | None:
+        """Why a Maintainer fix run's preserved result cannot go straight to the fix gate, or None. Reads only: the fix
+        gate (`_run_ok`) alone completes review events, so nothing is consumed here."""
+        try:
+            info = self.gh.pull(b["pr_number"])
+            if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
+                return "PR 번호 또는 소유 브랜치가 다릅니다"
+            if info.get("state") != "open" or info.get("merged"):
+                return "소유 PR이 열린 상태가 아닙니다"
+            wt = Path(b["worktree"])
+            if self.git.dirty(wt).strip():
+                return "worktree에 미커밋 변경이 있습니다"
+            if self.git.head(wt) != info["head_sha"]:
+                return "worktree HEAD가 PR HEAD와 다릅니다"
+        except TRANSIENT:
+            raise
+        except Exception as e:
+            return f"확인 실패: {e}"
+        return None
 
     def _relaunch(self, b) -> None:
         self._guarded(b, "prelaunch", self._relaunch_do, entrypoint="relaunch")
@@ -3151,8 +3187,21 @@ class Supervisor:
         cmds = [" ".join(str((d.get("tool_input") or {}).get("command", "")).split())[:80] for d in denied
                 if isinstance(d.get("tool_input"), dict) and (d.get("tool_input") or {}).get("command")]
         what = f"도구: {', '.join(names)}" + (f"; 명령: {' | '.join(cmds[:3])}" if cmds else "")
-        pause = (f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 ({what}). 자동 권한 상승 없이 중지합니다. "
-                 "로컬 Claude 설정을 직접 확인한 뒤 Retry 하세요 (worktree·PR·세션 보존).")
+        # Codex evidence is a failed command's output: it cannot tell a policy refusal, an approval wait and an OS error apart.
+        kind = ("권한 관련 명령 실패(정책 거절·승인 대기·일반 OS 오류 구분 불가 — 미확인)" if any("evidence" in d for d in denied)
+                else "로컬 CLI 권한 정책상 거부")
+        pause = (f"{kind}로 실행이 불완전합니다 ({what}). 자동 권한 상승 없이 중지합니다. "
+                 "로컬 CLI 설정을 직접 확인한 뒤 Retry 하세요 (worktree·PR·세션 보존).")
+        if b["method"] == MAINTENANCE_METHOD and b["state"] in ("PRODUCING", "FIXING"):
+            # A failed command is evidence, not the verdict: the Maintainer's own fix / no-PR diagnosis gates decide (#5471).
+            why = None if b["state"] == "FIXING" else self._denied_run_problem(b)
+            if why is None or isinstance(why, NoOwnedPR):
+                route = ("리뷰 수정 완료 검증" if b["state"] == "FIXING"
+                         else "소유 PR·push된 HEAD 확인" if why is None else "PR 없는 Maintainer 진단 결과 검증")
+                self._note_denials(b, f"권한 관련 명령 실패 {len(denied)}건({what}) — 실패 증거를 보존하고 기존 {route}으로 판정합니다")
+                return True
+            self._fail(b, "PAUSED", f"{pause} 완료 증거 없음: {why}")
+            return False
         why = self._denied_run_problem(b)
         if why is None:
             self.store.log(b["id"], f"권한 거부 {len(denied)}건({what}) 있었으나 소유 PR·push된 HEAD·Part verify로 "
@@ -3161,12 +3210,20 @@ class Supervisor:
         self._fail(b, "PAUSED", f"{pause} 완료 증거 없음: {why}")
         return False
 
+    def _note_denials(self, b, msg: str) -> None:
+        """Record a run's permission-failure evidence once per run (verdict re-entry and Retry never repeat it)."""
+        run = self._last_run(b)
+        key = f"denial_noted_{b['id']}_{run['id'] if run else 0}"
+        if self.store.get(key) is None:
+            self.store.log(b["id"], msg, "warn")
+            self.store.set(key, "1")
+
     def _denied_run_problem(self, b) -> str | None:
         """Why a run with permission denials cannot be accepted as complete, or None when the evidence is conclusive."""
         try:
             info = self._find_recovery_pr(b)
             if info is None:
-                return "소유 브랜치에 PR이 없습니다"
+                return NoOwnedPR("소유 브랜치에 PR이 없습니다")
             if b["pr_number"] and info["number"] != b["pr_number"]:
                 return f"PR #{info['number']}이 기록된 PR #{b['pr_number']}과 다릅니다"
             if info["state"] != "open" or info["merged"]:
@@ -9340,7 +9397,7 @@ class Supervisor:
                         or info.get("state") != "open" or info.get("merged")):
                     return self._fail(b, "ERROR", "수정 완료 PR 소유권 또는 상태가 바뀌었습니다. 보존합니다.")
                 if problem := self._complete_producer_fix_events(b, info):
-                    return self._fail(b, "ERROR", problem)
+                    return self._maintainer_fix_problem(b, problem)
             if b["method"] == STAGE2_METHOD:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)

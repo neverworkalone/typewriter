@@ -645,7 +645,10 @@ class ClaudeCodeAdapter(ProcessAdapter):
 
 # Codex runs under the operator's configured CLI policy. War Room pins the model, reasoning effort and configured
 # permission profile on every launch (including chunks and resumes), then checks the thread, model and effort it used.
-# A command refused by local policy pauses the run; it is not retried. For ordinary starts the linked worktree's Git
+# A permission-related command failure is kept as evidence (`denied_actions`) and never stops the live run by itself:
+# the CLI/sandbox already enforced it, and the exit verdict's completion gates decide the run. Nothing is retried or
+# widened here. `codex exec --json` records a command only as completed/failed with free-form output (no structured
+# refusal, approval or decision field), so this evidence never claims which of those it was: unknown, never "allowed". For ordinary starts the linked worktree's Git
 # admin directory (`git_dir`) is opened alone with `--add-dir`; resume adds the same exact-directory grant to the named
 # configured profile because `exec resume` has no `--add-dir` flag. The repository's `.git` is never granted.
 # Chunks add only lightweight web-search/project-doc settings. Answer-only output remains a result contract, not a
@@ -699,7 +702,6 @@ def _run_contexts(log_file, thread: str) -> list[dict]:
     return _turn_contexts(thread)[turns:]
 
 
-_NONZERO_EXIT_CODE = re.compile(r"exit\s*code\D{0,12}?([1-9]\d*)|exit\s+([1-9]\d*)", re.I)
 _ZSH_NICE_FAILURE = re.compile(r"^\s*(?:zsh:\d+:\s*)?nice(?:\(\d+\))?\s+failed:\s*operation not permitted\s*$", re.I)
 
 # Exact structured provider error messages. Keep providers empty until their own CLI gives us evidence.
@@ -838,28 +840,30 @@ class CodexCLIAdapter(ProcessAdapter):
         return None
 
     def policy_refusal(self, log_file):
-        """A refusal the local policy actually produced: a command that failed with a refusal message, or the agent
-        reporting such a failure with a non-zero exit. Output of a command that succeeded never counts."""
+        """A permission-related failure of a command this run actually executed (non-zero exit with that output).
+        The agent's own messages are diagnostic text only and never count; output of a succeeded command never counts."""
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")
         except OSError:
             return None
-        for e in _json_objects(text):
-            item = e.get("item") if isinstance(e.get("item"), dict) else {}
-            if e.get("type") != "item.completed":
-                continue
-            if item.get("type") == "command_execution":
-                detail = _command_denial(item)
-                if detail:
-                    return f"로컬 Codex 정책이 명령을 거부했습니다 ({detail})"
-            if item.get("type") == "agent_message":
-                msg = str(item.get("text") or "")
-                exit_match = _NONZERO_EXIT_CODE.search(msg)
-                evidence = _codex_denial_evidence(msg)
-                if evidence and exit_match:
-                    exit_code = next(group for group in exit_match.groups() if group)
-                    return f"로컬 Codex 정책 거부가 보고되었습니다 (exit={exit_code}; 출력: {evidence})"
+        for item in _failed_permission_commands(_json_objects(text)):
+            return (f"로컬 Codex 명령이 권한 관련 오류로 실패했습니다 ({_command_denial(item)}). CLI 로그에는 정책 거절·"
+                    "승인 대기·일반 OS 권한 오류를 구분하는 구조화 근거가 없어 미확인으로 보존합니다")
         return None
+
+    def denied_actions(self, log_file):
+        """Permission-related command failures of this launch (one log per launch), kept as evidence for the exit verdict.
+
+        None when the log cannot prove the outcome (unreadable, or the thread never started): unknown is never "none"."""
+        try:
+            events = list(_json_objects(Path(log_file).read_text("utf-8", errors="replace")))
+        except OSError:
+            return None
+        if not any(e.get("type") == "thread.started" for e in events):
+            return None
+        return [{"tool_name": "command_execution", "tool_input": {"command": str(item.get("command") or "command")},
+                 "exit_code": item.get("exit_code"), "evidence": _command_denial(item)}
+                for item in _failed_permission_commands(events)]
 
     def confirmed_prompt_refusal(self, log_file):
         """Match only Codex's exact structured turn.failed error message for this launch."""
@@ -949,8 +953,8 @@ class CodexCLIAdapter(ProcessAdapter):
     supports_tolerate_denied = True
 
     def run_problem(self, log_file, run, expected_session, cwd=None, env=None, tolerate_denied=False):
-        """`tolerate_denied`: an answer-only chunk. A command its sandbox refused is only a metric there; the
-        Supervisor judges side effects (dirty tracked tree, HEAD/remote change) and the answer itself."""
+        """Identity/pin violations only. A permission-related command failure never stops a live run here: it is kept
+        in `denied_actions` and judged once at exit. `tolerate_denied` is accepted for the Supervisor's call signature."""
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")
         except OSError:
@@ -965,10 +969,6 @@ class CodexCLIAdapter(ProcessAdapter):
         if expected_session and thread != expected_session:
             return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread} — "
                              "새 세션으로 진행된 것으로 보고 중지합니다.")
-        denied = None if tolerate_denied else _denied_command(events)
-        if denied:   # the local policy refused a command (or asked for approval): stop, keep everything, wait for the operator
-            return ("PAUSED", f"로컬 Codex 정책이 명령을 거부했습니다 ({denied}). 자동 권한 상승 없이 중지합니다. "
-                              "로컬 설정을 확인한 뒤 Retry 하세요 (worktree·브랜치·PR·세션 보존).")
         base_thread, _ = _baseline(log_file)
         if base_thread and thread != base_thread:
             return ("ERROR", f"재개가 다른 세션 {thread}으로 진행되었습니다 (요청 {base_thread}) — 중지합니다.")
@@ -986,16 +986,12 @@ class CodexCLIAdapter(ProcessAdapter):
         return None
 
 
-def _denied_command(events: list[dict]) -> str | None:
-    """The first failed command with actual denial evidence, with its exit and output retained."""
+def _failed_permission_commands(events):
+    """Completed command executions that failed with permission-related output, in log order."""
     for e in events:
         item = e.get("item") if isinstance(e.get("item"), dict) else {}
-        if e.get("type") != "item.completed" or item.get("type") != "command_execution":
-            continue
-        detail = _command_denial(item)
-        if detail:
-            return detail
-    return None
+        if e.get("type") == "item.completed" and item.get("type") == "command_execution" and _command_denial(item):
+            yield item
 
 
 def _logged_in(out: str) -> bool:
