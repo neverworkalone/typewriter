@@ -2776,6 +2776,21 @@ test('normal inspect renders and serializes only the requested page', async (t) 
     assert.equal(result.items.length, 40);
     assert.equal(jsonPages, 1);
   } finally { JSON.stringify = originalStringify; }
+
+  // An oversized item on a later normal page must choose the same fragmented
+  // layout even when the caller initially requests page one.
+  const checkpointPath = path.join(root, '.warroom-scratch/relation-admission-001-01-01.json');
+  const checkpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  checkpoint.items.find((item) => item.sense_id === 'w1-s1').candidates[249].text = '별'.repeat(15_000);
+  await writeFile(checkpointPath, `${JSON.stringify(checkpoint)}\n`);
+  for (const format of ['compact', 'json']) {
+    const first = await quiet(() => run([...args.slice(0, -2), '--page', '1', '--format', format], { root }));
+    const last = await quiet(() => run([...args.slice(0, -2), '--page', String(first.total_pages), '--format', format], { root }));
+    assert.equal(first.digest, last.digest);
+    assert.equal(first.total_pages, last.total_pages);
+    if (format === 'json') assert.equal(typeof first.json_fragment, 'string');
+    else assert.match(first.text, /context fragments/u);
+  }
 });
 
 test('inspect partitions oversized peer context without changing its snapshot or amend aliases', async (t) => {
