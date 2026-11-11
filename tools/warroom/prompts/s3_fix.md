@@ -17,7 +17,7 @@ Before committing a data correction, run the exact shard verification in the for
 
 Also run `git diff --check` and inspect `git diff --name-only`; every changed path must be one of the two listed above. If a path is outside that set, do not commit or push it. Commit only accepted data changes and push them to `origin {{branch}}`, keeping the existing PR. If there are no file changes, do not create a commit.
 
-Reply once to the PR conversation for each supplied blocking event that you addressed. State the correction and verification result, or the evidence for disagreement. Include each answered event's full key on its own line in this form:
+Reply once to the PR conversation for each supplied blocking event that you addressed, using `gh pr comment {{pr}} --body-file -` with the injected `GH_CONFIG_DIR` and a quoted heredoc. Do not use GitHub MCP or another account. State the correction and verification result, or the evidence for disagreement. Include each answered event's full key on its own line in this form:
 
 `WarRoom-Review-Event: review:<actual-event-id>`
 

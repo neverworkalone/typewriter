@@ -381,6 +381,32 @@ class Stage3SupervisorFlow(unittest.TestCase):
             self.assertIsNone(w.sup._stage3_fix_result_problem(batch, info))
             verify.assert_called_once_with(HEAD2, "shard", "001", None, None)
 
+    def test_run_bound_app_reply_recovers_existing_fix_without_reposting(self):
+        w = self.w
+        batch, run = self._claimed_fix(with_reply=False)
+        body = "Corrected and verified.\nWarRoom-Review-Event: review:stage3-test"
+        reply_id = w.gh.add_pr_reply(9, body, login="other-account")
+        item = {"type": "mcp_tool_call", "server": "codex_apps", "tool": "github.add_comment_to_issue",
+                "status": "completed", "error": None,
+                "arguments": {"repo_full_name": w.cfg["repo"], "pr_number": 9, "comment": body},
+                "result": {"structured_content": {"id": reply_id}}}
+        log = Path(run["log_file"])
+        log.write_text(json.dumps({"type": "item.completed", "item": item}) + "\n", "utf-8")
+        comments = w.gh.issue_comments(9)
+        self.assertEqual(w.sup._run_bound_app_replies(run, 9, comments), {reply_id})
+        for changed in (dict(item, error="failed"),
+                        dict(item, arguments={**item["arguments"], "pr_number": 10}),
+                        dict(item, arguments={**item["arguments"], "comment": body + " changed"}),
+                        dict(item, result={"structured_content": {"id": reply_id + 1}})):
+            log.write_text(json.dumps({"type": "item.completed", "item": changed}) + "\n", "utf-8")
+            self.assertEqual(w.sup._run_bound_app_replies(run, 9, comments), set())
+        log.write_text(json.dumps({"type": "item.completed", "item": item}) + "\n", "utf-8")
+        before = len(comments)
+        w.sup._relaunch(batch)
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
+        self.assertEqual(w.store.handled_event(batch["id"], 9, HEAD1, "review:stage3-test")["reply_id"], reply_id)
+        self.assertEqual(len(w.gh.issue_comments(9)), before)
+
     def test_headlag_stage3_fix_completion_rechecks_scope_verify_and_event_reply(self):
         w = self.w
         batch, run = self._claimed_fix()

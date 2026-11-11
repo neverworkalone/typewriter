@@ -8840,6 +8840,33 @@ class Supervisor:
         except (TypeError, ValueError, KeyError):
             return
 
+    def _run_bound_app_replies(self, run, pr, comments) -> set[int]:
+        """Bind a Codex app reply to its actual successful tool call and the unchanged GitHub comment."""
+        try:
+            found = set()
+            for line in Path(run["log_file"]).read_text("utf-8").splitlines():
+                try:
+                    event = json.loads(line)
+                    item = event.get("item", {})
+                    if (event.get("type") != "item.completed" or item.get("type") != "mcp_tool_call"
+                            or item.get("server") != "codex_apps" or item.get("tool") != "github.add_comment_to_issue"
+                            or item.get("status") != "completed" or item.get("error") is not None):
+                        continue
+                    args, result = item["arguments"], item["result"]
+                    comment_id = result["structured_content"]["id"]
+                    if (args.get("repo_full_name") != self.cfg["repo"] or args.get("pr_number") != pr
+                            or type(comment_id) is not int or not isinstance(args.get("comment"), str)):
+                        continue
+                    for comment in comments:
+                        if (comment.get("id") == comment_id and comment.get("body") == args["comment"]
+                                and reviews._ts(comment.get("created_at")) >= run["started_at"]):
+                            found.add(comment_id)
+                except (ValueError, TypeError, KeyError, AttributeError):
+                    continue
+            return found
+        except (OSError, UnicodeError, TypeError):
+            return set()
+
     def _complete_producer_fix_events(self, b, maintainer_info=None) -> str | None:
         """A fix event is complete only after its exact run, owned PR and a new PR reply are confirmed."""
         try:
@@ -8871,9 +8898,12 @@ class Supervisor:
                         or not self.git.contains(Path(b["worktree"]), conflict_keys[0].split(":", 1)[1])):
                     return "충돌 수정 HEAD가 원래 PR HEAD와 기준 커밋을 모두 포함하지 않습니다. worktree와 이벤트를 보존합니다."
             replies = []
-            for comment in self.gh.issue_comments(b["pr_number"]):
+            comments = self.gh.issue_comments(b["pr_number"])
+            app_reply_ids = self._run_bound_app_replies(run, b["pr_number"], comments)
+            for comment in comments:
                 user = comment.get("user") if isinstance(comment.get("user"), dict) else {}
-                if (str(user.get("login") or "").casefold() != str(self.cfg["expected_account"]).casefold()
+                if ((str(user.get("login") or "").casefold() != str(self.cfg["expected_account"]).casefold()
+                     and comment.get("id") not in app_reply_ids)
                         or not str(comment.get("body") or "").strip()
                         or reviews._ts(comment.get("created_at")) < run["started_at"]
                         or comment.get("id") is None):
