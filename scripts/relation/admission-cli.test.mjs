@@ -3078,6 +3078,28 @@ test('amend attaches a reciprocal candidate to its foreign owner and recovers sa
   await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
 });
 
+test('foreign reciprocal amend preserves version-zero forward evidence', async (t) => {
+  const { root } = await crossShardRepository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const ownerPath = path.join(root, 'data/relations/relation-002.jsonl');
+  const owner = { ...crossShardCounterpart(), candidate_assignment_version: 0 };
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), '');
+  await writeFile(ownerPath, relationJsonl([owner]));
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  await mergeForTest(root, checkpoint);
+  const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+  const compact = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'compact'], { root }));
+  const alias = /^T(\d+)\tw3-s1\t/mu.exec(compact.text)?.[1];
+  const input = '.warroom-scratch/foreign-zero.txt';
+  await writeFile(path.join(root, input), `amend w1-s1 @${inspect.digest}\nc1 R scene 4 T${alias}\n`);
+  await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', input], { root }));
+  const [updated] = await readRelationRows(ownerPath);
+  assert.equal(updated.candidate_assignment_version, 0);
+  assert.deepEqual(updated.candidate_forms, owner.candidate_forms);
+  assert.deepEqual(updated.reverse_candidate_forms, ['공통말']);
+});
+
 test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the trusted snapshot', async (t) => {
   const { root, checkpoint, sourceCandidates } = await prepareSixPart(t, { emptyRelation: true });
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
