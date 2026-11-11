@@ -6,7 +6,8 @@ from unittest.mock import Mock, patch
 
 from tests.test_issue_1684 import S2
 from tests.test_issue_1908 import s2_world, write_state
-from warroom import control, prbody, prompts, stage2, stage3
+from tests.test_issue_1555 import report, write_report
+from warroom import control, defects, prbody, prompts, stage2, stage3
 from warroom.adapters import PREFLIGHT_PENDING
 from warroom.gitops import Git, InspectContextFailure, IntegrationBlocked
 from warroom.shell import Result
@@ -17,6 +18,21 @@ def answer(text):
 
 
 class Stage2Finalization(unittest.TestCase):
+    def test_fixing_report_pauses_once_and_preserves_checkpoint(self):
+        w, b = self.start_optional_part(sense_id='w1-s1')
+        checkpoint = Path(b['worktree']) / '.warroom-scratch/relation-admission-001-01-01.json'
+        before = checkpoint.read_bytes()
+        w.store.update(b['id'], state='FIXING', run_kind='fix_new', pid=None)
+        b = w.store.batch(b['id'])
+        write_report(w, b, data=report(defect_class='inspect-context-overflow'))
+        self.assertTrue(w.sup._scan_report(b))
+        paused = w.store.batch(b['id'])
+        self.assertEqual((paused['state'], paused['pause_reason']), ('PAUSED', 'shared_defect'))
+        self.assertEqual(checkpoint.read_bytes(), before)
+        raw = (Path(b['worktree']) / defects.REPORT_FILE).read_text()
+        w.sup.maint.report(paused, 'report', defects.report_event_key(b['id'], raw), raw)
+        self.assertEqual(len(w.store.defects()), 1)
+
     def test_inspect_unpartitionable_failure_keeps_command_and_exit(self):
         runner = Mock()
         runner.run.return_value = Result(1, err='inspect context row exceeds output limit and cannot be partitioned')
