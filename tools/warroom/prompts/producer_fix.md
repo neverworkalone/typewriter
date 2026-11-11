@@ -12,7 +12,7 @@ merge/rebase/reset, 새 PR, 리뷰 요청, 머지를 하지 않는다. 변경이
 2. Method 지적을 판단하고 허용 범위 안에서 수정한다.
 3. `node scripts/relation/candidate-contract.mjs {{canonical}} {{output}}`
 4. 파일 변경이 있으면 `git add {{output}}`, commit, `git push origin {{branch}}` 순으로 실행한다. 변경이 없으면 커밋하지 않는다.
-5. 답변한 리뷰 이벤트에 대해서만 PR 댓글을 작성한 뒤 종료한다. 본문은 `--body-file -`과 quoted heredoc을 사용해 전달한다.
+5. 답변한 리뷰 이벤트에 대해서만 주입된 `GH_CONFIG_DIR`의 `gh` 인증으로 PR 댓글을 작성한 뒤 종료한다. GitHub MCP나 다른 계정을 쓰지 않는다. 본문은 `--body-file -`과 quoted heredoc을 사용해 전달한다.
 
 ```sh
 gh pr comment {{pr}} --body-file - <<'EOF'
