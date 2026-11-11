@@ -1011,6 +1011,24 @@ test('Stage 2 blocks missing source glosses during preparation and when resuming
   const referenced = await quiet(() => run(['read-chunk', '--checkpoint', '.warroom-scratch/relation-admission-001-01-01.json', '--format', 'compact'], { root: broken.root }));
   assert.match(referenced.text, /S\tw1-s1\tw1\t출발어\tnoun\t→ 유일표적\. ⇒ 후보의 정확한 뜻 \/ 표기가 같은 다른 뜻\t/u);
 
+  // A source-proven excluded root can supply its own gloss and the exact Canonical derivative's meaning.
+  canonicalRows[0].senses[0].gloss = '→ 빠진어근02.';
+  await writeFile(canonicalPath, jsonl(canonicalRows));
+  await mkdir(path.join(broken.root, 'data/provenance'), { recursive: true });
+  const projection = [{ source_sense_id: 'w1-s1', source_gloss: '→ 빠진어근02.', root_word: '빠진어근02',
+    root_gloss: '‘유일표적’의 어근.', derivative_sense_id: 'w501-s1', derivative_gloss: '후보의 정확한 뜻' }];
+  await writeFile(path.join(broken.root, 'data/provenance/stage2-root-references.json'), JSON.stringify(projection));
+  await rm(path.join(broken.root, '.warroom-scratch/relation-admission-001-01-01.json'), { force: true });
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root: broken.root }));
+  const rootChunk = await quiet(() => run(['read-chunk', '--checkpoint', '.warroom-scratch/relation-admission-001-01-01.json', '--format', 'compact'], { root: broken.root }));
+  assert.match(rootChunk.text, /빠진어근02: ‘유일표적’의 어근\. \(유일표적: 후보의 정확한 뜻\)/u);
+  projection[0].derivative_gloss = '오래된 뜻';
+  await writeFile(path.join(broken.root, 'data/provenance/stage2-root-references.json'), JSON.stringify(projection));
+  await rm(path.join(broken.root, '.warroom-scratch/relation-admission-001-01-01.json'), { force: true });
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root: broken.root })), /no usable meaning gloss/u);
+  canonicalRows[0].senses[0].gloss = '→ 유일표적.';
+  await writeFile(canonicalPath, jsonl(canonicalRows));
+
   // A proven target that itself has only arrow glosses (valid, target-less or malformed) gives no meaning: still blocked.
   for (const targetGloss of ['→ .', '→ 다른말.', '→']) {
     const rows = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);

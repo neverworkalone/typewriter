@@ -32,6 +32,10 @@ test('artifact policy classifies current projections and durable inputs', async 
     { generated: [], unclassified: [] },
   );
   assert.deepEqual(
+    classifyTrackedArtifacts(['data/provenance/stage2-root-references.json'], options),
+    { generated: [], unclassified: [] },
+  );
+  assert.deepEqual(
     classifyTrackedArtifacts(['data/relation-candidates/001/001_01_b_codex.jsonl'], options),
     { generated: [], unclassified: [] },
   );

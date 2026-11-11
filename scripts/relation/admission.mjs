@@ -113,6 +113,15 @@ export function sourceReferenceGloss(gloss, targetIndex) {
   return glosses.length > 0 ? glosses.join(' / ') : null;
 }
 
+/** Use a source-verified excluded-root chain only while both Canonical endpoints still match its evidence. */
+export function sourceRootReferenceGloss(sense, index, references) {
+  const row = references.get(sense.id);
+  if (!row || row.source_gloss !== sense.gloss) return null;
+  const derivative = index.senses.get(row.derivative_sense_id);
+  if (!derivative || derivative.sense.gloss !== row.derivative_gloss) return null;
+  return `${row.root_word}: ${row.root_gloss} (${derivative.record.lemma}: ${derivative.sense.gloss})`;
+}
+
 export const shardCanonicalPath = (shard, root = REPOSITORY_DIRECTORY) => path.join(root, 'data/canonical', `stdict-${shard.padStart(4, '0')}.jsonl`);
 export const shardRelationPath = (shard, root = REPOSITORY_DIRECTORY) => path.join(root, 'data/relations', `relation-${shard}.jsonl`);
 export const shardDropPath = (shard, root = REPOSITORY_DIRECTORY) => path.join(root, 'data/relation-drops', `drop-${shard}.jsonl`);
@@ -701,7 +710,8 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         fresh.push({ text, producers, same_spelling_records: targetRecords.map((target) => target.id) });
       }
       if (fresh.length === 0 && partiallyCovered.length === 0) continue;
-      const referenceGloss = sourceReferenceGloss(sense.gloss, targetIndex);
+      const referenceGloss = sourceReferenceGloss(sense.gloss, targetIndex)
+        ?? sourceRootReferenceGloss(sense, index, index.rootReferences ?? new Map());
       assertStage2SourceGloss(sense.id, sense.gloss, referenceGloss);
       stats.to_edit += fresh.length;
       items.push({
@@ -950,5 +960,9 @@ export async function loadShard(shard, root = REPOSITORY_DIRECTORY, { batch = nu
   assertShard(shard);
   const canonicalRows = await readJsonl(shardCanonicalPath(shard, root));
   const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root, { batch }), loadAllCanonical(root)]);
-  return { canonicalRows, candidateFiles: files, inventory, index: buildCanonicalIndex(allCanonical), batchSize: CANDIDATE_BATCH_SIZE };
+  const index = buildCanonicalIndex(allCanonical);
+  const referencesPath = path.join(root, 'data/provenance/stage2-root-references.json');
+  const references = existsSync(referencesPath) ? JSON.parse(await readFile(referencesPath, 'utf8')) : [];
+  index.rootReferences = new Map(references.map((row) => [row.source_sense_id, row]));
+  return { canonicalRows, candidateFiles: files, inventory, index, batchSize: CANDIDATE_BATCH_SIZE };
 }
