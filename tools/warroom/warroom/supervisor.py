@@ -3187,7 +3187,10 @@ class Supervisor:
         cmds = [" ".join(str((d.get("tool_input") or {}).get("command", "")).split())[:80] for d in denied
                 if isinstance(d.get("tool_input"), dict) and (d.get("tool_input") or {}).get("command")]
         what = f"도구: {', '.join(names)}" + (f"; 명령: {' | '.join(cmds[:3])}" if cmds else "")
-        pause = (f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 ({what}). 자동 권한 상승 없이 중지합니다. "
+        # Codex evidence is a failed command's output: it cannot tell a policy refusal, an approval wait and an OS error apart.
+        kind = ("권한 관련 명령 실패(정책 거절·승인 대기·일반 OS 오류 구분 불가 — 미확인)" if any("evidence" in d for d in denied)
+                else "로컬 CLI 권한 정책상 거부")
+        pause = (f"{kind}로 실행이 불완전합니다 ({what}). 자동 권한 상승 없이 중지합니다. "
                  "로컬 CLI 설정을 직접 확인한 뒤 Retry 하세요 (worktree·PR·세션 보존).")
         if b["method"] == MAINTENANCE_METHOD and b["state"] in ("PRODUCING", "FIXING"):
             # A failed command is evidence, not the verdict: the Maintainer's own fix / no-PR diagnosis gates decide (#5471).

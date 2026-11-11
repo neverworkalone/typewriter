@@ -647,7 +647,8 @@ class ClaudeCodeAdapter(ProcessAdapter):
 # permission profile on every launch (including chunks and resumes), then checks the thread, model and effort it used.
 # A permission-related command failure is kept as evidence (`denied_actions`) and never stops the live run by itself:
 # the CLI/sandbox already enforced it, and the exit verdict's completion gates decide the run. Nothing is retried or
-# widened here. For ordinary starts the linked worktree's Git
+# widened here. `codex exec --json` records a command only as completed/failed with free-form output (no structured
+# refusal, approval or decision field), so this evidence never claims which of those it was: unknown, never "allowed". For ordinary starts the linked worktree's Git
 # admin directory (`git_dir`) is opened alone with `--add-dir`; resume adds the same exact-directory grant to the named
 # configured profile because `exec resume` has no `--add-dir` flag. The repository's `.git` is never granted.
 # Chunks add only lightweight web-search/project-doc settings. Answer-only output remains a result contract, not a
@@ -846,7 +847,8 @@ class CodexCLIAdapter(ProcessAdapter):
         except OSError:
             return None
         for item in _failed_permission_commands(_json_objects(text)):
-            return f"로컬 Codex 권한으로 명령이 실패했습니다 ({_command_denial(item)})"
+            return (f"로컬 Codex 명령이 권한 관련 오류로 실패했습니다 ({_command_denial(item)}). CLI 로그에는 정책 거절·"
+                    "승인 대기·일반 OS 권한 오류를 구분하는 구조화 근거가 없어 미확인으로 보존합니다")
         return None
 
     def denied_actions(self, log_file):

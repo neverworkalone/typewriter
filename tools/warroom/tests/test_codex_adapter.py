@@ -332,7 +332,9 @@ class RunProblem(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             log = Path(d) / "l.log"
             log.write_text(lines(*events))
-            self.assertIn("권한으로 명령이 실패했습니다", CodexCLIAdapter().policy_refusal(log))
+            refusal = CodexCLIAdapter().policy_refusal(log)
+            self.assertIn("권한 관련 오류로 실패했습니다", refusal)
+            self.assertIn("미확인", refusal)                       # never claimed as an explicit refusal
 
     def test_real_denial_is_retained_alongside_zsh_diagnostics_with_evidence(self):
         output = ("zsh:1: nice(5) failed: operation not permitted\n"
@@ -664,6 +666,7 @@ class MaintainerPermissionFailure(unittest.TestCase):
         current = w.store.batch(m["id"])
         self.assertEqual(current["state"], "PAUSED")
         self.assertIn("완료 증거 없음", current["error"])
+        self.assertIn("구분 불가", current["error"])
         self.assertIn("ps -axo", current["error"])
 
     def test_no_pr_and_no_result_pauses_on_the_command_evidence_not_a_continuation(self):
@@ -672,8 +675,9 @@ class MaintainerPermissionFailure(unittest.TestCase):
         w.adapter.finish(self.fail_command_live())
         w.tick(3)
         current = w.store.batch(m["id"])
-        self.assertEqual(current["state"], "PAUSED")
-        self.assertIn("권한으로 명령이 실패했습니다", current["error"])
+        self.assertEqual(current["state"], "PAUSED")                   # unknown boundary: operator handoff
+        self.assertIn("권한 관련 오류로 실패했습니다", current["error"])
+        self.assertIn("미확인", current["error"])
         self.assertIsNone(w.store.get(f"m_continuation_{m['id']}"))
         self.assertEqual(len(self.notes(m)), 1)                         # reached the no-PR diagnosis path
 
@@ -725,6 +729,25 @@ class MaintainerPermissionFailure(unittest.TestCase):
                          ("PAUSED", CONTINUATION_PAUSE, "FIXING"), current["error"])
         self.assertEqual(rejection(m)["reason"], "fix_incomplete")
         self.assertEqual(len(self.notes(m)), 1)
+
+    def test_fix_left_unpushed_by_the_failure_is_never_released_to_review(self):
+        """A permission failure that blocked a required step (the fix never reached the PR) is not cleared by the run's
+        later normal end: the fix gate keeps it out of review and its review event stays uncompleted."""
+        from tests.fakes import HEAD2
+        w = self.w
+        m = self.fixing()
+        claim = json.loads(w.store.get(f"fix_claim_{m['id']}"))
+        w.git.local_head = HEAD2                                      # local commit, push blocked
+        w.git.remote[m["branch"]] = w.gh.prs[50]["head_sha"]
+        w.adapter.running[w.adapter.launches[-1]["pid"]]["text"] = lines(
+            started(), command("fatal: unable to access remote: Operation not permitted", 128, "git push"))
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        with mock.patch.object(w.sup.maint, "_start"):
+            w.tick(4)
+        current = w.store.batch(m["id"])
+        self.assertNotEqual(current["state"], "WAITING_REVIEW", current["error"])
+        key, = claim["event_keys"]
+        self.assertNotEqual(w.store.handled_event(m["id"], 50, w.gh.prs[50]["head_sha"], key)["status"], "HANDLED")
 
     def ended_fix(self):
         w = self.w
