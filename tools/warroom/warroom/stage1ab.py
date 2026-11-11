@@ -188,7 +188,7 @@ def load_state(store, batch_id: int, chunk_no: int) -> dict:
     except ValueError:
         data = {}
     return {"sid": data.get("sid"), "tries": int(data.get("tries", 0)), "requested": data.get("requested"),
-            "problem": data.get("problem")}
+            "problem": data.get("problem"), "recovery_answer": data.get("recovery_answer")}
 
 
 def save_state(store, batch_id: int, chunk_no: int, state: dict) -> None:

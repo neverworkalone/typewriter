@@ -1028,6 +1028,9 @@ class Supervisor:
                 and self.cp.auto_recover_integrated_no_submission(b)):
             return
         if ln["retry_batch"] == b["id"]:
+            if b["state"] == "ERROR" and self._ab_chunk_run(b) and not b["pr_number"]:
+                if self._ab_operator_recovery(b):
+                    return
             if b["state"] == "ERROR" and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:
                 self.cp.operator_retry(b)   # exactly one epoch per consumed operator Retry (Stop/auto release grant nothing)
             target = self._chunk_retry_target(b)
@@ -8490,6 +8493,56 @@ class Supervisor:
     def _ab_remember(self, b, chunk: dict) -> None:
         self.store.set(f"ab_sha_{b['id']}_{chunk['number']}", stage1ab.chunk_sha(Path(b["worktree"]), b, chunk))
 
+    def _ab_operator_recovery(self, b) -> bool:
+        """An explicit Retry of an exhausted unsaved chunk starts one fresh, source-bound correction cycle."""
+        try:
+            raw = self.store.get(stage1ab.run_start_key(b["id"]))
+            if raw is None:  # no chunk launched: preserve the ordinary preflight Retry path
+                return False
+            baseline = json.loads(raw)
+            if baseline.get("repair"):
+                return False
+            wt = Path(b["worktree"])
+            cp = stage1ab.checkpoint(wt, b)
+            chunk = stage1ab.chunk_by_number(cp, baseline["chunk_no"])
+            state = stage1ab.load_state(self.store, b["id"], chunk["number"])
+            if state["tries"] <= stage1ab.MAX_SAVE_TRIES:
+                return False
+            if problem := self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"])):
+                raise stage1ab.ABChunkError(problem)
+            if self.git.dirty(wt).strip() or self._find_recovery_pr(b) is not None:
+                raise stage1ab.ABChunkError("worktree 변경 또는 기존 PR이 있어 복구하지 않습니다")
+            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved") or stage1ab.chunk_saved(wt, b, chunk):
+                raise stage1ab.ABChunkError("저장된 청크가 실행 기준과 다릅니다")
+            if problem := self._ab_chunks_problem(b, cp):
+                raise stage1ab.ABChunkError(problem)
+            last = self._last_run(b)
+            if last is None or last["ended_at"] is None or last["log_file"] != b["log_file"]:
+                raise stage1ab.ABChunkError("마지막 종료 run을 확인할 수 없습니다")
+            answer = wt / stage1ab.answer_path(b, chunk["number"])
+            previous = answer.read_text("utf-8") if answer.exists() else ""
+            # Logs and this separate copy preserve the rejected answer even when save-chunk rewrites its input.
+            backup = answer.with_name(f"{answer.name}.recovery-{last['id']}")
+            try:
+                with backup.open("x", encoding="utf-8") as f:
+                    f.write(previous)
+            except FileExistsError:
+                if backup.read_text("utf-8") != previous:
+                    raise stage1ab.ABChunkError("기존 복구 답변 증거가 현재 답변과 다릅니다")
+            state.update(sid=None, tries=0, requested=None, recovery_answer=str(backup.relative_to(wt)),
+                         rejected_run_id=last["id"])
+            if not self.store.begin_ab_operator_recovery(b, stage1ab.state_key(b["id"], chunk["number"]),
+                                                         json.dumps(state, sort_keys=True)):
+                return True
+            self.store.log(b["id"], f"운영자 Retry: 청크 {chunk['number']:03d} 이전 답변을 보존하고 전체 view로 새 복구 세션을 시작합니다.")
+            return True
+        except TRANSIENT:
+            raise
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError, GitError) as e:
+            self.store.set_line(b["producer"], b["method"], retry_batch=None)
+            self.store.log(b["id"], f"A/B 운영자 복구 차단: {e}. 기존 증거를 보존합니다.", "warn")
+            return True
+
     @_single_launch_scope
     def _launch_ab_next(self, b) -> None:
         self._guarded(b, "prelaunch", self._launch_ab_next_do, entrypoint="launch_ab_next")
@@ -8516,9 +8569,10 @@ class Supervisor:
             raise
         except (stage1ab.ABChunkError, OSError, ValueError, GitError) as e:
             return self._fail(b, "ERROR", f"Stage 1 A/B 상태 확인 실패: {e}. worktree를 보존합니다.")
-        retry = st["tries"] > 0 or bool(repair)
+        retry = st["tries"] > 0 or bool(repair) or bool(st["recovery_answer"])
         self.store.update(b["id"], session_id=st["sid"] if retry and st["sid"] and not repair else None)
-        return self._launch(b, "ab_chunk_retry" if retry else "ab_chunk_new")
+        launch_batch = self.store.batch(b["id"]) if st["recovery_answer"] and st["tries"] == 0 else b
+        return self._launch(launch_batch, "ab_chunk_retry" if retry else "ab_chunk_new")
 
     def _ab_chunk_prompt(self, b, kind: str, remote="?") -> tuple[str, dict, bool]:
         """(prompt, run-start baseline, resume?) for the active chunk. A correction resumes only that chunk's own session."""
@@ -8542,6 +8596,11 @@ class Supervisor:
                 else:
                     note = (f"이 청크는 이미 답변·저장이 있으나 검증에서 거부됐다. 거부 사유: {st.get('problem') or '사유 없음'}\n"
                             f"고칠 줄: {requested}. `C` 줄이 현재 저장된 후보다.\n")
+            if st["recovery_answer"]:
+                previous = (wt / st["recovery_answer"]).read_text("utf-8")
+                note += ("이전 불완전 답변은 미검증 자료다. 전체 view를 기준으로 모든 Sense를 다시 답하고, "
+                         "기존 후보 중 유효한 것은 유지하되 명백히 부적격인 것만 제거한다.\n"
+                         f"이전 답변 시작\n{previous}\n이전 답변 끝\n")
             card_bytes = len(prompts.ab_chunk(b, chunk["number"], view="", note=note).encode("utf-8"))
             if stage1ab.delivery(card_bytes, view) != "inline":
                 raise prompts.PromptError("청크 view가 한 argv 요소 한도를 넘어 inline 전달할 수 없습니다 (자동 분할 없음, 청크 보존)")
