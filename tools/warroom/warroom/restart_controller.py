@@ -105,14 +105,24 @@ def _head(root: Path) -> str | None:
 
 
 def request_operator_restart(paths: Paths, code_sha: str) -> Path:
-    """Request loading an already deployed commit, without asserting that an incident was fixed."""
+    """Request a deployed or merged base-branch commit without asserting that an incident was fixed."""
     if not re.fullmatch(r"[0-9a-f]{40}", code_sha):
         raise ValueError("code SHA must be a full lowercase commit SHA")
     root = paths.repo_root.resolve()
     head = _head(root)
     status = _git(["status", "--porcelain", "--", "tools/warroom/warroom", "tools/warroom/prompts"], root)
-    if head is None or status.returncode or status.stdout.strip() or not _ancestor(root, code_sha, head):
-        raise ValueError("operating checkout must be clean and contain the requested code SHA")
+    if head is None or status.returncode or status.stdout.strip():
+        raise ValueError("operating checkout must have clean Supervisor code")
+    if not _ancestor(root, code_sha, head):
+        # Accept only a commit already merged into the configured remote base; the handoff rechecks all checkout,
+        # dependency and boot conditions before stopping the current instance and changes files only after it exits.
+        base = load_config(paths)["base_branch"]
+        fetched = _git(["fetch", "origin", base], root, timeout=120)
+        tip = _git(["rev-parse", f"refs/remotes/origin/{base}"], root) if fetched.returncode == 0 else None
+        target = tip.stdout.strip() if tip is not None and tip.returncode == 0 else ""
+        if (not re.fullmatch(r"[0-9a-f]{40}", target) or not _ancestor(root, head, target)
+                or not _ancestor(root, code_sha, target)):
+            raise ValueError("requested code SHA must be merged into the configured remote base")
     path = request_path(paths, 0)  # reserved for operator requests; no defect is associated
     with _decision(paths):
         current = _read_json(path)
