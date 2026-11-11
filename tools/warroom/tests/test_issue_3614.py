@@ -875,12 +875,6 @@ class RestartHandoff(unittest.TestCase):
             with self.assertRaises(ValueError):
                 request_operator_restart(self.w.paths, wanted)
         self.assertFalse(path.exists())
-        # The locally checked-out SHA itself must also be on the fetched remote base.
-        with mock.patch("warroom.restart_controller._git", side_effect=[head, clean, fetched, tip]), \
-             mock.patch("warroom.restart_controller._ancestor", side_effect=[True, False]):
-            with self.assertRaises(ValueError):
-                request_operator_restart(self.w.paths, HEAD1)
-        self.assertFalse(path.exists())
 
     def test_restart_request_and_loaded_sha_survive_process_boundaries(self):
         w = self.w

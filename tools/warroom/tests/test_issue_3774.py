@@ -324,6 +324,22 @@ class RealCheckoutUpdate(unittest.TestCase):
         with mock.patch.object(rc, "_boot_problem", return_value=None):
             return rc._update_target(self.paths, self.op, self.head, [wanted])
 
+    def test_operator_reload_accepts_remote_commit_but_rejects_local_only_ancestor(self):
+        remote = self.publish()
+        with mock.patch.object(rc, "load_config", return_value={"base_branch": "master"}):
+            path = rc.request_operator_restart(self.paths, remote)
+            self.assertEqual(json.loads(path.read_text())["merge_sha"], remote)
+            path.unlink()
+            self.git(self.op, "merge", "-q", "--ff-only", "origin/master")
+            local_requested = self.commit(self.op, "local-one.txt", "one")
+            local_head = self.commit(self.op, "local-two.txt", "two")
+            self.assertNotEqual(local_requested, local_head)
+            self.assertTrue(rc._ancestor(self.op, local_requested, local_head))
+            self.assertFalse(rc._ancestor(self.op, local_head, remote))
+            with self.assertRaises(ValueError):
+                rc.request_operator_restart(self.paths, local_requested)
+            self.assertFalse(path.exists())
+
     def test_plan_changes_nothing_and_the_fast_forward_lands_exactly_the_planned_commit(self):
         new = self.publish()
         self.assertEqual(self.target(new), (new, None))
