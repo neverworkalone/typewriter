@@ -188,6 +188,20 @@ class MaintainerControls(World2022):
         self.assertEqual(maintainer_row(w)["state"], "PRODUCING")
         self.assertEqual(len([x for x in w.store.all_batches() if x["method"] == "m"]), 1)
 
+    def test_retry_is_consumed_on_its_producer_when_other_model_sorts_first(self):
+        w = self.w
+        _, m = start_maintainer(w)
+        w.adapter.finish(m["pid"])
+        w.store.finish_run(w.store.runs(m["id"])[0]["id"], 0)
+        w.store.update(m["id"], state="ERROR", paused_from="PRODUCING", pid=None, error="failed")
+        w.store.set_line("sonnet", "m", run=0)
+        w.store.line("alpha", "m")
+        self.assertTrue(control.retry_maintainer(w.store, 101, m["id"]))
+        w.sup._tick_maintenance()
+        self.assertEqual(w.store.batch(m["id"])["state"], "PRODUCING")
+        self.assertIsNone(w.store.line("sonnet", "m")["retry_batch"])
+        self.assertEqual(w.store.line("alpha", "m")["run"], 0)
+
     def test_retry_uses_the_selected_issue_batch_when_a_newer_attempt_exists(self):
         w = self.w
         _, first = start_maintainer(w)
