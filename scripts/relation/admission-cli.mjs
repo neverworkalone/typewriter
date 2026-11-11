@@ -712,7 +712,7 @@ function coalesceIdenticalSensePairRelations(relations, relationCandidates) {
 }
 
 function collectMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index,
-  otherRelationRows = []) {
+  otherRelationRows = [], { mergeOtherReciprocals = false } = {}) {
   // The materializer must be safe to run repeatedly from a pre-merge snapshot. Do not let a reciprocal
   // relation update alias and mutate the input rows supplied by its caller.
   const baseRelations = existingRelations.map((row) => ({
@@ -793,6 +793,18 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
       const reverse = idPairKey(row.target_sense_id, row.source_sense_id);
       const otherPair = otherIdPairs.get(key) ?? otherIdPairs.get(reverse);
       if (otherPair) {
+        if (mergeOtherReciprocals && isConsistentReciprocalIdRelation(otherPair, row)) {
+          if ([0, 1].includes(otherPair.candidate_assignment_version)) {
+            otherPair.candidate_forms = [...new Set([...(otherPair.candidate_forms ?? []), ...row.reverse_candidate_forms])];
+            otherPair.reverse_candidate_forms = [...new Set([...(otherPair.reverse_candidate_forms ?? []), ...row.candidate_forms])];
+          } else {
+            const target = index.byId.get(otherPair.target_record_id);
+            otherPair.candidate_assignment_version = 0;
+            otherPair.candidate_forms = target ? legacyCandidateFormsForRecord(target, index) : [];
+            otherPair.reverse_candidate_forms = [...new Set(row.candidate_forms)];
+          }
+          continue;
+        }
         const relatedCandidates = new Set([
           ...(sourceCandidatesForPair.get(key) ?? []),
           ...(sourceCandidatesForPair.get(reverse) ?? []),
@@ -1164,6 +1176,7 @@ async function runCommand(options, root, timing) {
     return checkpoint;
   }
   let verifiedCheckpoint = null;
+  let verifiedAmendJournal = null;
   if (options.command === 'verify' && options.part && existsSync(checkpointPath)) {
     timing?.checkpoint();
     timing?.start('checkpoint_load');
@@ -1176,6 +1189,7 @@ async function runCommand(options, root, timing) {
       const journalPath = checkpointPath.replace(/\.json$/u, '.amend-state.json');
       const journal = await readAmendJournal(journalPath);
       if (!journal) throw new Error('amended Part checkpoint has no amend recovery evidence');
+      verifiedAmendJournal = journal;
       const oldCheckpoint = checkpointFromJournal(journal.old_checkpoint_b64);
       const newCheckpoint = checkpointFromJournal(journal.new_checkpoint_b64);
       if (!/^[a-f0-9]{64}$/u.test(journal.request_sha256)
@@ -1303,14 +1317,17 @@ async function runCommand(options, root, timing) {
   timing?.end();
   if (verifiedCheckpoint) {
     timing?.start('checkpoint_merged');
-    assertCheckpointMerged(verifiedCheckpoint, relationRows, dropRows);
+    assertCheckpointMerged(verifiedCheckpoint, [...relationRows, ...others], dropRows);
     timing?.end();
     if (verifiedCheckpoint.premerge) {
       timing?.start('premerge_read');
       const baseline = await readReadyPremerge(verifiedCheckpoint, checkpointPath);
       timing?.end();
       timing?.start('materialize_part');
-      const expected = await materializePart(verifiedCheckpoint, repositoryRoot, baseline, null, timing);
+      const expected = verifiedAmendJournal?.version === 2
+        ? await materializeWithForeign(verifiedCheckpoint, repositoryRoot, baseline,
+          Object.fromEntries(Object.entries(verifiedAmendJournal.foreign).map(([name, entry]) => [name, entry.baseline])))
+        : await materializePart(verifiedCheckpoint, repositoryRoot, baseline, null, timing);
       timing?.end();
       timing?.start('output_compare');
       const [actualRelations, actualDrops] = await Promise.all([
@@ -1319,6 +1336,9 @@ async function runCommand(options, root, timing) {
       ]);
       if (!sameFileState(actualRelations, expected.relations) || !sameFileState(actualDrops, expected.drops)) {
         throw new Error('merged Part outputs do not match byte-for-byte materialize(premerge, checkpoint)');
+      }
+      if (verifiedAmendJournal?.version === 2 && expected.files.some((file) => !sameFileState(file.actual, expected.foreign[file.name]))) {
+        throw new Error('foreign Relation outputs do not match byte-for-byte materialize(premerge, checkpoint)');
       }
       timing?.end();
     }
@@ -2914,7 +2934,7 @@ async function readReadyPremerge(checkpoint, checkpointPath) {
   return { relations, drops, relation_diff: manifest.relation_diff ?? null };
 }
 
-async function materializePart(checkpoint, root, baseline, preparedCandidateMerge = null, timing = null) {
+async function materializePart(checkpoint, root, baseline, preparedCandidateMerge = null, timing = null, foreign = null) {
   timing?.start('baseline_parse');
   assertPrimaryComplete(checkpoint);
   assertOptionalComplete(checkpoint);
@@ -2923,7 +2943,8 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
   const existingDrops = parseJsonlState(baseline.drops, 'Drop');
   timing?.end();
   timing?.start('other_relations_load');
-  const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
+  const others = foreign ? foreign.flatMap(({ rows }) => rows)
+    : await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
   timing?.end();
   timing?.start('shard_reload');
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
@@ -2958,8 +2979,9 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
   }
   timing?.end();
   timing?.start('merge_conflicts');
-  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops,
-    loaded.index, others);
+  const merged = collectMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops,
+    loaded.index, others, { mergeOtherReciprocals: Boolean(foreign) });
+  if (merged.conflicts.length) throw new Error(merged.conflicts[0].message);
   timing?.end();
   timing?.start('orphan_drops');
   const removedRelationRows = baseline.relation_diff
@@ -3668,7 +3690,7 @@ function checkpointBytes(checkpoint) {
 async function readAmendJournal(file) {
   try {
     const value = JSON.parse(await readFile(file, 'utf8'));
-    if (!isPlainObject(value) || value.version !== 1 || typeof value.request_sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(value.request_sha256)
+  if (!isPlainObject(value) || ![1, 2].includes(value.version) || typeof value.request_sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(value.request_sha256)
         || typeof value.old_checkpoint_b64 !== 'string' || typeof value.new_checkpoint_b64 !== 'string') {
       throw new Error('malformed amend recovery journal');
     }
@@ -3681,6 +3703,94 @@ async function readAmendJournal(file) {
 
 function checkpointFromJournal(encoded) {
   return validateCheckpoint(JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')));
+}
+
+function encodeFileState(state) {
+  return { exists: state.exists, bytes: state.bytes.toString('base64') };
+}
+
+function decodeFileState(value) {
+  if (!isPlainObject(value) || typeof value.exists !== 'boolean' || typeof value.bytes !== 'string'
+      || (!value.exists && value.bytes !== '')) throw new Error('malformed foreign Relation state');
+  const bytes = Buffer.from(value.bytes, 'base64');
+  if (bytes.toString('base64') !== value.bytes) throw new Error('malformed foreign Relation state');
+  return { exists: value.exists, bytes, sha256: value.exists ? sha256(bytes) : null };
+}
+
+async function foreignRelationFiles(root, shard, baselines = {}) {
+  const directory = path.join(root, 'data/relations');
+  const names = (await readdir(directory)).filter((name) => /^relation-\d{3}\.jsonl$/u.test(name)
+    && name !== `relation-${shard}.jsonl`).sort();
+  if (Object.keys(baselines).some((name) => !names.includes(name))) throw new Error('foreign Relation baseline file is missing');
+  const files = [];
+  for (const name of names) {
+    const actual = await readFileState(path.join(directory, name));
+    const baseline = baselines[name] ? decodeFileState(baselines[name]) : actual;
+    files.push({ name, actual, baseline, rows: parseJsonlState(baseline, 'Relation') });
+  }
+  return files;
+}
+
+function foreignResults(files) {
+  return Object.fromEntries(files.map(({ name, baseline, rows }) => [name,
+    sameRows(rows, parseJsonlState(baseline, 'Relation')) ? baseline : serializedJsonlState(rows, baseline, 'Relation')]));
+}
+
+async function materializeWithForeign(checkpoint, root, baseline, baselines) {
+  const files = await foreignRelationFiles(root, checkpoint.shard, baselines);
+  const result = await materializePart(checkpoint, root, baseline, null, null, files);
+  return { ...result, files, foreign: foreignResults(files) };
+}
+
+async function applyForeignAmendJournal(journal, checkpointPath, root, { checkOnly = false } = {}) {
+  if (!isPlainObject(journal.foreign) || Object.keys(journal.foreign).some((name) => !/^relation-\d{3}\.jsonl$/u.test(name))) {
+    throw new Error('malformed foreign Relation journal');
+  }
+  const oldCheckpoint = checkpointFromJournal(journal.old_checkpoint_b64);
+  const newCheckpoint = checkpointFromJournal(journal.new_checkpoint_b64);
+  if (oldCheckpoint.shard !== newCheckpoint.shard || oldCheckpoint.batch !== newCheckpoint.batch
+      || oldCheckpoint.part !== newCheckpoint.part || newCheckpoint.amend_revision !== (oldCheckpoint.amend_revision || 0) + 1) {
+    throw new Error('foreign Relation journal checkpoint identity mismatch');
+  }
+  const baseline = await readReadyPremerge(oldCheckpoint, checkpointPath);
+  const baselines = Object.fromEntries(Object.entries(journal.foreign).map(([name, entry]) => [name, entry.baseline]));
+  const oldResult = await materializeWithForeign(oldCheckpoint, root, baseline, baselines);
+  const newResult = await materializeWithForeign(newCheckpoint, root, baseline, baselines);
+  for (const file of oldResult.files) {
+    if (!Object.hasOwn(journal.foreign, file.name) && (!sameFileState(oldResult.foreign[file.name], file.actual)
+        || !sameFileState(newResult.foreign[file.name], file.actual))) {
+      throw new Error('foreign Relation journal omits a changed file');
+    }
+  }
+  const entries = [];
+  for (const name of Object.keys(journal.foreign).sort()) {
+    const entry = journal.foreign[name];
+    const oldState = decodeFileState(entry.old);
+    const newState = decodeFileState(entry.new);
+    if (!oldResult.foreign[name] || !sameFileState(oldResult.foreign[name], oldState)
+        || !sameFileState(newResult.foreign[name], newState)) throw new Error('foreign Relation journal does not reproduce its results');
+    entries.push({ file: path.join(root, 'data/relations', name), oldState, newState });
+  }
+  entries.push(
+    { file: shardRelationPath(oldCheckpoint.shard, root), oldState: oldResult.relations, newState: newResult.relations },
+    { file: shardDropPath(oldCheckpoint.shard, root), oldState: oldResult.drops, newState: newResult.drops },
+    { file: checkpointPath, oldState: bytesState(checkpointBytes(oldCheckpoint)), newState: bytesState(checkpointBytes(newCheckpoint)) },
+  );
+  let pending = false;
+  for (const entry of entries) {
+    const actual = await readFileState(entry.file);
+    const oldMatch = sameFileState(actual, entry.oldState);
+    const newMatch = sameFileState(actual, entry.newState);
+    if (!oldMatch && !newMatch) throw new Error('amend outputs/checkpoint are in an unrecognized state; preserving all files');
+    if (!newMatch) pending = true;
+    else if (pending && !oldMatch) throw new Error('amend outputs/checkpoint are in an unrecognized state; preserving all files');
+  }
+  if (!pending) return { amended: true, already_applied: true, checkpoint: checkpointPath };
+  if (checkOnly) throw new Error('another amend is incomplete; rerun its exact input before starting a different request');
+  for (const entry of entries) {
+    if (!sameFileState(await readFileState(entry.file), entry.newState)) await writeFileStateAtomically(entry.file, entry.newState);
+  }
+  return { amended: true, checkpoint: checkpointPath };
 }
 
 async function applyAmendJournalState(checkpoint, checkpointPath, root, oldCheckpoint, newCheckpoint, requestHash, journalPath) {
@@ -3722,7 +3832,18 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
   ]);
   const requestHash = sha256(Buffer.from(raw, 'utf8'));
   const current = { checkpoint: await readFileState(checkpointPath), relations: await readFileState(relationFile), drops: await readFileState(dropFile) };
-  if (journal) {
+  if (journal?.version === 2) {
+    const oldCheckpoint = checkpointFromJournal(journal.old_checkpoint_b64);
+    if (journal.request_sha256 === requestHash) {
+      const parsed = parseAmendInput(raw, oldCheckpoint);
+      const replay = applyAmendChanges(oldCheckpoint, parsed);
+      if (!replay.changed || JSON.stringify(replay.checkpoint) !== JSON.stringify(checkpointFromJournal(journal.new_checkpoint_b64))) {
+        throw new Error('same amend input does not reproduce its recorded new checkpoint');
+      }
+      return applyForeignAmendJournal(journal, checkpointPath, root);
+    }
+    await applyForeignAmendJournal(journal, checkpointPath, root, { checkOnly: true });
+  } else if (journal) {
     const oldCheckpoint = checkpointFromJournal(journal.old_checkpoint_b64);
     const newCheckpoint = checkpointFromJournal(journal.new_checkpoint_b64);
     const oldResult = await materializePart(oldCheckpoint, root, baseline);
@@ -3742,14 +3863,35 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
     }
     if (state !== 4) throw new Error('another amend is incomplete; rerun its exact input before starting a different request');
   }
-  const currentExpected = await materializePart(checkpoint, root, baseline);
+  const foreignBaselines = journal?.version === 2
+    ? Object.fromEntries(Object.entries(journal.foreign).map(([name, entry]) => [name, entry.baseline])) : {};
+  const currentExpected = await materializeWithForeign(checkpoint, root, baseline, foreignBaselines);
   if (!sameFileState(current.relations, currentExpected.relations) || !sameFileState(current.drops, currentExpected.drops)) {
     throw new Error('current merged outputs do not match materialize(premerge, checkpoint); refusing to amend drifted files');
+  }
+  for (const file of currentExpected.files) {
+    if (!sameFileState(file.actual, currentExpected.foreign[file.name])) {
+      throw new Error('foreign Relation output does not match materialize(premerge, checkpoint); refusing to amend drifted files');
+    }
   }
   const parsed = parseAmendInput(raw, checkpoint);
   const applied = applyAmendChanges(checkpoint, parsed);
   if (!applied.changed) return { amended: true, changed_candidates: 0, unchanged: true, checkpoint: checkpointPath };
-  return applyAmendJournalState(checkpoint, checkpointPath, root, checkpoint, applied.checkpoint, requestHash, journalPath);
+  const next = await materializeWithForeign(applied.checkpoint, root, baseline, foreignBaselines);
+  const foreign = {};
+  for (const file of currentExpected.files) {
+    const oldState = currentExpected.foreign[file.name];
+    const newState = next.foreign[file.name];
+    if (Object.hasOwn(foreignBaselines, file.name) || !sameFileState(oldState, newState)) {
+      foreign[file.name] = { baseline: encodeFileState(file.baseline), old: encodeFileState(oldState), new: encodeFileState(newState) };
+    }
+  }
+  if (!Object.keys(foreign).length) return applyAmendJournalState(checkpoint, checkpointPath, root, checkpoint, applied.checkpoint, requestHash, journalPath);
+  const nextJournal = { version: 2, request_sha256: requestHash,
+    old_checkpoint_b64: checkpointBytes(checkpoint).toString('base64'),
+    new_checkpoint_b64: checkpointBytes(applied.checkpoint).toString('base64'), foreign };
+  await writeJsonAtomically(journalPath, nextJournal);
+  return applyForeignAmendJournal(nextJournal, checkpointPath, root);
 }
 
 async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {

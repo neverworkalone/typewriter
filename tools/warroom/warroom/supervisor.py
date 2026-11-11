@@ -1275,6 +1275,38 @@ class Supervisor:
             and pr["headRefOid"] not in known_heads
         )]
 
+    def _stage2_foreign_paths(self, b, info, files) -> set[str]:
+        """Prove cross-shard amend output against the saved Part and its original commit."""
+        own = {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"}
+        paths = {f["path"] for f in files}
+        foreign = paths - own
+        if not foreign or any(not re.fullmatch(r"data/relations/relation-\d{3}\.jsonl", p) for p in foreign):
+            raise RecoveryBlocked("Stage 2 외부 Relation 산출물 범위가 잘못되었습니다")
+        wt = Path(b["worktree"])
+        initial = self.store.get(f"s2_commit_head_{b['id']}")
+        head = info.get("head_sha")
+        if not isinstance(initial, str) or not re.fullmatch(r"[a-f0-9]{40}", initial) or \
+                self.git.head(wt) != head or self.git.dirty(wt).strip():
+            raise RecoveryBlocked("외부 Relation의 초기 commit 또는 현재 clean HEAD를 증명할 수 없습니다")
+        bb, pp = b["batch"].split("-")
+        journal_path = wt / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.amend-state.json"
+        try:
+            journal = json.loads(journal_path.read_text("utf-8"))
+            if journal.get("version") != 2 or not isinstance(journal.get("foreign"), dict):
+                raise ValueError("missing foreign amend evidence")
+            for name in foreign:
+                entry = journal["foreign"][Path(name).name]
+                for field, revision in (("baseline", initial), ("new", head)):
+                    state = entry[field]
+                    if state.get("exists") is not True or base64.b64decode(state["bytes"], validate=True) != self.git.file_at_revision(wt, revision, name):
+                        raise ValueError(f"{name} {field} does not match commit")
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise RecoveryBlocked(f"외부 Relation amend 증거가 일치하지 않습니다: {error}") from error
+        ok, detail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=True)
+        if not ok:
+            raise RecoveryBlocked(f"외부 Relation checkpoint 검증 실패: {detail}")
+        return paths & own | foreign
+
     def _find_recovery_pr(self, b):
         """Find one owned-branch PR; data batches must also prove their Candidate or shard claim."""
         prs = self.gh.prs_for_branch(b["branch"])
@@ -1304,10 +1336,13 @@ class Supervisor:
             candidates = batches.pr_claims(b, {"number": number, "files": files})
             expected = batches.expected_claim(b)
             stage3_empty_diff = b["method"] == STAGE3_METHOD and files == []
-            if not stage3_empty_diff and (candidates.count(expected) != 1 or any(item != expected for item in candidates)):
+            foreign_stage2 = b["method"] == STAGE2_METHOD and candidates.count(expected) == 1 and len(candidates) > 1
+            if foreign_stage2:
+                self._stage2_foreign_paths(b, info, files)
+            if not stage3_empty_diff and not foreign_stage2 and (candidates.count(expected) != 1 or any(item != expected for item in candidates)):
                 raise RecoveryBlocked(f"PR #{number}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
                                       f"(기대 {expected}, 확인 {candidates})")
-        dup = self._duplicate_claim(b, number)
+        dup = self._duplicate_claim(b, number, set(candidates) if b["method"] == STAGE2_METHOD else None)
         if dup:
             raise RecoveryBlocked(f"같은 배치를 다른 열린 PR #{dup}이 점유 — 복구를 중단합니다")
         if info.get("merged"):
@@ -3594,6 +3629,12 @@ class Supervisor:
                 journal = cp_path.with_name(cp_path.stem + ".amend-state.json")
                 if not journal.is_file():
                     return "Stage 2 amend recovery evidence가 없어 리뷰 수정 HEAD를 수락하지 않습니다"
+            files = self.gh.pull_files(info["number"])
+            claims = batches.pr_claims(b, {"number": info["number"], "files": files})
+            if len(claims) > 1:
+                self._stage2_foreign_paths(b, info, files)
+                if rival := self._duplicate_claim(b, info["number"], set(claims)):
+                    return f"외부 Relation shard를 열린 PR #{rival}이 점유합니다. worktree와 PR을 보존합니다."
             return self._stage2_final_pr_problem(b, info)
         except TRANSIENT:
             raise
@@ -9043,6 +9084,11 @@ class Supervisor:
             if b["method"] == STAGE2_METHOD:
                 claim = batches.expected_claim(b)
                 found = batches.pr_claims(b, {"number": info["number"], "files": files})
+                if found.count(claim) == 1 and len(found) > 1:
+                    try:
+                        return self._stage2_foreign_paths(b, info, files)
+                    except RecoveryBlocked as error:
+                        raise FastForwardBlocked(str(error)) from error
                 if found.count(claim) != 1 or any(item != claim for item in found):
                     raise FastForwardBlocked(f"PR #{info['number']}의 Stage 2 산출물 소유권이 shard와 일치하지 않습니다")
                 owned = {f"data/relations/relation-{b['shard']}.jsonl",
@@ -9362,7 +9408,7 @@ class Supervisor:
         ad.stop(b["pid"])
         self.store.log(b["id"], f"AI 실행 중 소유 PR #{info['number']} 감지 → Supervisor로 인계하고 생산 프로세스 종료 요청")
 
-    def _duplicate_claim(self, b, my_pr: int) -> int | None:
+    def _duplicate_claim(self, b, my_pr: int, own_claims: set | None = None) -> int | None:
         """A rival open PR on the same batch file: same model for A/B, any model for the shared C/D queue."""
         if b["method"] == MAINTENANCE_METHOD:   # an Issue-scoped PR, not a Candidate batch: the Issue claim is the guard
             return None
@@ -9375,7 +9421,7 @@ class Supervisor:
             except batches.BatchError as e:   # unknown file list: a duplicate cannot be ruled out -> stop
                 raise DuplicateClaim(f"{e} — 중복 방지로 중단") from e
             if b["method"] in (STAGE2_METHOD, STAGE3_METHOD):   # one Stage 2/3 PR per shard: the Relation/Drop files collide
-                if batches.expected_claim(b) in claims:
+                if (own_claims or {batches.expected_claim(b)}) & set(claims):
                     return pr["number"]
                 continue
             for shard, batch, method, who in claims:
