@@ -8440,7 +8440,9 @@ class Supervisor:
         """An explicit Retry of an exhausted unsaved chunk starts one fresh, source-bound correction cycle."""
         try:
             raw = self.store.get(stage1ab.run_start_key(b["id"]))
-            baseline = json.loads(raw or "")
+            if raw is None:  # no chunk launched: preserve the ordinary preflight Retry path
+                return False
+            baseline = json.loads(raw)
             if baseline.get("repair"):
                 return False
             wt = Path(b["worktree"])

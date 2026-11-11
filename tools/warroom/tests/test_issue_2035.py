@@ -242,6 +242,27 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(backups[0].read_text("utf-8"), "chunk 001\nS1\t기존후보\n")
 
 
+    def test_retry_after_next_chunk_preflight_failure_uses_ordinary_relaunch(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1), session="ses_1")
+        w.ai(w.block(2), session="ses_2")
+        w.tick()
+        preflight = w.sup._preflight
+        w.sup._preflight = lambda *args: "temporary preflight failure"
+        w.finish_last()
+        w.tick()
+        b = w.row_()
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIsNone(w.store.get(stage1ab.run_start_key(b["id"])))
+        self.assertEqual(len(w.adapter.launches), 1)
+        w.sup._preflight = preflight
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.tick(2)
+        self.assertEqual(w.row_()["state"], "PRODUCING")
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertIn("BEGIN chunk 002", w.adapter.launches[-1]["prompt"])
+
     def test_exhausted_chunk_retry_rejects_changed_git_boundary(self):
         w = self.w
         w.start("single", "deepseek", "a")
