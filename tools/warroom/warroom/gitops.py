@@ -19,6 +19,10 @@ class GitError(Exception):
     pass
 
 
+class InspectContextFailure(GitError):
+    """A valid inspect could not emit a bounded context row."""
+
+
 class GitTransient(GitError):
     """A remote git call failed in a way asking again can fix (timeout, network); nothing was decided."""
 
@@ -1297,6 +1301,8 @@ class Git:
                 res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
                 if not res.ok:
                     detail = " ".join((res.err or res.out).split())[-300:]
+                    if "output limit and cannot be partitioned" in detail:
+                        raise InspectContextFailure(f"inspect cwd={worktree} argv={args!r} exit={res.code}: {detail}")
                     if "page exceeds its output limit" in detail and page_size > 1:
                         page_size = max(1, page_size // 2)
                         retry_smaller = True

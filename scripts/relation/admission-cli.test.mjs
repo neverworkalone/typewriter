@@ -2744,6 +2744,117 @@ test('inspect --select keeps detailed current rows for a full-sense review targe
     'a prose-full Sense is not reduced to a Q summary when another Sense has selected candidates');
 });
 
+test('normal inspect renders and serializes only the requested page', async (t) => {
+  const { root } = await sixCandidateRepository(t);
+  const candidatePath = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const rows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map(JSON.parse);
+  rows.find((row) => row.record_id === 'w1').senses[0].candidates = Array.from({ length: 250 }, (_, i) => `후보${i}`);
+  await writeFile(candidatePath, jsonl(rows));
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const args = ['inspect', '--checkpoint', '.warroom-scratch/relation-admission-001-01-01.json',
+    '--source-sense-id', 'w1-s1', '--page-size', '40', '--page', '4'];
+  const originalByteLength = Buffer.byteLength;
+  let compactPages = 0;
+  Buffer.byteLength = function (value, ...rest) {
+    if (typeof value === 'string' && value.startsWith('inspect w1-s1 @')) compactPages += 1;
+    return originalByteLength.call(this, value, ...rest);
+  };
+  try {
+    const result = await quiet(() => run([...args, '--format', 'compact'], { root }));
+    assert.equal(result.total_pages, 7);
+    assert.equal(compactPages, 1);
+  } finally { Buffer.byteLength = originalByteLength; }
+  const originalStringify = JSON.stringify;
+  let jsonPages = 0;
+  JSON.stringify = function (value, ...rest) {
+    if (value?.inspect === true && Array.isArray(value.items)) jsonPages += 1;
+    return originalStringify.call(this, value, ...rest);
+  };
+  try {
+    const result = await quiet(() => run([...args, '--format', 'json'], { root }));
+    assert.equal(result.total_pages, 7);
+    assert.equal(result.items.length, 40);
+    assert.equal(jsonPages, 1);
+  } finally { JSON.stringify = originalStringify; }
+
+  // An oversized item on a later normal page must choose the same fragmented
+  // layout even when the caller initially requests page one.
+  const checkpointPath = path.join(root, '.warroom-scratch/relation-admission-001-01-01.json');
+  const checkpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  checkpoint.items.find((item) => item.sense_id === 'w1-s1').candidates[249].text = '별'.repeat(15_000);
+  await writeFile(checkpointPath, `${JSON.stringify(checkpoint)}\n`);
+  for (const format of ['compact', 'json']) {
+    const first = await quiet(() => run([...args.slice(0, -2), '--page', '1', '--format', format], { root }));
+    const last = await quiet(() => run([...args.slice(0, -2), '--page', String(first.total_pages), '--format', format], { root }));
+    assert.equal(first.digest, last.digest);
+    assert.equal(first.total_pages, last.total_pages);
+    if (format === 'json') assert.equal(typeof first.json_fragment, 'string');
+    else assert.match(first.text, /context fragments/u);
+  }
+});
+
+test('inspect partitions oversized peer context without changing its snapshot or amend aliases', async (t) => {
+  const { root, checkpoint, sourceCandidates } = await prepareSixPart(t, { emptyRelation: true });
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  await mergeForTest(root, checkpoint);
+  const cpPath = path.join(root, checkpoint);
+  const cp = JSON.parse(await readFile(cpPath, 'utf8'));
+  const peers = Array.from({ length: 250 }, (_, i) => ({ type: 'near', relevance: 3, text: `peer-${i}-${'별'.repeat(50)}` }));
+  cp.items.find((item) => item.sense_id === 'w1-s1').approved_peers = peers;
+  const longGloss = '뜻'.repeat(15_000);
+  cp.items.find((item) => item.sense_id === 'w1-s1').gloss = longGloss;
+  await writeFile(cpPath, `${JSON.stringify(cp)}\n`);
+  const before = await readFile(cpPath);
+  const base = ['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--candidate', sourceCandidates[0], '--page-size', '1'];
+  const readPages = async (format) => {
+    const first = await quiet(() => run([...base, '--format', format], { root }));
+    const pages = [first];
+    for (let page = 2; page <= first.total_pages; page += 1) {
+      pages.push(await quiet(() => run([...base, '--format', format, '--page', String(page)], { root })));
+    }
+    assert.ok(pages.length > 1);
+    for (const item of pages) assert.equal(item.digest, first.digest);
+    return pages;
+  };
+  const compact = await readPages('compact');
+  const text = compact.map((p) => p.text).join('');
+  for (const peer of peers) assert.equal(text.split(peer.text).length - 1, 1);
+  const fragments = text.split('\n').filter((line) => line.startsWith('F\t')).map((line) => line.split('\t'));
+  assert.ok(fragments.length > 1);
+  assert.match(fragments.map((parts) => JSON.parse(parts[3])).join(''), /^S\tw1-s1\t/u);
+  assert.ok(fragments.map((parts) => JSON.parse(parts[3])).join('').includes(longGloss));
+  assert.match(text, /\nc1\t/u);
+  for (const p of compact) assert.ok(Buffer.byteLength(p.text, 'utf8') <= 36_000 && p.text.length <= 28_000);
+  const jsonPages = await readPages('json');
+  const decoded = JSON.parse(jsonPages.map((p) => p.json_fragment).join(''));
+  assert.deepEqual(decoded.items[0].approved_peers, peers);
+  assert.equal(decoded.items[0].gloss, longGloss);
+  assert.equal(decoded.digest, compact[0].digest);
+  assert.deepEqual(await readFile(cpPath), before);
+  const selection = '.warroom-scratch/large-select.json';
+  await writeFile(path.join(root, selection), JSON.stringify({ candidates: [{ source_sense_id: 'w1-s1', candidate: sourceCandidates[0] }] }));
+  const selectedFirst = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--select', selection, '--page-size', '1', '--format', 'compact',
+  ], { root }));
+  assert.equal(selectedFirst.digest, compact[0].digest);
+  assert.ok(selectedFirst.total_pages > 1);
+  const selectedPages = [selectedFirst.text];
+  for (let page = 2; page <= selectedFirst.total_pages; page += 1) {
+    const result = await quiet(() => run([
+      'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--select', selection,
+      '--page-size', '1', '--format', 'compact', '--page', String(page),
+    ], { root }));
+    assert.equal(result.digest, selectedFirst.digest);
+    selectedPages.push(result.text);
+  }
+  const selectedText = selectedPages.join('');
+  for (const peer of peers) assert.equal(selectedText.split(peer.text).length - 1, 1);
+  assert.match(selectedText, /\nQ\tc2\t/u);
+  const amend = '.warroom-scratch/large-amend.txt';
+  await writeFile(path.join(root, amend), `amend w1-s1 @${compact[0].digest}\nc1 D e\n`);
+  await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amend], { root }));
+});
+
 test('premerge preparation resumes only from matching source hashes and distinguishes empty files from absence', async (t) => {
   const { root } = await prepareSixPart(t, { emptyRelation: true });
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

@@ -33,7 +33,7 @@ from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_clau
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
-from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked, ResourceFenced
+from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, InspectContextFailure, IntegrationBlocked, ResourceFenced
 from .lanes import Lanes
 from .launch_gate import LaunchDenied, LaunchGate
 from . import maintenance as maint_results
@@ -8968,6 +8968,8 @@ class Supervisor:
             return ("Inspect 결과를 손실 없이 bounded pages로 저장했다. 필요한 page를 별도 도구 호출로 한 번씩 읽는다:\n" +
                     "\n".join(f"- cat {name} ({i}/{len(page_paths)})" for i, name in enumerate(page_paths, 1)))
         except TRANSIENT:
+            raise
+        except InspectContextFailure:
             raise
         except Exception as e:
             return f"source_context 조회 실패: {e}. 전체 checkpoint를 출력하지 말고 필요한 ID만 inspect 하세요."
