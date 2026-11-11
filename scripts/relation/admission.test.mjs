@@ -16,6 +16,25 @@ import {
   verifyAccounting,
 } from './admission.mjs';
 import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
+import { projectRootReferences } from '../stdict/stage2-root-references.mjs';
+
+test('excluded root context requires exact STDICT sense-code links and current Canonical endpoints', () => {
+  const canonical = [
+    { id: 'w1', senses: [{ id: 'w1-s1', gloss: '→ 어근02.' }] },
+    { id: 'w3', senses: [{ id: 'w3-s1', gloss: '파생어의 뜻' }] },
+  ];
+  const source = [
+    { id: 'w1-s1', code: 10, definition: '→ 어근02.', original: '→ <sense_no>20</sense_no>어근_.' },
+    { id: 'w2-s1', code: 20, word: '어근02', definition: '‘파생어’의 어근.', original: '‘<sense_no>30</sense_no>파생어’의 어근.' },
+    { id: 'w3-s1', code: 30, definition: '파생어의 뜻' },
+  ];
+  const projected = projectRootReferences(canonical, source);
+  assert.equal(projected.length, 1);
+  assert.equal(projected[0].root_code, 20);
+  assert.equal(projected[0].derivative_sense_id, 'w3-s1');
+  assert.deepEqual(projectRootReferences(canonical, source.filter((row) => row.code !== 20)), []);
+  assert.deepEqual(projectRootReferences(canonical, source.map((row) => row.code === 30 ? { ...row, definition: '다른 뜻' } : row)), []);
+});
 
 const canonical = (count = 500) => Array.from({ length: count }, (_, i) => ({
   id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }],
