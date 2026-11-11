@@ -208,6 +208,25 @@ class MaintainerControls(World2022):
         self.assertEqual(w.store.batch(m["id"])["state"], "MERGED")
         self.assertEqual(len(w.adapter.launches), launches)
 
+    def test_retry_does_not_relaunch_for_unowned_unmerged_pr(self):
+        for state in ("open", "closed"):
+            with self.subTest(state=state):
+                w = world()
+                try:
+                    _, m = start_maintainer(w)
+                    w.adapter.finish(m["pid"])
+                    w.store.finish_runs(m["id"], 1)
+                    w.pr_info(50, HEAD1, state=state, merged=False, head_ref="another-branch")
+                    w.store.update(m["id"], state="PAUSED", paused_from="FIXING", pid=None,
+                                   pr_number=50, head_sha=HEAD1, error="permission denied")
+                    self.assertTrue(control.retry_maintainer(w.store, 101, m["id"]))
+                    launches = len(w.adapter.launches)
+                    w.sup._tick_maintenance()
+                    self.assertEqual(w.store.batch(m["id"])["state"], "PAUSED")
+                    self.assertEqual(len(w.adapter.launches), launches)
+                finally:
+                    w.tmp.cleanup()
+
     def test_retry_is_consumed_on_its_producer_when_other_model_sorts_first(self):
         w = self.w
         _, m = start_maintainer(w)

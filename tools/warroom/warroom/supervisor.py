@@ -1153,11 +1153,11 @@ class Supervisor:
             if info["merged"]:
                 return self._enter_merged(b, info, f"{b['state']} 상태에서 누락 PR 복구")
             return self._handoff_recovered_pr(b, info, "PAUSED/ERROR 상태에서")
-        if not info["merged"]:
-            return False
         if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
-            self.store.log(b["id"], "머지된 PR 소유권이 배치와 일치하지 않아 복구하지 않습니다", "error")
+            self.store.log(b["id"], "PR 소유권이 배치와 일치하지 않아 복구하지 않습니다", "error")
             return True
+        if not info["merged"]:
+            return force and info.get("state", "").lower() != "open"
         return self._enter_merged(b, info, f"{b['state']} 상태에서")
 
     def _handoff_recovered_pr(self, b, info, context: str) -> bool:
