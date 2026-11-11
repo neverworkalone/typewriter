@@ -20,7 +20,7 @@ class Stage2Finalization(unittest.TestCase):
         w, b = self.start_optional_part(sense_id='w1-s1')
         checkpoint = stage2.checkpoint(b['worktree'], b['shard'], b['batch'])
         for resumed in (False, True):
-            card = prompts.fix(b, [], resumed, checkpoint=checkpoint)
+            card = prompts.fix(b, [], resumed, checkpoint=checkpoint, directory=prompts.PROMPT_DIR)
             self.assertIn('.warroom-scratch/shared-defect.json', card)
             self.assertIn('shared-defect.md', card)
         with patch.object(w.git, 'stage2_inspect', side_effect=InspectContextFailure('cwd=x argv=inspect exit=1')):

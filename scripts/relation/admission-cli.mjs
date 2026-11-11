@@ -1985,9 +1985,23 @@ function partitionInspectLines(checkpoint, selected, digest) {
   }
   const header = (page, total) => `inspect ${selected.senseIds.join(',')} @${digest}\n` +
     `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${total} · context fragments\n` +
-    `# optional_review_complete ${checkpoint.optional_review_complete === true}\n`;
+    `# optional_review_complete ${checkpoint.optional_review_complete === true}\n` +
+    '# F row-id part/total JSON-string: concatenate decoded fragments to reconstruct the complete row\n';
+  const boundedLines = [];
+  for (const [index, line] of lines.entries()) {
+    const single = header(999999, 999999) + line + '\n';
+    if (Buffer.byteLength(single, 'utf8') <= INSPECT_PAGE_MAX_BYTES && single.length <= INSPECT_PAGE_MAX_CHARS) {
+      boundedLines.push(line);
+    } else {
+      const chars = Array.from(line);
+      const count = Math.ceil(chars.length / 4000);
+      for (let i = 0; i < count; i += 1) {
+        boundedLines.push(`F\t${index + 1}\t${i + 1}/${count}\t${JSON.stringify(chars.slice(i * 4000, (i + 1) * 4000).join(''))}`);
+      }
+    }
+  }
   const groups = [[]];
-  for (const line of lines) {
+  for (const line of boundedLines) {
     let group = groups.at(-1);
     let text = header(999999, 999999) + [...group, line].join('\n') + '\n';
     if (Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS) {

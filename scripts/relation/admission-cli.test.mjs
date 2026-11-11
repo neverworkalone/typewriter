@@ -2747,6 +2747,7 @@ test('inspect --select keeps detailed current rows for a full-sense review targe
 test('inspect partitions oversized peer context without changing its snapshot or amend aliases', async (t) => {
   const { root, checkpoint, sourceCandidates } = await prepareSixPart(t, { emptyRelation: true });
   await saveAllPrimaryAsDrops(root, checkpoint);
+  await mergeForTest(root, checkpoint);
   const cpPath = path.join(root, checkpoint);
   const cp = JSON.parse(await readFile(cpPath, 'utf8'));
   const peers = Array.from({ length: 250 }, (_, i) => ({ type: 'near', relevance: 3, text: `peer-${i}-${'별'.repeat(50)}` }));
@@ -2775,6 +2776,16 @@ test('inspect partitions oversized peer context without changing its snapshot or
   assert.deepEqual(decoded.items[0].approved_peers, peers);
   assert.equal(decoded.digest, compact[0].digest);
   assert.deepEqual(await readFile(cpPath), before);
+  const selection = '.warroom-scratch/large-select.json';
+  await writeFile(path.join(root, selection), JSON.stringify({ candidates: [{ source_sense_id: 'w1-s1', candidate: sourceCandidates[0] }] }));
+  const selectedFirst = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--select', selection, '--page-size', '1', '--format', 'compact',
+  ], { root }));
+  assert.equal(selectedFirst.digest, compact[0].digest);
+  assert.ok(selectedFirst.total_pages > 1);
+  const amend = '.warroom-scratch/large-amend.txt';
+  await writeFile(path.join(root, amend), `amend w1-s1 @${compact[0].digest}\nc1 D e\n`);
+  await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amend], { root }));
 });
 
 test('premerge preparation resumes only from matching source hashes and distinguishes empty files from absence', async (t) => {
