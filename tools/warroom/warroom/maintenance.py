@@ -2460,6 +2460,8 @@ class Maintenance:
         if m == literary.METHOD:
             return "c_parallel" if k == "c_parallel" else ("c_serial" if self._serial_c(b) else None)
         if m == STAGE2_METHOD:
+            if b["paused_from"] == "PREPARE" and not k:
+                return "s2_prepare"
             return ("s2_chunk" if k.startswith("s2_chunk_") else "s2_links" if k in ("s2_links_new", "s2_links_fix")
                     else "s2_repair" if k == "s2_repair_new" else "s2_finalize" if k == "s2_deterministic_finalize" else None)
         if m == STAGE3_METHOD:
@@ -2503,6 +2505,43 @@ class Maintenance:
             return sup._stage3_chunk_boundary_problem(b, base)
         return "사전 실행할 guard가 없습니다"
 
+    def _s2_prepare_boundary(self, d, b, env, head: str | None = None) -> str | None:
+        """Only an untouched, pre-checkpoint Part may be restarted at PREPARE after integration."""
+        try:
+            obs = env["observed"]
+            facts = obs["git"]["value"]
+            old = facts["head"]
+            wt = Path(b["worktree"])
+            if (env["batch_id"] != b["id"] or env["branch"] != b["branch"]
+                    or env["worktree"] != b["worktree"] or env["paused_from"] != "PREPARE"
+                    or env["run_kind"] or not str(env["error"]).startswith(
+                        "Stage 2 병렬 task 계획 준비 실패: admission-cli prepare 실패:")
+                    or obs["git"]["status"] != "ok"
+                    or obs["checkpoint"]["status"] != "missing" or obs["runs"]["status"] != "missing"
+                    or facts["registered"] != b["branch"] or facts["dirty"] or facts["pr_number"] is not None
+                    or facts["pr_head"] is not None or not isinstance(old, str)
+                    or not re.fullmatch(r"[0-9a-f]{40}", old)
+                    or b["pr_number"] is not None or b["head_sha"] is not None or b["pid"] is not None
+                    or b["session_id"] is not None or self.store.runs(b["id"])
+                    or self.store.task_rows(b["id"]) or self.store.get(stage2.run_start_key(b["id"])) is not None
+                    or stage2.checkpoint(wt, b["shard"], b["batch"]) is not None
+                    or self._workers_running(b)):
+                return "S2 PREPARE 이전의 빈 생산 경계를 증명할 수 없습니다"
+            current = self._git_facts(b)
+            if (current["registered"] != b["branch"] or current["dirty"]
+                    or current["remote_head"] != facts["remote_head"] or current["pr_number"] is not None
+                    or current["pr_head"] is not None or (head is not None and current["head"] != head)):
+                return "S2 PREPARE Git 소유 경계가 변경되었습니다"
+            if current["head"] != old:
+                if self._fix_merged_integration_proof(b, d, old, current["head"]) is None:
+                    return "S2 PREPARE HEAD가 원본 또는 승인된 수정 통합이 아닙니다"
+                if head is None and not self.sup.git.verified_supervisor_integration(
+                        wt, b["branch"], self.cfg["base_branch"], old, current["head"]):
+                    return "S2 PREPARE 이전 통합의 Supervisor 소유 증거가 없습니다"
+            return None
+        except (KeyError, TypeError, ValueError, OSError):
+            return "S2 PREPARE 접수 증거를 확인할 수 없습니다"
+
     def _release_worktree(self, d, b, env) -> None:
         wt = Path(b["worktree"])
         kind = self._resume_kind(b)
@@ -2514,11 +2553,15 @@ class Maintenance:
             return self._hold_unprovable(d, b, "이 단계는 재개 guard를 사전에 실행해 증명할 수 없습니다")
         if self._fix_not_loaded(d):
             return
-        old_first = self._first_head(b, kind) if kind != "fix" else None
+        old_first = ((env.get("observed", {}).get("git", {}).get("value") or {}).get("head")
+                     if kind == "s2_prepare" else self._first_head(b, kind) if kind != "fix" else None)
         if kind != "fix" and not old_first:
             return self._hold_unprovable(d, b, "최초 기준 HEAD를 확인할 수 없습니다")
         if why := self._preserved(b, env["observed"], head_moves=True):
             return self._hold_unprovable(d, b, why)
+        if kind == "s2_prepare":
+            if why := self._s2_prepare_boundary(d, b, env):
+                return self._hold_unprovable(d, b, why)
         finalize_remote = None
         if kind == "s2_finalize":
             # Finalization has no in-flight AI run to retarget. Require its own HEAD, completed
@@ -2566,7 +2609,11 @@ class Maintenance:
             pending = self._fix_merged_integration_proof(b, d, old_first, head)
             if pending is None:
                 return self._hold_unprovable(d, b, "수정 통합 HEAD를 FIX_MERGED 상태에서 직접 증명하지 못했습니다")
-            if kind == "s2_finalize":
+            if kind == "s2_prepare":
+                if why := self._s2_prepare_boundary(d, b, env, head):
+                    return self._hold_unprovable(d, b, why)
+                pairs = []
+            elif kind == "s2_finalize":
                 if (self.sup.git.registered(wt) != b["branch"] or self.sup.git.head(wt) != head
                         or self.sup.git.remote_head(b["branch"]) != finalize_remote or self.sup.git.dirty(wt).strip()
                         or self._workers_running(b)):
