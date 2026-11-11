@@ -242,6 +242,23 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(backups[0].read_text("utf-8"), "chunk 001\nS1\t기존후보\n")
 
 
+    def test_exhausted_chunk_retry_rejects_changed_git_boundary(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        for _ in range(4):
+            w.ai(w.block(1, end=False), session="ses_1")
+        for _ in range(4):
+            w.tick()
+            w.finish_last()
+            w.tick()
+        self.assertEqual(w.row_()["state"], "ERROR")
+        w.git.dirty_text = " M data/canonical/stdict-0001.jsonl\n"
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.tick(2)
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertEqual(len(w.adapter.launches), 4)
+        self.assertIsNone(w.store.line("deepseek", "a")["retry_batch"])
+
     def test_three_source_lemma_repeats_are_removed_together_and_other_rows_are_preserved(self):
         w = self.w
         w.start("single", "deepseek", "a")

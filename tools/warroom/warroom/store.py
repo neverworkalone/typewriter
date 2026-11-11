@@ -320,6 +320,7 @@ class Store:
             if (row is None or row["state"] != "ERROR" or row["pid"] is not None
                     or row["run_kind"] != b["run_kind"] or line is None
                     or line["retry_batch"] != b["id"] or line["force_stop"]
+                    or c.execute("SELECT 1 FROM clear_requests WHERE model=? AND method=?", (b["producer"], b["method"])).fetchone()
                     or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND ended_at IS NULL", (b["id"],)).fetchone()):
                 return False
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
