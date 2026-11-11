@@ -29,7 +29,7 @@ _STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_n
 _STAGE3 = {"shard", "branch", "chunk_id", "chunk_input", "session_note", "s3_policy_card"}
 _STAGE3_FIX = {"pr", "head", "branch", "shard", "review_events", "session_note", "relation_path",
                "drop_path", "verify_command"}
-_AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contract"}
+_AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contract", "output_scope"}
 _C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract", "cli_path",
             "chunk_flag"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
@@ -351,22 +351,48 @@ def d_chunk_fix(b, chunk_no: int, problem: str, directory: Path | None = None) -
                                   "decisions": f".warroom-scratch/d-{b['shard']}_{b['batch']}/decision-{chunk_no:03d}.txt"}, directory)
 
 
-def ab_chunk(b, chunk_no: int, *, view: str, note: str = "", directory: Path | None = None) -> str:
+# The card's output-scope rule for a whole-chunk answer (every new chunk, operator Retry): rendered byte-identically.
+AB_FULL_SCOPE = "- view의 **모든 `S<n>`을 정확히 한 번**, 번호 순서대로. 후보가 없으면 `S<n>`만 쓴다."
+
+
+def ab_partial_scope(requested: str) -> str:
+    """#5539: the output scope of an automatic fresh session that redoes only the requested rows of a partial answer."""
+    return (f"- 이번 답변에는 **{requested} 줄만** 번호 순서대로 정확히 한 번씩 쓴다. 다른 `S<n>` 줄은 쓰지 않는다"
+            "(Supervisor가 기존 행을 그대로 유지한다). 후보가 없으면 `S<n>`만 쓴다.")
+
+
+def ab_view_block(view: str) -> str:
+    return (f"아래가 이번 청크의 **전체 view**다(손실 없음). `#` 줄은 설명, `C` 줄은 이미 저장된 후보다.\n{VIEW_BEGIN}\n{view}"
+            f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
+
+
+def ab_chunk(b, chunk_no: int, *, view: str, note: str = "", directory: Path | None = None,
+             output_scope: str = AB_FULL_SCOPE) -> str:
     """The self-contained card of ONE new A/B chunk session (`a_chunk.md` / `b_chunk.md`): the fixed contract first (a
     stable prompt-cache prefix), the whole compact view last, inline and lossless."""
     if b["method"] not in ("a", "b"):
         raise PromptError("A/B 청크 카드는 방식 a/b에만 있습니다")
-    chunk_input = (f"아래가 이번 청크의 **전체 view**다(손실 없음). `#` 줄은 설명, `C` 줄은 이미 저장된 후보다.\n{VIEW_BEGIN}\n{view}"
-                   f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
     return render(f"{b['method']}_chunk", {"batch": f"{b['shard']}_{b['batch']}", "chunk_no": f"{chunk_no:03d}",
-                                           "session_note": note, "chunk_input": chunk_input,
+                                           "session_note": note, "chunk_input": ab_view_block(view),
+                                           "output_scope": output_scope,
                                            "method_contract": method_contract(b["method"], directory)}, directory)
 
 
-def ab_chunk_retry(chunk_no: int, requested: str, problem: str, directory: Path | None = None) -> str:
-    """Resuming the same session after a rejected save: only the rejection and the aliases to redo, never the view again."""
+def ab_format_resend(chunk_no: int, view: str, requested: list[str] | None) -> str:
+    """#5539: the same-session correction of an unparsable answer carries the exact verified view once more."""
+    scope = (f"{', '.join(requested)} 줄만 답하고 다른 `S<n>` 줄은 쓰지 않는다(이미 받은 유효 행은 Supervisor가 유지한다)"
+             if requested else "view의 모든 `S<n>` 줄을 번호 순서대로 정확히 한 번씩 답한다")
+    return (f"\n직전 답변은 형식 오류로 파싱되지 않았다. 형식 예시(`S<n>`, `후보`)를 복사하지 말고 아래 view의 실제 "
+            f"S1, S2 … 별칭으로 `BEGIN chunk {chunk_no:03d}`/`END chunk {chunk_no:03d}` 사이에 후보 줄을 쓴다. {scope}.\n"
+            + ab_view_block(view) + "\n")
+
+
+def ab_chunk_retry(chunk_no: int, requested: str, problem: str, directory: Path | None = None, *,
+                   chunk_input: str = "") -> str:
+    """Resuming the same session after a rejected save: only the rejection and the aliases to redo. The view is carried
+    again only for a structural (unparsable) answer (`chunk_input`, #5539); a candidate rejection stays unchanged."""
     return render("ab_chunk_retry", {"chunk_no": f"{chunk_no:03d}", "requested": requested, "problem": problem,
-                                     "chunk_input": ""}, directory)
+                                     "chunk_input": chunk_input}, directory)
 
 
 def fix(b, events, resumed: bool, directory: Path | None = None, source_context: str = "",

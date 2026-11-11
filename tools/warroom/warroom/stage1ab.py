@@ -4,7 +4,9 @@ The Supervisor owns everything deterministic: `prepare` (once per batch), the co
 FINAL answer block, `save-chunk --format compact`, deciding from the SAVED files whether a chunk is done, and (in
 `supervisor.py`) merge / commit / push / PR. The AI only reads one inlined chunk view and answers; a new chunk always
 starts a new session, and only a rejected save of the same chunk resumes that session (at most
-MAX_SAVE_TRIES times). Final merge repairs retain their separate MAX_TRIES cap.
+MAX_SAVE_TRIES times). An unparsable answer is corrected with the exact view again, and a second consecutive one uses
+one of those corrections for the chunk's single automatic fresh session (#5539). Final merge repairs retain their
+separate MAX_TRIES cap.
 
 Completion is judged from `candidates/chunk-NNN.jsonl` against the checkpoint's own chunk list and source files, never
 from an exit code, a file count or another chunk's file. A/B state semantics are separate from Stage 2 `next_action`
@@ -187,8 +189,23 @@ def load_state(store, batch_id: int, chunk_no: int) -> dict:
         data = json.loads(raw) if raw else {}
     except ValueError:
         data = {}
+    fresh = data.get("fresh")
     return {"sid": data.get("sid"), "tries": int(data.get("tries", 0)), "requested": data.get("requested"),
-            "problem": data.get("problem"), "recovery_answer": data.get("recovery_answer")}
+            "problem": data.get("problem"), "recovery_answer": data.get("recovery_answer"),
+            "rejected_run_id": data.get("rejected_run_id"), "requested_problem": data.get("requested_problem"),
+            # #5539: a structural (unparsable) last answer, and the chunk's one automatic fresh-session correction.
+            "format": bool(data.get("format")), "fresh_used": bool(data.get("fresh_used")),
+            "fresh": fresh if isinstance(fresh, dict) else None}
+
+
+def fresh_bound(state: dict) -> dict | None:
+    """The automatic fresh-session intent when it is bound to the exact last rejected run, else None."""
+    fresh = state.get("fresh")
+    if (isinstance(fresh, dict) and fresh.get("rejected_run_id") is not None
+            and fresh.get("rejected_run_id") == state.get("rejected_run_id")
+            and not (state.get("recovery_answer") and state.get("tries") == 0)):   # #5486 operator Retry wins
+        return fresh
+    return None
 
 
 def save_state(store, batch_id: int, chunk_no: int, state: dict) -> None:
