@@ -2379,6 +2379,7 @@ class Supervisor:
         fix_context_digests = {}
         extra = {}
         c_recovery_marker_key = None
+        ab_fresh_key = None
         if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
             try:
                 extra["git_dir"] = self.git.worktree_gitdir(Path(wt))
@@ -2605,6 +2606,8 @@ class Supervisor:
                 if resume:
                     h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
+                    if kind == "ab_chunk_retry" and not baseline.get("repair"):
+                        ab_fresh_key = self._ab_begin_fresh_launch(b, baseline["chunk_no"], log)
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif kind == "produce":
                 h = ad.start(prompts.produce(b), wt, run_env, run,
@@ -2669,6 +2672,8 @@ class Supervisor:
                                         fast_mode=run.fast)
         if c_recovery_marker_key is not None:
             self._c_record_recovery_launch(c_recovery_marker_key, log, run_id)
+        if ab_fresh_key is not None:
+            self._ab_record_fresh_launch(ab_fresh_key, log, run_id)
         if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
             repair_state = self._stage2_repair_state(b, required=True)
             current = repair_state.get("current")
@@ -8569,9 +8574,27 @@ class Supervisor:
             raise
         except (stage1ab.ABChunkError, OSError, ValueError, GitError) as e:
             return self._fail(b, "ERROR", f"Stage 1 A/B 상태 확인 실패: {e}. worktree를 보존합니다.")
+        fresh = None if repair else stage1ab.fresh_bound(st)
+        if fresh is not None and fresh.get("launch_state") != "not_started" and not st["sid"]:
+            # #5539: the automatic fresh session was (maybe) spawned and ended without a committed outcome. Resume
+            # exactly that session when its run is recorded and its session is known; never spawn a second one.
+            run = self._ab_fresh_launch_run(b, fresh)
+            sid = None
+            if run is not None:
+                sid = run["session_id"] or self._adapter(b["producer"]).session_id(Path(run["log_file"]))
+                if sid and not run["session_id"]:   # bind it to that exact run, so the resume proves this run's pins
+                    self.store.set_run_session_by_id(run["id"], sid)
+            if not sid:
+                why = "실행 기록이 없어 시작 여부가 불명확합니다" if run is None else "세션 ID를 확인할 수 없습니다"
+                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 자동 새 세션 {why}. 두 번째 새 세션을 시작하지 않고 "
+                                  "실행 기록·답변·상태를 보존합니다.")
+            st["sid"] = sid
+            stage1ab.save_state(self.store, b["id"], chunk["number"], st)
+            self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d}: 이미 시작된 자동 새 세션을 재개합니다.", "warn")
         retry = st["tries"] > 0 or bool(repair) or bool(st["recovery_answer"])
         self.store.update(b["id"], session_id=st["sid"] if retry and st["sid"] and not repair else None)
-        launch_batch = self.store.batch(b["id"]) if st["recovery_answer"] and st["tries"] == 0 else b
+        # A bound fresh intent (new or resumed) launches from the session just written, never the caller's stale row.
+        launch_batch = self.store.batch(b["id"]) if (st["recovery_answer"] and st["tries"] == 0) or fresh is not None else b
         return self._launch(launch_batch, "ab_chunk_retry" if retry else "ab_chunk_new")
 
     def _ab_chunk_prompt(self, b, kind: str, remote="?") -> tuple[str, dict, bool]:
@@ -8586,8 +8609,15 @@ class Supervisor:
         view = stage1ab.write_view(self.runner, self.env, wt, b, chunk)
         requested = ", ".join(st["requested"]) if st["requested"] else "모든 S<n> 줄(전체 청크 답변)"
         resume = kind == "ab_chunk_retry" and bool(b["session_id"])
+        fresh = None if repair else stage1ab.fresh_bound(st)
         if resume:
-            prompt = prompts.ab_chunk_retry(chunk["number"], requested, st.get("problem") or "사유 없음")
+            # #5539: only a structural failure carries the exact view again; a candidate rejection stays unchanged.
+            chunk_input = prompts.ab_format_resend(chunk["number"], view, st["requested"]) if st["format"] and not repair else ""
+            prompt = prompts.ab_chunk_retry(chunk["number"], requested, st.get("problem") or "사유 없음", chunk_input=chunk_input)
+            if len(prompt.encode("utf-8")) > stage1ab.INLINE_MAX_PROMPT_BYTES:
+                raise prompts.PromptError("형식 정정의 청크 view가 한 argv 요소 한도를 넘어 재전달할 수 없습니다 (청크 보존)")
+        elif kind == "ab_chunk_retry" and fresh is not None and fresh.get("launch_state") == "not_started" and not st["sid"]:
+            prompt = self._ab_fresh_prompt(b, wt, chunk, st, view)
         else:
             note = ""
             if kind == "ab_chunk_retry":
@@ -8609,6 +8639,63 @@ class Supervisor:
                     "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote, "chunk_no": chunk["number"], "repair": bool(repair),
                     "saved": stage1ab.saved_snapshot(wt, b, cp)}
         return prompt, baseline, resume
+
+    def _ab_fresh_prompt(self, b, wt: Path, chunk: dict, st: dict, view: str) -> str:
+        """#5539: the full card for the automatic fresh session. The unparsable answers are never shown again; a partial
+        answer keeps its Supervisor-written rows and only the requested ones are asked (merged by `merge_answer`)."""
+        note = ("이 청크의 직전 답변은 형식 오류로 파싱되지 않은 미검증 출력이므로 사용하지 않는다. 이번은 새 세션이며 "
+                "아래 전체 view만 기준으로 답한다.\n")
+        scope = prompts.AB_FULL_SCOPE
+        if st["requested"]:
+            aliases = [row[0] for row in stage1ab.view_rows(view)]
+            answer = wt / stage1ab.answer_path(b, chunk["number"])
+            try:
+                previous = stage1ab.split_rows(answer.read_text("utf-8").split("\n")[1:-1])
+            except (OSError, stage1ab.ABChunkError) as e:
+                raise prompts.PromptError(f"부분 정정의 기존 답변을 확인할 수 없어 새 세션을 시작하지 않습니다: {e}") from e
+            if set(previous) != set(aliases) or not set(st["requested"]) <= set(previous):
+                raise prompts.PromptError("부분 정정의 기존 답변 별칭이 현재 view와 맞지 않아 새 세션을 시작하지 않습니다")
+            requested = ", ".join(st["requested"])
+            note += (f"이전 제출 중 {requested}만 저장 검증에서 거부됐다. 거부 사유: {st.get('requested_problem') or '사유 없음'}\n"
+                     "그 줄의 이전 제출(미검증 참고 자료):\n" + "\n".join(previous[a] for a in st["requested"]) + "\n")
+            scope = prompts.ab_partial_scope(requested)
+        prompt = prompts.ab_chunk(b, chunk["number"], view=view, note=note, output_scope=scope)
+        if len(prompt.encode("utf-8")) > stage1ab.INLINE_MAX_PROMPT_BYTES:
+            raise prompts.PromptError("청크 view가 한 argv 요소 한도를 넘어 inline 전달할 수 없습니다 (자동 분할 없음, 청크 보존)")
+        return prompt
+
+    def _ab_fresh_launch_run(self, b, fresh: dict):
+        """The recorded run of the automatic fresh launch (by run id or its exact log), else None."""
+        log, run_id = fresh.get("launch_log_file"), fresh.get("launch_run_id")
+        for run in self.store.runs(b["id"]):
+            if run["kind"] == "ab_chunk_retry" and ((run_id is not None and run["id"] == run_id)
+                                                    or (log and run["log_file"] == log)):
+                return run
+        return None
+
+    def _ab_begin_fresh_launch(self, b, chunk_no: int, log: Path) -> str | None:
+        """Persist the fresh-session intent with its log before spawning (C no-submission pattern); None when this
+        launch is not the automatic fresh session. An intent already past `not_started` never spawns again."""
+        key = stage1ab.state_key(b["id"], chunk_no)
+        st = stage1ab.load_state(self.store, b["id"], chunk_no)
+        fresh = stage1ab.fresh_bound(st)
+        if fresh is None:
+            return None
+        current = self.store.batch(b["id"])
+        if (fresh.get("launch_state") != "not_started" or self._ab_fresh_launch_run(b, fresh) is not None
+                or (current and current["pid"] is not None)):
+            raise prompts.PromptError("A/B 자동 새 세션의 시작 상태가 불명확해 두 번째 프로세스를 시작하지 않습니다")
+        raw = json.loads(self.store.get(key) or "{}")
+        raw["fresh"] = {**fresh, "launch_state": "starting", "launch_log_file": str(log)}
+        self.store.set(key, json.dumps(raw, sort_keys=True))
+        return key
+
+    def _ab_record_fresh_launch(self, key: str, log: Path, run_id: int) -> None:
+        raw = json.loads(self.store.get(key) or "{}")
+        fresh = raw.get("fresh")
+        if isinstance(fresh, dict) and fresh.get("launch_state") == "starting" and fresh.get("launch_log_file") == str(log):
+            raw["fresh"] = {**fresh, "launch_state": "registered", "launch_run_id": run_id}
+            self.store.set(key, json.dumps(raw, sort_keys=True))
 
     def _ab_accept(self, b, chunk: dict, repair: bool) -> None:
         """A saved chunk: remember its bytes, clear its run state, and move on with a new session.
@@ -8678,9 +8765,14 @@ class Supervisor:
             return self._fail(b, "ERROR", f"청크 종료 후 GitHub/Git 확인 실패: {e}. worktree를 보존합니다.")
         ok, diag = False, ""
         submitted_lines = None
+        structural = False   # #5539: the final answer itself did not parse (no exact marker pair / an unusable row)
         try:
-            body = stage1ab.extract_block(self._ab_answer(b, chunk), chunk["number"])
-            revised = stage1ab.split_rows(body)
+            try:
+                body = stage1ab.extract_block(self._ab_answer(b, chunk), chunk["number"])
+                revised = stage1ab.split_rows(body)
+            except stage1ab.ABChunkError:
+                structural = not repair
+                raise
             previous = None
             answer_file = wt / stage1ab.answer_path(b, chunk["number"])
             if st["requested"] is not None or repair:
@@ -8701,6 +8793,7 @@ class Supervisor:
                     return self._fail(b, "ERROR", "save-chunk가 성공했지만 저장 파일이 chunk의 Canonical ID와 맞지 않습니다. 보존합니다.")
                 return self._ab_accept(b, chunk, repair)
             st["requested"] = stage1ab.rejected_aliases(diag, rows)
+            st["requested_problem"] = diag[:1500] if st["requested"] is not None else None
         except stage1ab.ABChunkError as e:
             diag = str(e)   # an unusable answer: ask the same rows again
         except (OSError, ValueError) as e:
@@ -8738,8 +8831,17 @@ class Supervisor:
         if last is None or last["ended_at"] is None:
             return self._fail(b, "ERROR", "A/B 정정 대상 종료 run을 확인할 수 없습니다. 보존합니다.")
         st["rejected_run_id"] = last["id"]
+        # #5539: a first structural failure resends the exact view in the same session; a second consecutive one uses
+        # the chunk's single automatic fresh session (one of the remaining corrections, never an extra one).
+        note = ""
+        if structural and st["format"] and not st["fresh_used"] and st["sid"]:
+            st.update(fresh_used=True, sid=None, fresh={"rejected_run_id": last["id"], "launch_state": "not_started"})
+            note = " (형식 오류: 자동 새 세션 1회)"
+        elif structural and st["sid"]:
+            note = " (형식 오류: 같은 세션 원본 view 재전달)"
+        st["format"] = structural
         self.store.commit_ab_rejection(b["id"], stage1ab.state_key(b["id"], chunk["number"]), json.dumps(st, sort_keys=True))
-        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장 거부 {st['tries']}회: {diag[:200]}", "warn")
+        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장 거부 {st['tries']}회{note}: {diag[:200]}", "warn")
         return self._launch_ab_next(self.store.batch(b["id"]))
 
     def _ab_chunk_response(self, b) -> bool:

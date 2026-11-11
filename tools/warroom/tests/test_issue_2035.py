@@ -181,7 +181,7 @@ class SerialChunks(unittest.TestCase):
         w.cfg["models"]["api"] = "p/go"
         w.start("single", "deepseek", "a")
         w.ai(w.block(1, end=False), session="ses_1")
-        w.ai(w.block(1, end=False), session="ses_1")
+        w.ai(w.block(1, {"S5": "S5\tbad!"}), session="ses_1")   # a candidate rejection keeps the same session (#5539)
         w.tick()
         w.store.update(w.row_()["id"], model_tier="api")
         w.finish_last()
@@ -197,32 +197,45 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["model"]),
                          ("resume", "p/free-x-free"))
 
-    def test_missing_end_marker_wrong_chunk_and_prose_are_rejected_and_retried_in_the_same_session(self):
+    def test_format_failures_resend_the_view_then_use_one_fresh_session_within_the_same_limit(self):
         w = self.w
         w.start("single", "deepseek", "a")
-        for text in (w.block(1, end=False), w.block(1, no=2), "S1\t후보", "완료했습니다"):
-            w.ai(text, session="ses_1")
+        w.ai(w.block(1, end=False), session="ses_1")
+        w.ai(w.block(1, no=2), session="ses_1")
+        w.ai("S1\t후보", session="ses_fresh")
+        w.ai("완료했습니다", session="ses_fresh")
         w.tick()
         w.finish_last()
-        w.tick()                                                              # rejected -> retry (resume)
-        retry = w.adapter.launches[-1]
-        self.assertEqual((retry["kind"], retry["session"]), ("resume", "ses_1"))
-        self.assertNotIn(prompts.VIEW_BEGIN, retry["prompt"])                 # a correction never carries the view again
-        self.assertLess(len(retry["prompt"]), 2500)
-        self.assertEqual(w.row_()["state"], "PRODUCING")
+        w.tick()                                                              # structural -> same session + exact view
+        resend = w.adapter.launches[-1]
+        self.assertEqual((resend["kind"], resend["session"]), ("resume", "ses_1"))
+        self.assertIn(prompts.VIEW_BEGIN, resend["prompt"])
+        self.assertIn("w0001-s1", resend["prompt"])
+        self.assertNotIn("w0051-s1", resend["prompt"])                       # only this chunk's view
         w.finish_last()
-        w.tick()                                                              # second rejection -> second retry
-        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_retry"])
+        w.tick()                                                              # again structural -> the one fresh session
+        fresh = w.adapter.launches[-1]
+        self.assertEqual(fresh["kind"], "start")
+        self.assertIn(prompts.VIEW_BEGIN, fresh["prompt"])
+        self.assertIn(prompts.AB_FULL_SCOPE, fresh["prompt"])
+        self.assertNotIn("후보1-1", fresh["prompt"])                          # the unparsable answer is never re-inserted
+        st = stage1ab.load_state(w.store, w.row_()["id"], 1)
+        self.assertEqual((st["fresh_used"], st["fresh"]["launch_state"]), (True, "registered"))
         w.finish_last()
-        w.tick()                                                              # third correction is still available
+        w.tick()                                                              # fresh session failed too -> resume it
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["session"]), ("resume", "ses_fresh"))
+        self.assertIn(prompts.VIEW_BEGIN, w.adapter.launches[-1]["prompt"])
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_retry", "ab_chunk_retry"])
         w.finish_last()
-        w.tick()                                                              # third correction failed without an exact candidate to remove
+        w.tick()                                                              # total limit reached: no extra fresh session
         b = w.row_()
         self.assertEqual(b["state"], "ERROR")
         self.assertEqual(len(w.adapter.launches), 4)
+        self.assertEqual([l["kind"] for l in w.adapter.launches].count("start"), 2)
         self.assertFalse((w.wt() / stage1ab.names(b).directory / "candidates/chunk-001.jsonl").exists())
-        # An explicit operator Retry grants one fresh session, preserving the rejected answer as evidence.
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), 4)                          # repeated polls start nothing
+        # An explicit operator Retry (#5486) still grants its own fresh session and keeps the automatic budget spent.
         answer = w.wt() / stage1ab.answer_path(b, 1)
         answer.write_text("chunk 001\nS1\t기존후보\n", "utf-8")
         w.ai(w.block(1), session="ses_recovery")
@@ -232,6 +245,8 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.adapter.launches[-1]["kind"], "start")
         self.assertIn(prompts.VIEW_BEGIN, w.adapter.launches[-1]["prompt"])
         self.assertIn("기존후보", w.adapter.launches[-1]["prompt"])
+        st = stage1ab.load_state(w.store, w.row_()["id"], 1)
+        self.assertEqual((st["tries"], st["fresh_used"]), (0, True))
         backups = list(answer.parent.glob("answer-001.tsv.recovery-*"))
         self.assertEqual(len(backups), 1)
         self.assertEqual(backups[0].read_text("utf-8"), "chunk 001\nS1\t기존후보\n")
@@ -241,6 +256,179 @@ class SerialChunks(unittest.TestCase):
         self.assertTrue(stage1ab.chunk_saved(w.wt(), w.row_(), cp["chunks"][0]))
         self.assertEqual(backups[0].read_text("utf-8"), "chunk 001\nS1\t기존후보\n")
 
+    def _format_twice(self, first=None, after=()):
+        """Chunk 001: optional first answer, then two structural failures; returns after the fresh launch. `after`
+        holds (answer, session) of the fresh run and later runs, queued before they launch."""
+        w = self.w
+        w.start("single", "deepseek", "a")
+        answers = ([first] if first else []) + ["완료했습니다", "S1\t후보"]
+        for text in answers:
+            w.ai(text, session="ses_1")
+        for text, session in after:
+            w.ai(text, session=session)
+        w.tick()
+        for _ in answers:
+            w.finish_last()
+            w.tick()
+        self.assertEqual(w.adapter.launches[-1]["kind"], "start")
+        return w.adapter.launches[-1]
+
+    def test_one_format_failure_is_fixed_in_the_same_session_without_a_fresh_one(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai("입력이 없습니다", session="ses_1")
+        w.ai(w.block(1), session="ses_1")
+        w.ai(w.block(2), session="ses_2")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        w.finish_last()
+        w.tick()
+        self.assertEqual([(l["kind"], l.get("session")) for l in w.adapter.launches],
+                         [("start", None), ("resume", "ses_1"), ("start", None)])   # chunk 002 starts exactly once
+        self.assertIn("chunk 002", w.adapter.launches[-1]["prompt"])
+        cp = stage1ab.checkpoint(w.wt(), w.row_())
+        self.assertTrue(stage1ab.chunk_saved(w.wt(), w.row_(), cp["chunks"][0]))
+
+    def test_fresh_session_success_saves_and_the_next_chunk_starts_new(self):
+        w = self.w
+        self._format_twice(after=[(w.block(1), "ses_fresh"), (w.block(2), "ses_2")])
+        w.finish_last()
+        w.tick()
+        self.assertEqual([l["kind"] for l in w.adapter.launches], ["start", "resume", "start", "start"])
+        self.assertIn("chunk 002", w.adapter.launches[-1]["prompt"])
+        self.assertIsNone(w.store.get(stage1ab.state_key(w.row_()["id"], 1)))
+
+    def test_fresh_session_of_a_partial_answer_asks_only_the_requested_rows(self):
+        w = self.w
+        launch = self._format_twice(first=w.block(1, {"S5": "S5\tbad!"}),
+                                    after=[("BEGIN chunk 001\nS5\t수정\nEND chunk 001", "ses_fresh")])
+        prompt = launch["prompt"]
+        self.assertIn(prompts.VIEW_BEGIN, prompt)
+        self.assertIn(prompts.ab_partial_scope("S5"), prompt)
+        self.assertNotIn(prompts.AB_FULL_SCOPE, prompt)
+        self.assertIn("S5\tbad!", prompt)                                      # the requested row's earlier submission
+        self.assertNotIn("후보1-4", prompt)                                    # other parsed rows stay with the Supervisor
+        self.assertNotIn("완료했습니다", prompt)                               # never the unparsable answers
+        w.finish_last()
+        w.tick()
+        cp = stage1ab.checkpoint(w.wt(), w.row_())
+        self.assertTrue(stage1ab.chunk_saved(w.wt(), w.row_(), cp["chunks"][0]))
+        saved = stage1ab.saved_answer_lines(w.wt(), w.row_(), cp["chunks"][0])
+        self.assertEqual(saved[4], "S5\t수정")
+        self.assertEqual(saved[3], "S4\t후보1-4")
+
+    def test_fresh_session_may_not_change_an_unrequested_row(self):
+        w = self.w
+        self._format_twice(first=w.block(1, {"S5": "S5\tbad!"}),
+                           after=[("BEGIN chunk 001\nS5\t수정\nS6\t바꿈\nEND chunk 001", "ses_fresh")])
+        w.finish_last()
+        w.tick()                                    # the fresh run was the third correction: violation ends in ERROR
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("요청하지 않은 별칭 행", w.row_()["error"])
+        self.assertEqual(len(w.adapter.launches), 4)
+        self.assertFalse((w.wt() / stage1ab.names(w.row_()).directory / "candidates/chunk-001.jsonl").exists())
+
+    def test_candidate_rejection_keeps_the_short_same_session_correction(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, {"S5": "S5\tbad!"}), session="ses_1")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        retry = w.adapter.launches[-1]
+        st = stage1ab.load_state(w.store, w.row_()["id"], 1)
+        self.assertEqual((retry["kind"], st["format"], st["fresh_used"]), ("resume", False, False))
+        self.assertEqual(retry["prompt"], prompts.ab_chunk_retry(1, "S5", st["problem"]))   # byte-identical, no view
+        self.assertNotIn(prompts.VIEW_BEGIN, retry["prompt"])
+
+    def test_new_chunk_card_keeps_the_whole_chunk_output_rule(self):
+        for method in ("a", "b"):
+            text = (prompts.prompt_dir() / f"{method}_chunk.md").read_text("utf-8")
+            card = prompts.ab_chunk({"method": method, "shard": "001", "batch": "01"}, 1, view="V\n")
+            self.assertEqual(card, prompts.render(f"{method}_chunk", {
+                "batch": "001_01", "chunk_no": "001", "session_note": "", "chunk_input": prompts.ab_view_block("V\n"),
+                "output_scope": "- view의 **모든 `S<n>`을 정확히 한 번**, 번호 순서대로. 후보가 없으면 `S<n>`만 쓴다.",
+                "method_contract": prompts.method_contract(method)}))
+            self.assertEqual(text.count("{{output_scope}}"), 1)
+
+    def _crash_state(self):
+        w = self.w
+        b = w.row_()
+        key = stage1ab.state_key(b["id"], 1)
+        return w, b, key, json.loads(w.store.get(key))
+
+    def test_crash_after_the_fresh_decision_before_spawn_starts_it_exactly_once(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        for text in ("완료했습니다", "S1\t후보"):
+            w.ai(text, session="ses_1")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        original = w.sup._launch_ab_next
+        w.sup._launch_ab_next = lambda b: None                                # crash right after the committed decision
+        w.finish_last()
+        w.tick()
+        w.sup._launch_ab_next = original
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(stage1ab.load_state(w.store, w.row_()["id"], 1)["fresh"]["launch_state"], "not_started")
+        w.tick(3)
+        self.assertEqual([l["kind"] for l in w.adapter.launches], ["start", "resume", "start"])
+
+    def test_crash_after_spawn_before_the_run_record_blocks_a_second_fresh_session(self):
+        w = self.w
+        self._format_twice()
+        w, b, key, raw = self._crash_state()
+        fresh_run = w.store.runs(b["id"])[0]
+        with w.store._conn() as c:                                            # the run row was never written
+            c.execute("DELETE FROM runs WHERE id=?", (fresh_run["id"],))
+        raw["fresh"] = {k: v for k, v in raw["fresh"].items() if k != "launch_run_id"} | {"launch_state": "starting"}
+        w.store.set(key, json.dumps(raw, sort_keys=True))
+        w.store.update(b["id"], pid=None)
+        w.tick(3)
+        self.assertEqual(len(w.adapter.launches), 3)
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("자동 새 세션", w.row_()["error"])
+
+    def test_crash_after_the_run_record_resumes_the_fresh_session_by_its_log(self):
+        w = self.w
+        self._format_twice(after=[(w.block(1), "ses_fresh")])
+        w, b, key, raw = self._crash_state()
+        self.assertIsNone(w.store.runs(b["id"])[0]["session_id"])           # not captured yet
+        w.store.update(b["id"], pid=None, session_id=None)                    # supervisor died before polling it
+        w.tick()
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["session"]), ("resume", "ses_fresh"))
+        self.assertEqual([l["kind"] for l in w.adapter.launches].count("start"), 2)
+
+    def test_crash_after_the_run_record_without_a_session_is_blocked(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        for text in ("완료했습니다", "S1\t후보"):
+            w.ai(text, session="ses_1")
+        w.adapter.plan.append({"code": 0, "text": ""})                        # the fresh run printed no session yet
+        w.tick()
+        for _ in range(2):
+            w.finish_last()
+            w.tick()
+        b = w.row_()
+        w.store.update(b["id"], pid=None, session_id=None)
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), 3)
+        self.assertEqual(w.row_()["state"], "ERROR")
+
+    def test_crash_after_the_fresh_save_accepts_without_asking_again(self):
+        w = self.w
+        self._format_twice(after=[(w.block(1), "ses_fresh"), (w.block(2), "ses_2")])
+        original = w.sup._ab_accept
+        w.sup._ab_accept = lambda b, chunk, repair: None                      # crash between save-chunk and accept
+        w.finish_last()
+        w.tick()
+        w.sup._ab_accept = original
+        self.assertEqual(len(w.adapter.launches), 3)
+        w.tick(2)
+        self.assertEqual([l["kind"] for l in w.adapter.launches], ["start", "resume", "start", "start"])
+        self.assertIn("chunk 002", w.adapter.launches[-1]["prompt"])
 
     def test_retry_after_next_chunk_preflight_failure_uses_ordinary_relaunch(self):
         w = self.w
