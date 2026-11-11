@@ -388,9 +388,14 @@ class Supervisor:
             self.store.log_once(None, f"Maintainer AI slot 충돌: 실행 상태 배치가 여러 개입니다 ({ids}). 모두 보존하고 시작을 멈춥니다.",
                                 "error", line="maintainer")
             return
+        # An operator Retry belongs to its producer, even when all Maintainer lines are idle.
+        # Otherwise alphabetical default selection can leave another model's request stranded.
         model = (current[0]["producer"] if current else
                  next((line["model"] for line in self.store.lines() if line["method"] == MAINTENANCE_METHOD
-                       and line["run"]), None))
+                       and line["retry_batch"] is not None), None))
+        if model is None:
+            model = next((line["model"] for line in self.store.lines() if line["method"] == MAINTENANCE_METHOD
+                          and line["run"]), None)
         if model is None:
             model = next((line["model"] for line in self.store.lines()
                           if line["method"] == MAINTENANCE_METHOD), None)
