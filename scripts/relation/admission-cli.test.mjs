@@ -3040,6 +3040,32 @@ test('six Drop-to-Relation amendments equal a from-scratch merge and verify with
   await assert.rejects(readFile(path.join(fresh.root, 'data/relation-drops/drop-001.jsonl')), { code: 'ENOENT' });
 });
 
+test('amend attaches a reciprocal candidate to its foreign owner and recovers safely', async (t) => {
+  const { root } = await crossShardRepository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const ownerPath = path.join(root, 'data/relations/relation-002.jsonl');
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), '');
+  await writeFile(ownerPath, relationJsonl([crossShardCounterpart()]));
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  await mergeForTest(root, checkpoint);
+  const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+  const compact = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'compact'], { root }));
+  const alias = /^T(\d+)\tw3-s1\t/mu.exec(compact.text)?.[1];
+  assert.ok(alias);
+  const input = '.warroom-scratch/foreign-amend.txt';
+  await writeFile(path.join(root, input), `amend w1-s1 @${inspect.digest}\nc1 R scene 4 T${alias}\n`);
+  await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', input], { root }));
+  assert.deepEqual((await readRelationRows(ownerPath))[0].reverse_candidate_forms, ['공통말']);
+  await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+  assert.equal((await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', input], { root }))).already_applied, true);
+  const changed = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+  await writeFile(path.join(root, input), `amend w1-s1 @${changed.digest}\nc1 D e\n`);
+  await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', input], { root }));
+  assert.deepEqual((await readRelationRows(ownerPath))[0].reverse_candidate_forms, []);
+  await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+});
+
 test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the trusted snapshot', async (t) => {
   const { root, checkpoint, sourceCandidates } = await prepareSixPart(t, { emptyRelation: true });
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
