@@ -10,6 +10,8 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1155의 C 생산 계약을 읽고 준수한다.
 
+**고유명사 제외(#5745):** 출발 sense의 뜻이 인물·지명·기관·단체·작품 등 특정 대상을 지칭하는 고유명사이면 그 sense는 탐색하지 않고 `candidates: []`로 둔다(예 인촌¹ Skip, 인촌² ‘이웃 마을’ 정상). 일반 sense에서도 고유명사 뜻의 후보는 넣지 않는다. 의미(Sense/gloss)로 판단하고 철자·품사만으로 일괄 제외하지 않는다. 고유명사 출발 Sense는 `c_chunk.md`의 `"skip":"proper_noun"` 제출로 완료하며, 초기 검색 뒤의 판독·Sweep만 생략한다.
+
 C 생산의 검색·체크포인트·Candidate 출력에는 Supervisor가 지정한 공식 `literary-context-cli.mjs`를 사용한다. 이 경로는 실행 중인 Supervisor의 코드 checkout에 고정되며, 배치 worktree 안의 오래된 CLI로 바꾸지 않는다. 절차는 docs/relation-literary-context.md의 `init → chunk/submit 반복 → export`를 따른다. 문맥·후보·Sense별 개별 명령, 관점별 빈 배열, KEEP/REMOVE 장부, 반복 `validate`는 쓰지 않는다. 승인 인덱스의 전체 SHA/FTS 재구축은 하지 않는다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
 
 승인 SQLite 경로는 Supervisor가 `TYPEWRITER_APPROVED_LITERARY_DB` 환경 변수로 전달한다. `preflight`, `init`, `chunk`, `submit`에만 `--db "$TYPEWRITER_APPROVED_LITERARY_DB"`를 전달한다. `report`, `add-form`, `export`, `validate`에는 `--db`를 붙이지 않는다. 값이 없거나 해당 CLI 호출이 DB를 읽지 못하면 캐시 검색·임의 DB 추측 없이 중단해 경로 설정 문제를 보고한다. 이 변수 값을 stdout, Git, PR 본문 또는 Candidate에 출력하지 않는다. CLI는 `scripts/relation/literary-context-cli.mjs`, Canonical은 `data/canonical/`, 체크포인트는 worktree의 `.warroom-scratch/`에 둔다. 캐시 루트 전체를 `rg --files`·`find`로 나열하지 않는다. 체크포인트는 재개·오류 확인에만 `report`로 읽고, 전체 체크포인트·검증 장부·무관한 결과를 stdout에 내지 않는다. `chunk` 응답은 `.warroom-scratch/`에 저장한 뒤 문서의 단일 `jq` 형식화 명령으로 Sense 정보와 전체 문학 문맥을 한 번에 읽는다. 별도 Overview 조회와 Sense별 반복 Context 조회를 하지 않는다. 문학 원문·Sense 판독 문맥을 자르지 않는다. 필요한 Sense는 `--sense-ids`, `--contexts 16`으로 추가 조회한다.

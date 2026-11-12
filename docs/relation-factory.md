@@ -84,6 +84,15 @@ A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scrip
 
 - 각 작업자는 **자신의 방식·모델 파일만 작성**한다. 다른 모델·CLI·서브에이전트는 오너가 별도로 실행하며 작업자가 임의 호출하지 않는다.
 
+### 고유명사 양방향 제외 (#5745)
+
+인물(본명·호·필명)·지명·기관·단체·작품/저작 제목처럼 **특정 대상을 지칭하는 고유명사 Sense**는 Typewriter-authored 말의 결·연상의 출발점에도 후보·대상에도 등장하지 않는다. 관계가 사실이라는 이유로 예외를 두지 않는다. 판정은 AI가 Canonical의 정확한 Sense/gloss로 하며 철자·품사·표면 패턴으로 일괄 제외하지 않는다. 예: `w265063-s1` 인촌¹(김성수의 호)은 고유명사, `w265064-s1` 인촌²(이웃 마을)는 일반 어휘; 사람·도시·학교·소설·영화·작가 같은 분류 개념은 허용한다. STDICT `direct/antonym`과 사전 검색은 바뀌지 않는다.
+
+- **Stage 1 (A/B/C/D):** 고유명사 출발 Sense는 발굴하지 않고 `candidates: []`로 보존하며(record·Sense·순서 불변), 일반 출발 Sense의 고유명사 후보도 넣지 않는다. A/B는 빈 `S<n>` 줄, C는 제출 항목의 `"skip":"proper_noun"`(checkpoint 상태 `PROPER_NOUN_SKIPPED`), D는 판정 `sN P`로 표현한다. C/D의 초기 검색은 `prepare`/chunk view 단계에서 이미 실행되므로 이 Skip은 **그 뒤의 추가 조회·문맥 판독·Sweep/PASS·후보 발굴만 생략**한다. 실제 검색 실패(`SEARCH_FAILED`·색인 검색 오류)는 Skip으로 우회할 수 없고, C에서 이미 저장된 Sense는 다시 Skip할 수 없다(`already_submitted`). `technical-skip`, `ZERO_HITS`, `SAMPLED_NO_VERIFIED`, D `N/Z`로 의미 Skip을 표현하지 않는다.
+- **Stage 2:** 고유명사 출발 Sense의 모든 후보와 고유명사 뜻의 후보는 `D e`로 Drop한다. ID·text-only·역방향·다른 Sense/표기 relink로 승인하지 않는다. 동철 후보는 고유명사 Sense로의 결속만 차단한다. 이미 승인된 관계로 커버되어 신규 판정 대상이 아니면 Stage 3에 맡긴다.
+- **Stage 3:** 출발 Sense나 대상(ID target Sense, text-only 지칭)이 고유명사인 Relation은 Keep·Link Repair 없이 `D`로 삭제한다. 고아 후보 `z`와 cross-shard reconcile은 기존 경로를 따른다. Stage 3 view는 모든 ID 대상의 POS·gloss를 표시한다(단일 Sense 표제어도 `인성론`처럼 작품명일 수 있음).
+- 진행 중 checkpoint·완료 데이터는 소급 변경하지 않고 다음 생산/감사 실행부터 적용한다.
+
 ### C/D 생산 프롬프트 — 실제 문맥에서 의미 있는 후보만
 
 C와 D는 출발 `sense_id`와 Canonical 뜻풀이를 먼저 고정하고, **해당 의미의 실제 사용 문맥**을 조회한 후 후보를 찾는다. 출발 sense와 연결되는 이유가 없다면 후보로 기록하지 않는다. 후보 개수 목표는 없다.

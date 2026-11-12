@@ -54,7 +54,11 @@ source and scope:
   to 과거(過去)); never pick the first string match. Otherwise the target is
   plain text with no ID (a word, name, phrase or multi-word expression such as
   `디아블로와 바알`): not clickable, no reverse relation, no invented record
-  or ID.
+  or ID. **Superseded for proper nouns by #5745:** a specific person, place,
+  institution, organization or work/title is never an authored source,
+  candidate or target, whether by ID or as text-only (such names, including
+  the example above, are no longer admissible); see
+  [relation-factory.md](relation-factory.md#고유명사-양방향-제외-5745).
 - **ID↔ID bidirectional exploration.** Authored exact links remain available both ways. Under #2446, every persisted ID row uses one source `tp`/`rv` judgment in both directions, including previously approved rows; **equal reverse values are required, not review defects**. Do not independently re-score reverse links or exempt historical approvals from the current storage contract. Preserve historical review evidence and STDICT relations; text-only has no reverse.
 - **Headword-promotion candidates** are collected separately, never in the
   relation rows: `data/headword-candidates/pr-<PR number>.jsonl` in the

@@ -894,6 +894,37 @@ test('an empty submission completes a fully sampled sense with no verified conte
   }
 });
 
+test('#5745 proper-noun skip completes an unread hit-bearing sense once and never bypasses a search failure', async () => {
+  const fixture = await makeFixture({ unitCount: 20 });
+  try {
+    const senseId = 'sense-000001';
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: senseId, verified: [], candidates: ['후보'], skip: 'proper_noun' }]), 'submission_schema');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: senseId, verified: [], candidates: [], skip: 'technical' }]), 'submission_schema');
+    await assert.rejects(submitLiteraryChunk({ databasePath: path.join(fixture.root, 'missing.sqlite'), checkpointPath: fixture.checkpointPath,
+      submission: { senses: [{ sense_id: senseId, verified: [], candidates: [], skip: 'proper_noun' }] }, scratchDirectory: fixture.scratchDirectory }));
+    assert.equal((await load(fixture)).records[0].senses[0].submission, null);
+
+    const saved = await submit(fixture, [{ sense_id: senseId, verified: [], candidates: [], skip: 'proper_noun' }]);
+    assert.equal(saved.status, 'SAVED');
+    const checkpoint = await load(fixture);
+    const submission = checkpoint.records[0].senses[0].submission;
+    assert.equal(submission.status, 'PROPER_NOUN_SKIPPED');
+    assert.deepEqual([submission.verified, submission.candidates], [[], []]);
+    const report = reportLiteraryCheckpointSenses(checkpoint, senseId);
+    assert.equal(report.all_done, true);
+    assert.equal(report.senses[0].status, 'PROPER_NOUN_SKIPPED');
+    const damaged = structuredClone(checkpoint);
+    damaged.records[0].senses[0].submission.candidates = ['후보'];
+    assert.throws(() => reportLiteraryCheckpointSenses(damaged, senseId), /checkpoint sense submission is damaged/u);
+
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: senseId, verified: [], candidates: [], skip: 'proper_noun' }]), 'already_submitted');
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('SAMPLED_NO_VERIFIED requires 16 distinct contexts exposed for the current forms', async () => {
   const unopened = await makeFixture({ unitCount: 20 });
   try {

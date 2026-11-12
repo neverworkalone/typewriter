@@ -49,7 +49,7 @@ export const MAX_FOLLOWUP_CALLS = 1000;
 const MAX_VARIANT_FORM_LENGTH = 12;
 const HANGUL_FORM = /^[가-힣]+$/u;
 const SENSE_REF = /^s[1-9]\d*$/u;
-const DECISION_LINE = /^(s[1-9]\d*)\s+([VNZ])(?:\s+(.*))?$/u;
+const DECISION_LINE = /^(s[1-9]\d*)\s+([VNZP])(?:\s+(.*))?$/u;
 
 function fail(message) {
   throw new Error(message);
@@ -1072,7 +1072,7 @@ export function parseDecisions(text) {
     const line = raw.trim();
     if (line.length === 0) return;
     const match = DECISION_LINE.exec(line);
-    if (!match) return errors.push(`line ${index + 1}: expected "sN V cand|cand", "sN V", "sN N" or "sN Z"`);
+    if (!match) return errors.push(`line ${index + 1}: expected "sN V cand|cand", "sN V", "sN N", "sN Z" or "sN P"`);
     const [, ref, kind, rest] = match;
     if (decisions.has(ref)) return errors.push(`line ${index + 1}: ${ref} appears more than once`);
     let candidates = [];
@@ -1089,7 +1089,8 @@ export function parseDecisions(text) {
  * Local, fail-closed checks of the whole chunk at once (every error of every sense is reported together):
  * each non-automatic sense exactly once; V needs recorded contexts; N needs recorded contexts but no candidates; Z needs
  * every recorded search of the record complete with 0 hits (whether more forms were needed is the AI's and the
- * reviewer's judgment); candidates follow the Candidate v1 form rules.
+ * reviewer's judgment); P (#5745 proper-noun source Sense, the AI's semantic judgment) needs no hit or completion but
+ * never bypasses an evidence error or SEARCH_FAILED and stores no candidates; candidates follow the Candidate v1 form rules.
  */
 export function checkDecisions({ meta, records, entries, decisions, lemmaForms }) {
   const errors = [];

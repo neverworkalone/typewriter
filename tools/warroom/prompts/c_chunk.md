@@ -12,6 +12,7 @@
 
 - 각 `##` 항목은 Canonical의 **정확한 출발 Sense**(Sense ID, 표제어, 품사, gloss, 검색 형태)와 그 Sense의 후보 문학 문맥이다. 문맥마다 `[키] 출처` 다음 줄부터 원문 발췌가 이어진다. 발췌를 잘라서 읽지 않는다.
 - 문맥마다 **그 출발 Sense의 실제 용례인지** 판정한다: `VERIFIED`(정확한 그 Sense) / `AMBIGUOUS` / `REJECTED`. 동음이의어, 다른 품사, 부분 문자열 오탐은 VERIFIED가 아니다. 읽지 않은 문맥을 판독한 것으로 간주하지 않는다.
+- **고유명사 출발 Sense Skip (#5745):** Sense의 gloss가 인물·지명·기관·단체·작품 등 특정 대상을 지칭하는 고유명사 뜻이면(예 인촌¹ ‘김성수의 호’. 같은 표제어의 인촌² ‘이웃 마을’은 정상 처리) 그 Sense의 문맥 판독·추가 조회·Sweep·후보 발굴을 하지 않고 제출 배열에 `{"sense_id":"<Sense ID>","verified":[],"candidates":[],"skip":"proper_noun"}`로 넣는다. 초기 view의 검색은 이미 실행된 상태이며 이 Skip은 그 뒤의 작업만 생략한다. 의미로 판단하고 철자·품사만으로 판정하지 않는다. 이미 저장된 Sense는 다시 넣지 않는다(`already_submitted` 거부). `SEARCH_FAILED`는 Skip으로 우회하지 않고 기존 규칙대로 보고·종료하며, `ZERO_HITS`·`SAMPLED_NO_VERIFIED`·technical-skip으로 위장하지 않는다. 고유명사가 아닌 Sense에는 `skip`을 넣지 않는다.
 - 작품·작가·장르·화자·장면이 다양하도록 VERIFIED를 고르고, 한 작품에서는 최대 2개 문맥을 선호한다.
 - 항목이 `SEARCH_FAILED`면 판독하지 말고 제출 없이 그 사실만 보고하고 종료한다. `UNSEARCHABLE`이면 그 Sense에 한해 검토된 활용형을 `add-form --checkpoint <checkpoint> --sense-id <id> --form <활용형> --basis '<근거>'`로 추가한 뒤 `chunk --sense-ids <id>`로 다시 읽는다. 해결할 수 없으면 후보를 비워 제출하지 말고 보고하고 종료한다.
 - 검색 결과가 없거나(`ZERO_HITS`) 아직 읽지 않은 Sense를 정상적인 빈 결과로 위장하지 않는다. 각 Sense는 서로 다른 문맥을 **최대 16개**까지만 판독한다. 16개를 모두 읽었는데 VERIFIED가 하나도 없으면, 미조회 hit(`unseen_hits`)가 남아 있어도 그 Sense를 `"verified": []`, `"candidates": []`로 제출한다. 이는 정상 표본 완료(`SAMPLED_NO_VERIFIED`)이며, 검색 실패·UNSEARCHABLE·승인 DB 접근 실패와 다르다. 후보가 있는 Sense는 반드시 실제 VERIFIED 근거가 있어야 한다.
@@ -36,7 +37,7 @@
 - **Sweep 1 / Sweep 2:** 모든 VERIFIED 문맥을 일곱 관점에서 **독립적으로 두 차례** 탐색한다. Sweep 1에서 발굴하고, Sweep 2에서는 같은 문맥을 다시 읽어 **놓친 독립 단어·연상 경로를 새로 찾는다**. 기존 후보 재분류·중복 제거·묘사구 바꿔 쓰기는 Sweep 2가 아니다. 관점별 빈 장부나 KEEP/REMOVE 장부는 만들지 않는다.
 - **발굴하면서 바로 선택: 뜻풀이를 기계적으로 재서술한 표현은 후보로 넣지 않는다.** 두 Sweep 모두 출발 Sense의 속성+범주(`드문 물건`)·동작(`운을 달다`)을 옮긴 표현과 VERIFIED 원문의 사건을 서술한 절(`바람이 몰아치다`)은 제외한다. 문맥에서 발굴한 독립 어휘·짧은 의미 확장 심상은 평범하거나 연상이 약해도 보존한다.
 {{method_contract}}
-- 이 단계는 발굴만 한다. type·Tier·target·admission을 결정하지 않고, A/B/다른 C 결과를 열람하거나 맞추지 않는다. 제출 필드는 `sense_id`, `verified`, `candidates`(문자열 배열)뿐이다.
+- 이 단계는 발굴만 한다. type·Tier·target·admission을 결정하지 않고, A/B/다른 C 결과를 열람하거나 맞추지 않는다. 제출 필드는 `sense_id`, `verified`, `candidates`(문자열 배열)뿐이다(고유명사 Skip Sense만 `"skip":"proper_noun"`을 더한다).
 - 문학 원문·발췌·로컬 locator·SQLite·검색 로그를 제출 JSON 외 파일, Git, PR, 후보에 넣지 않는다.
 
 ## 제출 계약
