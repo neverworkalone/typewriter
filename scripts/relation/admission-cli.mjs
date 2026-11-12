@@ -3930,9 +3930,22 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
   const expected = decisionRows(checkpoint);
   const orthographicCoalesced = coalesceOrthographicAliasRelations(checkpoint, expected.relations, expected.relationCandidates);
   const coalesced = coalesceIdenticalSensePairRelations(orthographicCoalesced.relations, orthographicCoalesced.relationCandidates);
+  // Index approved rows once instead of scanning all of them per expected row (O(N×M) on a growing shard file).
+  // A text row can only match an identical text row; an ID row only an ID row on the same or reversed sense pair.
+  const approvedText = new Set();
+  const approvedIdByPair = new Map();
+  for (const approved of relationRows) {
+    if ('text' in approved) { approvedText.add(stableRow(approved)); continue; }
+    const key = idPairKey(approved.source_sense_id, approved.target_sense_id);
+    const bucket = approvedIdByPair.get(key);
+    if (bucket) bucket.push(approved); else approvedIdByPair.set(key, [approved]);
+  }
   for (const row of coalesced.relations) {
-    const merged = relationRows.some((approved) => {
-      if ('text' in row || 'text' in approved) return stableRow(approved) === stableRow(row);
+    const pairRows = 'text' in row ? [] : [
+      ...(approvedIdByPair.get(idPairKey(row.source_sense_id, row.target_sense_id)) ?? []),
+      ...(approvedIdByPair.get(idPairKey(row.target_sense_id, row.source_sense_id)) ?? []),
+    ];
+    const merged = 'text' in row ? approvedText.has(stableRow(row)) : pairRows.some((approved) => {
       const hasForms = (actual, wanted) => Array.isArray(actual) && wanted.every((form) => actual.includes(form));
       const sameOrientation = approved.source_record_id === row.source_record_id
         && approved.source_sense_id === row.source_sense_id
