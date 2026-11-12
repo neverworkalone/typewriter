@@ -310,10 +310,15 @@ NETWORK_TOKENS = (
     # #5633: GitHub's receive side answering a push with a reasonless `! [remote rejected] ... (failed)` or
     # `(internal error)` is a server fault; real rejections carry a reason (hook declined, protected branch, ...).
     "(failed)", "(internal error)",
-    # Another process updated the same remote-tracking ref during our fetch (`cannot lock ref ...: is at X but
-    # expected Y`) or holds its `.lock`: a local race that the next fetch resolves.
-    "but expected", "unable to create '",
 )
+
+
+def _ref_lock_race(text: str) -> bool:
+    """Another process updated the same ref during our fetch (`cannot lock ref ...: is at X but expected Y`) or holds
+    its lock (`Unable to create '...<ref>.lock': File exists`): a race the next fetch resolves. Other local errors
+    (a permission or disk failure on FETCH_HEAD, ...) stay definite."""
+    return ("cannot lock ref" in text and "but expected" in text) or bool(
+        re.search(r"unable to create '[^']*\.lock': file exists", text))
 
 
 def transient(res: Result) -> str | None:
@@ -329,7 +334,7 @@ def transient(res: Result) -> str | None:
         if any(x >= 500 or x == 429 for x in statuses) or (403 in statuses and any(t in text for t in RATE_LIMIT_TOKENS)):
             return why or "http"
         return None
-    if any(t in text for t in RATE_LIMIT_TOKENS + NETWORK_TOKENS):
+    if any(t in text for t in RATE_LIMIT_TOKENS + NETWORK_TOKENS) or _ref_lock_race(text):
         return why or "network"
     return None
 
