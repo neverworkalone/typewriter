@@ -3411,3 +3411,29 @@ test('amend lock: dead owner, recycled pid, and transient live owner are all han
   await acquireAmendLock(lock, `${process.pid}:fourth:`, { waitMs: 2000, pollMs: 10 });
   assert.equal(await readFile(lock, 'utf8'), `${process.pid}:fourth:`);
 });
+
+test('amend lock: concurrent contenders reclaiming one stale lock never hold it together', async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'amend-lock-race-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const dead = spawnSync(process.execPath, ['-e', '0']).pid;
+  const lock = path.join(dir, 'cp.json.amend-lock');
+  for (let round = 0; round < 20; round += 1) {
+    await writeFile(lock, `${dead}:stale-${round}:`);
+    let holders = 0;
+    let maxHolders = 0;
+    let completed = 0;
+    await Promise.all(Array.from({ length: 8 }, async (_, index) => {
+      const token = `${process.pid}:r${round}c${index}:`;
+      await acquireAmendLock(lock, token, { waitMs: 10000, pollMs: 1 });
+      holders += 1;
+      maxHolders = Math.max(maxHolders, holders);
+      assert.equal(await readFile(lock, 'utf8'), token, 'the lock file still belongs to its holder');
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      holders -= 1;
+      completed += 1;
+      if ((await readFile(lock, 'utf8')) === token) await rm(lock, { force: true });
+    }));
+    assert.equal(maxHolders, 1);
+    assert.equal(completed, 8);
+  }
+});

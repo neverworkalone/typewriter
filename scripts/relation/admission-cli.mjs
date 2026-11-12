@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { link, mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -3913,6 +3913,25 @@ function amendLockOwnerAlive(owner) {
   return { pid: ownerPid, alive: !(recorded && current && recorded !== current) };
 }
 
+// Stale reclaim must not race with another contender. Each stale content (it embeds a unique uuid) has exactly one
+// tombstone name, and link() is atomic and fails with EEXIST, so exactly one contender can win the right to remove
+// that stale lock. The winner re-verifies through the linked inode, so a lock a different amend created in between
+// (different content) is never removed; losers simply retry and then see the live owner.
+async function reclaimStaleAmendLock(lockPath, staleOwner) {
+  const tomb = `${lockPath}.stale-${createHash('sha256').update(staleOwner).digest('hex').slice(0, 24)}`;
+  try { await link(lockPath, tomb); } catch (error) {
+    if (['EEXIST', 'ENOENT'].includes(error.code)) return;
+    throw error;
+  }
+  try {
+    if ((await readFile(tomb, 'utf8')) === staleOwner) {
+      try { await unlink(lockPath); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+  } finally {
+    try { await unlink(tomb); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+}
+
 async function acquireAmendLock(lockPath, token, { waitMs = 15000, pollMs = 100 } = {}) {
   const deadline = Date.now() + waitMs;
   for (;;) {
@@ -3930,10 +3949,7 @@ async function acquireAmendLock(lockPath, token, { waitMs = 15000, pollMs = 100 
     // An empty file is a lock mid-creation by another amend: treat it as live until the wait expires.
     const state = owner === '' ? { pid: 0, alive: true } : amendLockOwnerAlive(owner);
     if (!state.alive) {
-      // Remove only the exact stale lock we observed, never a lock another amend just took over.
-      try {
-        if ((await readFile(lockPath, 'utf8')) === owner) await unlink(lockPath);
-      } catch (unlinkError) { if (unlinkError.code !== 'ENOENT') throw unlinkError; }
+      await reclaimStaleAmendLock(lockPath, owner);
       continue;
     }
     if (Date.now() >= deadline) {
