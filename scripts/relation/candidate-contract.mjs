@@ -352,12 +352,14 @@ export function validateCandidatePaths(canonicalPath, candidatePath, { repositor
 
 export async function validateCandidateFiles(canonicalPath, candidatePath, options = {}) {
   const { batch } = validateCandidatePaths(canonicalPath, candidatePath, options);
-  const { repositoryDirectory = REPOSITORY_DIRECTORY, canonicalLemmaForms } = options;
+  const { repositoryDirectory = REPOSITORY_DIRECTORY, canonicalLemmaForms, shardLocalLemmaForms = false } = options;
   const [canonicalRows, candidateRows] = await Promise.all([
     readJsonl(canonicalPath),
     readJsonl(candidatePath),
   ]);
-  const independentLemmaForms = canonicalLemmaForms ?? await loadCanonicalLemmaForms(repositoryDirectory);
+  // shardLocalLemmaForms leaves validateCandidateBatch on its bound-shard default.
+  const independentLemmaForms = canonicalLemmaForms
+    ?? (shardLocalLemmaForms ? undefined : await loadCanonicalLemmaForms(repositoryDirectory));
   return validateCandidateBatch(canonicalRows, candidateRows, {
     batch,
     canonicalLemmaForms: independentLemmaForms,

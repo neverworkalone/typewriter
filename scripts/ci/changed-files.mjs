@@ -108,6 +108,16 @@ function isWarRoomPath(filePath) {
   return /^(?:tools\/warroom\/warroom\/|tools\/warroom\/tests\/|tools\/warroom\/run-tests\.mjs$|tools\/warroom\/requirements\.txt$|war$|dashboard$)/u.test(filePath);
 }
 
+// Pure production data lanes (#5807): Stage 1 Candidate files, or Stage 2/3 Relation/Drop files. Filename/content
+// contracts are enforced by scripts/ci/data-pr-check.mjs, which fails instead of passing an unexpected name.
+function dataLaneOf(filePath) {
+  if (filePath.startsWith('data/relation-candidates/')) return 'candidate';
+  if (/^data\/relations\/relation-[^/]+\.jsonl$/u.test(filePath) || /^data\/relation-drops\/drop-[^/]+\.jsonl$/u.test(filePath)) {
+    return 'relation';
+  }
+  return undefined;
+}
+
 /** Classify the same exact changed-path list used by the Deep selector. */
 export function classifyChangedFiles(changes, renames = []) {
   if (!Array.isArray(changes) || !Array.isArray(renames)) {
@@ -119,6 +129,8 @@ export function classifyChangedFiles(changes, renames = []) {
   let runWarRoomTests = false;
   let runUiBuild = false;
   let runWebBuild = false;
+  const dataLanes = new Set();
+  let dataOnly = true;
 
   for (const change of changes) {
     if (!change || typeof change.status !== 'string' || typeof change.path !== 'string' || !change.path) {
@@ -128,6 +140,9 @@ export function classifyChangedFiles(changes, renames = []) {
       docsOnly = false;
       warRoomOnly = false;
     }
+    const lane = dataLaneOf(change.path);
+    if (lane && ['A', 'M'].includes(change.status)) dataLanes.add(lane);
+    else dataOnly = false;
     if (change.path.startsWith('src/')) runUiBuild = true;
     if (change.path.startsWith('site/')) runWebBuild = true;
 
@@ -153,15 +168,20 @@ export function classifyChangedFiles(changes, renames = []) {
       if (isWarRoomPath(rename.oldPath) !== isWarRoomPath(rename.newPath)) {
         warRoomOnly = false;
       }
+      dataOnly = false;
     } else if (typeof rename.path !== 'string' || !rename.path) {
       throw new TypeError('Rename evidence contains an invalid status/path tuple.');
     }
   }
 
   const changedPathsComplete = changes.length > 0;
+  // One lane per PR: a Candidate + Relation mix, any other path, a deletion or a rename keeps the ordinary gates.
+  const dataLane = changedPathsComplete && dataOnly && dataLanes.size === 1 ? [...dataLanes][0] : 'none';
   const runLevel = !changedPathsComplete
     ? 'normal'
-    : docsOnly
+    : dataLane !== 'none'
+      ? 'data'
+      : docsOnly
       ? 'none'
       : warRoomOnly && runWarRoomTests
         ? 'warroom'
@@ -169,6 +189,7 @@ export function classifyChangedFiles(changes, renames = []) {
 
   return {
     runLevel,
+    dataLane,
     runWarRoomTests,
     runUiBuild,
     runWebBuild,
@@ -228,6 +249,7 @@ function main() {
     const result = classifyChangedPathDiff(args[0], args[1]);
     writeOutputs({
       run_level: result.runLevel,
+      data_lane: result.dataLane,
       run_warroom_tests: result.runWarRoomTests,
       run_ui_build: result.runUiBuild,
       run_web_build: result.runWebBuild,
@@ -235,6 +257,7 @@ function main() {
     });
     appendSummary([
       `Changed-path classification: ${result.runLevel}.`,
+      `Production data lane: ${result.dataLane}.`,
       `War Room Python tests selected: ${result.runWarRoomTests}.`,
       `Extension UI build selected: ${result.runUiBuild}.`,
       `Web build and Pages validation selected: ${result.runWebBuild}.`,

@@ -96,7 +96,8 @@ test('PR path selection excludes unrelated changes present only in the synthetic
       { cwd: fixture.directory },
     );
     assert.deepEqual(prRange.changedPaths, [fixture.candidatePath]);
-    assert.equal(prRange.runLevel, 'normal');
+    assert.equal(prRange.runLevel, 'data');
+    assert.equal(prRange.dataLane, 'candidate');
     assert.equal(prRange.runWarRoomTests, false);
 
     const deep = routePrDeepGate(classifyDeepGateDiff(
@@ -185,6 +186,27 @@ test('actual War Room and Stage 2 paths retain their existing validation selecti
   const stage2 = classifyDeepGatePaths(['scripts/relation/admission.mjs']);
   assert.equal(stage2.deepMode, 'selective');
   assert.ok(stage2.selectedDeepChecks.length > 0);
+});
+
+test('only pure single-lane production data PRs use the lightweight data lane', () => {
+  const lane = (changes, renames = []) => {
+    const result = classifyChangedFiles(changes, renames);
+    return `${result.runLevel}/${result.dataLane}`;
+  };
+  const candidate = { status: 'A', path: 'data/relation-candidates/271/271_01_a_claude.jsonl' };
+  const relation = { status: 'M', path: 'data/relations/relation-055.jsonl' };
+  const drop = { status: 'M', path: 'data/relation-drops/drop-055.jsonl' };
+  assert.equal(lane([candidate]), 'data/candidate');
+  assert.equal(lane([relation, drop]), 'data/relation');
+  assert.equal(lane([{ status: 'A', path: 'data/relations/relation-429.jsonl' }]), 'data/relation');
+  assert.equal(lane([candidate, relation]), 'normal/none');
+  assert.equal(lane([relation, { status: 'M', path: 'scripts/relation/admission.mjs' }]), 'normal/none');
+  assert.equal(lane([relation, { status: 'M', path: 'docs/relation-factory.md' }]), 'normal/none');
+  assert.equal(lane([{ status: 'D', path: 'data/relations/relation-055.jsonl' }]), 'normal/none');
+  assert.equal(lane([{ status: 'M', path: 'data/canonical/stdict-0055.jsonl' }]), 'normal/none');
+  assert.equal(lane([{ status: 'A', path: 'data/relations/notes.txt' }]), 'normal/none');
+  assert.equal(lane([candidate], [{ status: 'R100', oldPath: 'data/relation-candidates/271/x.jsonl', newPath: candidate.path }]), 'normal/none');
+  assert.equal(lane([]), 'normal/none');
 });
 
 test('CI classifier and workflow changes select this regression test in PR Deep validation', () => {

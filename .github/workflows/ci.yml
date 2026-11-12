@@ -43,9 +43,6 @@ jobs:
         id: revisions
         run: node scripts/ci/changed-files.mjs resolve
 
-      - name: Validate changed Relation shards on the integration candidate
-        run: node scripts/ci/relation-merge-check.mjs "$INTEGRATION_BASE_SHA" "$INTEGRATION_HEAD_SHA"
-
       - name: Classify exact SQL schema diff
         id: schema
         shell: bash
@@ -65,6 +62,11 @@ jobs:
           set -euo pipefail
           node scripts/ci/changed-files.mjs classify "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA"
           run_level="$(sed -n 's/^run_level=//p' "$GITHUB_OUTPUT" | tail -n 1)"
+          if [[ "$run_level" == data ]]; then
+            # Pure Stage 1/2/3 production data: one lightweight contract check below; no Deep selection or ci:normal.
+            echo "Pure production data PR: lightweight data contract check only; ci:normal and Deep selection skipped." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           # Deep impact and exact-check selection stay inside this PR check.
           if ! TYPEWRITER_CI_RUN_LEVEL="$run_level" TYPEWRITER_CI_VALIDATION_HEAD="$INTEGRATION_HEAD_SHA" node scripts/ci/deep-gate.mjs "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA"; then
             echo "Deep path classification failed; running ci:normal fallback." >> "$GITHUB_STEP_SUMMARY"
@@ -81,6 +83,18 @@ jobs:
           else
             echo "Ordinary PR changes: running ci:normal." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Data PR contract check (changed data files only)
+        id: data-check
+        if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'data' }}
+        env:
+          CHANGE_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
+          CHANGE_HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
+        run: node scripts/ci/data-pr-check.mjs "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA" "$INTEGRATION_HEAD_SHA"
+
+      - name: Validate changed Relation shards on the integration candidate
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'data' }}
+        run: node scripts/ci/relation-merge-check.mjs "$INTEGRATION_BASE_SHA" "$INTEGRATION_HEAD_SHA"
 
       - name: Set up pnpm
         if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
@@ -145,9 +159,11 @@ jobs:
           RUN_LEVEL: ${{ steps.changes.outputs.run_level }}
           DEEP_MODE: ${{ steps.changes.outputs.deep_mode }}
           WARROOM_OUTCOME: ${{ steps.warroom.outcome }}
+          DATA_CHECK_OUTCOME: ${{ steps.data-check.outcome }}
           NORMAL_OUTCOME: ${{ steps.normal.outcome }}
           SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
           SCHEMA_CHANGED: ${{ steps.schema.outputs.schema_changed }}
+          SCHEMA_BUILD_OUTCOME: ${{ steps.schema-build.outcome }}
           RUN_UI_BUILD: ${{ steps.changes.outputs.run_ui_build }}
           UI_BUILD_OUTCOME: ${{ steps.ui-build.outcome }}
           RUN_WEB_BUILD: ${{ steps.changes.outputs.run_web_build }}
@@ -164,6 +180,19 @@ jobs:
           fi
           if [[ "$RUN_WEB_BUILD" == true && "$WEB_BUILD_OUTCOME" != success ]]; then
             echo "A site/** change requires a successful Web build and Pages validation." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [[ "$RUN_LEVEL" == data ]]; then
+            if [[ "$DATA_CHECK_OUTCOME" != success || "$SCHEMA_CHANGED" == true ]]; then
+              echo "Pure data PR requires a successful data contract check and no SQL schema change." >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            if [[ "$NORMAL_OUTCOME" != skipped || "$SELECTIVE_OUTCOME" != skipped || "$SCHEMA_BUILD_OUTCOME" != skipped ]]; then
+              echo "Unexpected product/Deep CI gate for a pure data PR." >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+          elif [[ -n "$DATA_CHECK_OUTCOME" && "$DATA_CHECK_OUTCOME" != skipped ]]; then
+            echo "Data contract check ran outside the pure data lane." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
           if [[ "$RUN_LEVEL" == warroom ]]; then
@@ -192,6 +221,8 @@ jobs:
           NORMAL_OUTCOME: ${{ steps.normal.outcome }}
           SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
           WARROOM_OUTCOME: ${{ steps.warroom.outcome }}
+          DATA_LANE: ${{ steps.changes.outputs.data_lane }}
+          DATA_CHECK_OUTCOME: ${{ steps.data-check.outcome }}
           UI_BUILD_SELECTED: ${{ steps.changes.outputs.run_ui_build }}
           UI_BUILD_OUTCOME: ${{ steps.ui-build.outcome }}
           WEB_BUILD_SELECTED: ${{ steps.changes.outputs.run_web_build }}
@@ -212,6 +243,7 @@ jobs:
             echo "- SQL schema build gate required: ${SCHEMA_GATE:-unknown}"
             echo "- SQL schema build gate outcome: ${SCHEMA_OUTCOME:-skipped}"
             echo "- War Room gate outcome: ${WARROOM_OUTCOME:-skipped}"
+            echo "- Production data lane/contract check outcome: ${DATA_LANE:-unknown} / ${DATA_CHECK_OUTCOME:-skipped}"
             echo "- Extension UI build selected/outcome: ${UI_BUILD_SELECTED:-unknown} / ${UI_BUILD_OUTCOME:-skipped}"
             echo "- Web build and Pages validation selected/outcome: ${WEB_BUILD_SELECTED:-unknown} / ${WEB_BUILD_OUTCOME:-skipped}"
             echo "- Normal-only gate outcome: ${NORMAL_OUTCOME:-skipped}"

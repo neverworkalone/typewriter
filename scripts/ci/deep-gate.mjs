@@ -60,6 +60,7 @@ function readGit(args, runGit) {
 const FULL_DEEP_PATHS = Object.freeze([
   '.github/workflows/',
   'scripts/ci/changed-files.mjs',
+  'scripts/ci/data-pr-check.mjs',
   'scripts/ci/deep-gate.mjs',
   'scripts/ci/registry.mjs',
   'scripts/ci/legacy-check-identities.json',

@@ -205,6 +205,17 @@ dependencies add only those affected checks through `ci:pr`. Documentation-only
 changes may skip Normal and report the skip. Registry, runner, classifier,
 workflow, unknown-path, and missing-diff cases retain the Normal fallback.
 
+Pure production data PRs use a lightweight data lane instead (#5807). A PR qualifies when every changed path is an
+added or modified Stage 1 Candidate file, or every changed path is an added or modified
+`data/relations/relation-SSS.jsonl` / `data/relation-drops/drop-SSS.jsonl` file (Stage 2/3). That PR runs only
+`scripts/ci/data-pr-check.mjs`, which reads the changed files and their bound Canonical shard at the integration
+candidate. For Candidates it checks the Candidate v1 batch contract. For Relations and Drops it checks the compact
+JSONL fields and values, Canonical ID format, source Sense binding and shard scope, and same-file duplicates. It does
+not install dependencies or run `ci:normal`, Deep selection, or builds. It is storage-format and change-scope
+evidence, not a semantic or global-integrity proof. Exact target Senses, cross-shard conflicts and candidate
+accounting belong to the official production CLI, the independent PR review and the Deep CI full audit. A mix of
+lanes, any other path, a deletion or a rename keeps the ordinary gates above.
+
 `.github/workflows/deep.yml` runs `ci:all` on its weekly schedule and supports
 manual dispatch. It runs Normal followed by current-system Deep checks; `ci:deep`
 selects Deep checks only. A skipped check is not passing evidence.
