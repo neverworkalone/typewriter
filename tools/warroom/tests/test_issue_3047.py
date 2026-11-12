@@ -345,6 +345,37 @@ class ParallelStage2Recovery(Helpers, unittest.TestCase):
         w.tick()
         self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
 
+    def test_resume_after_usage_limit_waits_for_the_reported_reset_5921(self):
+        # #5921: an approved resume/Retry relaunched the failed task at once while the plan limit was still active.
+        import datetime
+        w = self.world([("s", 3)])
+        self.launch(w, 3)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.respond(w, task, drop_rows(task, 3, bad=(2,)))
+        w.tick()
+        w.sup._classify_run = lambda _producer, _log: "usage_limit"
+        reset = datetime.datetime.fromtimestamp(w.now + 3 * 86400).replace(second=0, microsecond=0)
+        text = reset.strftime("%b %d, %Y %I:%M %p")
+        self.finish_code(w, task, 1, '{"type":"error","message":"hit your usage limit, try again at %s"}\n' % text)
+        w.tick(2)
+        self.assertEqual(self.tasks(w)[task]["state"], "FAILED")
+        launches = len(w.adapter.launches)
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(3)
+        self.assertEqual(len(w.adapter.launches), launches)   # held until the reset
+        self.assertEqual(self.tasks(w)[task]["state"], "FIXQ")
+        w.now = reset.timestamp() + 1
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), launches + 1)
+
+    def test_usage_limit_reset_parsing_5921(self):
+        from warroom.adapters import usage_limit_reset_at
+        import datetime
+        got = usage_limit_reset_at("You’ve hit your usage limit. try again at Nov 16th, 2026 11:41 PM.")
+        self.assertEqual(datetime.datetime.fromtimestamp(got), datetime.datetime(2026, 11, 16, 23, 41))
+        self.assertIsNone(usage_limit_reset_at("no limit here"))
+
     def test_restart_after_technical_drop_save_resaves_with_persisted_evidence(self):
         w = self.world([("s", 3)])
         self.launch(w, 1)

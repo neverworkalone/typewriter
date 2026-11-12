@@ -1073,27 +1073,20 @@ def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
     return "unknown"
 
 
-_MONTHS = {m: i + 1 for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"))}
+_LIMIT_RESET = re.compile(r"try again at ([A-Z][a-z]{2,8})\.? (\d{1,2})(?:st|nd|rd|th)?,? (\d{4}) (\d{1,2}):(\d{2}) ?([AP]M)", re.I)
 
 
 def usage_limit_reset_at(log_text: str) -> float | None:
-    """Epoch seconds of the reset time a CLI usage-limit message states ("try again at Nov 16th, 2026 11:41 PM", local
-    time), or None. A resume before this time can only hit the same limit again."""
+    """Epoch seconds (local time) of the 'try again at <date>' a plan usage-limit error reports, else None."""
     import datetime
-    found = None
-    for m in re.finditer(r"try again at\s+([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\s+"
-                         r"(\d{1,2}):(\d{2})\s*([AaPp][Mm])?", log_text):
-        month = _MONTHS.get(m.group(1).lower())
-        if month is None:
-            continue
-        hour = int(m.group(4))
-        if m.group(6):
-            hour = hour % 12 + (12 if m.group(6).lower() == "pm" else 0)
+    for m in _LIMIT_RESET.finditer(log_text):
+        month, day, year, hour, minute, ampm = m.groups()
         try:
-            found = datetime.datetime(int(m.group(3)), month, int(m.group(2)), hour, int(m.group(5))).timestamp()
+            when = datetime.datetime.strptime(f"{month[:3].title()} {day} {year} {hour}:{minute} {ampm.upper()}", "%b %d %Y %I:%M %p")
         except ValueError:
             continue
-    return found
+        return when.timestamp()
+    return None
 
 
 def classify_codex_failure(log_text: str, quota_patterns: list[str]) -> str:
