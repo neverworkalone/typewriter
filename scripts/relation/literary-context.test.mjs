@@ -471,6 +471,7 @@ test('submit locates a rejected key without exposing it or saving the chunk', as
     assert.equal(result.status, 1);
     assert.equal(diagnostic.reason, 'context_key_not_found');
     assert.equal(diagnostic.affected.verified_number, 2);
+    assert.ok(diagnostic.valid_keys.length > 0 && diagnostic.valid_keys.every((k) => /^[0-9a-f]{12}$/u.test(k)));
     assert.equal(result.stderr.includes('private-invalid-key'), false);
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
   } finally {

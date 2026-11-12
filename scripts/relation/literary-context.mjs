@@ -64,6 +64,7 @@ function failSubmission(reason, senseId, field, entryNumber = null, details = {}
   if (Number.isSafeInteger(details.verified_number) && details.verified_number > 0) {
     error.affected.verified_number = details.verified_number;
   }
+  if (Array.isArray(details.valid_keys)) error.valid_keys = details.valid_keys.slice(0, MAX_CONTEXTS_PER_SENSE);
   error.issues = (details.issues ?? [{ entry_number: error.affected.entry_number, reason, field }])
     .slice(0, MAX_SUBMISSION_ISSUES)
     .map(({ entry_number: number, reason: issueReason, field: issueField }) => ({
@@ -1724,9 +1725,11 @@ export function resolveVerifiedContextKey(key, senseId, results, entryNumber = n
   // Whitespace around a copied key has one deterministic repair: trim it, then keep the same strict unique-prefix
   // check. Never guess at a misspelling or alter the source context identity.
   const normalizedKey = key.trim();
-  if (normalizedKey.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber, { verified_number: verifiedNumber });
+  // A rejected key lists the keys `chunk` showed for this sense so the producer can copy one exactly instead of guessing a character.
+  const validKeys = results.map((row) => row.locator_key.slice(0, SHORT_KEY_LENGTH));
+  if (normalizedKey.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber, { verified_number: verifiedNumber, valid_keys: validKeys });
   const matches = results.filter((row) => row.locator_key.startsWith(normalizedKey));
-  if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified', entryNumber, { verified_number: verifiedNumber });
+  if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified', entryNumber, { verified_number: verifiedNumber, valid_keys: validKeys });
   if (matches.length > 1) failSubmission('context_key_ambiguous', senseId, 'verified', entryNumber, { verified_number: verifiedNumber });
   return matches[0];
 }
