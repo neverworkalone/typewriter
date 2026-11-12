@@ -307,6 +307,9 @@ NETWORK_TOKENS = (
     "tls handshake timeout", "i/o timeout", "unexpected eof", "the remote end hung up", "early eof",
     "gnutls_handshake", "timeout awaiting response", "failed to connect to", "bad gateway",
     "service unavailable", "gateway time-out",
+    # #5633: GitHub's receive side answering a push with a reasonless `! [remote rejected] ... (failed)` or
+    # `(internal error)` is a server fault; real rejections carry a reason (hook declined, protected branch, ...).
+    "(failed)", "(internal error)",
 )
 
 
