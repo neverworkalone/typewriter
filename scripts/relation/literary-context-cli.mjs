@@ -514,6 +514,20 @@ main().catch((error) => {
     return;
   }
 
+  if (error?.code === 'LITERARY_CHUNK_SCOPE' && Array.isArray(error.activeSenseIds)) {
+    process.stderr.write(`${JSON.stringify({
+      status: 'FAILED',
+      diagnostic: 'chunk_scope',
+      code: error.code,
+      error_type: errorType,
+      message: 'The requested Sense ids are not in your active chunk; retry with only the active Sense ids. Do not stop or report this as a defect.',
+      outside_sense_ids: error.outsideSenseIds.slice(0, 20),
+      active_sense_ids: error.activeSenseIds,
+      repair_scope: 'use_active_chunk_senses',
+    })}\n`);
+    process.exitCode = 1;
+    return;
+  }
   if (error?.code === 'LITERARY_CHECKPOINT_LOCK_TIMEOUT' || error?.code === 'LITERARY_CHUNK_SCOPE') {
     const timeout = error.code === 'LITERARY_CHECKPOINT_LOCK_TIMEOUT';
     process.stderr.write(`${JSON.stringify({

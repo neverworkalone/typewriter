@@ -1962,6 +1962,14 @@ export function reportLiteraryCheckpointSenses(checkpoint, senseIdList) {
   };
 }
 
+/** A request for Senses that are not in a validly bound active chunk is a worker mistake the worker can correct. */
+function outsideError(allowed, requested) {
+  const error = codedError('LITERARY_CHUNK_SCOPE', 'sense is outside the active chunk');
+  error.outsideSenseIds = (Array.isArray(requested) ? requested : []).filter((id) => typeof id === 'string' && !allowed.has(id));
+  error.activeSenseIds = [...allowed];
+  return error;
+}
+
 async function activeChunkScope({ checkpointPath, chunkNo, scratchDirectory }) {
   const scopeError = (message) => codedError('LITERARY_CHUNK_SCOPE', message);
   if (!Number.isSafeInteger(chunkNo) || chunkNo < 1) throw scopeError('invalid chunk number');
@@ -2006,7 +2014,7 @@ export async function assertActiveChunkScope({ checkpointPath, chunkNo, senseIds
   const scopeError = (message) => codedError('LITERARY_CHUNK_SCOPE', message);
   const allowed = await activeChunkScope({ checkpointPath, chunkNo, scratchDirectory });
   if (!Array.isArray(senseIds) || senseIds.length === 0 || senseIds.some((id) => !allowed.has(id))) {
-    throw scopeError('sense is outside the active chunk');
+    throw outsideError(allowed, senseIds);
   }
 }
 
@@ -2018,11 +2026,11 @@ export async function normalizeActiveChunkReadScope({ checkpointPath, chunkNo, s
   scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const scopeError = (message) => codedError('LITERARY_CHUNK_SCOPE', message);
   const allowed = await activeChunkScope({ checkpointPath, chunkNo, scratchDirectory });
-  if (!Array.isArray(senseIds) || senseIds.length === 0) throw scopeError('sense is outside the active chunk');
+  if (!Array.isArray(senseIds) || senseIds.length === 0) throw outsideError(allowed, senseIds);
   const validSenseIds = senseIds.filter((id) => allowed.has(id));
   const excludedSenseIds = senseIds.filter((id) => !allowed.has(id));
   if (validSenseIds.length === 0 || excludedSenseIds.length > 2) {
-    throw scopeError('sense is outside the active chunk');
+    throw outsideError(allowed, senseIds);
   }
   return { validSenseIds, excludedSenseIds };
 }
