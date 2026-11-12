@@ -91,9 +91,8 @@
 
 ## 5. 추적
 
-- **Maintainer 중복 감시**: case를 연 뒤 같은 결함에 Maintainer Issue/PR이 연결되면 세션에 즉시 알린다.
-  - 둘 중 먼저 진전한 쪽 하나만 남긴다. 다른 쪽은 수정을 멈추고, 이미 만든 PR은 정리한다.
-  - 같은 코드를 두 PR이 동시에 고치게 두지 않는다.
+- **Maintainer가 맡으면 손대지 않는다**: case를 연 뒤 같은 결함에 Maintainer Issue/PR이 연결되면, 세션에 작업 중단과
+  자기 PR 닫기를 지시하고 case를 RESOLVED(Maintainer 이관)로 보관한다.
 - **case PR 추적**: case에 연결된 PR(복구 세션 PR, 원 batch PR)이 충돌·CI 실패이면 같은 세션에 후속 지시를 보낸다.
   case PR이 머지되지 않은 채 남아 있으면 그 case는 RESOLVED가 아니다. 단, superseded로 닫힌 PR은 예외다.
 - 세션이 진행 중이면 건드리지 않는다.
