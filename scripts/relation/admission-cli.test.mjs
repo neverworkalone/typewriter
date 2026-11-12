@@ -3451,10 +3451,12 @@ test('amend lock: a leftover tombstone is never removed by age and never causes 
   // Whatever its age, a leftover tombstone is treated as a possibly paused live reclaimer: the call fails explicitly
   // within the deadline and neither the lock nor the tombstone is removed, so no second owner can appear.
   await setup();
-  await new Promise((resolve) => setTimeout(resolve, 30));
-  const started = Date.now();
-  await assert.rejects(() => acquireAmendLock(lock, `${process.pid}:a:`, { waitMs: 100, pollMs: 5 }), /blocked by another reclaimer/);
-  assert.ok(Date.now() - started < 2000, 'bounded by the deadline');
+  // Deterministic clock: every Date.now() call advances one hour, so the tombstone is far older than any age threshold
+  // (the previous implementation removed it at 30s) and the wait deadline is crossed after a few polls.
+  let clock = Date.now();
+  t.mock.method(Date, 'now', () => { clock += 3600 * 1000; return clock; });
+  await assert.rejects(() => acquireAmendLock(lock, `${process.pid}:a:`, { waitMs: 100, pollMs: 1 }), /blocked by another reclaimer/);
+  t.mock.restoreAll();
   assert.equal(await readFile(lock, 'utf8'), stale, 'stale lock is preserved');
   assert.equal(await readFile(tomb, 'utf8'), stale, 'the in-progress reclaimer\'s tombstone is preserved');
 
