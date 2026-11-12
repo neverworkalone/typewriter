@@ -11,7 +11,7 @@ Supervisor는 최신 D CLI 경로와 이 배치의 scratch/Canonical 루트를 `
 
 {{chunk_input}}
 
-view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record로 이미 조회한 **공유 문맥**(상태 줄 `COMPLETE`/`LIMITED`/`ZERO_HITS`/`SEARCH_FAILED`와 `[키] 표제 저자` 다음 줄의 발췌), 그리고 아래에 `s1…sK`로 번호가 붙은 record의 모든 Sense(정확한 Sense ID·품사·전체 gloss)가 온다. 문맥은 record의 Sense들이 공유하지만 **source-sense 판정과 후보 발굴은 Sense마다 따로** 한다. 머리 줄의 `decide=`는 이번 청크에서 판정할 필수 Sense 전체이며, `auto_z`는 War Room이 기계적으로 완전 0건을 증명해 자동 저장하므로 판정 줄에 넣지 않는다.
+view의 `## `마다 Canonical record 하나다. 각 섹션은 `## ` 제목(표제어·검색형), 바로 아래 `s1…sK`로 번호가 붙은 그 record의 모든 Sense(정확한 Sense ID·품사·전체 gloss), 이어서 그 record로 이미 조회한 **공유 문맥**(상태 줄 `COMPLETE`/`LIMITED`/`ZERO_HITS`/`SEARCH_FAILED`와 `[키] 표제 저자` 다음 줄의 발췌)과 `증거 상태(<record_id>)` 줄 순서다. 문맥은 record의 Sense들이 공유하지만 **source-sense 판정과 후보 발굴은 Sense마다 따로** 한다. 머리 줄의 `decide=`는 이번 청크에서 판정할 필수 Sense 전체이며, `auto_z`는 War Room이 기계적으로 완전 0건을 증명해 자동 저장하므로 판정 줄에 넣지 않는다.
 
 **Sense·Record 결속:** `s1…sK`는 청크의 모든 Canonical Sense를 펼친 **청크 내부 순번**이지 Record 순번이다. 각 Sense 행은 `sN [record=<record_id>] <sense_id> [<pos>] <gloss>` 형식으로 그 소유 Record ID를 직접 표시한다. 하나의 `## <record_id>` 아래 여러 Sense가 있으면 `s6`·`s7`처럼 연속된 번호가 **같은 Record ID**에 속하고, 다음 Record의 첫 Sense가 `s8`일 수 있다. 판정·검색·저장 전에 `sN` 행의 `[record=…]`와 `sense_id`를 확인한다. Sense 행은 자기 `## <record_id>` 제목 바로 아래에 있고, 그 아래의 검색 문맥과 `증거 상태(<record_id>)`가 그 Record의 증거다. 다음 `##` 제목의 증거를 앞 Sense의 것으로 읽지 않는다. `sN` 숫자, 동일한 표제어, 검색 결과 개수에서 Record ID를 추정하지 않는다.
 

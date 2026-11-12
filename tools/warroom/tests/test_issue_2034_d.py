@@ -1165,6 +1165,10 @@ class Prompts(unittest.TestCase):
                                directory=prompt_dir)
         self.assertIn("sN [record=<record_id>] <sense_id> [<pos>] <gloss>", card)
         self.assertIn("`sN` 행의 `[record=…]`와 `sense_id`를 확인한다", card)
+        # The overview and the binding rule must describe the same order the renderer emits: heading -> senses -> evidence.
+        self.assertIn("바로 아래 `s1…sK`", card)
+        self.assertIn("`증거 상태(<record_id>)`", card)
+        self.assertNotIn("그리고 아래에 `s1…sK`", card)
 
 
 if __name__ == "__main__":
