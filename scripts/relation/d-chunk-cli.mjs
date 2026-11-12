@@ -392,6 +392,7 @@ const decisionState = (evidence) => ({
   state: evidence.failed ? 'SEARCH_FAILED'
     : evidence.hits > 0 ? 'V_N_ALLOWED'
       : evidence.allComplete ? 'Z_ALLOWED' : 'SEARCH_MORE',
+  scope: 'record',
   searches: evidence.searches,
   recorded_hits: evidence.hits,
   all_complete: evidence.allComplete,
@@ -1051,7 +1052,7 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
     const searchStatus = result.status;
     result = { ...result, status: searchStatus === 'SEARCH_FAILED' ? 'SEARCH_FAILED' : 'REREAD',
       search_status: searchStatus, recorded_status: condition.recorded_status, recorded_hits: condition.recorded_hits, next_cursor: null };
-    const text = `${renderContexts(result)}\nsearch_status=${searchStatus} (reread sample only)\nrecorded_status=${condition.recorded_status} recorded_hits=${condition.recorded_hits}\ncontext_source=reread\nReread adds no search evidence; hit totals and decision state are unchanged. Do not continue the reread sample with cursor next.`;
+    const text = `${renderContexts(result)}\nsearch_status=${searchStatus} (reread sample only)\nrecorded_status=${condition.recorded_status} recorded_hits=${condition.recorded_hits} (this exact search condition only; decision_state below aggregates every search of the whole record, so its hits may differ)\ncontext_source=reread\nReread adds no search evidence; hit totals and decision state are unchanged. Do not continue the reread sample with cursor next.`;
     return { result, text, decision_state: currentDecisionState(), context_source: 'reread' };
   }
   const exactRequestKey = requestKey(list, boundary, options);
@@ -1356,7 +1357,7 @@ async function main(argv) {
       databasePath, root: options.dir, chunkNumber: optionalChunk(options),
     });
     console.log(text);
-    console.log(`decision_state=${state.state} searches=${state.searches} recorded_hits=${state.recorded_hits} all_complete=${state.all_complete}`);
+    console.log(`decision_state=${state.state} scope=record searches=${state.searches} recorded_hits=${state.recorded_hits} all_complete=${state.all_complete}`);
     return result.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'search-batch') {
