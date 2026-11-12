@@ -5,10 +5,6 @@ on:
   merge_group:
     types: [checks_requested]
     branches: [master]
-  push:
-    branches: [master]
-    paths:
-      - 'data/relations/relation-*.jsonl'
 
 permissions:
   contents: read
@@ -26,11 +22,17 @@ jobs:
       PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
     steps:
-      - name: Check out repository
+      - name: Check out CI scripts only
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           filter: blob:none # full commit/tree history for the diff gates, blobs fetched on demand (#3801)
+          # Bootstrap only the CI code (#5807). Pure data PRs read just their changed files and bound Canonical shard
+          # with `git show`; every other PR restores the full working tree below before any other check.
+          sparse-checkout: |
+            /.github/
+            /scripts/
+          sparse-checkout-cone-mode: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -43,8 +45,30 @@ jobs:
         id: revisions
         run: node scripts/ci/changed-files.mjs resolve
 
+      - name: Select production data lane
+        id: paths
+        continue-on-error: true
+        env:
+          CHANGE_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
+          CHANGE_HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
+        run: node scripts/ci/changed-files.mjs classify "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA"
+
+      - name: Data PR contract check (changed data files only)
+        id: data-check
+        if: ${{ steps.paths.outcome == 'success' && steps.paths.outputs.run_level == 'data' }}
+        env:
+          CHANGE_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
+          CHANGE_HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
+        run: node scripts/ci/data-pr-check.mjs "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA" "$INTEGRATION_HEAD_SHA"
+
+      - name: Restore full working tree for non-data PRs
+        # Also runs when lane selection failed, so the Normal fallback never sees a sparse tree.
+        if: ${{ always() && (steps.paths.outcome != 'success' || steps.paths.outputs.run_level != 'data') }}
+        run: git sparse-checkout disable
+
       - name: Classify exact SQL schema diff
         id: schema
+        if: ${{ steps.paths.outcome != 'success' || steps.paths.outputs.run_level != 'data' }}
         shell: bash
         env:
           CHANGE_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
@@ -83,14 +107,6 @@ jobs:
           else
             echo "Ordinary PR changes: running ci:normal." >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: Data PR contract check (changed data files only)
-        id: data-check
-        if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'data' }}
-        env:
-          CHANGE_BASE_SHA: ${{ steps.revisions.outputs.change_base_sha }}
-          CHANGE_HEAD_SHA: ${{ steps.revisions.outputs.change_head_sha }}
-        run: node scripts/ci/data-pr-check.mjs "$CHANGE_BASE_SHA" "$CHANGE_HEAD_SHA" "$INTEGRATION_HEAD_SHA"
 
       - name: Validate changed Relation shards on the integration candidate
         if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'data' }}
@@ -250,44 +266,3 @@ jobs:
             echo "- Selective Deep gate outcome: ${SELECTIVE_OUTCOME:-skipped}"
             echo "- Final gate result: ${FINAL_GATE:-unknown}"
           } >> "$GITHUB_STEP_SUMMARY"
-
-  post-merge-relations:
-    name: Verify merged Relation integrity
-    if: ${{ github.event_name == 'push' }}
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out pushed revision
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.x
-          package-manager-cache: false
-
-      - name: Verify latest master after merge
-        shell: bash
-        env:
-          EVENT_BEFORE: ${{ github.event.before }}
-          EVENT_AFTER: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          git fetch origin master
-          latest_master="$(git rev-parse origin/master)"
-          if ! git merge-base --is-ancestor "$EVENT_AFTER" "$latest_master"; then
-            echo "Pushed revision $EVENT_AFTER is not an ancestor of latest master $latest_master." >&2
-            exit 1
-          fi
-          git checkout --detach "$latest_master"
-          if [[ "$EVENT_BEFORE" =~ ^0{40}$ ]]; then
-            base_sha="$(git rev-parse "$latest_master^" 2>/dev/null || true)"
-          else
-            base_sha="$EVENT_BEFORE"
-          fi
-          if [[ ! "$base_sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Cannot identify a valid pre-push base for relation integrity verification." >&2
-            exit 1
-          fi
-          node scripts/ci/relation-merge-check.mjs "$base_sha" "$latest_master"

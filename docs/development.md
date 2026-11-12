@@ -199,8 +199,8 @@ that output is not reproducibility evidence.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs the applicable gate on pull requests and pushes to
-`master`. Ordinary pull requests run `ci:normal`; changes to registered Deep
+`.github/workflows/ci.yml` runs the applicable gate on pull requests and merge-queue
+candidates. Ordinary pull requests run `ci:normal`; changes to registered Deep
 dependencies add only those affected checks through `ci:pr`. Documentation-only
 changes may skip Normal and report the skip. Registry, runner, classifier,
 workflow, unknown-path, and missing-diff cases retain the Normal fallback.
@@ -215,6 +215,12 @@ not install dependencies or run `ci:normal`, Deep selection, or builds. It is st
 evidence, not a semantic or global-integrity proof. Exact target Senses, cross-shard conflicts and candidate
 accounting belong to the official production CLI, the independent PR review and the Deep CI full audit. A mix of
 lanes, any other path, a deletion or a rename keeps the ordinary gates above.
+
+The PR job first checks out only `.github/` and `scripts/` from a blob-less clone with full commit history, so the
+merge-base range stays exact. A data-lane PR fetches only the blobs it reads. Every other PR, and any PR whose lane
+selection fails, restores the full working tree before the schema, Deep-selection and Normal steps. No post-merge
+`master` job re-validates Relations. Cross-shard conflicts from concurrently merged PRs are found by the Deep CI full
+audit.
 
 `.github/workflows/deep.yml` runs `ci:all` on its weekly schedule and supports
 manual dispatch. It runs Normal followed by current-system Deep checks; `ci:deep`
