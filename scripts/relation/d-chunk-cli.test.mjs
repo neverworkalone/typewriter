@@ -172,7 +172,7 @@ withWorld('prepare shares one record search across senses and judges each sense 
   assert.equal((text.match(/search: forms=새벽안개/gu) ?? []).length, 1, 'one search block per record');
   assert.match(text, /s1 \[record=w001\] w001-s1 \[noun\] 새벽에 끼는 안개\./u);
   assert.match(text, /s2 \[record=w001\] w001-s2 \[noun\] 비유적으로 흐릿함\./u);
-  assert.ok(text.indexOf('[1] 새벽안개') < text.indexOf('s1 [record=w001]'), 'senses follow the shared contexts');
+  assert.ok(text.indexOf('s1 [record=w001]') < text.indexOf('[1] 새벽안개'), 'senses sit under their own record heading, before its evidence');
   const saved = await meta(world);
   assert.equal(saved.senses.length, 25 + 1); // w001 has two senses
   assert.equal(saved.view_sha256.length, 64);
@@ -257,8 +257,8 @@ withWorld('automatic Z is only mechanically proven noun ZERO_HITS; view states e
   assert.equal(refOf('w004-s1').auto, false, 'a 1-syllable noun is never automatic');
   assert.equal(refOf('w005-s1').auto, false, 'a spaced spelling has a hit: the AI must read it');
   const text = await view(world);
-  assert.match(text, /## w003 달리다[\s\S]*?증거 상태: 모든 검색 완료·누적 0 hit — Z 형식 허용/u);
-  assert.match(text, /## w004 핫[\s\S]*?증거 상태: 모든 검색 완료·누적 0 hit — Z 형식 허용/u);
+  assert.match(text, /## w003 달리다[\s\S]*?증거 상태\(w003\): 모든 검색 완료·누적 0 hit — Z 형식 허용/u);
+  assert.match(text, /## w004 핫[\s\S]*?증거 상태\(w004\): 모든 검색 완료·누적 0 hit — Z 형식 허용/u);
   assert.match(text, /## w005 기회비용[\s\S]*?search: forms=기 회비용,기회 비용,기회비 용[\s\S]*?기회 비용을/u);
   assert.ok(!text.includes('## w002'), 'automatic Z records are not shown');
   assert.match(text.split('\n')[0], /decide=s\d+/u);
@@ -307,6 +307,16 @@ test('chunk views bind globally numbered Sense rows to their Canonical record ex
   assert.match(view, /s1 \[record=w110620\][\s\S]*?s2 \[record=w110620\] w110620-s2 \[noun\]/u);
   assert.match(view, /## w110622 망민[\s\S]*?s3 \[record=w110622\] w110622-s1 \[verb\]/u);
   assert.doesNotMatch(view, /s2 \[record=w110622\]/u);
+  // Every sense line must sit inside its own record section (between its heading and the next), never under a following record.
+  let owner = null;
+  for (const line of view.split('\n')) {
+    const heading = /^## (\S+)/u.exec(line);
+    if (heading) owner = heading[1];
+    const sense = /^s\d+ \[record=(\S+)\]/u.exec(line);
+    if (sense) assert.equal(sense[1], owner, `${line} must follow its own record heading`);
+    const state = /^증거 상태\((\S+)\)/u.exec(line);
+    if (state) assert.equal(state[1], owner);
+  }
 });
 
 test('hadaPrefetchForms: exact Hangul -하다 bases use POS-scoped forms and omit short or existing forms', () => {
@@ -350,7 +360,7 @@ test('prepare keeps -하다 prefetch opt-in, shows combined evidence, and record
     assert.deepEqual(calls[0], ['공부하다'], 'default prepare searches Canonical forms only');
     const optedInBuilt = buildChunk({ records: [record], shard: '001', batch: '01', chunkNumber: 1, total: 20, search: zeroSearch, hadaPrefetch: true });
     assert.deepEqual(calls[1], ['공부하다', ...hadaPrefetchForms(record)]);
-    assert.match(optedInBuilt.view, /search_forms: 공부하다\nsearch: forms=공부하다,공부해,공부해서/u);
+    assert.match(optedInBuilt.view, /search_forms: 공부하다\ns\d+ [^\n]*\nsearch: forms=공부하다,공부해,공부해서/u);
     assert.equal(optedInBuilt.entries[0].status, 'ZERO_HITS');
     assert.deepEqual(optedInBuilt.entries[0].forms, ['공부하다', ...hadaPrefetchForms(record)]);
     assert.equal(optedInBuilt.senses[0].auto, false, 'prefetch never expands the automatic-Z rule to verbs');
@@ -362,7 +372,7 @@ test('prepare keeps -하다 prefetch opt-in, shows combined evidence, and record
     assert.equal(result.code, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).status, 'READY');
     const activeView = await view(world);
-    assert.match(activeView, /search_forms: 공부하다\nsearch: forms=공부하다,공부해,공부해서/u);
+    assert.match(activeView, /search_forms: 공부하다\ns\d+ [^\n]*\nsearch: forms=공부하다,공부해,공부해서/u);
     const evidence = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse)
       .find((entry) => entry.record_id === 'w003');
     assert.deepEqual(evidence.forms, ['공부하다', ...hadaPrefetchForms(record)]);
