@@ -9,6 +9,7 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 DIR="$ROOT/.git/typewriter-supervisor/recovery-desk/sessions"
 MODEL="${RECOVERY_DESK_MODEL:-claude-sonnet-5-5}"
+sh "$ROOT/tools/warroom/recovery-desk/guard.sh" "$ROOT" || exit 3   # 운영 checkout이 아니면 쓰기·실행 전에 끝낸다
 mkdir -p "$DIR"
 
 cmd="${1:-}"; key="${2:-}"

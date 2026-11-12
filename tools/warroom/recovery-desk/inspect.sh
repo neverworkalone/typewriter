@@ -5,6 +5,7 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 DESK="$ROOT/.git/typewriter-supervisor/recovery-desk"
 MODEL="${RECOVERY_DESK_INSPECTOR_MODEL:-claude-sonnet-5-5}"
+sh "$ROOT/tools/warroom/recovery-desk/guard.sh" "$ROOT" || exit 3   # 운영 checkout이 아니면 쓰기·실행 전에 끝낸다
 mkdir -p "$DESK/sessions" "$DESK/prompts"
 [ -f "$DESK/ledger.json" ] || echo '{"cases": []}' > "$DESK/ledger.json"
 

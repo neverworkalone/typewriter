@@ -16,6 +16,7 @@
 | `brief.md` | 복구 세션의 공통 지시. 최초 지시에 전문을 넣는다 |
 | `inspect.sh` | 점검 1회를 tmux `recovery-inspector`에서 실행. 실행 중이거나 일시정지면 건너뛴다 (`--force`는 일시정지 무시) |
 | `session.sh` | 복구 세션 `start` / `send`(같은 세션 resume) / `status` / `archive` |
+| `guard.sh` | 운영 메인 checkout 경계 확인 (fail-closed, 아니면 exit 3) |
 | `status.py` | 점검반 상태를 JSON으로 출력 (읽기 전용, 앱 패널용) |
 | `mod/` | Claude 데스크톱 앱 모드: 10분 점검 타이머, "복구 점검반" 패널, 변화 토스트 |
 
@@ -40,7 +41,11 @@ claude --plugin-dir tools/warroom/recovery-desk/mod
 ```
 
 또는 `CLAUDE_CODE_PLUGIN_DIRS`에 같은 경로를 넣는다. 모드는 세션이 열려 있는 동안 10분마다 `inspect.sh`를,
-1분마다 `status.py`를 실행한다. 운영 checkout이 아닌 세션에서는 아무것도 하지 않는다. 패널 버튼과
+1분마다 `status.py`를 실행한다.
+
+`guard.sh`가 운영 메인 checkout인지 fail-closed로 확인한다. 조건은 `.git`이 디렉터리이고, Supervisor가 기록한
+`.git/typewriter-supervisor/runtime-root`가 이 루트와 같고, 운영 DB가 있는 것이다. 이 확인을 통과하지 못하면
+모드는 타이머를 등록하지 않고, `inspect.sh`와 `session.sh`도 상태를 쓰거나 claude를 실행하기 전에 exit 3으로 끝난다. 패널 버튼과
 `/recovery-desk run|pause|resume`으로 조작한다.
 
 수동으로 실행할 수도 있다.

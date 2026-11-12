@@ -85,8 +85,9 @@ export const register: Register = on => {
     const started = await next(e)
     ROOT = await $.session.root()
     DESK = `${ROOT}/tools/warroom/recovery-desk`
-    const own = await $.process.run(['test', '-x', `${DESK}/inspect.sh`], { cwd: ROOT })
-    if (own.exitCode !== 0) return started   // War Room 운영 checkout이 아닌 세션에서는 아무것도 하지 않는다
+    // 운영 메인 checkout 경계(guard.sh, fail-closed)를 통과해야 패널·타이머를 등록한다. 실패·예외면 아무것도 하지 않는다.
+    const own = await $.process.run(['sh', `${DESK}/guard.sh`, ROOT], { cwd: ROOT }).catch(() => null)
+    if (own?.exitCode !== 0) return started
     await $.command.register({
       name: 'recovery-desk',
       description: '복구 점검반 패널 열기 (인자: run = 지금 점검, pause, resume)',
