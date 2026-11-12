@@ -7,7 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { run } from './admission-cli.mjs';
+import { acquireAmendLock, amendLockOwnerAlive, run } from './admission-cli.mjs';
 import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -3377,4 +3377,37 @@ test('Stage 2 task plan splits a Part deterministically and saves tasks in any o
   await assert.rejects(() => quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '2', '--out', plan], { root })), /closed/);
   await assert.rejects(() => readTask('001-01-01-t01'), /not the open plan/);
   assert.equal((await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }))).complete, true, 'the legacy path works again once the plan is closed');
+});
+
+test('amend lock: dead owner, recycled pid, and transient live owner are all handled without false "active" errors', async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'amend-lock-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const dead = spawnSync(process.execPath, ['-e', '0']);
+  assert.equal(dead.status, 0);
+  const deadPid = dead.pid;
+  assert.equal(amendLockOwnerAlive(`${deadPid}:x:`).alive, false, 'nonexistent pid is stale');
+  assert.equal(amendLockOwnerAlive('garbage').alive, false);
+  // A live pid whose recorded start time differs is a recycled pid, not an active amend.
+  assert.equal(amendLockOwnerAlive(`${process.pid}:x:Mon Jan  1 00:00:00 1990`).alive, false);
+  assert.equal(amendLockOwnerAlive(`${process.pid}:x:`).alive, true, 'no recorded start keeps pid-only liveness');
+
+  const lock = path.join(dir, 'cp.json.amend-lock');
+  await writeFile(lock, `${deadPid}:x:`);
+  await acquireAmendLock(lock, `${process.pid}:mine:`, { waitMs: 200, pollMs: 10 });
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:mine:`);
+
+  // A live owner that releases within the wait window no longer fails the amend.
+  setTimeout(() => rm(lock, { force: true }), 80);
+  await acquireAmendLock(lock, `${process.pid}:second:`, { waitMs: 2000, pollMs: 10 });
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:second:`);
+
+  // A genuinely live owner past the wait window is still preserved.
+  await assert.rejects(() => acquireAmendLock(lock, `${process.pid}:third:`, { waitMs: 50, pollMs: 10 }), /another amend is active/);
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:second:`);
+
+  // An empty (mid-creation) lock is not stolen immediately.
+  await writeFile(lock, '');
+  setTimeout(() => writeFile(lock, `${deadPid}:x:`), 50);
+  await acquireAmendLock(lock, `${process.pid}:fourth:`, { waitMs: 2000, pollMs: 10 });
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:fourth:`);
 });

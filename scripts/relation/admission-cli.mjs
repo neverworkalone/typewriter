@@ -3894,27 +3894,64 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
   return applyForeignAmendJournal(nextJournal, checkpointPath, root);
 }
 
-async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {
-  const lockPath = `${checkpointPath}.amend-lock`;
-  const token = `${process.pid}:${randomUUID()}`;
-  await mkdir(path.dirname(lockPath), { recursive: true });
-  try {
-    await writeFile(lockPath, token, { flag: 'wx' });
-  } catch (error) {
-    if (error.code !== 'EEXIST') throw error;
+function processStartTime(pid) {
+  const probe = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8' });
+  return probe.status === 0 ? String(probe.stdout).trim() : '';
+}
+
+// A lock is live only if its owner pid exists AND is still the same process (start time matches),
+// so a dead amend whose pid was recycled by an unrelated process no longer blocks the checkpoint.
+function amendLockOwnerAlive(owner) {
+  const [pidText, , ...startParts] = owner.split(':');
+  const ownerPid = Number(pidText);
+  if (!Number.isInteger(ownerPid) || ownerPid <= 0) return { pid: ownerPid, alive: false };
+  try { process.kill(ownerPid, 0); } catch (probeError) {
+    if (probeError.code !== 'EPERM') return { pid: ownerPid, alive: false };
+  }
+  const recorded = startParts.join(':');
+  const current = recorded ? processStartTime(ownerPid) : '';
+  return { pid: ownerPid, alive: !(recorded && current && recorded !== current) };
+}
+
+async function acquireAmendLock(lockPath, token, { waitMs = 15000, pollMs = 100 } = {}) {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    try {
+      await writeFile(lockPath, token, { flag: 'wx' });
+      return;
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
     let owner = '';
     try { owner = await readFile(lockPath, 'utf8'); } catch (readError) {
-      if (readError.code !== 'ENOENT') throw readError;
+      if (readError.code === 'ENOENT') continue;
+      throw readError;
     }
-    const ownerPid = Number(owner.split(':', 1)[0]);
-    let alive = Number.isInteger(ownerPid) && ownerPid > 0;
-    if (alive) {
-      try { process.kill(ownerPid, 0); } catch (probeError) { alive = probeError.code === 'EPERM'; }
+    // An empty file is a lock mid-creation by another amend: treat it as live until the wait expires.
+    const state = owner === '' ? { pid: 0, alive: true } : amendLockOwnerAlive(owner);
+    if (!state.alive) {
+      // Remove only the exact stale lock we observed, never a lock another amend just took over.
+      try {
+        if ((await readFile(lockPath, 'utf8')) === owner) await unlink(lockPath);
+      } catch (unlinkError) { if (unlinkError.code !== 'ENOENT') throw unlinkError; }
+      continue;
     }
-    if (alive) throw new Error(`another amend is active for this checkpoint (pid ${ownerPid}); preserving all files`);
-    try { await unlink(lockPath); } catch (unlinkError) { if (unlinkError.code !== 'ENOENT') throw unlinkError; }
-    await writeFile(lockPath, token, { flag: 'wx' });
+    if (Date.now() >= deadline) {
+      if (owner === '') {
+        try { if ((await readFile(lockPath, 'utf8')) === '') await unlink(lockPath); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+        continue;
+      }
+      throw new Error(`another amend is active for this checkpoint (pid ${state.pid}); preserving all files`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
   }
+}
+
+async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {
+  const lockPath = `${checkpointPath}.amend-lock`;
+  const token = `${process.pid}:${randomUUID()}:${processStartTime(process.pid)}`;
+  await mkdir(path.dirname(lockPath), { recursive: true });
+  await acquireAmendLock(lockPath, token);
   try {
     return await amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root);
   } finally {
@@ -3923,6 +3960,8 @@ async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
 }
+
+export { acquireAmendLock, amendLockOwnerAlive };
 
 function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
   if (!checkpoint.merged) throw new Error('Part checkpoint is not marked merged');
