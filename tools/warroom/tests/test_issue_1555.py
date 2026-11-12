@@ -686,6 +686,28 @@ class SerialMaintainer(unittest.TestCase):
         self.assertEqual(len(w.gh.created), 1)
         w.tmp.cleanup()
 
+    def test_paused_shared_defect_batch_whose_pr_merges_goes_to_cleanup_without_another_run(self):
+        w = world(maintainer=None)
+        w.start("single", "deepseek", "a")
+        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: (
+            w.pr_info(7, HEAD1, head_ref="a-deepseek-001-01"),
+            w.gh.by_branch.update({"a-deepseek-001-01": [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        body = "-1\nHEAD: " + HEAD1 + "\n```warroom-shared-defect\n" + json.dumps(report()) + "\n```\n"
+        w.gh.reviews_ = [{"id": 31, "user": {"login": "genonfire"}, "body": body, "commit_id": HEAD1,
+                          "submitted_at": "2026-10-21T10:00:00Z"}]
+        w.tick(2)
+        self.assertEqual((w.row()["state"], w.row()["pause_reason"]), ("PAUSED", "shared_defect"))
+        launches = len(w.adapter.launches)
+        w.pr_info(7, HEAD1, state="closed", merged=True, head_ref="a-deepseek-001-01", merge_sha=MERGE)
+        w.now += 120
+        w.tick(3)
+        self.assertEqual(w.row()["state"], "COMPLETE")
+        self.assertEqual(len(w.adapter.launches), launches)   # no resume/fix AI run on a merged PR
+        w.tmp.cleanup()
+
 
 class ResolvedReportResume(unittest.TestCase):
     """Issue #1825: a RELEASED defect's own report must not stop the resumed producer again."""
