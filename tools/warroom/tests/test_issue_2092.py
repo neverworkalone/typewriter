@@ -55,6 +55,9 @@ class Classifier(unittest.TestCase):
             (Result(1, "", "To https://github.com/o/r\n ! [remote rejected] HEAD -> b (failed)\nerror: failed to push some refs"), True),
             (Result(1, "", " ! [remote rejected] HEAD -> b (internal error)"), True),
             (Result(1, "", " ! [remote rejected] HEAD -> b (protected branch hook declined)"), False),
+            (Result(1, "", "error: cannot lock ref 'refs/remotes/origin/master': is at 1ac573c but expected d02755d\n"
+                           " ! d02755d..1ac573c master -> origin/master  (unable to update local ref)"), True),
+            (Result(128, "", "fatal: Unable to create '/r/.git/refs/remotes/origin/master.lock': File exists."), True),
             (Result(128, "", "fatal: not a git repository"), False), (Result(1, "", ""), False), (Result(0, "ok", ""), False),
         ]
         for res, want in cases:

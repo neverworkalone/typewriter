@@ -310,6 +310,9 @@ NETWORK_TOKENS = (
     # #5633: GitHub's receive side answering a push with a reasonless `! [remote rejected] ... (failed)` or
     # `(internal error)` is a server fault; real rejections carry a reason (hook declined, protected branch, ...).
     "(failed)", "(internal error)",
+    # Another process updated the same remote-tracking ref during our fetch (`cannot lock ref ...: is at X but
+    # expected Y`) or holds its `.lock`: a local race that the next fetch resolves.
+    "but expected", "unable to create '",
 )
 
 
