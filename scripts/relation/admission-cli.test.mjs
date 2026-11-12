@@ -3437,3 +3437,26 @@ test('amend lock: concurrent contenders reclaiming one stale lock never hold it 
     assert.equal(completed, 8);
   }
 });
+
+test('amend lock: a tombstone left by a dead reclaimer never causes an unbounded spin', async (t) => {
+  const { link } = await import('node:fs/promises');
+  const dir = await mkdtemp(path.join(tmpdir(), 'amend-lock-orphan-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const dead = spawnSync(process.execPath, ['-e', '0']).pid;
+  const lock = path.join(dir, 'cp.json.amend-lock');
+  const stale = `${dead}:orphan:`;
+  const tomb = `${lock}.stale-${createHash('sha256').update(stale).digest('hex').slice(0, 24)}`;
+  const setup = async () => { await rm(lock, { force: true }); await rm(tomb, { force: true }); await writeFile(lock, stale); await link(lock, tomb); };
+
+  // Fresh leftover: treated as an in-progress reclaim, so the call fails explicitly within the deadline and preserves the lock.
+  await setup();
+  const started = Date.now();
+  await assert.rejects(() => acquireAmendLock(lock, `${process.pid}:a:`, { waitMs: 50, pollMs: 5, orphanMs: 60000 }), /blocked by another reclaimer/);
+  assert.ok(Date.now() - started < 2000, 'bounded by the deadline');
+  assert.equal(await readFile(lock, 'utf8'), stale, 'stale lock is preserved');
+
+  // Old leftover: recovered safely and ownership is taken.
+  await setup();
+  await acquireAmendLock(lock, `${process.pid}:b:`, { waitMs: 2000, pollMs: 5, orphanMs: -1 });
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:b:`);
+});
