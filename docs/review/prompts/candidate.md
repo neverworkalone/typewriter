@@ -13,6 +13,8 @@ Read the root `REVIEW.md` at this exact PR HEAD before this file; it controls ve
 
 **Technical skips:** Do not review a small number of Supervisor-recorded `Technical skip` cases in Candidate PRs.
 
+**Proper-noun editorial exclusion (#5745):** A source Sense denoting one specific person, place, institution, organization or work must retain its record/Sense but have `candidates: []`; a candidate denoting such a proper noun is ineligible even under an ordinary source Sense. Review the exact source/target meaning, not spelling alone (`인촌¹` vs `인촌²`); class nouns such as 사람·도시·학교·소설 remain eligible. C `PROPER_NOUN_SKIPPED` and D `P` legitimately have no VERIFIED evidence and are **not** Supervisor technical skips. Apply the normal initial risk-based discovery and narrow follow-up review scope; do not require a second full semantic census.
+
 **Stage 1 Candidate form gate (all A/B/C/D, including 500-record factory batches):** Candidate PRs are not judged solely by Candidate v1 shape, source-sense matching, or whether `candidates: []` is permitted. **Preserve intelligible individual WORDS and concise meaning-extending SCENE/IMAGE/SENSORY/EMOTION/ACTION PHRASES; strictly reject mechanical gloss copies, disguised clauses and SENTENCES.** This is a *Stage 1 output eligibility check*, **not** Relation Factory Stage 2's relation-worth/Tier/Drop selection.
 
 - **Independent words:** preserve a source-sense-bound, intelligible path even if it is weak, ordinary, creative, cross-POS, or unfamiliar. Do not require a direct synonym or a minimum frequency. A word is not junk just because it is context-dependent.
