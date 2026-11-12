@@ -480,15 +480,16 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search, 
     + `${autoZ.length ? ` auto_z=${autoZ.join(',')}` : ''}`;
   const body = blocks.map(({ record, canonicalForms, shown, refs }) => {
     const lines = [`## ${record.id} ${record.lemma} | search_forms: ${canonicalForms.join(', ')}`];
+    // Senses sit directly under their owning heading so no sense line can be read as belonging to the next record's evidence.
+    for (const item of refs) lines.push(`${item.ref} [record=${item.record_id}] ${item.sense_id} [${item.pos}] ${item.gloss}`);
     for (const block of shown) lines.push(renderBlock(block));
     const evidence = recordEvidence(entries, record.id);
-    if (evidence.failed) lines.push('증거 상태: SEARCH_FAILED — 검색 실패를 보고하고 이 record는 판정·저장하지 않는다.');
+    if (evidence.failed) lines.push(`증거 상태(${record.id}): SEARCH_FAILED — 검색 실패를 보고하고 이 record는 판정·저장하지 않는다.`);
     else if (evidence.allComplete && evidence.hits === 0) {
-      lines.push('증거 상태: 모든 검색 완료·누적 0 hit — Z 형식 허용; 검색형 충분성은 AI가 판단한다.');
+      lines.push(`증거 상태(${record.id}): 모든 검색 완료·누적 0 hit — Z 형식 허용; 검색형 충분성은 AI가 판단한다.`);
     } else if (evidence.hits > 0) {
-      lines.push(`증거 상태: 누적 hit=${evidence.hits} — V/N 형식 허용; 출발 Sense의 VERIFIED 판독은 AI가 한다.`);
-    } else lines.push('증거 상태: 미완료 — Z 형식 불가; 필요한 검색을 계속한다.');
-    for (const item of refs) lines.push(`${item.ref} [record=${item.record_id}] ${item.sense_id} [${item.pos}] ${item.gloss}`);
+      lines.push(`증거 상태(${record.id}): 누적 hit=${evidence.hits} — V/N 형식 허용; 출발 Sense의 VERIFIED 판독은 AI가 한다.`);
+    } else lines.push(`증거 상태(${record.id}): 미완료 — Z 형식 불가; 필요한 검색을 계속한다.`);
     return lines.join('\n');
   });
   return { view: `${[head, ...body].join('\n\n')}\n`, senses, entries, failed, autoZ };
