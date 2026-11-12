@@ -154,7 +154,7 @@ of dropping senses or excerpts.
 
 `report --sense-ids a,b` answers, for exactly those senses, `{sense_id, status, done}` plus `all_done`, with
 `done` meaning the existing `senseDone` set (`ZERO_HITS`, `SUBMITTED`, `NO_VERIFIED`, `SAMPLED_NO_VERIFIED`,
-`DISCOVERED`). Unknown or repeated ids and a damaged checkpoint structure (batch binding, duplicate ids,
+`DISCOVERED`, `TECHNICAL_SKIPPED`, `PROPER_NOUN_SKIPPED`). Unknown or repeated ids and a damaged checkpoint structure (batch binding, duplicate ids,
 malformed submission or search state) fail closed. It exposes no path, source text or private locator.
 
 ### Under the War Room Supervisor
@@ -192,9 +192,20 @@ start other AI, CLI or subagent runs.
 
 The manual path in this document remains valid for hand-run batches.
 
-## What you still do for every sense with hits
+## What you do for an eligible sense with hits
 
-The semantic work is unchanged: compare each context with the exact Canonical
+A Sense naming a specific person, place, institution, organization or work is a
+**proper-noun editorial skip (#5745)**. Decide from its exact Canonical Sense/gloss
+rather than spelling alone (`인촌¹` is a person's art name, `인촌²` means "neighboring village").
+For a proper-noun Sense in the active chunk, do not inspect its contexts or run
+sweeps; submit `"skip":"proper_noun"` with empty `verified` and `candidates`.
+The initial chunk lookup has already run, and `submit` still checks the approved
+index; a real `SEARCH_FAILED` or index error cannot be turned into a skip.
+This editorial skip is not the Supervisor-only technical skip or a claim of zero
+hits/no VERIFIED contexts. Exclude proper nouns discovered as candidates of an
+ordinary source Sense as well.
+
+For other Senses, the semantic work is unchanged: compare each context with the exact Canonical
 source sense, decide which contexts are genuinely that sense (`VERIFIED`), and
 search each VERIFIED literary context twice, independently, through the seven
 lenses (image, action, emotion, sensation, scene/situation, causality,
@@ -218,7 +229,8 @@ saves it in one checkpoint write:
 ```json
 {"senses": [
   {"sense_id": "SENSE_ID", "verified": ["KEY12CHARS", "KEY12CHARS"], "candidates": ["서리", "겨울 아침"]},
-  {"sense_id": "OTHER_SENSE_ID", "verified": [], "candidates": []}
+  {"sense_id": "OTHER_SENSE_ID", "verified": [], "candidates": []},
+  {"sense_id": "PROPER_NOUN_SENSE_ID", "verified": [], "candidates": [], "skip": "proper_noun"}
 ]}
 ```
 
@@ -231,7 +243,11 @@ unknown, ambiguous or duplicate keys and malformed entries. The whole submission
 is validated first and nothing is written on failure. The checkpoint keeps only
 what resumes a run: per sense the total hit count, the cited contexts' source
 locators and digests, and the final candidates. It does not store excerpt text.
-Resubmitting a sense replaces its earlier submission.
+Ordinary resubmissions retain the existing correction behavior. A proper-noun
+skip requires both arrays to be empty, records `PROPER_NOUN_SKIPPED` in the
+checkpoint, and is rejected with `already_submitted` if that Sense has any saved
+submission. The final Candidate
+v1 export still contains only the normal record/Sense IDs and `candidates: []`.
 
 On a rejected submission, `submit` writes a bounded JSON diagnostic to stderr.
 `submit_validation` keeps the fixed `reason`, `affected.sense_id`, `field`, and
@@ -298,8 +314,10 @@ failure remains the generic `operation` diagnostic.
 
 ## Export, final validation, and fixes
 
-`export` requires every sense to be `ZERO_HITS`, submitted, or explicitly
-`TECHNICAL_SKIPPED` by the Supervisor, preserves Canonical record/sense order,
+`export` requires every Sense to be complete under `senseDone`, including
+`ZERO_HITS`, ordinary `SUBMITTED`, editorial `PROPER_NOUN_SKIPPED`, or the
+Supervisor-only `TECHNICAL_SKIPPED` (plus supported legacy completion states).
+It preserves Canonical record/sense order,
 writes only Candidate v1 fields and runs the shared
 Candidate v1 batch validator **once** over the whole batch before creating the
 output. Do not run a second `validate` on the same file. A validator failure
