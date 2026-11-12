@@ -53,6 +53,8 @@ view의 `## `마다 Canonical record 하나다. 각 섹션은 `## ` 제목(표�
 - `recorded_status`/`recorded_hits`는 해당 정확한 검색 조건 하나의 값이고 `decision_state`(`scope=record`)는 같은 record의 모든 기록 검색(다른 Sense·검색형 포함)을 합산한 값이다. 둘이 다른 것은 결함이 아니다(예: 조건은 ZERO_HITS, record 합계는 hit 2 → `V_N_ALLOWED`). 이를 Shared defect로 보고하지 않는다.
 - 증거 상태: `Z_ALLOWED`는 record의 모든 기록 검색 완료와 누적 0 hit를 뜻하고, `V_N_ALLOWED`는 적어도 한 기록 hit가 있음을 뜻한다. `SEARCH_MORE`는 hit 없는 미완료 검색이며, `SEARCH_FAILED`는 정상 판정 불가다. 화면·검색 응답의 `decision_state`와 save는 같은 기계적 허용 규칙을 쓴다. record마다 출발 Sense 판독은 독립이다. **`Z`**는 `Z_ALLOWED`와 더불어 이 Sense의 활용형·표기 변형이 더 필요하지 않다고 **내가 판단**해야 한다. 검색형 충분성은 CLI가 대신 판단하지 않는다. `-하다` 사전 수집 검색형이 충분하다면 같은 형을 반복 조회할 필요는 없지만, 용언·어근·짧은 표제어는 문맥과 검색형을 검토해 필요한 활용형을 더 조회한다. **`N`**은 문맥은 있으나 합리적인 추가 탐색 뒤에도 VERIFIED가 없음, **`V`**는 VERIFIED 문맥을 직접 읽음이다(후보가 없으면 정상 빈 후보 `[]`). 검색 hit만으로 Sense VERIFIED가 되지는 않는다. `SEARCH_FAILED`·미작업·읽지 않은 Sense를 `Z`/`N`/빈 `V`로 위장하지 않는다. view의 항목이 `SEARCH_FAILED`면 판정하지 말고 저장 없이 그 사실만 보고하고 종료.
 
+- **고유명사 출발 Sense `P` (#5745):** Sense의 gloss가 인물·지명·기관·단체·작품 등 특정 대상을 지칭하는 고유명사 뜻이면(예 인촌¹ ‘김성수의 호’. 같은 표제어의 인촌² ‘이웃 마을’은 정상 처리) 그 Sense는 추가 `search`·문맥 판독·발굴 없이 `sN P`로 저장한다. `prepare`의 초기 검색은 이미 실행된 상태이며 `P`는 그 뒤의 작업만 생략한다. 의미로 판단하고 철자·품사만으로 판정하지 않는다. 같은 record의 다른 Sense는 공유 문맥으로 따로 판독한다. `N`·`Z`·빈 `V`로 대신하지 않는다. `SEARCH_FAILED`는 `P`로 우회하지 않는다(save도 거부하며 기존대로 보고·종료). `auto_z` Sense에는 쓰지 않는다.
+
 ## 발굴 (#1156 PASS B)
 
 - **D의 목적:** 실제 문어 문맥에서 출발 Sense에 결속된 대상·역할·도구·행동·상황·인과·대비·감각 등 현실 세계의 어휘 연결을 독립적으로 발굴한다. 같은 문서에 우연히 함께 등장한 명사·주제어를 의미 근거 없이 복사하지 않는다. 직접적이지 않거나 일상적인 연상도 정확한 VERIFIED 용례에서 설명할 수 있으면 보존한다.
@@ -73,11 +75,12 @@ s1 V 후보A|후보B|후보C
 s2 V
 s3 N
 s4 Z
+s5 P
 DEC
 node "$TYPEWRITER_D_CHUNK_CLI" save --chunk {{chunk_no}} --in "$TYPEWRITER_D_SCRATCH/d-{{batch}}/decision-{{chunk_no}}.txt" --dir "$TYPEWRITER_D_SCRATCH" --canonical-root "$TYPEWRITER_D_CANONICAL_ROOT" || { c=$?; echo "SAVE_FAILED exit=$c" >&2; exit "$c"; }
 ```
 
-- 한 Sense 한 줄: `sN V 후보|후보` (VERIFIED + 후보), `sN V` (VERIFIED + 적격 후보 0), `sN N`, `sN Z`. `auto_z` Sense는 쓰지 않는다. 다른 모든 Sense를 정확히 한 번씩 쓴다.
+- 한 Sense 한 줄: `sN V 후보|후보` (VERIFIED + 후보), `sN V` (VERIFIED + 적격 후보 0), `sN N`, `sN Z`, `sN P` (고유명사 출발 Sense, 후보 없음). `auto_z` Sense는 쓰지 않는다. 다른 모든 Sense를 정확히 한 번씩 쓴다.
 - 저장은 청크 전체를 한 번에 검사하고 같은 유형의 오류를 모두 알려 준다. 거부되면 아무것도 저장되지 않는다. 지목된 줄만 고쳐 다시 한 번의 호출로 제출한다. 정상 저장(`SAVED`)되면 즉시 종료하며 다음 청크는 시작하지 않는다.
 - technical-skip은 오너 Supervisor가 실제 완료된 same-session 수정 횟수를 확인한 뒤 처리하는 내부 fallback이다. producer CLI에는 이 명령이 없으며, producer는 내부 API를 호출하거나 `save` 입력에 skip 표식/상태를 넣어서는 안 된다. 실제 검색·Sense 판독·후보 판단을 생략하지 않는다.
 - 저장은 Candidate v1이 명백히 부적격으로 판정한 source lemma 반복·천 단위 쉼표 파편과 정규화 중복만 자동 제거하고 `removed_candidates`로 보고한다. 독립 합성어와 정상 후보는 보존하며 `V`의 후보가 모두 제거되어 빈 배열이 되어도 저장할 수 있다.

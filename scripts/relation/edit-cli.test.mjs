@@ -844,6 +844,31 @@ test('compact prompt view round-trips every judgment field, including delimiter-
   }
 });
 
+test('#5745 a single-Sense unique ID target shows its gloss so a proper-noun target can be judged and deleted', async (t) => {
+  const root = await repository(t);
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonicalRows = (await readFile(canonicalPath, 'utf8')).trimEnd().split('\n').map(JSON.parse);
+  const bookGloss = '영국의 철학자 흄이 지은 책.';
+  canonicalRows.find((record) => record.id === 'w4').senses[0].gloss = bookGloss;
+  await writeFile(canonicalPath, jsonl(canonicalRows));
+  git(root, 'add', 'data/canonical/stdict-0001.jsonl');
+  git(root, 'commit', '-qm', 'Single-Sense proper-noun target');
+
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const { prompt_view: prompt, ...view } = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  const row = view.senses[0].relations.find((relation) => relation.target === '유영');
+  assert.deepEqual([row.target_pos, row.target_gloss], ['noun', bookGloss]);
+  assert.ok(prompt.split('\n').includes(`I${row.n}\t유영\tassociation\t5\tnoun\t${bookGloss}`));
+  assert.deepEqual(parsePromptView(prompt), judgmentView(view));
+
+  await save(root, `chunk 001\nD ${row.n}\n`);
+  await quiet(() => run(['apply', '--shard', '001'], { root }));
+  const relations = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
+  assert.equal(relations.some((relation) => relation.target_sense_id === 'w4-s1'), false);
+  const drops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
+  assert.ok(drops.some((drop) => drop.source_sense_id === 'w1-s1' && drop.candidate === '유영' && drop.reason === 'z'));
+});
+
 test('read-chunk and refresh-pending expose prompt_view beside the unchanged JSON view only', async (t) => {
   const root = await repository(t);
   await quiet(() => run(['prepare', '--shard', '001'], { root }));

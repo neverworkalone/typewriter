@@ -32,7 +32,7 @@ MAX_CONTEXTS_PER_SENSE = 16
 # (MAX_ARG_STRLEN) and macOS the whole command line at 1 MiB; stay clearly below the smaller one.
 INLINE_MAX_PROMPT_BYTES = 100_000
 # The CLI's own `senseDone` set (literary-context.mjs). Kept for the in-process sanity check of `report` output only.
-DONE_STATUSES = ("ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOVERED", "TECHNICAL_SKIPPED")
+DONE_STATUSES = ("ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOVERED", "TECHNICAL_SKIPPED", "PROPER_NOUN_SKIPPED")
 _HEADER = re.compile(r"^## ([A-Za-z0-9][A-Za-z0-9._:-]{0,127}) — (.*)$")
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 

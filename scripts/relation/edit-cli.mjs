@@ -248,13 +248,15 @@ function renderChunk(groups, index, number, total) {
         _source_record_id: record.id, _source_sense_id: sense.id };
       const targetRecord = index.byId.get(row.target_record_id);
       const targetSense = index.senses.get(row.target_sense_id)?.sense;
-      const ambiguous = targetRecord.senses.length > 1 || (index.byLemma.get(targetRecord.lemma)?.length ?? 0) > 1;
+      // Every ID target shows its POS and full gloss (#5745): a single-Sense, unique-spelling target can still be a
+      // proper noun whose lemma alone reads like ordinary vocabulary (e.g. 인성론, a book title).
       return {
         n,
         target: targetRecord.lemma,
         target_record_id: row.target_record_id,
         target_sense_id: row.target_sense_id,
-        ...(ambiguous ? { target_pos: targetSense.pos, target_gloss: targetSense.gloss } : {}),
+        target_pos: targetSense.pos,
+        target_gloss: targetSense.gloss,
         type: row.type,
         tier: row.relevance,
         _row: rowIndex,

@@ -429,8 +429,9 @@ main().catch((error) => {
       'submission_schema', 'unknown_sense', 'duplicate_sense', 'context_key_not_found',
       'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
       'missing_verified', 'missing_search_forms', 'no_literary_hits', 'unshown_empty_sample', 'checkpoint_sense_changed',
+      'already_submitted',
     ]);
-    const fields = new Set(['submission', 'senses', 'sense', 'sense_id', 'verified', 'candidates', 'search_forms', 'input']);
+    const fields = new Set(['submission', 'senses', 'sense', 'sense_id', 'verified', 'candidates', 'skip', 'search_forms', 'input']);
     const reason = reasons.has(error.reason) ? error.reason : 'submission_schema';
     const affected = error.affected && typeof error.affected === 'object' ? error.affected : {};
     const senseId = typeof affected.sense_id === 'string'

@@ -907,8 +907,10 @@ test('search-batch defers requests after zero-hit FTS pages spend the aggregate 
 });
 
 test('parseDecisions accepts the compact grammar and reports every malformed line', () => {
-  const ok = parseDecisions('s1 V 건축가|설계도 | 공사장\n\ns2 V\ns3 N\ns4 Z\n');
+  const ok = parseDecisions('s1 V 건축가|설계도 | 공사장\n\ns2 V\ns3 N\ns4 Z\ns5 P\n');
   assert.deepEqual(ok.errors, []);
+  assert.deepEqual(ok.decisions.get('s5'), { kind: 'P', candidates: [], line: 6 });
+  assert.match(parseDecisions('s1 P 김성수').errors.join('\n'), /s1 P takes no candidates/u);
   assert.deepEqual(ok.decisions.get('s1').candidates, ['건축가', '설계도', '공사장']);
   assert.deepEqual(ok.decisions.get('s2').candidates, []);
   const bad = parseDecisions('s1 V a||b\ns2 N 후보\nx3 V\ns4 Q\ns5 Z\ns5 Z\n0 V');
@@ -952,6 +954,14 @@ test('checkDecisions: evidence rules for V / N / Z, and Candidate v1 form rules,
   assert.match(run('s1 V\ns2 N\ns3 N', [zero('w1'), zero('w2')]).join('\n'), /s1: V needs[\s\S]*s2: N needs[\s\S]*s3: N needs/u);
   // missing, unknown, auto
   assert.match(run('s1 V\ns9 V', [hit('w1'), hit('w2')]).join('\n'), /s9: unknown[\s\S]*s2: missing[\s\S]*s3: missing/u);
+  // #5745 P: a proper-noun Sense beside a V Sense of the same record keeps the V candidates and stores [] for itself,
+  // needs neither a hit nor a complete zero, and never bypasses SEARCH_FAILED evidence.
+  const mixed = checkDecisions({ meta: metaValue, records, entries: [hit('w1'), entry('w2', 'w2-pending', 'LIMITED', 0, false, 'w2-c')],
+    decisions: parseDecisions('s1 P\ns2 V 설계도\ns3 P').decisions, lemmaForms });
+  assert.deepEqual(mixed.errors, []);
+  assert.deepEqual(mixed.rows.map((row) => row.senses.map((sense) => sense.candidates)), [[[], ['설계도']], [[]]]);
+  assert.match(run('s1 P\ns2 V\ns3 P', [hit('w1'), entry('w2', 'w2-failed', 'SEARCH_FAILED', 0, false)]).join('\n'),
+    /s3: SEARCH_FAILED evidence prevents a normal decision/u);
   // Save removes only common Candidate v1 content failures and normalized duplicates.
   const parsed = parseDecisions('s1 V 건축|건축가|건축(建築)|건축 |설계도|설계도\ns2 V 460미터\ns3 V');
   const cleaned = checkDecisions({ meta: metaValue, records, entries: [hit('w1'), hit('w2')], decisions: parsed.decisions, lemmaForms });

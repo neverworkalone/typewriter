@@ -52,6 +52,8 @@ function fail(message) {
   throw new Error(message);
 }
 
+const PROPER_NOUN_SKIP = 'proper_noun';
+
 function failSubmission(reason, senseId, field, entryNumber = null, details = {}) {
   const error = new Error('literary chunk submission validation failed');
   error.code = 'LITERARY_SUBMISSION_VALIDATION';
@@ -978,7 +980,7 @@ function senseState(sense) {
 }
 
 function senseDone(sense) {
-  return ['ZERO_HITS', 'SUBMITTED', 'NO_VERIFIED', 'SAMPLED_NO_VERIFIED', 'DISCOVERED', 'TECHNICAL_SKIPPED'].includes(senseState(sense));
+  return ['ZERO_HITS', 'SUBMITTED', 'NO_VERIFIED', 'SAMPLED_NO_VERIFIED', 'DISCOVERED', 'TECHNICAL_SKIPPED', 'PROPER_NOUN_SKIPPED'].includes(senseState(sense));
 }
 
 function checkpointSummary(checkpoint) {
@@ -1699,9 +1701,12 @@ function validateSubmission(submission, checkpoint) {
     }
     const knownSense = checkpointHasSense(checkpoint, entry.sense_id);
     const safeSenseId = knownSense ? entry.sense_id : null;
-    if (!exactKeys(entry, ['sense_id', 'verified', 'candidates'])) {
+    // #5745: an optional `skip: "proper_noun"` marks the AI's semantic judgment that the source Sense is a proper noun.
+    const hasSkip = Object.hasOwn(entry, 'skip');
+    if (!exactKeys(entry, hasSkip ? ['sense_id', 'verified', 'candidates', 'skip'] : ['sense_id', 'verified', 'candidates'])) {
       addIssue('submission_schema', safeSenseId, 'sense', entryNumber);
     }
+    if (hasSkip && entry.skip !== PROPER_NOUN_SKIP) addIssue('submission_schema', safeSenseId, 'skip', entryNumber);
     if (!knownSense) {
       addIssue('unknown_sense', null, 'sense_id', entryNumber);
     } else if (seen.has(entry.sense_id)) {
@@ -1711,6 +1716,8 @@ function validateSubmission(submission, checkpoint) {
     }
     for (const key of ['verified', 'candidates']) {
       if (!Array.isArray(entry[key]) || entry[key].some((item) => typeof item !== 'string' || item.trim() === '')) {
+        addIssue('submission_schema', safeSenseId, key, entryNumber);
+      } else if (hasSkip && entry[key].length > 0) {
         addIssue('submission_schema', safeSenseId, key, entryNumber);
       }
     }
@@ -1750,6 +1757,9 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
     for (const [index, entry] of submission.senses.entries()) {
       const entryNumber = index + 1;
       const { record, sense } = findSense(checkpoint, entry.sense_id);
+      // #5745 semantic skip: a Sense already saved by any path cannot be re-skipped.
+      const properNounSkip = entry.skip === PROPER_NOUN_SKIP;
+      if (properNounSkip && sense.submission) failSubmission('already_submitted', entry.sense_id, 'sense', entryNumber);
       const forms = senseForms(sense);
       if (forms.length === 0) failSubmission('missing_search_forms', entry.sense_id, 'search_forms', entryNumber);
       // Normal path: re-resolve the few contexts `chunk` showed. A sense never read by `chunk` (or whose forms changed) keeps the full search.
@@ -1775,6 +1785,17 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
       } catch (error) {
         if (error?.code === 'LITERARY_SUBMISSION_VALIDATION') throw error;
         throw codedError('LITERARY_INDEX_SEARCH', 'approved literary index search failed');
+      }
+      if (properNounSkip) {
+        // The initial search above still runs, so a real search failure is reported exactly as before. The skip only
+        // omits further reading, the 16-context sampling proof and candidate discovery.
+        accepted.push({
+          senseId: entry.sense_id,
+          entryNumber,
+          start: senseSnapshot(sense),
+          submission: { status: 'PROPER_NOUN_SKIPPED', submitted_at: new Date().toISOString(), total_hits: result.total_hits, verified: [], candidates: [] },
+        });
+        continue;
       }
       if (new Set(verified.map((row) => row.locator_key)).size !== verified.length) {
         failSubmission('duplicate_verified', entry.sense_id, 'verified', entryNumber);
@@ -1842,7 +1863,7 @@ export function summarizeLiteraryCheckpoint(checkpoint) {
   return checkpointSummary(checkpoint);
 }
 
-const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED', 'SAMPLED_NO_VERIFIED', 'TECHNICAL_SKIPPED'];
+const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED', 'SAMPLED_NO_VERIFIED', 'TECHNICAL_SKIPPED', 'PROPER_NOUN_SKIPPED'];
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isNonEmptyString = (value) => typeof value === 'string' && value !== '';
 
@@ -1884,6 +1905,7 @@ function assertCheckpointStructure(checkpoint) {
         if (!Array.isArray(verified) || !verified.every((item) => isPlainObject(item) && isNonEmptyString(item.locator_key))
           || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))
           || (saved.status === 'ZERO_HITS' && (saved.candidates.length > 0 || verified.length > 0))
+          || (saved.status === 'PROPER_NOUN_SKIPPED' && (saved.candidates.length > 0 || !Array.isArray(saved.verified) || verified.length > 0))
           || (saved.status === 'SAMPLED_NO_VERIFIED' && (saved.candidates.length > 0 || verified.length > 0
             || !Array.isArray(saved.verified)
             || !sampledShownValid
