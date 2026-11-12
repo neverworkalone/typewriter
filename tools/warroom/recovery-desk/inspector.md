@@ -26,7 +26,9 @@
    - `defects` / `maintenance` 중 미완료 행
    - `lines`(`run, drain, force_stop, blocked`), `drain_schedules`, `clear_requests`
 3. 각 후보의 `log_file` mtime과 worktree의 `.warroom-scratch/` 최신 mtime
-4. 열린 PR이 있으면 `gh pr view <n> --json state,headRefOid,statusCheckRollup,reviewDecision,updatedAt`
+4. 열린 PR 전체를 한 번에 읽는다:
+   `gh pr list --state open --limit 100 --json number,title,headRefName,headRefOid,mergeable,mergeStateStatus,statusCheckRollup,reviewDecision,updatedAt`
+   (`mergeable=UNKNOWN`은 GitHub 계산 중이므로 다음 점검에서 다시 본다)
 
 ## 2. 정상으로 보고 넘어가는 경우
 
@@ -54,6 +56,12 @@
   변하지 않는다.
   - run이 종료된 채 다음 run이 없다
   - 프로세스는 살아 있는데 로그가 멈춰 있다
+- **PR 차단 (즉시 투입)**: 열린 PR이 `mergeable=CONFLICTING`(`mergeStateStatus=DIRTY`)이거나 필수 check가
+  `FAILURE`/`ERROR`인데, 직전 점검 이후 그 PR에 새 push나 War Room/Maintainer의 수정 run이 없다.
+  - War Room 배치 PR: `batches.pr_number`로 원 batch를 찾아 `batch:<id>` case로 연다.
+  - 복구 세션이 만든 PR: 그 case의 세션에 후속 지시로 보낸다. 새 case를 만들지 않는다.
+  - 그 외 PR(오너·외부 작업): 손대지 않는다.
+  - 리뷰 PASS 여부는 상관없다. 충돌이나 CI 실패가 있으면 머지되지 않으므로 장애다.
 - **Maintainer가 맡은 경우**: 해당 batch에 미완료 `defects`/`maintenance` 행이 있고 그 Maintainer run이
   진전 중이면 넘어간다. 원장에 관찰만 기록한다. 진전 지문이 3회 연속 같거나, Maintainer run이 종료된 채
   재개되지 않거나, Maintainer batch(`method='m'`) 자체가 `ERROR`/`PAUSED`이면 **Maintainer 정지**로 본다.
@@ -61,6 +69,8 @@
 
 ## 4. 배정
 
+- **투입 직전 재확인**: 세션을 시작하기 바로 전에 그 batch의 `defects`/`maintenance`와 연결된 Issue를 다시 읽는다.
+  그 사이 Maintainer가 같은 결함을 맡았으면 투입하지 않고 추적만 한다.
 - case마다 복구 세션은 **하나**다. 원장에 살아 있는 세션이 있으면 새로 열지 않는다.
 - 같은 Issue나 같은 공통 결함에 묶인 batch들은 한 세션에 모은다. Maintainer case가 있으면 종속 batch는
   그 세션이 함께 맡는다.
@@ -81,6 +91,11 @@
 
 ## 5. 추적
 
+- **Maintainer 중복 감시**: case를 연 뒤 같은 결함에 Maintainer Issue/PR이 연결되면 세션에 즉시 알린다.
+  - 둘 중 먼저 진전한 쪽 하나만 남긴다. 다른 쪽은 수정을 멈추고, 이미 만든 PR은 정리한다.
+  - 같은 코드를 두 PR이 동시에 고치게 두지 않는다.
+- **case PR 추적**: case에 연결된 PR(복구 세션 PR, 원 batch PR)이 충돌·CI 실패이면 같은 세션에 후속 지시를 보낸다.
+  case PR이 머지되지 않은 채 남아 있으면 그 case는 RESOLVED가 아니다. 단, superseded로 닫힌 PR은 예외다.
 - 세션이 진행 중이면 건드리지 않는다.
 - 세션이 턴을 끝냈는데 case가 `RESOLVED` 조건(아래)을 충족하지 않으면 그 세션의 마지막 보고와 실제 상태를
   대조한다.
