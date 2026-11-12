@@ -8,7 +8,7 @@
 - 위치: `.git/typewriter-supervisor/recovery-desk/ledger.json`. 없으면 `{"cases": []}`로 만든다.
 - case 하나: `key`(`batch:<id>` 또는 `maintainer:<issue>`), `opened_at`, `session`(복구 세션 id·이름),
   `issue`/`pr`, `defect_ids`, `last_progress`(진전 지문), `stale_checks`, `status`
-  (`OPEN|WAITING_OWNER|RESOLVED`), `notes`.
+  (`OPEN|MAINTAINER|WAITING_OWNER|RESOLVED`), `notes`.
 - 원장은 점검반만 쓴다. 운영 DB(`tools/warroom/.local/warroom.db`)는 **읽기 전용**이다
   (`sqlite3 -readonly`). 운영 DB, 소유권 기록, 완료 상태는 절대 고치지 않는다.
 
@@ -92,7 +92,9 @@
 ## 5. 추적
 
 - **Maintainer가 맡으면 손대지 않는다**: case를 연 뒤 같은 결함에 Maintainer Issue/PR이 연결되면, 세션에 작업 중단과
-  자기 PR 닫기를 지시하고 case를 RESOLVED(Maintainer 이관)로 보관한다.
+  자기 PR 닫기를 지시하고 case를 `MAINTAINER`로 둔다. `MAINTAINER` case는 세션을 투입하지 않고 Maintainer PR과
+  원 batch의 진전만 추적한다. 아래 RESOLVED 조건을 모두 확인한 뒤에만 보관한다. Maintainer가 멈추면 위의
+  Maintainer 정지 규칙을 따른다.
 - **case PR 추적**: case에 연결된 PR(복구 세션 PR, 원 batch PR)이 충돌·CI 실패이면 같은 세션에 후속 지시를 보낸다.
   case PR이 머지되지 않은 채 남아 있으면 그 case는 RESOLVED가 아니다. 단, superseded로 닫힌 PR은 예외다.
 - 세션이 진행 중이면 건드리지 않는다.
