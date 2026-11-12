@@ -2195,6 +2195,9 @@ test('--chunk keeps chunk/add-form/submit inside the active chunk record; omitti
     const outside = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001-3', '--chunk', '1']));
     assert.equal(outside.status, 1);
     assert.equal(diagnostic(outside).diagnostic, 'chunk_scope');
+    assert.equal(diagnostic(outside).repair_scope, 'use_active_chunk_senses');
+    assert.deepEqual(diagnostic(outside).outside_sense_ids, ['sense-000001-3']);
+    assert.deepEqual(diagnostic(outside).active_sense_ids, activeIds);
     const outsideForm = runCli(fixture, ['add-form', '--checkpoint', fixture.checkpointPath, '--sense-id', 'sense-000001-3',
       '--form', '가나다라', '--basis', 'test', '--chunk', '1']);
     assert.equal(diagnostic(outsideForm).diagnostic, 'chunk_scope');
@@ -2239,6 +2242,7 @@ test('--chunk keeps chunk/add-form/submit inside the active chunk record; omitti
     const forged = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001-3', '--chunk', '1']));
     assert.equal(forged.status, 1);
     assert.equal(diagnostic(forged).diagnostic, 'chunk_scope');
+    assert.equal(diagnostic(forged).repair_scope, 'stop_and_report');
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), mixedCheckpoint);
     await writeFile(activePath, activeBefore);
 
