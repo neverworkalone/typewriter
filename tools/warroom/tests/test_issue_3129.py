@@ -365,6 +365,24 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertEqual({sense_id: submissions_after[sense_id] for sense_id in sibling_ids}, saved_before)
         self.assertEqual(self.tasks(w)["001"]["state"], "SAVED")
 
+    def test_legacy_scope_error_with_only_invented_ids_resumes_once_in_same_session(self):
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        active_ids = self.sense_ids(w, "001")
+        _, source_run = self._fail_legacy_chunk_scope_run(
+            w, requested_ids=["s9997", "s9998", "s9999"], prior_chunk_reads=[active_ids[:2]])
+        self.assertEqual(self.b(w)["state"], "ERROR")
+        w.tick(2)
+        recovery = max((run for run in w.store.runs(b["id"]) if run["task"] == "001"), key=lambda run: run["id"])
+        self.assertEqual(recovery["kind"], "c_chunk_scope_recovery")
+        self.assertEqual(recovery["session_id"], source_run["session_id"])
+        data = self.data(w, "001")
+        self.assertEqual(data["recovery"]["pending_sense_ids"], active_ids)
+        self.assertEqual(data["recovery"]["attempts"], 1)
+        self.assertEqual(data.get("operator_grants", 0), 0)
+
     def test_legacy_scope_error_recovers_after_same_chunk_reads_and_shown_only_progress(self):
         w = self.world(senses=24)
         w.start("single", "deepseek", "c")

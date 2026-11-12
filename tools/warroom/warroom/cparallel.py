@@ -42,6 +42,7 @@ PARALLEL = "parallel"
 NEW, RESUME, FIX, RECOVERY = "c_chunk_new", "c_chunk_resume", "c_chunk_fix", "c_chunk_recovery"
 SCOPE_RECOVERY = "c_chunk_scope_recovery"
 LEGACY_CHUNK_SCOPE_RECOVERY = "legacy_cli_chunk_scope"
+SCOPE_ALL_INVALID_MAX = 8   # a read naming no assigned Sense at all; the CLI rejects it whole
 AUTO_FIX_LIMIT = 2   # automatic same-session corrections per task; an operator Retry adds one more chance per epoch
 EMPTY_RENDERS = 60   # ZERO_HITS-only views in a row before a selection is considered stuck
 _ERRORS = (literary.LiteraryError, OSError, ValueError, KeyError, TypeError)
@@ -323,7 +324,10 @@ def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcom
             return False
         allowed = set(rec["sense_ids"])
         invalid = [sense_id for sense_id in requested if sense_id not in allowed]
-        if not 1 <= len(invalid) <= 2:
+        # The CLI drops at most two stray IDs from a read that still names an assigned ID. A read with NO assigned ID
+        # is rejected whole (a model that invents a short run of IDs, e.g. `w1-s3,w1-s4,w1-s5`); it changed nothing,
+        # so it gets the same one-time resume. A read that mixes assigned IDs with 3+ stray ones stays blocked.
+        if not (1 <= len(invalid) <= 2 or (len(invalid) == len(requested) and len(invalid) <= SCOPE_ALL_INVALID_MAX)):
             return False
 
         # Earlier same-task chunk reads may extend shown-context evidence. Require every prior call to be a
