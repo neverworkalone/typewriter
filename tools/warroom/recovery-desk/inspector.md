@@ -37,7 +37,7 @@
 다음은 장애가 아니다.
 
 - run 프로세스가 살아 있고 로그나 scratch가 최근 20분 안에 갱신됨
-- PR이 리뷰·CI·머지 대기이고 Supervisor가 살아 있음
+- PR이 리뷰·CI·머지 대기이고 Supervisor가 살아 있음 (복구 세션 PR의 해결되지 않은 `-1`은 대기가 아니다)
 - `QUEUED`, `PENDING`, 작업 없는 대기
 - 오너 제어: Line의 `run=0`, `drain=1`, `force_stop=1`, `drain_schedules`, `clear_requests`
   → **절대 해제하지 않는다**
@@ -68,6 +68,12 @@
   - 복구 세션이 만든 PR: 그 case의 세션에 후속 지시로 보낸다. 새 case를 만들지 않는다.
   - 그 외 PR(오너·외부 작업): 손대지 않는다.
   - 리뷰 PASS 여부는 상관없다. 충돌이나 CI 실패가 있으면 머지되지 않으므로 장애다.
+- **리뷰 차단 (즉시 투입, 복구 세션 PR만)**: 리뷰는 GitHub `COMMENTED` 리뷰로 달리고 본문 첫 줄이 `-1`/`+1`/`+2`,
+  둘째 줄이 `HEAD: <sha>`다. `reviewDecision`에는 나타나지 않으므로 case PR마다
+  `gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate`로 읽는다. 가장 최근 판정 리뷰가 `-1`이고 그 리뷰 뒤로
+  PR에 새 push(`headRefOid` 변경)가 없으면 장애다. 그 case 세션에 후속 지시로 보낸다. 지시에는 리뷰 id와 HEAD만
+  넣고, 전문은 세션이 직접 읽게 한다. 세션이 실행 중이면 기다린다.
+  - 원 batch PR의 `-1`은 Supervisor가 producer 수정 run으로 처리하므로 여기서 다루지 않는다.
 - **Maintainer가 맡은 경우**: 해당 batch에 미완료 `defects`/`maintenance` 행이 있고 그 Maintainer run이
   진전 중이면 넘어간다. 원장에 관찰만 기록한다. 진전 지문이 3회 연속 같거나, Maintainer run이 종료된 채
   재개되지 않거나, Maintainer batch(`method='m'`) 자체가 `ERROR`/`PAUSED`이면 **Maintainer 정지**로 본다.
@@ -101,7 +107,8 @@
   자기 PR 닫기를 지시하고 case를 `MAINTAINER`로 둔다. `MAINTAINER` case는 세션을 투입하지 않고 Maintainer PR과
   원 batch의 진전만 추적한다. 아래 RESOLVED 조건을 모두 확인한 뒤에만 보관한다. Maintainer가 멈추면 위의
   Maintainer 정지 규칙을 따른다.
-- **case PR 추적**: case에 연결된 PR(복구 세션 PR, 원 batch PR)이 충돌·CI 실패이면 같은 세션에 후속 지시를 보낸다.
+- **case PR 추적**: case에 연결된 PR(복구 세션 PR, 원 batch PR)이 충돌·CI 실패이거나, 복구 세션 PR에 해결되지 않은
+  `-1`이 있으면(위 리뷰 차단) 같은 세션에 후속 지시를 보낸다.
   case PR이 머지되지 않은 채 남아 있으면 그 case는 RESOLVED가 아니다. 단, superseded로 닫힌 PR은 예외다.
 - 세션이 진행 중이면 건드리지 않는다.
 - 세션이 턴을 끝냈는데 case가 `RESOLVED` 조건(아래)을 충족하지 않으면 그 세션의 마지막 보고와 실제 상태를
