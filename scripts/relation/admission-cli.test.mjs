@@ -3438,7 +3438,7 @@ test('amend lock: concurrent contenders reclaiming one stale lock never hold it 
   }
 });
 
-test('amend lock: a tombstone left by a dead reclaimer never causes an unbounded spin', async (t) => {
+test('amend lock: a leftover tombstone is never removed by age and never causes an unbounded spin', async (t) => {
   const { link } = await import('node:fs/promises');
   const dir = await mkdtemp(path.join(tmpdir(), 'amend-lock-orphan-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -3448,15 +3448,19 @@ test('amend lock: a tombstone left by a dead reclaimer never causes an unbounded
   const tomb = `${lock}.stale-${createHash('sha256').update(stale).digest('hex').slice(0, 24)}`;
   const setup = async () => { await rm(lock, { force: true }); await rm(tomb, { force: true }); await writeFile(lock, stale); await link(lock, tomb); };
 
-  // Fresh leftover: treated as an in-progress reclaim, so the call fails explicitly within the deadline and preserves the lock.
+  // Whatever its age, a leftover tombstone is treated as a possibly paused live reclaimer: the call fails explicitly
+  // within the deadline and neither the lock nor the tombstone is removed, so no second owner can appear.
   await setup();
+  await new Promise((resolve) => setTimeout(resolve, 30));
   const started = Date.now();
-  await assert.rejects(() => acquireAmendLock(lock, `${process.pid}:a:`, { waitMs: 50, pollMs: 5, orphanMs: 60000 }), /blocked by another reclaimer/);
+  await assert.rejects(() => acquireAmendLock(lock, `${process.pid}:a:`, { waitMs: 100, pollMs: 5 }), /blocked by another reclaimer/);
   assert.ok(Date.now() - started < 2000, 'bounded by the deadline');
   assert.equal(await readFile(lock, 'utf8'), stale, 'stale lock is preserved');
+  assert.equal(await readFile(tomb, 'utf8'), stale, 'the in-progress reclaimer\'s tombstone is preserved');
 
-  // Old leftover: recovered safely and ownership is taken.
-  await setup();
-  await acquireAmendLock(lock, `${process.pid}:b:`, { waitMs: 2000, pollMs: 5, orphanMs: -1 });
+  // The paused reclaimer resumes and finishes (verify, unlink lock, remove tombstone): a waiting contender then takes over once.
+  const waiter = acquireAmendLock(lock, `${process.pid}:b:`, { waitMs: 5000, pollMs: 5 });
+  setTimeout(async () => { await rm(lock, { force: true }); await rm(tomb, { force: true }); }, 60);
+  await waiter;
   assert.equal(await readFile(lock, 'utf8'), `${process.pid}:b:`);
 });
