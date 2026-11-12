@@ -2641,7 +2641,8 @@ class Supervisor:
                     cp_path = Path(wt) / ".warroom-scratch" / f"relation-admission-{b['shard']}-{b['batch'].split('-')[0]}-{b['batch'].split('-')[1]}.json"
                     baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
                                 "checkpoint_sha256": hashlib.sha256(cp_path.read_bytes()).hexdigest(),
-                                "amend_revision": checkpoint.get("amend_revision", 0)}
+                                "amend_revision": self._stage2_fix_baseline_revision(
+                                    b, wt, checkpoint.get("amend_revision", 0))}
                     self.store.set(f"s2_fix_start_{b['id']}", json.dumps(baseline, sort_keys=True))
                     self.store.delete(f"s2_unpushed_fix_resume_{b['id']}")
                 h = ad.start(prompts.fix(b, events, False, source_context=context, checkpoint=checkpoint), wt, run_env, run,
@@ -3658,6 +3659,21 @@ class Supervisor:
         except Exception as e:
             return f"Stage 2 PR 검증 실패: {e}"
         return None
+
+    def _stage2_fix_baseline_revision(self, b, wt, current: int) -> int:
+        """Amend revision a review fix must exceed.
+
+        A fix run that was interrupted after its official amend leaves the revision already raised in the
+        preserved checkpoint. Its baseline is deleted only when a fix is accepted, so a restarted fix_new
+        keeps the older, lower revision; otherwise the re-run's `already_applied` amend could never "increase" it.
+        """
+        try:
+            prev = json.loads(self.store.get(f"s2_fix_start_{b['id']}") or "")
+            if prev.get("branch") == b["branch"] and prev.get("worktree") == str(wt):
+                return min(current, int(prev.get("amend_revision", 0)))
+        except (TypeError, ValueError, AttributeError):
+            pass
+        return current
 
     def _stage2_fix_result_problem(self, b, info) -> str | None:
         """A changed review HEAD needs CLI amend evidence; a no-change rebuttal keeps the exact old checkpoint/head."""

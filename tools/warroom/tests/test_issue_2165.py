@@ -530,6 +530,18 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(w.git.local_verify_calls[-1], ("001", "01", "01", True))
         self.assertEqual(w.git.exact_verify_calls[-1], (new_head, "001", "01", "01"))
 
+    def test_restarted_review_fix_keeps_the_original_amend_revision_baseline(self):
+        """An interrupted fix already raised the revision; the rerun's already_applied amend must still be accepted."""
+        w, b = self.start_optional_part()
+        wt = b["worktree"]
+        self.assertEqual(w.sup._stage2_fix_baseline_revision(b, wt, 1), 1)
+        w.store.set(f"s2_fix_start_{b['id']}", json.dumps({"branch": b["branch"], "worktree": str(wt),
+                                                          "amend_revision": 0}))
+        self.assertEqual(w.sup._stage2_fix_baseline_revision(b, wt, 1), 0)
+        self.assertEqual(w.sup._stage2_fix_baseline_revision(b, "/other", 1), 1)
+        w.store.set(f"s2_fix_start_{b['id']}", "not json")
+        self.assertEqual(w.sup._stage2_fix_baseline_revision(b, wt, 2), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
