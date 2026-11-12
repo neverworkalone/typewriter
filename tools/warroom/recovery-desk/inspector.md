@@ -71,7 +71,7 @@
 - **리뷰 차단 (즉시 투입, 복구 세션 PR만)**: 리뷰는 GitHub `COMMENTED` 리뷰로 달리고 본문 첫 줄이 `-1`/`+1`/`+2`,
   둘째 줄이 `HEAD: <sha>`다. `reviewDecision`에는 나타나지 않으므로 case PR마다
   `gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate`로 읽는다. 가장 최근 판정 리뷰가 `-1`이고 그 리뷰 뒤로
-  PR에 새 push(`headRefOid` 변경)가 없으면 장애다. 그 case 세션에 후속 지시로 보낸다. 지시에는 리뷰 id와 HEAD만
+  PR에 새 push(`headRefOid` 변경)도 세션의 답글도 없으면 장애다. 답글로 반박했다면 재리뷰 대기로 본다. 그 case 세션에 후속 지시로 보낸다. 지시에는 리뷰 id와 HEAD만
   넣고, 전문은 세션이 직접 읽게 한다. 세션이 실행 중이면 기다린다.
   - 원 batch PR의 `-1`은 Supervisor가 producer 수정 run으로 처리하므로 여기서 다루지 않는다.
 - **Maintainer가 맡은 경우**: 해당 batch에 미완료 `defects`/`maintenance` 행이 있고 그 Maintainer run이
