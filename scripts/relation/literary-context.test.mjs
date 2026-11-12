@@ -967,6 +967,23 @@ test('chunk --skip returns only new contexts while preserving the full lookup ev
   }
 });
 
+test('submit resolves a skip-displayed key even when the recorded shown list kept only the initial contexts', async () => {
+  const fixture = await makeFixture({ unitCount: 20 });
+  try {
+    const senseIds = 'sense-000001';
+    await chunk(fixture, { senseIds, contexts: 8 });
+    const additional = (await chunk(fixture, { senseIds, contexts: 16, skip: 8 })).items[0];
+    const checkpoint = await load(fixture);
+    checkpoint.records[0].senses[0].shown.unit_rowids = checkpoint.records[0].senses[0].shown.unit_rowids.slice(0, 8);
+    await writeFile(fixture.checkpointPath, `${JSON.stringify(checkpoint)}\n`);
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: senseIds, verified: ['0'.repeat(12)], candidates: [] }]), 'context_key_not_found');
+    const saved = await submit(fixture, [{ sense_id: senseIds, verified: [additional.contexts[0].k], candidates: ['서리'] }]);
+    assert.equal(saved.verified_contexts, 1);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('chunk --skip zero needs no prior evidence and skip 15 accepts an exact 15-context prefix', async () => {
   const zero = await makeFixture({ unitCount: 3 });
   try {

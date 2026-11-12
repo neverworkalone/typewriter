@@ -1752,10 +1752,21 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
       let result;
       let verified;
       try {
-        result = sense.shown?.forms_sha256 === digest
+        const fullSearch = () => runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
+        const fromShown = sense.shown?.forms_sha256 === digest;
+        result = fromShown
           ? { total_hits: sense.shown.total_hits, results: sense.shown.unit_rowids.map((unitRowId) => resolveShownContext(database, unitRowId, forms)) }
-          : runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
-        verified = entry.verified.map((key, keyIndex) => resolveVerifiedContextKey(key, entry.sense_id, result.results, entryNumber, keyIndex + 1));
+          : fullSearch();
+        try {
+          verified = entry.verified.map((key, keyIndex) => resolveVerifiedContextKey(key, entry.sense_id, result.results, entryNumber, keyIndex + 1));
+        } catch (error) {
+          // `chunk` only ever shows contexts from the first MAX_CONTEXTS_PER_SENSE of this exact search (initial and --skip
+          // reads alike). If the recorded shown list lacks a displayed key (e.g. a skip read whose evidence was not kept),
+          // resolve against that same deterministic sample instead of rejecting a real context. Unknown keys still fail.
+          if (!fromShown || error?.code !== 'LITERARY_SUBMISSION_VALIDATION' || error.reason !== 'context_key_not_found') throw error;
+          result = fullSearch();
+          verified = entry.verified.map((key, keyIndex) => resolveVerifiedContextKey(key, entry.sense_id, result.results, entryNumber, keyIndex + 1));
+        }
       } catch (error) {
         if (error?.code === 'LITERARY_SUBMISSION_VALIDATION') throw error;
         throw codedError('LITERARY_INDEX_SEARCH', 'approved literary index search failed');
