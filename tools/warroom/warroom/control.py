@@ -125,6 +125,12 @@ def stop_line(store: Store, model: str, method: str) -> None:
     store.stop_lines(model, method)
 
 
+def stop_batch(store: Store, model: str, method: str, batch_id: int) -> bool:
+    """Stop bound to one producer execution: False (nothing written) unless `batch_id` is still this Line's unfinished
+    batch, and the Supervisor drops the request if another batch became current before it consumes it."""
+    return store.request_stop_pinned(model, method, batch_id)
+
+
 def stop_maintainer(store: Store, model: str, batch_id: int) -> bool:
     """Stop the Maintainer execution `batch_id` the operator saw; False (nothing stopped) when it is no longer current."""
     return store.request_stop_pinned(model, MAINTENANCE_METHOD, batch_id)

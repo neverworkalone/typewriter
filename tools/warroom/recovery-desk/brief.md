@@ -36,6 +36,8 @@
 - 장애 상세 노출과 프로세스 조회는 상시 허용한다. 단, 인증정보와 복구와 무관한 개인정보는 노출하지 않는다.
 - Stop & Retry만이 해결법일 경우 Stop & Retry를 항상 허용한다. 코드 리로드 목적의 Retry는 여전히 금지다.
   리로드는 재시작으로 한다.
+  실행은 운영 루트에서 `sh tools/warroom/recovery-desk/control.sh stop-retry <model> <method> <batch-id>`로만 한다
+  (오너 허용 규칙 대상). `control.stop_line`·`control.retry`를 python으로 직접 부르지 않는다.
 
 이 승인은 도구 권한 자체를 바꾸지 않는다. 도구가 요구하는 승인 절차는 생략하지 않는다.
 

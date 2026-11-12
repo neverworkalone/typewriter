@@ -614,6 +614,21 @@ class OperatorControls(unittest.TestCase):
         w.tick(3)
         self.assertEqual(w.git.integrated, [])
 
+    def test_batch_pinned_stop_refuses_another_batch_id_and_keeps_stop_then_retry(self):
+        w = self.w
+        other = produce_and_report(w, "sonnet", "a")
+        line = dict(w.store.peek_line("deepseek", "a"))
+        self.assertFalse(control.stop_batch(w.store, "deepseek", "a", other["id"]))   # not this Line's batch
+        self.assertEqual(dict(w.store.peek_line("deepseek", "a")), line)
+        self.assertIsNone(w.store.get("stop_pin_deepseek_a"))
+        self.assertTrue(control.stop_batch(w.store, "deepseek", "a", self.b["id"]))
+        w.tick()
+        self.assertEqual(w.store.get(f"defect_hold_{self.b['id']}"), "1")
+        self.assertTrue(control.retry(w.store, "deepseek", "a", self.b["id"]))
+        w.tick(2)
+        self.assertEqual((w.row()["state"], w.row()["pause_reason"]), ("PRODUCING", ""))
+        self.assertEqual(w.row("sonnet", "a")["state"], "PAUSED")          # the other Line was never touched
+
 
 class SerialMaintainer(unittest.TestCase):
     def test_one_maintainer_at_a_time_in_issue_order(self):
