@@ -1559,6 +1559,8 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
         ...(forms.length > 1 ? { forms } : {}),
         total_hits: result.total_hits,
         unseen_hits: Math.max(0, result.total_hits - result.results.length),
+        // A skip read shows only the suffix; state its 1-based range so it cannot be mistaken for the initial view.
+        ...(skippedContexts > 0 ? { shown_range: [skippedContexts + 1, result.results.length] } : {}),
         contexts: visibleResults.map((row) => ({ k: row.locator_key.slice(0, SHORT_KEY_LENGTH), src: sourceLabel(row.source), x: row.excerpt })),
       };
       const size = JSON.stringify(item).length;
@@ -2008,7 +2010,9 @@ export function renderChunkText(result) {
     if (!Array.isArray(item.contexts)) return `## ${item.sense_id} — ${item.status}`;
     return `## ${item.sense_id} — ${item.lemma} [${item.pos}]\n${item.gloss}\n`
       + (Array.isArray(item.forms) && item.forms.length > 0 ? `forms: ${item.forms.join(', ')}\n` : '')
-      + `hits=${item.total_hits} unseen=${item.unseen_hits}\n`
+      + `hits=${item.total_hits} unseen=${item.unseen_hits}`
+      + (Array.isArray(item.shown_range) ? ` shown=${item.shown_range[0]}-${item.shown_range[1]} (contexts before ${item.shown_range[0]} were skipped, not repeated)` : '')
+      + '\n'
       + item.contexts.map((context) => `[${context.k}] ${context.src}\n${context.x}`).join('\n\n');
   });
   return `${head}${items.join('\n\n')}\n`;
