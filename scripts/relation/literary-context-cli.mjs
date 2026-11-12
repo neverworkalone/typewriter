@@ -460,6 +460,8 @@ main().catch((error) => {
         ...(field === 'verified' && ['context_key_not_found', 'context_key_ambiguous', 'context_key_too_short'].includes(reason)
           && Number.isSafeInteger(affected.verified_number) && affected.verified_number > 0
           ? { verified_number: affected.verified_number } : {}) },
+      ...(['context_key_not_found', 'context_key_too_short'].includes(reason) && Array.isArray(error.valid_keys)
+        ? { valid_keys: error.valid_keys.filter((key) => /^[0-9a-f]{12}$/u.test(key)).slice(0, 16) } : {}),
       issues,
       ...(error.issues_truncated ? { issues_truncated: true } : {}),
       ...(error.syntax ? { json_syntax: error.syntax } : {}),
