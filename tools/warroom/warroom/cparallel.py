@@ -31,6 +31,7 @@ import json
 from pathlib import Path
 
 from . import literary, prompts, taskruns
+from .adapters import usage_limit_reset_at
 from .gitops import GitError, GitTransient
 from .launch_gate import task_launch_scope
 from .github import GhTransient
@@ -684,6 +685,13 @@ class ParallelC:
         if cls in ("auth", "usage_limit", "free_quota", "effort", "fast_unavailable"):
             message = (self.sup._fast_unavailable_message(run["log_file"]) if cls == "fast_unavailable" else
                        f"AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+            if cls == "usage_limit":   # remember the stated reset: a later resume must wait for it
+                try:
+                    reset = usage_limit_reset_at(Path(run["log_file"]).read_text("utf-8", errors="replace")[-30000:])
+                except OSError:
+                    reset = None
+                if reset is not None:
+                    data["limit_until"] = reset
             return self._task_failed(b, row, data, f"[{task}] {message}")
         if cls not in ("rate_limit", "network"):   # unknown / session_missing: preserved, never silently re-run
             return self._task_failed(b, row, data, f"[{task}] AI 실행 실패(코드 {code}, {cls}) — 자동 재시도 없이 파일·세션을 보존합니다.")
@@ -1375,6 +1383,11 @@ class ParallelC:
                                     "operator_retry_epoch": epoch}
             else:
                 data.pop("kind", None)
+            until = float(data.get("limit_until") or 0)
+            if until > self.sup.clock():   # usage limit not yet reset: wait (files and session kept) instead of failing again
+                data["retry_after"] = until
+            else:
+                data.pop("limit_until", None)
             self._set(b, row["task"], data, state="PENDING", run_id=None)
             round_.force = True
             fresh = self.store.task_row(b["id"], row["task"])
