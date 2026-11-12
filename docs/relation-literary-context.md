@@ -246,7 +246,7 @@ locators and digests, and the final candidates. It does not store excerpt text.
 Ordinary resubmissions retain the existing correction behavior. A proper-noun
 skip requires both arrays to be empty, records `PROPER_NOUN_SKIPPED` in the
 checkpoint, and is rejected with `already_submitted` if that Sense has any saved
-submission. It cannot overwrite an already completed Sense. The final Candidate
+submission. The final Candidate
 v1 export still contains only the normal record/Sense IDs and `candidates: []`.
 
 On a rejected submission, `submit` writes a bounded JSON diagnostic to stderr.
