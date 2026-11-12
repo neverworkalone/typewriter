@@ -23,7 +23,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from . import prompts, stage2, taskruns
+from . import adapters, prompts, stage2, taskruns
 from .gitops import GitError, GitTransient
 from .launch_gate import task_launch_scope
 from .github import GhTransient
@@ -549,13 +549,29 @@ class ParallelStage2:
             if data.get("kind") == "fix" and correction and not correction.get("fix_applied") and row["session_id"]:
                 # #5204: the correction run itself failed (e.g. usage limit). The answer file is the rejected one, so
                 # re-saving it would burn the correction budget without an AI fix; resume the correction session.
+                self._hold_for_usage_limit(row, data)
                 self._set(b, row["task"], data, state="FIXQ", run_id=None)
                 continue
             if stage2.decision_file_state(wt, row["task"], stage2.task_path(row["task"], "decisions.txt")) == "current":
                 self._set(b, row["task"], data, state="RESPONDED")   # saved again from the preserved answer, no new AI
             else:
                 data.pop("kind", None)
+                self._hold_for_usage_limit(row, data)
                 self._set(b, row["task"], data, state="PENDING", run_id=None, session_id=None)
+
+    def _hold_for_usage_limit(self, row, data) -> None:
+        """#5921: a task whose last run died on a plan usage limit that has not reset yet must not be relaunched by an
+        approved resume/Retry (it would fail again at once); the scheduler waits for the reported reset time."""
+        run = self.store.run(row["run_id"]) if row["run_id"] else None
+        try:
+            text = Path(run["log_file"]).read_text(encoding="utf-8", errors="replace") if run and run["log_file"] else ""
+        except OSError:
+            return
+        if adapters.classify_failure(text, []) != "usage_limit":
+            return
+        reset = adapters.usage_limit_reset_at(text)
+        if reset is not None and reset > self.sup.clock():
+            data["retry_after"] = reset
 
     def _finish(self, b, plan) -> None:
         """Every task is SAVED: verify the totals, persist `closed` first, then continue on the existing serial path."""
