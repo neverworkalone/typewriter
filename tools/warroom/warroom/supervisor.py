@@ -1001,6 +1001,10 @@ class Supervisor:
         if b["pause_reason"] == "shared_defect":
             # Paused for a shared defect: only Maintenance._release resumes it (once, after the fix is applied and
             # verified). An operator Retry counts only after an explicit Stop (the hold), as a deliberate override.
+            # Its own PR merged meanwhile (merged=true is completion): hand it to cleanup instead of resuming or
+            # holding it on a resume proof the merge itself invalidated (the deleted branch moves remote_head).
+            if b["pr_number"] and self._recover_if_merged(b, force=ln["retry_batch"] == b["id"]):
+                return
             if ln["retry_batch"] != b["id"]:
                 return
             if not self.store.get(f"defect_hold_{b['id']}"):
