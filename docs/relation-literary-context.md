@@ -308,3 +308,10 @@ checkpoint's own previous output is overwritten). `validate` remains only for a
 hand-edited file. All checkpoints, submissions and digest caches stay under the
 ignored `.warroom-scratch/` directory; only the validated Candidate JSONL belongs
 in the PR. `report` prints bounded totals.
+
+## `chunk --skip` view labeling
+
+A `chunk --skip N --contexts M` read returns only contexts N+1..M. Its per-Sense header is
+`hits=H unseen=U shown=N+1-M (...)` (JSON: `shown_range: [N+1, M]`); `unseen` is `H` minus all `M` sampled contexts,
+so it equals the value of a full `--contexts M` read, not of the initial 8-context view. Initial views carry no
+`shown=` marker.

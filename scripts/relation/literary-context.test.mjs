@@ -1780,7 +1780,8 @@ test('chunk CLI emits each shared-form Sense’s unread suffix within the C chun
       assert.deepEqual(initialKeys.get(id), initialKeys.get(ids[0]));
       assert.deepEqual(suffixKeys.get(id), suffixKeys.get(ids[0]));
     }
-    assert.match(extra.stdout, /hits=42 unseen=26/u);
+    assert.match(extra.stdout, /hits=42 unseen=26 shown=9-16 /u);
+    assert.doesNotMatch(first.stdout, /shown=/u);
     const checkpoint = await load(fixture);
     assert.equal(checkpoint.records[0].senses[0].sense_id, 'w68162-s1');
     assert.equal(checkpoint.records[0].senses[0].shown.unit_rowids.length, 16);
