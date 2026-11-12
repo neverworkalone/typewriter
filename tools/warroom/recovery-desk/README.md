@@ -1,5 +1,7 @@
 # War Room 복구 점검반
 
+> **Claude 전용.** 이 도구는 Claude Code(헤드리스 `claude` CLI와 Claude 데스크톱 앱 모드) 전용이다. Codex·DeepSeek 등 다른 producer나 War Room Supervisor의 실행 경로에서는 사용하지 않는다.
+
 복구 점검반은 War Room의 **마지막 복구 수단(last resort)**이다. Maintainer가 맡아 진전 중인 장애에는 손대지
 않는다. 다음 경우에만 장애마다 헤드리스 Sonnet 복구 세션을 하나씩 연다. 그 세션은 라인이 실제로 다시 진행될
 때까지 책임진다(수정, PR, 운영 반영, Supervisor 재시작 포함).
