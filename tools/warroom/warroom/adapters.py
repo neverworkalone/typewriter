@@ -1073,6 +1073,22 @@ def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
     return "unknown"
 
 
+_LIMIT_RESET = re.compile(r"try again at ([A-Z][a-z]{2,8})\.? (\d{1,2})(?:st|nd|rd|th)?,? (\d{4}) (\d{1,2}):(\d{2}) ?([AP]M)", re.I)
+
+
+def usage_limit_reset_at(log_text: str) -> float | None:
+    """Epoch seconds (local time) of the 'try again at <date>' a plan usage-limit error reports, else None."""
+    import datetime
+    for m in _LIMIT_RESET.finditer(log_text):
+        month, day, year, hour, minute, ampm = m.groups()
+        try:
+            when = datetime.datetime.strptime(f"{month[:3].title()} {day} {year} {hour}:{minute} {ampm.upper()}", "%b %d %Y %I:%M %p")
+        except ValueError:
+            continue
+        return when.timestamp()
+    return None
+
+
 def classify_codex_failure(log_text: str, quota_patterns: list[str]) -> str:
     """Recognize explicit Codex Fast-setting rejection without guessing from model/auth failures."""
     diagnostics = []
