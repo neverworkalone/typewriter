@@ -323,7 +323,10 @@ def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcom
             return False
         allowed = set(rec["sense_ids"])
         invalid = [sense_id for sense_id in requested if sense_id not in allowed]
-        if not 1 <= len(invalid) <= 2:
+        # A mixed request keeps the CLI's two-ID filter bound. A request made only of unassigned IDs (e.g. a
+        # neighbouring headword's invented sense group) returned nothing, so its read-only rejection is provable
+        # for any size: it must not be left blocked merely because the wrong group had three senses.
+        if not invalid or (len(invalid) > 2 and len(invalid) != len(requested)):
             return False
 
         # Earlier same-task chunk reads may extend shown-context evidence. Require every prior call to be a
