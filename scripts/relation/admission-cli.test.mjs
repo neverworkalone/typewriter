@@ -7,7 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { run } from './admission-cli.mjs';
+import { acquireAmendLock, amendLockOwnerAlive, run } from './admission-cli.mjs';
 import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -3377,4 +3377,92 @@ test('Stage 2 task plan splits a Part deterministically and saves tasks in any o
   await assert.rejects(() => quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '2', '--out', plan], { root })), /closed/);
   await assert.rejects(() => readTask('001-01-01-t01'), /not the open plan/);
   assert.equal((await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }))).complete, true, 'the legacy path works again once the plan is closed');
+});
+
+test('amend lock: dead owner, recycled pid, and transient live owner are all handled without false "active" errors', async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'amend-lock-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const dead = spawnSync(process.execPath, ['-e', '0']);
+  assert.equal(dead.status, 0);
+  const deadPid = dead.pid;
+  assert.equal(amendLockOwnerAlive(`${deadPid}:x:`).alive, false, 'nonexistent pid is stale');
+  assert.equal(amendLockOwnerAlive('garbage').alive, false);
+  // A live pid whose recorded start time differs is a recycled pid, not an active amend.
+  assert.equal(amendLockOwnerAlive(`${process.pid}:x:Mon Jan  1 00:00:00 1990`).alive, false);
+  assert.equal(amendLockOwnerAlive(`${process.pid}:x:`).alive, true, 'no recorded start keeps pid-only liveness');
+
+  const lock = path.join(dir, 'cp.json.amend-lock');
+  await writeFile(lock, `${deadPid}:x:`);
+  await acquireAmendLock(lock, `${process.pid}:mine:`, { waitMs: 200, pollMs: 10 });
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:mine:`);
+
+  // A live owner that releases within the wait window no longer fails the amend.
+  setTimeout(() => rm(lock, { force: true }), 80);
+  await acquireAmendLock(lock, `${process.pid}:second:`, { waitMs: 2000, pollMs: 10 });
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:second:`);
+
+  // A genuinely live owner past the wait window is still preserved.
+  await assert.rejects(() => acquireAmendLock(lock, `${process.pid}:third:`, { waitMs: 50, pollMs: 10 }), /another amend is active/);
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:second:`);
+
+  // An empty (mid-creation) lock is not stolen immediately.
+  await writeFile(lock, '');
+  setTimeout(() => writeFile(lock, `${deadPid}:x:`), 50);
+  await acquireAmendLock(lock, `${process.pid}:fourth:`, { waitMs: 2000, pollMs: 10 });
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:fourth:`);
+});
+
+test('amend lock: concurrent contenders reclaiming one stale lock never hold it together', async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'amend-lock-race-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const dead = spawnSync(process.execPath, ['-e', '0']).pid;
+  const lock = path.join(dir, 'cp.json.amend-lock');
+  for (let round = 0; round < 20; round += 1) {
+    await writeFile(lock, `${dead}:stale-${round}:`);
+    let holders = 0;
+    let maxHolders = 0;
+    let completed = 0;
+    await Promise.all(Array.from({ length: 8 }, async (_, index) => {
+      const token = `${process.pid}:r${round}c${index}:`;
+      await acquireAmendLock(lock, token, { waitMs: 10000, pollMs: 1 });
+      holders += 1;
+      maxHolders = Math.max(maxHolders, holders);
+      assert.equal(await readFile(lock, 'utf8'), token, 'the lock file still belongs to its holder');
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      holders -= 1;
+      completed += 1;
+      if ((await readFile(lock, 'utf8')) === token) await rm(lock, { force: true });
+    }));
+    assert.equal(maxHolders, 1);
+    assert.equal(completed, 8);
+  }
+});
+
+test('amend lock: a leftover tombstone is never removed by age and never causes an unbounded spin', async (t) => {
+  const { link } = await import('node:fs/promises');
+  const dir = await mkdtemp(path.join(tmpdir(), 'amend-lock-orphan-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const dead = spawnSync(process.execPath, ['-e', '0']).pid;
+  const lock = path.join(dir, 'cp.json.amend-lock');
+  const stale = `${dead}:orphan:`;
+  const tomb = `${lock}.stale-${createHash('sha256').update(stale).digest('hex').slice(0, 24)}`;
+  const setup = async () => { await rm(lock, { force: true }); await rm(tomb, { force: true }); await writeFile(lock, stale); await link(lock, tomb); };
+
+  // Whatever its age, a leftover tombstone is treated as a possibly paused live reclaimer: the call fails explicitly
+  // within the deadline and neither the lock nor the tombstone is removed, so no second owner can appear.
+  await setup();
+  // Deterministic clock: every Date.now() call advances one hour, so the tombstone is far older than any age threshold
+  // (the previous implementation removed it at 30s) and the wait deadline is crossed after a few polls.
+  let clock = Date.now();
+  t.mock.method(Date, 'now', () => { clock += 3600 * 1000; return clock; });
+  await assert.rejects(() => acquireAmendLock(lock, `${process.pid}:a:`, { waitMs: 100, pollMs: 1 }), /blocked by another reclaimer/);
+  t.mock.restoreAll();
+  assert.equal(await readFile(lock, 'utf8'), stale, 'stale lock is preserved');
+  assert.equal(await readFile(tomb, 'utf8'), stale, 'the in-progress reclaimer\'s tombstone is preserved');
+
+  // The paused reclaimer resumes and finishes (verify, unlink lock, remove tombstone): a waiting contender then takes over once.
+  const waiter = acquireAmendLock(lock, `${process.pid}:b:`, { waitMs: 5000, pollMs: 5 });
+  setTimeout(async () => { await rm(lock, { force: true }); await rm(tomb, { force: true }); }, 60);
+  await waiter;
+  assert.equal(await readFile(lock, 'utf8'), `${process.pid}:b:`);
 });

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { link, mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -3894,27 +3894,93 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
   return applyForeignAmendJournal(nextJournal, checkpointPath, root);
 }
 
-async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {
-  const lockPath = `${checkpointPath}.amend-lock`;
-  const token = `${process.pid}:${randomUUID()}`;
-  await mkdir(path.dirname(lockPath), { recursive: true });
-  try {
-    await writeFile(lockPath, token, { flag: 'wx' });
-  } catch (error) {
+function processStartTime(pid) {
+  const probe = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8' });
+  return probe.status === 0 ? String(probe.stdout).trim() : '';
+}
+
+// A lock is live only if its owner pid exists AND is still the same process (start time matches),
+// so a dead amend whose pid was recycled by an unrelated process no longer blocks the checkpoint.
+function amendLockOwnerAlive(owner) {
+  const [pidText, , ...startParts] = owner.split(':');
+  const ownerPid = Number(pidText);
+  if (!Number.isInteger(ownerPid) || ownerPid <= 0) return { pid: ownerPid, alive: false };
+  try { process.kill(ownerPid, 0); } catch (probeError) {
+    if (probeError.code !== 'EPERM') return { pid: ownerPid, alive: false };
+  }
+  const recorded = startParts.join(':');
+  const current = recorded ? processStartTime(ownerPid) : '';
+  return { pid: ownerPid, alive: !(recorded && current && recorded !== current) };
+}
+
+// Stale reclaim must not race with another contender. Each stale content (it embeds a unique uuid) has exactly one
+// tombstone name, and link() is atomic and fails with EEXIST, so exactly one contender can win the right to remove
+// that stale lock. The winner re-verifies through the linked inode, so a lock a different amend created in between
+// (different content) is never removed; losers simply retry and then see the live owner.
+// Returns true when another reclaimer's tombstone is in the way (the caller must back off and honor its deadline).
+// A tombstone is NEVER removed because of its age: its owner may merely be paused and still about to unlink the lock,
+// and removing it would let a second reclaimer plus the resumed first one both take ownership. A leftover from a dead
+// reclaimer therefore ends in an explicit failure that preserves every file.
+async function reclaimStaleAmendLock(lockPath, staleOwner) {
+  const tomb = `${lockPath}.stale-${createHash('sha256').update(staleOwner).digest('hex').slice(0, 24)}`;
+  try { await link(lockPath, tomb); } catch (error) {
+    if (error.code === 'ENOENT') return false;
     if (error.code !== 'EEXIST') throw error;
+    return true;
+  }
+  try {
+    let linked = null;
+    try { linked = await readFile(tomb, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (linked === staleOwner) {
+      try { await unlink(lockPath); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+  } finally {
+    try { await unlink(tomb); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  return false;
+}
+
+async function acquireAmendLock(lockPath, token, { waitMs = 15000, pollMs = 100 } = {}) {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    try {
+      await writeFile(lockPath, token, { flag: 'wx' });
+      return;
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
     let owner = '';
     try { owner = await readFile(lockPath, 'utf8'); } catch (readError) {
-      if (readError.code !== 'ENOENT') throw readError;
+      if (readError.code === 'ENOENT') continue;
+      throw readError;
     }
-    const ownerPid = Number(owner.split(':', 1)[0]);
-    let alive = Number.isInteger(ownerPid) && ownerPid > 0;
-    if (alive) {
-      try { process.kill(ownerPid, 0); } catch (probeError) { alive = probeError.code === 'EPERM'; }
+    // An empty file is a lock mid-creation by another amend: treat it as live until the wait expires.
+    const state = owner === '' ? { pid: 0, alive: true } : amendLockOwnerAlive(owner);
+    if (!state.alive) {
+      const busy = await reclaimStaleAmendLock(lockPath, owner);
+      if (!busy) continue;
+      if (Date.now() >= deadline) {
+        throw new Error(`stale amend lock reclaim is blocked by another reclaimer's leftover (stale pid ${state.pid}); preserving all files`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+      continue;
     }
-    if (alive) throw new Error(`another amend is active for this checkpoint (pid ${ownerPid}); preserving all files`);
-    try { await unlink(lockPath); } catch (unlinkError) { if (unlinkError.code !== 'ENOENT') throw unlinkError; }
-    await writeFile(lockPath, token, { flag: 'wx' });
+    if (Date.now() >= deadline) {
+      if (owner === '') {
+        try { if ((await readFile(lockPath, 'utf8')) === '') await unlink(lockPath); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+        continue;
+      }
+      throw new Error(`another amend is active for this checkpoint (pid ${state.pid}); preserving all files`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
   }
+}
+
+async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {
+  const lockPath = `${checkpointPath}.amend-lock`;
+  const token = `${process.pid}:${randomUUID()}:${processStartTime(process.pid)}`;
+  await mkdir(path.dirname(lockPath), { recursive: true });
+  await acquireAmendLock(lockPath, token);
   try {
     return await amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root);
   } finally {
@@ -3923,6 +3989,8 @@ async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
 }
+
+export { acquireAmendLock, amendLockOwnerAlive };
 
 function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
   if (!checkpoint.merged) throw new Error('Part checkpoint is not marked merged');
