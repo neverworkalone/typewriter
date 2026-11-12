@@ -10059,9 +10059,13 @@ class Supervisor:
                     with self.launch_gate.permit():
                         if b["method"] == MAINTENANCE_METHOD and any(e.get("kind") == "conflict" for e in fresh):
                             wt = Path(b["worktree"])
-                            if (self.git.registered(wt) != b["branch"] or self.git.dirty(wt).strip()
-                                    or self.git.remote_head(b["branch"]) != info["head_sha"]):
-                                return self._fail(b, "ERROR", "충돌 수정 전 worktree/브랜치/원격 HEAD 확인 실패. 보존합니다.")
+                            if self.git.registered(wt) != b["branch"] or self.git.dirty(wt).strip():
+                                return self._fail(b, "ERROR", "충돌 수정 전 worktree/브랜치 확인 실패. 보존합니다.")
+                            if self.git.remote_head(b["branch"]) != info["head_sha"]:
+                                # the owned branch moved (or was deleted by a merge) after this poll's snapshot: a
+                                # newer push is not damage, so re-read the PR instead of freezing the batch (#5922)
+                                self.store.set(f"last_poll_{b['id']}", "0")
+                                return self.store.log(b["id"], "충돌 확인 중 원격 브랜치 HEAD가 바뀌어 다시 감시합니다.", "warn")
                             fetched = self.git.fetch_base(info["base_ref"])
                             current = self.gh.pull(b["pr_number"])
                             if (fetched != info["base_sha"] or current.get("base_sha") != fetched
