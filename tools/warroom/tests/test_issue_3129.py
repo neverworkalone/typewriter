@@ -309,6 +309,19 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertEqual(self.b(w)["state"], "ERROR")
         return w, b, active_ids, sibling_ids, source_run
 
+    def test_legacy_scope_error_with_only_unassigned_ids_resumes_regardless_of_count(self):
+        # #5607: a request made only of a neighbouring group's three IDs returned nothing and is provably read-only.
+        w = self.world(senses=24)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        sibling_ids = self.sense_ids(w, "002")
+        _, source_run = self._fail_legacy_chunk_scope_run(w, requested_ids=sibling_ids[:3])
+        w.tick(3)
+        runs = [run for run in w.store.runs(b["id"]) if run["task"] == "001"]
+        self.assertEqual(max(runs, key=lambda run: run["id"])["kind"], "c_chunk_scope_recovery")
+        self.assertEqual(max(runs, key=lambda run: run["id"])["session_id"], source_run["session_id"])
+
     def test_legacy_scope_error_resumes_once_in_same_session_and_preserves_sibling_saves(self):
         w = self.world(senses=24)
         w.start("single", "deepseek", "c")
