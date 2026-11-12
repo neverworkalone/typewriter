@@ -14,6 +14,16 @@
   안전장치가 없으면 필요한 최소 공통 경로를 구현하고 검증한다.
 - 재현 성공, 원인 발견, 브랜치 준비, 미검증 초안, 남은 작업량은 종료 사유가 아니다.
 - Maintainer의 열린 branch나 PR이 있으면 이어받는다. 같은 Issue로 새 PR을 만들지 않는다.
+- **Maintainer가 맡은 결함은 손대지 않는다.** PR을 만들기 직전에 다시 확인하고, Maintainer Issue/PR이 있으면
+  작업을 멈추고 내 PR은 닫는다.
+- **PR 머지까지가 책임이다.** 내가 만든 PR(또는 원 batch PR)에 충돌이나 CI 실패가 생기면 바로 처리한다.
+  - 충돌: 먼저 base(master)에 동등한 수정이 이미 들어갔는지 확인한다.
+    - 들어갔으면 PR을 superseded로 닫고, 근거(base commit)를 댓글로 남긴다.
+    - 아니면 기존 브랜치에서 최신 master를 merge해 충돌을 해결하고, 관련 테스트를 다시 돌린 뒤 push한다.
+      force-push는 하지 않는다.
+  - CI 실패: 실패한 check의 로그를 읽어 원인을 고치고 push한다. 테스트를 약화하거나 건너뛰지 않는다.
+  - 원 batch PR(Candidate 등 생산 산출물)의 충돌은 War Room 생산 계약(브랜치·HEAD 유지, rebase 금지)을 먼저
+    확인하고, 그 계약 안의 공식 경로로 해결한다.
 - 저장소 `AGENTS.md`, `REVIEW.md`, `tools/warroom/README.md`를 따른다.
 - 작업물, checkpoint, 세션, 미커밋 변경, 증거를 보존한다.
 - 운영 DB, 소유권 기록, 완료 상태를 직접 고치지 않는다.
