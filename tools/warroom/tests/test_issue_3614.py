@@ -265,6 +265,16 @@ class MaintainerQueue(unittest.TestCase):
         self.assertEqual(w.store.batch(first["id"])["state"], "ERROR")
         self.assertEqual(w.git.dirty_text, " M existing-file")
 
+    def test_branch_moved_by_own_push_after_poll_is_rewatched_not_errored(self):
+        w = self.w
+        first, base = self.conflict_pr()
+        count = len(w.adapter.launches)
+        w.git.remote_head = lambda branch: "e" * 40
+        w.store.delete(f"last_poll_{first['id']}")
+        w.sup._watch(first)
+        self.assertEqual(len(w.adapter.launches), count)
+        self.assertEqual(w.store.batch(first["id"])["state"], "WAITING_REVIEW")
+
     def test_unknown_mergeability_and_base_race_do_not_launch(self):
         w = self.w
         first, base = self.conflict_pr()
