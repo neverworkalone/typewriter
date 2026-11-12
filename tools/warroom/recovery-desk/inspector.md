@@ -16,6 +16,8 @@
 
 다음을 한 번씩만 읽는다.
 
+0. `.git/typewriter-supervisor/restart-requests/*.json` 중 `state`가 완료가 아닌 것 — `state`, `blocker`, `merge_sha`,
+   `batch_id`, `issue`, `checked_at`
 1. `.git/typewriter-supervisor/supervisor-runtime.json` — `instance`, `pid`, `loaded_code_sha`,
    `restart_phase`. PID 생존 여부는 `ps -p`로 확인한다.
 2. DB:
@@ -56,6 +58,10 @@
   변하지 않는다.
   - run이 종료된 채 다음 run이 없다
   - 프로세스는 살아 있는데 로그가 멈춰 있다
+- **반영 정체 (즉시 투입)**: 머지된 수정(`merge_sha`)이 `loaded_code_sha`에 없고, restart request에 `blocker`가 있다.
+  "재시작 대기"로 넘기지 않는다. key `supervisor`로 case를 열고, `blocker` 원문을 지시에 넣어 해소부터 시키며,
+  종속 batch들의 재개까지 확인시킨다. 수정이 다른 배치를 기다리는 정상 대기와 구분한다. `blocker`가 없으면 다음 점검에서
+  다시 본다.
 - **PR 차단 (즉시 투입)**: 열린 PR이 `mergeable=CONFLICTING`(`mergeStateStatus=DIRTY`)이거나 필수 check가
   `FAILURE`/`ERROR`인데, 직전 점검 이후 그 PR에 새 push나 War Room/Maintainer의 수정 run이 없다.
   - War Room 배치 PR: `batches.pr_number`로 원 batch를 찾아 `batch:<id>` case로 연다.
