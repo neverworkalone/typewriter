@@ -5,7 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 import { buildTargetIndex, parseArrowReference, resolveArrowTarget } from '../build/gloss-arrow-reference.mjs';
 import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
-import { parseDropJsonl, parseRelationJsonl } from './persisted-jsonl.mjs';
+import {
+  ADMISSION_TYPES, ASSIGNED_ID_ROW_KEYS, DROP_REASONS, DROP_ROW_KEYS, LEGACY_ID_ROW_KEYS, TEXT_ROW_KEYS, isText,
+  dropRowFieldErrors, dropRowShapeError, parseDropJsonl, parseRelationJsonl, relationPairKey, relationRowFieldErrors,
+  relationRowShapeError, relationTextKey,
+} from './persisted-jsonl.mjs';
 
 export { normalizeCandidate };
 
@@ -17,7 +21,7 @@ export { normalizeCandidate };
  */
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-export const ADMISSION_TYPES = Object.freeze(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
+export { ADMISSION_TYPES };
 /** An `action` ID relation must target a verb or expression Sense (same contract as dataset-integrity). */
 export const ACTION_TARGET_POS = Object.freeze(['verb', 'expression']);
 /** Required Stage 1 producers per batch: A/B by Codex and Claude, C and D by one owner-assigned model each. */
@@ -75,16 +79,9 @@ export function assertStage2Part(shard, batch, part, batchRecords = null) {
   }
 }
 
-const LEGACY_ID_ROW_KEYS = 'relevance,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
-const ASSIGNED_ID_ROW_KEYS = 'candidate_assignment_version,candidate_forms,relevance,reverse_candidate_forms,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
-const TEXT_ROW_KEYS = 'relevance,source_record_id,source_sense_id,text,type';
-const DROP_ROW_KEYS = 'candidate,reason,source_record_id,source_sense_id';
-const DROP_REASONS = Object.freeze(['x', 'e', 'z', 'f']);
 
 const keysOf = (row) => Object.keys(row).sort().join(',');
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
-const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
-const isText = (value) => typeof value === 'string' && value.trim().length > 0;
 
 /** Stage 2 must never ask an editor to judge candidates without an actual source meaning. */
 export function assertStage2SourceGloss(senseId, gloss, referenceGloss = null) {
@@ -433,8 +430,8 @@ export class AdmissionVerifyError extends Error {
 export function validateRelationRows({ relationRows, dropRows = [], index, shardSenseIds, otherRelationRows = [], actionTargetPosSenseIds = null }) {
   const errors = [];
   const seenPairs = new Map();
-  const pairKey = (sourceSense, targetRecord, targetSense) => `${sourceSense}\u0000${targetRecord}\u0000${targetSense}`;
-  const textKey = (sourceSense, text) => `${sourceSense}\u0000${normalizeCandidate(text)}`;
+  const pairKey = relationPairKey;
+  const textKey = relationTextKey;
   const remember = (key, origin, row) => {
     const matches = seenPairs.get(key) ?? [];
     matches.push({ origin, row });
@@ -465,55 +462,23 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     else if (!shardSenseIds.has(row.source_sense_id)) errors.push(`${at}: source sense ${row.source_sense_id} is outside this shard`);
     return found;
   };
-  const checkCandidateForms = (forms, recordId, at, field, { allowEmpty = true } = {}) => {
-    if (!Array.isArray(forms)) { errors.push(`${at}: ${field} must be an array of normalized candidate strings`); return; }
-    if (!allowEmpty && forms.length === 0) errors.push(`${at}: ${field} must contain at least one candidate spelling`);
-    const seen = new Set();
-    for (const form of forms) {
-      if (!isText(form) || form !== normalizeCandidate(form)) {
-        errors.push(`${at}: ${field} must contain only non-empty normalized candidate strings`);
-        continue;
-      }
-      if (seen.has(form)) errors.push(`${at}: ${field} repeats candidate ${JSON.stringify(form)}`);
-      seen.add(form);
-      if (!canonicalRecordsForRelationForm(index, form).some((record) => record.id === recordId)) {
-        errors.push(`${at}: ${field} candidate ${JSON.stringify(form)} does not resolve to ${recordId}`);
-      }
-    }
-  };
+  const resolvesForm = (form, recordId) => canonicalRecordsForRelationForm(index, form).some((record) => record.id === recordId);
 
   relationRows.forEach((row, position) => {
     const at = `relation:${position + 1}`;
-    if (!isPlainObject(row)) { errors.push(`${at}: must be an object`); return; }
+    const shapeError = relationRowShapeError(row, at);
+    if (shapeError) { errors.push(shapeError); return; }
     const isText_ = 'text' in row;
-    const assignedId = !isText_ && Object.hasOwn(row, 'candidate_assignment_version');
-    const expected = isText_ ? TEXT_ROW_KEYS : assignedId ? ASSIGNED_ID_ROW_KEYS : LEGACY_ID_ROW_KEYS;
-    if (keysOf(row) !== expected) {
-      errors.push(`${at}: must have exactly ${expected}${!isText_ && !assignedId ? ` or ${ASSIGNED_ID_ROW_KEYS}` : ''}`);
-      return;
-    }
     const source = checkSource(row, at);
-    if (!ADMISSION_TYPES.includes(row.type)) errors.push(`${at}: type ${JSON.stringify(row.type)} is not one of ${ADMISSION_TYPES.join('/')}`);
-    if (!isTier(row.relevance)) errors.push(`${at}: relevance must be an integer 1..9`);
+    errors.push(...relationRowFieldErrors(row, at, { resolvesForm }));
     if (isText_) {
-      if (!isText(row.text) || row.text !== normalizeCandidate(row.text)) errors.push(`${at}: text must be a non-empty normalized string`);
-      else {
+      if (isText(row.text) && row.text === normalizeCandidate(row.text)) {
         if (source && row.text === normalizeCandidate(source.record.lemma)) errors.push(`${at}: text repeats the source lemma`);
         const key = textKey(row.source_sense_id, row.text);
         if (seenPairs.has(key)) errors.push(`${at}: duplicate text relation ${row.source_sense_id} -> ${row.text} (${describeMatches(seenPairs.get(key))})`);
         remember(key, 'this shard', row);
       }
       return;
-    }
-    if (!ADMISSION_TYPES.includes(row.reverse_type)) errors.push(`${at}: reverse_type ${JSON.stringify(row.reverse_type)} is not one of ${ADMISSION_TYPES.join('/')}`);
-    if (!isTier(row.reverse_relevance)) errors.push(`${at}: reverse_relevance must be an integer 1..9`);
-    if (row.reverse_type !== row.type || row.reverse_relevance !== row.relevance) {
-      errors.push(`${at}: reverse_type and reverse_relevance must match type and relevance`);
-    }
-    if (assignedId) {
-      if (![0, 1].includes(row.candidate_assignment_version)) errors.push(`${at}: candidate_assignment_version must be 0 (legacy inferred) or 1 (selected)`);
-      checkCandidateForms(row.candidate_forms, row.target_record_id, at, 'candidate_forms', { allowEmpty: false });
-      checkCandidateForms(row.reverse_candidate_forms, row.source_record_id, at, 'reverse_candidate_forms');
     }
     const target = index.senses.get(row.target_sense_id);
     if (!target || target.record.id !== row.target_record_id) { errors.push(`${at}: target_sense_id ${row.target_sense_id} is not a sense of ${row.target_record_id}`); return; }
@@ -532,10 +497,10 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
   const dropSeen = new Set();
   dropRows.forEach((row, position) => {
     const at = `drop:${position + 1}`;
-    if (!isPlainObject(row) || keysOf(row) !== DROP_ROW_KEYS) { errors.push(`${at}: must have exactly ${DROP_ROW_KEYS}`); return; }
+    const shapeError = dropRowShapeError(row, at);
+    if (shapeError) { errors.push(shapeError); return; }
     checkSource(row, at);
-    if (!isText(row.candidate) || row.candidate !== normalizeCandidate(row.candidate)) errors.push(`${at}: candidate must be a non-empty normalized string`);
-    if (!DROP_REASONS.includes(row.reason)) errors.push(`${at}: reason must be one of ${DROP_REASONS.join('/')}`);
+    errors.push(...dropRowFieldErrors(row, at));
     const key = textKey(row.source_sense_id, row.candidate ?? '');
     if (dropSeen.has(key)) errors.push(`${at}: duplicate drop ${row.source_sense_id} -> ${row.candidate}`);
     dropSeen.add(key);

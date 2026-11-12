@@ -443,6 +443,14 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/ci/run-category.mjs',
         ],
       ),
+      affectedTestCheck('scripts/ci/data-pr-check.test.mjs', 'Test lightweight pure data PR contract check', [
+        '.github/workflows/ci.yml',
+        'scripts/ci/changed-files.mjs',
+        'scripts/ci/data-pr-check.mjs',
+        'scripts/relation/candidate-contract.mjs',
+        'scripts/relation/persisted-jsonl.mjs',
+        'schema/canonical-record.schema.json',
+      ]),
       {
         ...globalCanonicalAuditCheck(),
         schedule: 'affected',

@@ -314,4 +314,6 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 - authored 행은 STDICT `note` 대신 빈 note를 가지며 `direct/antonym`을 쓸 수 없다. 기존 STDICT 관계와 같은 쌍·type이면 조용히 병합하지 않고 빌드가 실패한다.
 - Full에는 승인 파일 샤드·행 번호와 Canonical sense를 묶는 `meaning_relation_authored_sources`가 있고 Lite에는 싣지 않는다. 빌드 검증이 쌍 존재, 출처 존재, sense→meaning 결속을 확인한다. SQLite 스키마 버전 11.
 
+**PR CI (#5807):** 순수 Stage 1 Candidate PR과 Stage 2/3 Relation/Drop PR은 변경 파일의 저장 계약과 변경 범위만 경량 검사한다([development.md](development.md#continuous-integration) 참고). 정확한 Sense 결속, 교차 샤드 충돌, 후보 accounting은 생산 CLI가 저장 전에 지키고, 독립 리뷰와 Deep CI 전수 감사가 확인한다.
+
 은퇴한 Lexical Factory와 별도의 Meaning 편집 계층을 되살리지 않는다.

@@ -3,7 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { loadCanonicalLemmaForms, validateCandidateFiles } from './candidate-contract.mjs';
+import { validateCandidateFiles } from './candidate-contract.mjs';
 import { GIT_MAX_BUFFER } from '../ci/git-limits.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -53,9 +53,6 @@ export async function validateChangedCandidateFiles(baseSha, headSha, {
   ], repositoryDirectory, runGit);
   const candidatePaths = [...new Set(decodePaths(diff))];
   const results = [];
-  const canonicalLemmaForms = candidatePaths.length > 0
-    ? await loadCanonicalLemmaForms(repositoryDirectory)
-    : undefined;
 
   for (const candidateRelativePath of candidatePaths) {
     if (!validateRepositoryPath(candidateRelativePath)) {
@@ -70,7 +67,9 @@ export async function validateChangedCandidateFiles(baseSha, headSha, {
       `stdict-${filenameShard.padStart(4, '0')}.jsonl`,
     );
     const candidatePath = path.resolve(repositoryDirectory, candidateRelativePath);
-    const result = await validateCandidateFiles(canonicalPath, candidatePath, { repositoryDirectory, canonicalLemmaForms });
+    // Stage 1 applies unconditional source-lemma containment before the search-form alias branch, so the bound
+    // Canonical shard's own lemmas are sufficient; no full Canonical lemma read is needed (#5807).
+    const result = await validateCandidateFiles(canonicalPath, candidatePath, { repositoryDirectory, shardLocalLemmaForms: true });
     results.push({ path: candidateRelativePath, ...result });
   }
 

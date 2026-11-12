@@ -1,3 +1,5 @@
+import { normalizeCandidate } from './candidate-contract.mjs';
+
 const RELATION_ID_KEYS = 'id,rv,sid,tid,tp,tsid';
 const ASSIGNED_RELATION_ID_KEYS = 'fm,id,rfm,rv,sid,tid,tp,tsid,ver';
 const RELATION_TEXT_KEYS = 'id,rv,sid,tp,tt';
@@ -128,3 +130,90 @@ function serializeJsonl(rows, encode, family) {
 
 export const serializeRelationJsonl = (rows) => serializeJsonl(rows, serializeRelationRow, 'Relation');
 export const serializeDropJsonl = (rows) => serializeJsonl(rows, serializeDropRow, 'Drop');
+
+// Descriptive in-memory row contract shared by the official Stage 2/3 verifier (`admission.mjs::validateRelationRows`)
+// and the lightweight data PR check. Only rules decidable from the row itself live here; Canonical Sense binding,
+// target resolution and cross-shard checks stay with their index-backed callers.
+export const ADMISSION_TYPES = Object.freeze(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
+export const DROP_REASONS = Object.freeze(['x', 'e', 'z', 'f']);
+export const LEGACY_ID_ROW_KEYS = 'relevance,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
+export const ASSIGNED_ID_ROW_KEYS = 'candidate_assignment_version,candidate_forms,relevance,reverse_candidate_forms,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
+export const TEXT_ROW_KEYS = 'relevance,source_record_id,source_sense_id,text,type';
+export const DROP_ROW_KEYS = 'candidate,reason,source_record_id,source_sense_id';
+export const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
+export const isText = (value) => typeof value === 'string' && value.trim().length > 0;
+const isIdString = (value) => typeof value === 'string' && value.length > 0;
+
+/** Object/key-set failure of one descriptive Relation row, or undefined. */
+export function relationRowShapeError(row, at) {
+  if (!isPlainObject(row)) return `${at}: must be an object`;
+  const isTextRow = 'text' in row;
+  const assignedId = !isTextRow && Object.hasOwn(row, 'candidate_assignment_version');
+  const expected = isTextRow ? TEXT_ROW_KEYS : assignedId ? ASSIGNED_ID_ROW_KEYS : LEGACY_ID_ROW_KEYS;
+  if (keysOf(row) === expected) return undefined;
+  return `${at}: must have exactly ${expected}${!isTextRow && !assignedId ? ` or ${ASSIGNED_ID_ROW_KEYS}` : ''}`;
+}
+
+/**
+ * Row-local field value failures of a shape-valid descriptive Relation row. `resolvesForm(form, recordId)` is the
+ * caller's optional index-backed candidate-form check; it is consulted in the same per-form order as before.
+ */
+export function relationRowFieldErrors(row, at, { resolvesForm } = {}) {
+  const errors = [];
+  const isTextRow = 'text' in row;
+  const idFields = isTextRow
+    ? ['source_record_id', 'source_sense_id']
+    : ['source_record_id', 'source_sense_id', 'target_record_id', 'target_sense_id'];
+  for (const field of idFields) if (!isIdString(row[field])) errors.push(`${at}: ${field} must be a non-empty string`);
+  if (!ADMISSION_TYPES.includes(row.type)) errors.push(`${at}: type ${JSON.stringify(row.type)} is not one of ${ADMISSION_TYPES.join('/')}`);
+  if (!isTier(row.relevance)) errors.push(`${at}: relevance must be an integer 1..9`);
+  if (isTextRow) {
+    if (!isText(row.text) || row.text !== normalizeCandidate(row.text)) errors.push(`${at}: text must be a non-empty normalized string`);
+    return errors;
+  }
+  if (!ADMISSION_TYPES.includes(row.reverse_type)) errors.push(`${at}: reverse_type ${JSON.stringify(row.reverse_type)} is not one of ${ADMISSION_TYPES.join('/')}`);
+  if (!isTier(row.reverse_relevance)) errors.push(`${at}: reverse_relevance must be an integer 1..9`);
+  if (row.reverse_type !== row.type || row.reverse_relevance !== row.relevance) {
+    errors.push(`${at}: reverse_type and reverse_relevance must match type and relevance`);
+  }
+  if (Object.hasOwn(row, 'candidate_assignment_version')) {
+    if (![0, 1].includes(row.candidate_assignment_version)) errors.push(`${at}: candidate_assignment_version must be 0 (legacy inferred) or 1 (selected)`);
+    const checkForms = (forms, recordId, field, { allowEmpty = true } = {}) => {
+      if (!Array.isArray(forms)) { errors.push(`${at}: ${field} must be an array of normalized candidate strings`); return; }
+      if (!allowEmpty && forms.length === 0) errors.push(`${at}: ${field} must contain at least one candidate spelling`);
+      const seen = new Set();
+      for (const form of forms) {
+        if (!isText(form) || form !== normalizeCandidate(form)) {
+          errors.push(`${at}: ${field} must contain only non-empty normalized candidate strings`);
+          continue;
+        }
+        if (seen.has(form)) errors.push(`${at}: ${field} repeats candidate ${JSON.stringify(form)}`);
+        seen.add(form);
+        if (resolvesForm && !resolvesForm(form, recordId)) {
+          errors.push(`${at}: ${field} candidate ${JSON.stringify(form)} does not resolve to ${recordId}`);
+        }
+      }
+    };
+    checkForms(row.candidate_forms, row.target_record_id, 'candidate_forms', { allowEmpty: false });
+    checkForms(row.reverse_candidate_forms, row.source_record_id, 'reverse_candidate_forms');
+  }
+  return errors;
+}
+
+/** Object/key-set failure of one descriptive Drop row, or undefined. */
+export function dropRowShapeError(row, at) {
+  return isPlainObject(row) && keysOf(row) === DROP_ROW_KEYS ? undefined : `${at}: must have exactly ${DROP_ROW_KEYS}`;
+}
+
+/** Row-local field value failures of a shape-valid descriptive Drop row. */
+export function dropRowFieldErrors(row, at) {
+  const errors = [];
+  for (const field of ['source_record_id', 'source_sense_id']) if (!isIdString(row[field])) errors.push(`${at}: ${field} must be a non-empty string`);
+  if (!isText(row.candidate) || row.candidate !== normalizeCandidate(row.candidate)) errors.push(`${at}: candidate must be a non-empty normalized string`);
+  if (!DROP_REASONS.includes(row.reason)) errors.push(`${at}: reason must be one of ${DROP_REASONS.join('/')}`);
+  return errors;
+}
+
+/** Duplicate keys shared by the official verifier and the data PR check: ID pairs (both directions), text and Drop. */
+export const relationPairKey = (sourceSense, targetRecord, targetSense) => `${sourceSense}\u0000${targetRecord}\u0000${targetSense}`;
+export const relationTextKey = (sourceSense, text) => `${sourceSense}\u0000${normalizeCandidate(text)}`;
