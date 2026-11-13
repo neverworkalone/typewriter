@@ -1105,7 +1105,8 @@ def opencode_provider_errors(log_file: str | Path) -> tuple[list[dict], str]:
                         param = inner_err["param"]
                 errors.append({"type": err.get("type") if isinstance(err.get("type"), str) else "",
                                "status": status if isinstance(status, int) and not isinstance(status, bool) else None,
-                               "param": param})
+                               "param": param,
+                               "message": err.get("message") if isinstance(err.get("message"), str) else ""})
     except OSError:
         return [], ""
     return errors, "\n".join(diagnostic[-200:])
@@ -1128,6 +1129,10 @@ def classify_goat_failure(log_file: str | Path) -> str:
         if e["status"] == 400 and e["param"] == "reasoning_effort":
             return "effort"
         if isinstance(e["status"], int) and 500 <= e["status"] <= 599:
+            return "network"
+        # A dropped connection mid-stream reports its HTTP status as 200; the transport type and a network-fault
+        # message are the evidence (a transient fault, retried within the existing bounded network backoff).
+        if e["type"] == "provider.transport" and classify_failure(e["message"], []) == "network":
             return "network"
     if errors:
         return "unknown"
