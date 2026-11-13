@@ -536,9 +536,20 @@ test('cursor next with a subset of forms points back to the record own unfinishe
   ];
   assert.throws(() => resolveRecordedCursor({ cursor: 'next', recordId: 'w6', forms: ['안서'], boundary: null, entries,
     senseRefs: new Map([['w4', ['s23']], ['w6', ['s24']]]) }),
-  (error) => error instanceof InvalidCursorError && /--forms 안서하다,안서 --cursor next/u.test(error.message)
+  (error) => error instanceof InvalidCursorError && /--forms '안서하다,안서' --cursor next/u.test(error.message)
     && !/recorded for w4/u.test(error.message));
   assert.equal(resolveRecordedCursor({ cursor: 'next', recordId: 'w6', forms: ['안서하다', '안서'], boundary: null, entries }), 'cursor-own');
+});
+
+test('own-condition hint is a shell-safe single --forms argument that round-trips through the CLI parser', async () => {
+  const entries = [cursorEvidence('w6', ['색 상자', '색상 자'], null, 'cursor-own')];
+  let message = '';
+  try { resolveRecordedCursor({ cursor: 'next', recordId: 'w6', forms: ['색'], boundary: null, entries }); } catch (error) { message = error.message; }
+  const quoted = /--forms ('[^']*')/u.exec(message)?.[1];
+  assert.equal(quoted, "'색 상자,색상 자'");
+  const { execFileSync } = await import('node:child_process');
+  const argv = JSON.parse(execFileSync('sh', ['-c', `node -e 'console.log(JSON.stringify(process.argv.slice(1)))' x --forms ${quoted} --cursor next`], { encoding: 'utf8' }));
+  assert.deepEqual(argv, ['x', '--forms', '색 상자,색상 자', '--cursor', 'next']);
 });
 
 test('recorded cursors require the exact active record, search and unconsumed LIMITED chain', () => {
