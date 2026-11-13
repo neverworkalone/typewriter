@@ -10204,12 +10204,30 @@ class Supervisor:
         (PR #6249). Re-run the fix once per HEAD; a second silent failure stops the batch (ERROR) with its evidence.
         Returns the events to fix now, [] when nothing is unanswered, or None when the batch was stopped."""
         login = str(self.cfg["expected_account"]).casefold()
-        # A reply is a PR conversation comment or an inline review-thread reply from our account (#6285 review).
-        written = list(self.gh.issue_comments(b["pr_number"])) + list(self.gh.inline_comments(b["pr_number"]))
-        replied = max((reviews._ts(c.get("created_at")) for c in written
-                       if str((c.get("user") or {}).get("login") or "").casefold() == login
-                       and str(c.get("body") or "").strip()), default=0.0)
-        pending = [e for e in evs if e.get("kind") in ("review", "comment") and float(e.get("ts") or 0) > replied]
+
+        def ours(c) -> bool:
+            return (str((c.get("user") or {}).get("login") or "").casefold() == login
+                    and bool(str(c.get("body") or "").strip()))
+
+        conversation = [reviews._ts(c.get("created_at")) for c in self.gh.issue_comments(b["pr_number"]) if ours(c)]
+        inline = list(self.gh.inline_comments(b["pr_number"]))
+        by_id = {c.get("id"): c for c in inline}
+        thread_replies = [c for c in inline if ours(c) and c.get("in_reply_to_id") is not None]
+
+        def answered(e) -> bool:
+            """A PR conversation comment after the event, or a reply inside THIS review's thread (#6285 reviews);
+            a top-level inline comment or one in another review's thread is not an answer."""
+            ts = float(e.get("ts") or 0)
+            if any(t > ts for t in conversation):
+                return True
+            rid = e.get("review_id")
+            return rid is not None and any(
+                reviews._ts(c.get("created_at")) > ts
+                and rid in (c.get("pull_request_review_id"),
+                            (by_id.get(c.get("in_reply_to_id")) or {}).get("pull_request_review_id"))
+                for c in thread_replies)
+
+        pending = [e for e in evs if e.get("kind") in ("review", "comment") and not answered(e)]
         if not pending:
             return []
         key = f"s2_refix_{b['id']}_{info['head_sha']}"

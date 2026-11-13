@@ -73,17 +73,36 @@ class UnansweredStage2Review(unittest.TestCase):
 
     def test_an_inline_review_thread_reply_is_also_a_rebuttal(self):
         w, b = self._waiting()
+        head = w.gh.pull(b["pr_number"])["head_sha"]
+        parent = {"id": 8, "user": {"login": "genonfire"}, "body": "w87731-s1 구독: 무관",
+                  "commit_id": head, "pull_request_review_id": 77, "created_at": "2026-11-13T16:27:55Z"}
+        w.gh.inline_ = [parent]   # the review's own inline comment is part of the first fix's events
         self._poll(w, b)
         self._fix_ends_silently(w, b)
-        head = w.gh.pull(b["pr_number"])["head_sha"]
-        w.gh.inline_ = [{"id": 9, "user": {"login": "neverworkalone-agent"}, "body": "이 행은 정책상 유지합니다: 근거 …",
-                         "commit_id": head, "pull_request_review_id": 77, "in_reply_to_id": 8,
+        w.gh.inline_ = [parent,
+                        {"id": 9, "user": {"login": "neverworkalone-agent"}, "body": "이 행은 정책상 유지합니다: 근거 …",
+                         "commit_id": head, "pull_request_review_id": 90, "in_reply_to_id": 8,
                          "created_at": "2026-11-13T16:41:00Z"}]
         launches = len(w.adapter.launches)
         self._poll(w, b)
         self._poll(w, b)
         self.assertEqual(len(w.adapter.launches), launches)
         self.assertEqual(w.store.batch(b["id"])["state"], "WAITING_REVIEW")
+
+    def test_a_top_level_or_other_thread_inline_comment_does_not_count_as_the_answer(self):
+        w, b = self._waiting()
+        self._poll(w, b)
+        self._fix_ends_silently(w, b)
+        head = w.gh.pull(b["pr_number"])["head_sha"]
+        w.gh.inline_ = [{"id": 20, "user": {"login": "genonfire"}, "body": "다른 리뷰 스레드", "commit_id": head,
+                         "pull_request_review_id": 55, "created_at": "2026-11-13T16:20:00Z"},
+                        {"id": 21, "user": {"login": "neverworkalone-agent"}, "body": "최상위 메모", "commit_id": head,
+                         "pull_request_review_id": 78, "created_at": "2026-11-13T16:42:00Z"},
+                        {"id": 22, "user": {"login": "neverworkalone-agent"}, "body": "다른 스레드 답글", "commit_id": head,
+                         "pull_request_review_id": 79, "in_reply_to_id": 20, "created_at": "2026-11-13T16:43:00Z"}]
+        launches = len(w.adapter.launches)
+        self._poll(w, b)
+        self.assertEqual(len(w.adapter.launches), launches + 1)   # review:77 is still unanswered: retried once
 
     def test_dead_amend_lock_is_removed_before_the_fix_and_a_live_one_is_kept(self):
         w, b = self._waiting()
