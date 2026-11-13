@@ -529,6 +529,29 @@ test('cursor next on a sense of another record names the record that holds the r
     (error) => !/recorded for/u.test(error.message));
 });
 
+test('cursor next with a subset of forms points back to the record own unfinished condition, not siblings', () => {
+  const entries = [
+    cursorEvidence('w6', ['안서하다', '안서'], null, 'cursor-own'),
+    { ...cursorEvidence('w4', ['안서'], null, null), status: 'COMPLETE', complete: true, cursor_out: null },
+  ];
+  assert.throws(() => resolveRecordedCursor({ cursor: 'next', recordId: 'w6', forms: ['안서'], boundary: null, entries,
+    senseRefs: new Map([['w4', ['s23']], ['w6', ['s24']]]) }),
+  (error) => error instanceof InvalidCursorError && /--forms '안서하다,안서' --cursor next/u.test(error.message)
+    && !/recorded for w4/u.test(error.message));
+  assert.equal(resolveRecordedCursor({ cursor: 'next', recordId: 'w6', forms: ['안서하다', '안서'], boundary: null, entries }), 'cursor-own');
+});
+
+test('own-condition hint is a shell-safe single --forms argument that round-trips through the CLI parser', async () => {
+  const entries = [cursorEvidence('w6', ['색 상자', '색상 자'], null, 'cursor-own')];
+  let message = '';
+  try { resolveRecordedCursor({ cursor: 'next', recordId: 'w6', forms: ['색'], boundary: null, entries }); } catch (error) { message = error.message; }
+  const quoted = /--forms ('[^']*')/u.exec(message)?.[1];
+  assert.equal(quoted, "'색 상자,색상 자'");
+  const { execFileSync } = await import('node:child_process');
+  const argv = JSON.parse(execFileSync('sh', ['-c', `node -e 'console.log(JSON.stringify(process.argv.slice(1)))' x --forms ${quoted} --cursor next`], { encoding: 'utf8' }));
+  assert.deepEqual(argv, ['x', '--forms', '색 상자,색상 자', '--cursor', 'next']);
+});
+
 test('recorded cursors require the exact active record, search and unconsumed LIMITED chain', () => {
   const first = cursorEvidence('w1', ['낭축'], 'both', 'cursor-one');
   const second = cursorEvidence('w1', ['낭축'], 'both', 'cursor-two', 'cursor-one');
