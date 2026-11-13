@@ -1896,6 +1896,7 @@ test('renderChunkText table: header, forms line, status-only items and empty chu
     ['forms', { ...base, items: [{ ...withContexts, forms: ['가나', '가날'] }] }, 'forms: 가나, 가날\nhits=4'],
     ['status only', { ...base, items: [{ sense_id: 's2', status: 'SEARCH_FAILED' }, { sense_id: 's3', status: 'UNSEARCHABLE' }] }, '## s2 — SEARCH_FAILED\n\n## s3 — UNSEARCHABLE\n'],
     ['empty', { ...base, items: [] }, 'not_yet_read=2\n\n\n'],
+    ['bracketed excerpt line is not a context key', { ...base, items: [{ ...withContexts, contexts: [{ k: 'aaaaaaaaaaaa', src: 's', x: '[2717-이무영-제1과제1장]\n본문 [중간]' }] }] }, '[aaaaaaaaaaaa] s\n [2717-이무영-제1과제1장]\n본문 [중간]\n'],
   ];
   for (const [name, result, expected] of cases) {
     const text = renderChunkText(result);
