@@ -3466,3 +3466,28 @@ test('amend lock: a leftover tombstone is never removed by age and never causes 
   await waiter;
   assert.equal(await readFile(lock, 'utf8'), `${process.pid}:b:`);
 });
+
+test('a same-checkpoint text-only relation owns its candidate so a new ID pair assigns no reverse form for it (#6052)', async (t) => {
+  // w1 and w2 list each other's lemma. w1 -> w2 is an exact ID pair; w2's candidate for w1 is authored text-only.
+  const root = await singleCandidateRepository(t, [{ recordId: 'w1', text: '각자' }, { recordId: 'w2', text: '각석' }]);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const input = '.warroom-scratch/reverse-text-decisions.json';
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: [
+    { source_sense_id: 'w1-s1', candidate: '각자', disposition: 'relation', type: 'near', relevance: 2,
+      target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1' },
+    { source_sense_id: 'w2-s1', candidate: '각석', disposition: 'relation', type: 'scene', relevance: 4,
+      target_resolution: 'no_exact_match', checked_target_sense_ids: ['w1-s1'] },
+  ] }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
+  await completeOptionalForTest(root, checkpoint);
+  await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
+  const preflight = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  assert.equal(preflight.ok, true, JSON.stringify(preflight));
+  await mergeForTest(root, checkpoint);
+  const rows = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
+  assert.deepEqual(rows.find((row) => !('text' in row)).reverse_candidate_forms, []);
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+  assert.equal(verified.missing, 0);
+});
