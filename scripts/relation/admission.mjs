@@ -433,11 +433,15 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
   const pairKey = relationPairKey;
   const textKey = relationTextKey;
   const remember = (key, origin, row) => {
-    const matches = seenPairs.get(key) ?? [];
-    matches.push({ origin, row });
-    seenPairs.set(key, matches);
+    // Most keys have exactly one owner across the whole approved corpus: keep that one as a bare entry and only
+    // allocate an array when a duplicate appears (bounds peak heap on large corpora, #6088).
+    const entry = { origin, row };
+    const prior = seenPairs.get(key);
+    if (prior === undefined) seenPairs.set(key, entry);
+    else if (Array.isArray(prior)) prior.push(entry);
+    else seenPairs.set(key, [prior, entry]);
   };
-  const describeMatches = (matches = []) => matches.map(({ origin, row }) => {
+  const describeMatches = (matches = []) => (Array.isArray(matches) ? matches : [matches]).map(({ origin, row }) => {
     if (!row) return origin;
     const direction = 'text' in row
       ? `${row.source_record_id}/${row.source_sense_id} -> ${JSON.stringify(row.text)}`
