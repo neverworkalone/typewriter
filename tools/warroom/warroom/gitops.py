@@ -281,6 +281,23 @@ class Git:
         """Plain push of HEAD to a not-yet-existing remote branch. Never forced; a moved remote is the caller's ERROR."""
         self._git("push", "origin", f"HEAD:refs/heads/{branch}", cwd=path, timeout=600, net=True)
 
+    def push_owned_fix(self, path: Path, branch: str, remote_sha: str, local: str) -> None:
+        """Plain push of an owned, committed review fix the AI could not push itself (C/D/A/B fix runs).
+
+        Only a clean, registered worktree whose HEAD strictly descends from the verified remote/PR HEAD is pushed.
+        No force: a remote that moved meanwhile rejects the push and stays the caller's decision.
+        """
+        path = Path(path)
+        if self.registered(path) != branch:
+            raise FastForwardBlocked(f"worktree가 소유 브랜치 {branch!r}로 등록되어 있지 않습니다")
+        if (dirty := self.dirty(path)).strip():
+            raise FastForwardBlocked(f"worktree가 clean 상태가 아닙니다: {dirty.strip()[:400]}")
+        if self.head(path) != local or local == remote_sha or not self.is_ancestor(remote_sha, local, path=path):
+            raise FastForwardBlocked("local HEAD가 원격 PR HEAD의 후손이 아니어서 push하지 않습니다")
+        if self.remote_head(branch) != remote_sha:
+            raise FastForwardRace("push 직전에 원격 브랜치가 이동했습니다")
+        self._git("push", "origin", f"{local}:refs/heads/{branch}", cwd=path, timeout=600, net=True)
+
     def dirty(self, path: Path) -> str:
         self.ignore_scratch()
         return self._git("status", "--porcelain=v1", "--untracked-files=all", cwd=path).out

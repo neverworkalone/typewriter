@@ -237,6 +237,13 @@ class FakeGit:
         self.pushes.append(branch)
         self.remote[branch] = self.local_head
 
+    def push_owned_fix(self, path, branch, remote_sha, local):
+        self.owned_fix_pushes = getattr(self, "owned_fix_pushes", [])
+        if self.push_error:
+            raise GitError(self.push_error)
+        self.owned_fix_pushes.append((branch, remote_sha, local))
+        self.remote[branch] = local
+
     def verify_stage2(self, sha, kind, shard, batch, part, timeout=900):
         self.verify_calls.append((kind, shard, batch, part))
         if self.verify_error:

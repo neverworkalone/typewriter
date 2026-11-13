@@ -9482,6 +9482,13 @@ class Supervisor:
                     b, key, f"원격에는 local HEAD {local[:10]}이 있지만 PR API HEAD는 {info['head_sha'][:10]}입니다")
             if remote == info["head_sha"] and self._resume_unpushed_stage2_fix(b, info, local):
                 return "stop"
+            if (remote == info["head_sha"] and b["method"] in ("a", "b", "c", "d") and b["pid"] is None
+                    and self._verified_fix_exit(b) and self.git.is_ancestor(remote, local, path=wt)):
+                # A verified fix left its owned commit unpushed (the AI's own push was rejected): the Supervisor
+                # pushes that exact commit, never forced, instead of reading it as divergence.
+                self.git.push_owned_fix(wt, b["branch"], remote, local)
+                self.store.log(b["id"], f"검증된 수정 commit {local[:10]}을 Supervisor가 소유 브랜치에 push했습니다")
+                return self._head_lag_wait(b, key, f"push한 local HEAD {local[:10]}의 PR 반영 대기")
             if remote != info["head_sha"]:
                 # A stale PR API can briefly trail an Update branch push. Re-read once before classifying
                 # an unrelated origin SHA as divergence; only a PR now pointing at that exact SHA may sync.
