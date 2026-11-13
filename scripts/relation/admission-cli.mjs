@@ -2971,6 +2971,7 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
     index: loaded.index,
     candidateMerge,
   });
+  for (const relation of newRelations) if ('text' in relation) reverseCandidates.addRelation(relation);
   for (const relation of newRelations) {
     if ('text' in relation) continue;
     const source = loaded.index.byId.get(relation.source_record_id);
@@ -3104,6 +3105,9 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
     index: loaded.index,
     candidateMerge,
   });
+  // Text-only relations decide their own candidate too, so register every one before assigning reverse forms;
+  // otherwise a reverse form could claim a candidate that a same-checkpoint text-only relation already owns.
+  for (const relation of generated.relations) if ('text' in relation) reverseCandidates.addRelation(relation);
   for (const relation of generated.relations) {
     if ('text' in relation) continue;
     const source = loaded.index.byId.get(relation.source_record_id);
