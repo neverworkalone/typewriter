@@ -33,6 +33,10 @@
     어느 쪽이든 PR에 답글은 한 번만 단다. `+1`/`+2` PASS 리뷰에는 댓글도 커밋도 하지 않는다.
   - 원 batch PR(Candidate 등 생산 산출물)의 충돌은 War Room 생산 계약(브랜치·HEAD 유지, rebase 금지)을 먼저
     확인하고, 그 계약 안의 공식 경로로 해결한다.
+- **코드 수정은 운영 checkout 밖에서 한다.** 최신 `origin/master`에서 별도 worktree(`git worktree add -b <branch> <경로>
+  origin/master`)를 만들고, 그 안에서 고치고, 테스트하고, commit/push/PR을 진행한다. 운영 checkout에서는 branch를 만들거나
+  전환하지 않고, 파일을 고치지 않으며, commit하지 않는다. 운영 checkout은 항상 `master`이고 Supervisor 코드에 변경이 없는
+  clean 상태여야 한다.
 - 저장소 `AGENTS.md`, `REVIEW.md`, `tools/warroom/README.md`를 따른다.
 - 작업물, checkpoint, 세션, 미커밋 변경, 증거를 보존한다.
 - 운영 DB, 소유권 기록, 완료 상태를 직접 고치지 않는다.
@@ -59,6 +63,9 @@
 3. 공식 경로로 끝낼 수 없고 안전한 수동 절차가 확인된 경우에만 수동 재시작한다. 이것은 README의 수동 종료 금지에
    대한 복구 목적 예외다. 오너 Stop·Drain, 소유권·무결성 경계, 권한 거절은 예외가 아니다.
 4. 운영 checkout은 이전 Supervisor 종료를 확인한 뒤에만 갱신한다. reset·stash는 하지 않는다.
+   갱신은 `master`에서 `git fetch origin master` 후 `git merge --ff-only origin/master`로만 한다. 수정은 PR이 머지된 뒤에만
+   반영한다. 로컬 commit이나 머지되지 않은 branch를 checkout한 상태에서는 `./kwar`나 `--request-code-sha`를 쓰지 않는다.
+   origin에 없는 SHA를 가리키는 재시작 요청은 코드 갱신을 계속 막는다.
 5. 새 instance 기동만으로 완료가 아니다. `supervisor-runtime.json`의 `loaded_code_sha`가 수정을 포함하는지,
    원 task가 실제로 진전했는지 확인한다.
 6. 실패한 명령이나 검증을 이후의 exit 0이나 무관한 성공으로 덮지 않는다.

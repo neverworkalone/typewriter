@@ -5853,6 +5853,24 @@ class Supervisor:
                    "Drop 전용 변경을 명시적으로 수정하고 검증해 푸시한 뒤 Retry를 실행하세요. "
                    f"현재 리뷰 이벤트: {keys}. 기존 Stage 2 Part 판정과 reconcile 증거는 보존했습니다.")
 
+    def _converge_to_latest_base(self, wt, branch: str, target: str, attempts: int = 12) -> bool:
+        """Merge origin/<target> until the worktree contains its freshly fetched tip; True if any merge happened.
+
+        A busy master can advance between consecutive fetches, so a fixed few passes turned a benign race into a
+        batch ERROR. Merge conflicts still raise IntegrationBlocked from integrate(); only exhausting the bound is
+        reported as transient so the tick asks again with the worktree preserved."""
+        integrated = False
+        for _ in range(attempts):
+            latest = self.git.fetch_base(target)
+            if self.git.contains(wt, latest):
+                return integrated
+            self.git.integrate(wt, branch, target, latest)
+            integrated = True
+        latest = self.git.fetch_base(target)
+        if self.git.contains(wt, latest):
+            return integrated
+        raise GitTransient(f"latest {target} kept advancing during integration; preserving the worktree")
+
     def _stage2_reconcile_finalize(self, b) -> None:
         """Write only proven orphan Drops, verify the exact Part, and submit a separate Stage2-only PR."""
         wt = Path(b["worktree"])
@@ -5865,15 +5883,7 @@ class Supervisor:
             base_revision, change_point = self._stage2_reconcile_task(b)
             if not self.git.is_ancestor(base_revision, self.git.head(wt), path=wt):
                 raise IntegrationBlocked("reconciliation branch no longer contains its verified base revision")
-            latest = self.git.fetch_base(self.cfg["base_branch"])
-            if not self.git.contains(wt, latest):
-                self.git.integrate(wt, b["branch"], self.cfg["base_branch"], latest)
-            latest = self.git.fetch_base(self.cfg["base_branch"])
-            if not self.git.contains(wt, latest):
-                self.git.integrate(wt, b["branch"], self.cfg["base_branch"], latest)
-            latest = self.git.fetch_base(self.cfg["base_branch"])
-            if not self.git.contains(wt, latest):
-                raise IntegrationBlocked("latest master advanced during reconciliation; preserving the worktree")
+            self._converge_to_latest_base(wt, b["branch"], self.cfg["base_branch"])
             head = self.git.head(wt)
             if not self._relation_deletion_between(change_point, head, wt):
                 bb, pp = stage2.split_key(b["batch"])
@@ -6025,17 +6035,7 @@ class Supervisor:
                     target = self.cfg["base_branch"]
                     begin_stage("master_sync")
                     change_point = self._stage2_change_point(b, checkpoint, wt)
-                    latest = self.git.fetch_base(target)
-                    if not self.git.contains(wt, latest):
-                        self.git.integrate(wt, b["branch"], target, latest)
-                        integrated = True
-                    latest = self.git.fetch_base(target)
-                    if not self.git.contains(wt, latest):
-                        self.git.integrate(wt, b["branch"], target, latest)
-                        integrated = True
-                    latest = self.git.fetch_base(target)
-                    if not self.git.contains(wt, latest):
-                        raise IntegrationBlocked("latest master advanced during Stage 2 finalization; preserving the worktree")
+                    integrated = self._converge_to_latest_base(wt, b["branch"], target)
                     synchronized_head = self.git.head(wt)
                     end_stage()
                     begin_stage("prepare_merge")

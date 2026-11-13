@@ -101,11 +101,23 @@ def _locked(name):
     return decorate
 
 
+NODE_HEAP_MB = 8192
+
+
+def _with_node_heap(env: dict) -> dict:
+    """Admission/Stage 2 CLIs load every approved Relation/Drop; that outgrows node's default ~4 GB heap (#6088).
+    An explicit operator `--max-old-space-size` is kept."""
+    options = str((env or {}).get("NODE_OPTIONS") or "")
+    if "--max-old-space-size" in options:
+        return env
+    return {**env, "NODE_OPTIONS": f"{options} --max-old-space-size={NODE_HEAP_MB}".strip()}
+
+
 class Git:
     fence = None   # crash fence (#3773); stays None for a Git built without it
 
     def __init__(self, runner: Runner, repo_root: Path, env: dict, worktrees_dir: Path, fence=None):
-        self.r, self.root, self.env = runner, Path(repo_root), env
+        self.r, self.root, self.env = runner, Path(repo_root), _with_node_heap(env)
         self.fence = fence   # crash fence (#3773); None keeps the pre-fence behaviour exactly
         self.worktrees_dir = Path(worktrees_dir)
         self.repo_lock = OrderedLock(4, reentrant=True, name="repo")
