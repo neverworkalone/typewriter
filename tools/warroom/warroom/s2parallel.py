@@ -278,6 +278,8 @@ class ParallelStage2:
         if hard:
             message = (self.sup._fast_unavailable_message(run["log_file"]) if cls == "fast_unavailable" else
                        f"AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+            if cls == "usage_limit":
+                data["pause"] = True   # a plan limit is not a defect: PAUSED for the owner's Retry, never a Maintainer incident
             return self._task_failed(b, row, data, f"[{row['task']}] {message}")
         if cls not in ("rate_limit", "network"):   # unknown / session_missing: preserved, never silently re-run
             return self._task_failed(b, row, data, f"[{row['task']}] AI 실행 실패(코드 {code}, {cls}) — 자동 재시도 없이 응답·세션을 보존합니다.")
@@ -529,11 +531,13 @@ class ParallelStage2:
         self.store.log(b["id"], message, "error")
 
     def _halt(self, b, failed) -> None:
-        """No worker is running any more: the Part goes to ERROR with every answer, session and budget preserved."""
+        """No worker is running any more: the Part goes to PAUSED (usage_limit only) or ERROR with every answer, session
+        and budget preserved."""
         message = "; ".join(self._data(r).get("error", f"[{r['task']}] 실패") for r in failed)[:900]
+        state = "PAUSED" if all(self._data(r).get("pause") for r in failed) else "ERROR"
         for r in failed:
             self._set(b, r["task"], self._data(r) | {"ack": True})
-        self.sup._fail(b, "ERROR", f"Stage 2 병렬 primary 중지: {message}")
+        self.sup._fail(b, state, f"Stage 2 병렬 primary 중지: {message}")
 
     def _reset_acknowledged_failures(self, b) -> None:
         """After an operator Retry brought the Part back to PRODUCING: failed tasks re-enter from what is preserved."""
@@ -543,7 +547,7 @@ class ParallelStage2:
             data = self._data(row)
             if not data.get("ack"):
                 continue
-            data.pop("ack"), data.pop("error", None)
+            data.pop("ack"), data.pop("error", None), data.pop("pause", None)
             wt = self._wt(b)
             correction = data.get("correction") or {}
             if data.get("kind") == "fix" and correction and not correction.get("fix_applied") and row["session_id"]:
@@ -563,6 +567,9 @@ class ParallelStage2:
         """#5921: a task whose last run died on a plan usage limit that has not reset yet must not be relaunched by an
         approved resume/Retry (it would fail again at once); the scheduler waits for the reported reset time."""
         run = self.store.run(row["run_id"]) if row["run_id"] else None
+        override = int(self.store.get(adapters.usage_limit_override_key(row["batch_id"])) or 0)
+        if run is not None and run["id"] <= override:
+            return   # the owner's Retry came after this failure and declared the limit reset: relaunch now
         try:
             text = Path(run["log_file"]).read_text(encoding="utf-8", errors="replace") if run and run["log_file"] else ""
         except OSError:

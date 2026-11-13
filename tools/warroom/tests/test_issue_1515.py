@@ -59,6 +59,7 @@ class FixHeadLag(unittest.TestCase):
         w.now += 400
         w.tick(2)
         self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("FIXING", n))   # still no AI
+        w.gh.add_pr_reply(7, "수정했습니다.\nWarRoom-Review-Event: review:11")   # the event completes with its reply (#5987)
         w.pr_info(7, HEAD2, head_ref=BRANCH)
         w.tick()
         self.assertEqual((w.row()["state"], w.row()["head_sha"]), ("WAITING_REVIEW", HEAD2))

@@ -1076,6 +1076,12 @@ def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
 _LIMIT_RESET = re.compile(r"try again at ([A-Z][a-z]{2,8})\.? (\d{1,2})(?:st|nd|rd|th)?,? (\d{4}) (\d{1,2}):(\d{2}) ?([AP]M)", re.I)
 
 
+def usage_limit_override_key(batch_id: int) -> str:
+    """Store key: the last run id of this batch when an operator Retry declared its plan usage limit reset; a
+    usage-limit failure of that run or an earlier one no longer waits for its stated reset."""
+    return f"usage_limit_override_{batch_id}"
+
+
 def usage_limit_reset_at(log_text: str) -> float | None:
     """Epoch seconds (local time) of the 'try again at <date>' a plan usage-limit error reports, else None."""
     import datetime
