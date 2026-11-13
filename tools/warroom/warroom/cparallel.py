@@ -671,6 +671,17 @@ class ParallelC:
     def _run_failed(self, b, row, data, run, code: int, cls: str | None = None) -> None:
         task = row["task"]
         if run["kind"] == SCOPE_RECOVERY:
+            cls = cls if cls is not None else self.sup._classify_run(b["producer"], run["log_file"])
+            recovery = data.get("recovery")
+            if cls == "usage_limit" and isinstance(recovery, dict):
+                # The approved one-shot recovery never got to work: keep its scope and session, re-arm it for the
+                # owner's Retry after the limit (PAUSED, never a Maintainer incident).
+                self.store.log(b["id"], f"[{task}] AI 종료 코드 {code}, 분류={cls}", "warn")
+                data["limit_scope_recovery"] = recovery | {"launch_started": False}
+                data["pause"] = True
+                self._remember_limit_reset(data, run)
+                return self._task_failed(b, row, data, f"[{task}] legacy chunk_scope 복구 실행이 usage_limit로 실패했습니다 — "
+                                         "같은 승인 범위·세션을 보존합니다. 한도 해제 후 Retry.")
             try:
                 rec = literary.read_active(self._wt(b), b, int(task))
                 pending = self._pending(b, rec) if rec is not None else []
@@ -685,13 +696,8 @@ class ParallelC:
         if cls in ("auth", "usage_limit", "free_quota", "effort", "fast_unavailable"):
             message = (self.sup._fast_unavailable_message(run["log_file"]) if cls == "fast_unavailable" else
                        f"AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
-            if cls == "usage_limit":   # remember the stated reset: a later resume must wait for it
-                try:
-                    reset = usage_limit_reset_at(Path(run["log_file"]).read_text("utf-8", errors="replace")[-30000:])
-                except OSError:
-                    reset = None
-                if reset is not None:
-                    data["limit_until"] = reset
+            if cls == "usage_limit":   # remember the stated reset: a later automatic resume must wait for it
+                self._remember_limit_reset(data, run)
                 data["pause"] = True   # a plan limit is not a defect: PAUSED for the owner's Retry, never a Maintainer incident
             return self._task_failed(b, row, data, f"[{task}] {message}")
         if cls not in ("rate_limit", "network"):   # unknown / session_missing: preserved, never silently re-run
@@ -1255,6 +1261,15 @@ class ParallelC:
         return prompts.c_chunk(b, n, checkpoint, pages=literary.write_pages(wt, view, n), note=note, scoped=True)
 
     # ---- failures, halt, Retry -------------------------------------------------------------------------------
+    @staticmethod
+    def _remember_limit_reset(data: dict, run) -> None:
+        try:
+            reset = usage_limit_reset_at(Path(run["log_file"]).read_text("utf-8", errors="replace")[-30000:])
+        except OSError:
+            reset = None
+        if reset is not None:
+            data["limit_until"] = reset
+
     def _task_failed(self, b, row, data, message: str) -> None:
         data["error"] = message
         self._set(b, row["task"], data, state="FAILED")
@@ -1356,6 +1371,19 @@ class ParallelC:
         for row in self.store.task_rows(b["id"]):
             data = _data(row)
             if row["state"] != "FAILED" or not data.get("ack"):
+                continue
+            scope = data.get("limit_scope_recovery")
+            if isinstance(scope, dict):   # a scope recovery stopped only by usage_limit: the same approval, once more
+                for key in ("ack", "error", "pause", "limit_scope_recovery"):
+                    data.pop(key, None)
+                data["kind"], data["recovery"] = "scope_recovery", scope
+                until = float(data.get("limit_until") or 0)
+                if until > self.sup.clock():
+                    data["retry_after"] = until
+                else:
+                    data.pop("limit_until", None)
+                self._set(b, row["task"], data, state="FIXQ", run_id=None)
+                round_.force = True
                 continue
             if data.get("search_failed"):   # its SEARCH_FAILED view is stale: drop it, the Senses are rendered again
                 literary.clear_active(self._wt(b), int(row["task"]))
