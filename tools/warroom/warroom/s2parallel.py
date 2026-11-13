@@ -567,6 +567,9 @@ class ParallelStage2:
         """#5921: a task whose last run died on a plan usage limit that has not reset yet must not be relaunched by an
         approved resume/Retry (it would fail again at once); the scheduler waits for the reported reset time."""
         run = self.store.run(row["run_id"]) if row["run_id"] else None
+        override = int(self.store.get(adapters.usage_limit_override_key(row["batch_id"])) or 0)
+        if run is not None and run["id"] <= override:
+            return   # the owner's Retry came after this failure and declared the limit reset: relaunch now
         try:
             text = Path(run["log_file"]).read_text(encoding="utf-8", errors="replace") if run and run["log_file"] else ""
         except OSError:
