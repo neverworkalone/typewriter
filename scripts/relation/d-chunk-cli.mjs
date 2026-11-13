@@ -657,7 +657,23 @@ async function readCursorEntries(directory, meta, ref) {
  * A search condition is recorded per record. When a request names a sense of a different record than the one the view
  * printed the same forms/boundary under, say so, so the AI retries with the right sN instead of suspecting the evidence.
  */
+/** The record's own unfinished LIMITED conditions (exact forms/boundary), so a mistyped --forms points back to them. */
+function ownUnfinishedHint(entries, recordId, ref) {
+  const own = (Array.isArray(entries) ? entries : []).filter((entry) => entry?.record_id === recordId && Array.isArray(entry.forms));
+  const seen = new Map();
+  for (const entry of own) if (!seen.has(entry.key)) seen.set(entry.key, entry);
+  const open = [];
+  for (const entry of seen.values()) {
+    let condition;
+    try { condition = recordedCondition({ recordId, forms: entry.forms, boundary: entry.boundary ?? undefined, entries, ref }); } catch { continue; }
+    if (condition.status === 'LIMITED') open.push(`--forms ${entry.forms.join(',')}${entry.boundary ? ` --boundary ${entry.boundary}` : ''}`);
+  }
+  return open.length === 0 ? '' : `; this record has an unfinished LIMITED search under a different exact condition — continue it with ${open.join(' or ')} --cursor next (forms must match the view's "search: forms=" line exactly)`;
+}
+
 function otherRecordHint(entries, recordId, forms, boundary, senseRefs) {
+  const own = ownUnfinishedHint(entries, recordId, 'cursor');
+  if (own) return own;
   const key = searchKey(forms, boundary);
   const others = [...new Set((Array.isArray(entries) ? entries : [])
     .filter((entry) => entry?.record_id !== recordId && entry?.key === key && typeof entry.record_id === 'string')

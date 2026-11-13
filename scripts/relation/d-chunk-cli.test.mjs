@@ -529,6 +529,18 @@ test('cursor next on a sense of another record names the record that holds the r
     (error) => !/recorded for/u.test(error.message));
 });
 
+test('cursor next with a subset of forms points back to the record own unfinished condition, not siblings', () => {
+  const entries = [
+    cursorEvidence('w6', ['안서하다', '안서'], null, 'cursor-own'),
+    { ...cursorEvidence('w4', ['안서'], null, null), status: 'COMPLETE', complete: true, cursor_out: null },
+  ];
+  assert.throws(() => resolveRecordedCursor({ cursor: 'next', recordId: 'w6', forms: ['안서'], boundary: null, entries,
+    senseRefs: new Map([['w4', ['s23']], ['w6', ['s24']]]) }),
+  (error) => error instanceof InvalidCursorError && /--forms 안서하다,안서 --cursor next/u.test(error.message)
+    && !/recorded for w4/u.test(error.message));
+  assert.equal(resolveRecordedCursor({ cursor: 'next', recordId: 'w6', forms: ['안서하다', '안서'], boundary: null, entries }), 'cursor-own');
+});
+
 test('recorded cursors require the exact active record, search and unconsumed LIMITED chain', () => {
   const first = cursorEvidence('w1', ['낭축'], 'both', 'cursor-one');
   const second = cursorEvidence('w1', ['낭축'], 'both', 'cursor-two', 'cursor-one');
