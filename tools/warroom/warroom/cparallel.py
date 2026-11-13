@@ -633,11 +633,11 @@ class ParallelC:
     def _after_run(self, b, row, data, run, code, round_: _Round) -> None:
         task, n = row["task"], int(row["task"])
         ad = self._adapter(b)
-        if code is None:
-            return self._task_failed(b, row, data, f"[{task}] AI 프로세스가 종료 상태 기록 없이 사라졌습니다. 결과·세션을 보존합니다.")
-        if self.sup._goat_429(run):   # #6027: before any saved-output acceptance, whatever the exit code
+        if self.sup._goat_429(run):   # #6027: first, whatever the exit code (even a lost one) and whatever was saved
             data["pause"], data["goat_429"] = True, True
             return self._task_failed(b, row, data, f"[{task}] {self.sup.GOAT_429_HOLD}")
+        if code is None:
+            return self._task_failed(b, row, data, f"[{task}] AI 프로세스가 종료 상태 기록 없이 사라졌습니다. 결과·세션을 보존합니다.")
         cls = self.sup._classify_run(b["producer"], run["log_file"]) if code != 0 else None
         if cls == "fast_unavailable":
             return self._task_failed(b, row, data, f"[{task}] {self.sup._fast_unavailable_message(run['log_file'])}")

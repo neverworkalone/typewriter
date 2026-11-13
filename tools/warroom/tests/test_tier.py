@@ -197,13 +197,18 @@ class GoatTier(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 2)
 
     def test_parallel_c_goat_429_stops_new_assignment_follows_siblings_then_pauses_and_retry_accepts_saved(self):
+        for code in (0, "lost"):                                          # "lost": the exit file is unreadable (code None)
+            with self.subTest(exit=code):
+                self._parallel_c_goat_429(code)
+
+    def _parallel_c_goat_429(self, code):
         from tests.test_issue_3076 import Helpers
         h = Helpers()
         h.addCleanup = self.addCleanup
         w = goat_world(h.world(senses=100))                               # nine 12-Sense tasks for eight slots
         w.adapter.plan.clear()
         w.adapter.plan.extend({"code": 0, "session": f"ses_{i}"} for i in range(1, 12))
-        w.adapter.plan[0] = {"code": 0, "session": "ses_1", "text": P429 + "\n"}
+        w.adapter.plan[0] = {"code": code, "session": "ses_1", "text": P429 + "\n"}
         w.start("single", "deepseek", "c")
         w.tick()
         running = sorted(r["task"] for r in h.open_runs(w))
@@ -229,6 +234,40 @@ class GoatTier(unittest.TestCase):
         self.assertNotIn("goat_429", h.data(w, "001"))
         self.assertEqual([l["kind"] for l in w.adapter.launches[launches:]], ["start"])   # only the unassigned task 009
         self.assertEqual(sorted(r["task"] for r in h.open_runs(w)), ["009"])
+
+    def test_parallel_d_goat_429_with_a_lost_exit_code_pauses_and_retry_accepts_saved(self):
+        from tests.test_issue_3074 import ParallelDHelpers
+        h = ParallelDHelpers()
+        h.addCleanup = self.addCleanup
+        w = goat_world(h.world(records=250))                              # ten 25-record chunks for eight slots
+        first = h.saver(w, 1, code="lost")                                # saved, exit file unreadable, provider 429
+        first["text"] = P429 + "\n"
+        w.adapter.plan.append(first)
+        h.plan_all(w, range(2, 11))
+        w.start("single", "deepseek", "d")
+        w.tick()
+        running = sorted(r["task"] for r in h.open_runs(w))
+        self.assertEqual(len(running), 8)
+        self.assertTrue(all(r["model"] == GOAT for r in h.open_runs(w)))
+        launches = len(w.adapter.launches)
+        h.finish_task(w, "001")
+        w.tick()
+        data = json.loads(h.tasks(w)["001"]["data"])
+        self.assertEqual(h.tasks(w)["001"]["state"], "FAILED")
+        self.assertTrue(data["goat_429"])
+        self.assertEqual(w.row_()["state"], "PRODUCING")                  # siblings are still followed to their end
+        for task in running[1:]:
+            h.finish_task(w, task)
+            w.tick()
+        self.assertEqual(len(w.adapter.launches), launches)               # no new chunk was assigned meanwhile
+        self.assertEqual(w.row_()["state"], "PAUSED")
+        self.assertIn("GOAT provider 429", w.row_()["error"])
+
+        self.assertTrue(control.retry(w.store, "deepseek", "d"))
+        w.tick(2)
+        self.assertEqual(h.tasks(w)["001"]["state"], "SAVED")             # the saved chunk is accepted without the AI
+        self.assertNotIn("goat_429", json.loads(h.tasks(w)["001"]["data"]))
+        self.assertEqual(sorted(r["task"] for r in h.open_runs(w)), ["009", "010"])   # only the unassigned chunks start
 
 
 if __name__ == "__main__":
