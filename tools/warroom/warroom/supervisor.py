@@ -9606,6 +9606,14 @@ class Supervisor:
                     return self._fail(b, "ERROR", "수정 완료 PR 소유권 또는 상태가 바뀌었습니다. 보존합니다.")
                 if problem := self._complete_producer_fix_events(b, info):
                     return self._maintainer_fix_problem(b, problem)
+            elif b["method"] in ("a", "b", "c", "d") and self._fix_claim_status(b) == "CLAIMED":
+                # The head check was deferred (lagging PR metadata after the Supervisor's own push, #5987): the
+                # replies/events still have to be confirmed before returning to review, as _run_ok would have.
+                if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
+                        or info.get("state") != "open" or info.get("merged")):
+                    return self._fail(b, "ERROR", "리뷰 수정 완료 PR의 소유권 또는 상태가 바뀌었습니다. 보존합니다.")
+                if problem := self._complete_producer_fix_events(b):
+                    return self._fail(b, "ERROR", problem)
             if b["method"] == STAGE2_METHOD:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)
@@ -9614,6 +9622,12 @@ class Supervisor:
                 if problem := self._stage3_fix_completion_problem(b, info):
                     return self._fail(b, "ERROR", problem)
             self._to_review(b, info)
+
+    def _fix_claim_status(self, b):
+        try:
+            return json.loads(self.store.get(f"fix_claim_{b['id']}") or "").get("status")
+        except (TypeError, ValueError, AttributeError):
+            return None
 
     def _find_pr(self, b):
         """The batch's PR (by its owned branch) or None; raises DuplicateClaim on a rival PR."""
