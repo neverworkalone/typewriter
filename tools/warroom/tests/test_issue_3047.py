@@ -332,7 +332,8 @@ class ParallelStage2Recovery(Helpers, unittest.TestCase):
         w.sup._classify_run = lambda _producer, _log: "usage_limit"
         self.finish_code(w, task, 1, "limit\n")
         w.tick(2)
-        self.assertEqual((w.store.active_batch("claude", S2)["state"], self.tasks(w)[task]["state"]), ("ERROR", "FAILED"))
+        # A plan limit is not a defect: PAUSED for the owner's Retry, never an ERROR the Maintainer takes as an incident.
+        self.assertEqual((w.store.active_batch("claude", S2)["state"], self.tasks(w)[task]["state"]), ("PAUSED", "FAILED"))
         w.sup._classify_run = lambda _producer, _log: "unknown"
         saves = len(w.git.task_save_calls)
         self.assertTrue(control.retry(w.store, "claude", S2))
@@ -345,8 +346,9 @@ class ParallelStage2Recovery(Helpers, unittest.TestCase):
         w.tick()
         self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
 
-    def test_resume_after_usage_limit_waits_for_the_reported_reset_5921(self):
-        # #5921: an approved resume/Retry relaunched the failed task at once while the plan limit was still active.
+    def test_operator_retry_relaunches_before_the_reported_usage_limit_reset_3887(self):
+        # #5921 held a Retry until the reported reset; #3887: the owner's Retry declares the limit reset (tokens reset),
+        # so the failed task relaunches at once instead of waiting days for the stated time.
         import datetime
         w = self.world([("s", 3)])
         self.launch(w, 3)
@@ -363,11 +365,38 @@ class ParallelStage2Recovery(Helpers, unittest.TestCase):
         launches = len(w.adapter.launches)
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.tick(3)
-        self.assertEqual(len(w.adapter.launches), launches)   # held until the reset
-        self.assertEqual(self.tasks(w)[task]["state"], "FIXQ")
-        w.now = reset.timestamp() + 1
+        self.assertEqual(len(w.adapter.launches), launches + 1)   # relaunched now, not at the stated reset
+        self.assertEqual(self.tasks(w)[task]["state"], "RUNNING")
+
+    def test_stop_and_retry_drops_a_stated_reset_wait_already_queued_3887(self):
+        # Batch 3886: the correction was queued (FIXQ) with retry_after days ahead while the Part kept PRODUCING, so no
+        # Retry was possible; the owner's Stop & Retry must drop that wait and relaunch now.
+        import json as _json
+        w = self.world([("s", 3)])
+        self.launch(w, 3)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.respond(w, task, drop_rows(task, 3, bad=(2,)))
+        w.tick()
+        w.sup._classify_run = lambda _producer, _log: "usage_limit"
+        self.finish_code(w, task, 1, "limit\n")
         w.tick(2)
+        b = w.store.active_batch("claude", S2)
+        row = w.store.task_row(b["id"], task)
+        data = _json.loads(row["data"]) | {"retry_after": w.now + 3 * 86400}
+        data.pop("ack", None), data.pop("error", None), data.pop("pause", None)
+        w.store.update_task(b["id"], task, state="FIXQ", run_id=None, data=_json.dumps(data))
+        w.store.update(b["id"], state="PRODUCING", error=None)
+        w.tick(2)
+        launches = len(w.adapter.launches)
+        self.assertEqual(self.tasks(w)[task]["state"], "FIXQ")   # held, Part PRODUCING: the 3886 picture
+        self.assertTrue(control.stop_batch(w.store, "claude", S2, b["id"]))
+        w.tick(2)
+        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
+        self.assertTrue(control.retry(w.store, "claude", S2, b["id"]))
+        w.tick(3)
         self.assertEqual(len(w.adapter.launches), launches + 1)
+        self.assertNotIn("retry_after", _json.loads(w.store.task_row(b["id"], task)["data"]))
 
     def test_usage_limit_reset_parsing_5921(self):
         from warroom.adapters import usage_limit_reset_at

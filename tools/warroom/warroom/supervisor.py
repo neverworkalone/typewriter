@@ -29,7 +29,7 @@ from pathlib import Path
 from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, s3parallel, stage1ab,
                stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
-                       classify_codex_failure, final_answer, opencode_free_quota)
+                       classify_codex_failure, final_answer, opencode_free_quota, usage_limit_override_key)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
@@ -1110,9 +1110,32 @@ class Supervisor:
                           pause_reason="", defect_id=None)
             if stranded_review and not str(b["run_kind"] or "").startswith("fix"):
                 fields["run_kind"] = "fix_new"
+            self._drop_usage_limit_holds(b)
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], **fields)
             self.store.log(b["id"], f"운영자 재시도: {resume_state}로 복귀")
+
+    def _drop_usage_limit_holds(self, b) -> None:
+        """An operator Retry declares the plan usage limit reset (e.g. the owner reset the tokens): every stated-reset
+        wait on this batch's parallel tasks is dropped so they relaunch now. A failure after this Retry is held again."""
+        now = self.clock()
+        self.store.set(usage_limit_override_key(b["id"]), str(max((r["id"] for r in self.store.runs(b["id"])), default=0)))
+        dropped = []
+        for row in self.store.task_rows(b["id"]):
+            if row["state"] == "SAVED":
+                continue
+            try:
+                data = json.loads(row["data"] or "{}")
+            except ValueError:
+                continue
+            if not isinstance(data, dict) or ("limit_until" not in data and float(data.get("retry_after") or 0) <= now):
+                continue
+            data.pop("limit_until", None)
+            data.pop("retry_after", None)
+            self.store.update_task(b["id"], row["task"], data=json.dumps(data, ensure_ascii=False, sort_keys=True))
+            dropped.append(row["task"])
+        if dropped:
+            self.store.log(b["id"], f"운영자 Retry: 사용량 한도 해제 대기를 무시하고 즉시 재개합니다 ({', '.join(dropped)})", "warn")
 
     def _override_defect(self, b) -> None:
         if b["defect_id"] is not None:

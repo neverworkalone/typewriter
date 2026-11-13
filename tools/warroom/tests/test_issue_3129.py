@@ -449,6 +449,38 @@ class Issue3129(Helpers, unittest.TestCase):
         self.assertEqual(len([run for run in w.store.runs(self.b(w)["id"])
                              if run["kind"] == "c_chunk_scope_recovery"]), 1)
 
+    def test_scope_recovery_stopped_by_usage_limit_pauses_and_retry_resumes_the_same_approval(self):
+        # PR #5990 review: the one-shot legacy scope recovery returned before classification, so a usage_limit death
+        # became ERROR with an unchanged-evidence guard: Retry blocked, reset time lost.
+        from warroom.adapters import classify_codex_failure
+        limit = json.dumps({"type": "turn.failed", "error": {
+            "message": "You've hit your usage limit. Upgrade to Pro or try again at Nov 16th, 2026 11:41 PM."}})
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        _, source_run = self._fail_legacy_chunk_scope_run(w)
+        w.tick(2)
+        scope = [r for r in w.store.runs(self.b(w)["id"]) if r["kind"] == "c_chunk_scope_recovery"]
+        self.assertEqual(len(scope), 1)
+        recovery = self.data(w, "001")["recovery"]
+        w.sup._classify_run = lambda _p, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
+        w.adapter.running[scope[0]["pid"]].update(code=1, text=limit)
+        w.adapter.finish(scope[0]["pid"])
+        w.tick(2)
+        b, data = self.b(w), self.data(w, "001")
+        self.assertEqual((b["state"], self.tasks(w)["001"]["state"]), ("PAUSED", "FAILED"))
+        self.assertNotEqual(b["pause_reason"], "shared_defect")
+        self.assertIn("limit_until", data)
+        self.assertNotIn("guard", data)
+        self.assertEqual(data["limit_scope_recovery"]["pending_sense_ids"], recovery["pending_sense_ids"])
+        self.assertTrue(control.line_status(w.store, "deepseek", "c")["can_retry"])
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(3)
+        scope = [r for r in w.store.runs(self.b(w)["id"]) if r["kind"] == "c_chunk_scope_recovery"]
+        self.assertEqual(len(scope), 2)                                     # the same approval, relaunched once
+        self.assertEqual(scope[0]["session_id"], source_run["session_id"])  # in the preserved session
+        self.assertEqual(self.data(w, "001")["recovery"]["pending_sense_ids"], recovery["pending_sense_ids"])
+
     @staticmethod
     def _write_no_submit_log(w, run, *, query=True, extra_cli_commands=()):
         info = w.adapter.running[run["pid"]]

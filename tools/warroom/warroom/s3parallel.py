@@ -391,6 +391,8 @@ class ParallelStage3:
         if hard:
             message = (self.sup._fast_unavailable_message(run["log_file"]) if cls == "fast_unavailable" else
                        f"AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
+            if cls == "usage_limit":
+                data["pause"] = True   # a plan limit is not a defect: PAUSED for the owner's Retry, never a Maintainer incident
             return self._task_failed(b, row, data, f"[{task}] {message}", "hard")
         if cls not in ("rate_limit", "network"):
             return self._task_failed(b, row, data, f"[{task}] AI 실행 실패(코드 {code}, {cls}) — 자동 재시도 없이 보존합니다.", "run_failed")
@@ -580,11 +582,13 @@ class ParallelStage3:
         self.store.log(b["id"], message, "error")
 
     def _halt(self, b, failed) -> None:
-        """No worker is running any more: the shard goes to ERROR with every answer, session and budget preserved."""
+        """No worker is running any more: the shard goes to PAUSED (usage_limit only) or ERROR with every answer, session
+        and budget preserved."""
         message = "; ".join(_data(r).get("error", f"[{r['task']}] 실패") for r in failed)[:900]
+        state = "PAUSED" if all(_data(r).get("pause") for r in failed) else "ERROR"
         for r in failed:
             self._set(b, r["task"], _data(r) | {"ack": True})
-        self.sup._fail(b, "ERROR", f"Stage 3 병렬 청크 판정 중지: {message}")
+        self.sup._fail(b, state, f"Stage 3 병렬 청크 판정 중지: {message}")
 
     def _reset_acknowledged_failures(self, b, round_: _Round) -> None:
         """After an operator Retry: a rejected save re-saves its preserved answer once more when every proof still holds;
@@ -606,11 +610,11 @@ class ParallelStage3:
                     data["error"] = f"[{row['task']}] 동일 답변 재저장 불가: {problem}"
                     self._set(b, row["task"], data)
                     continue
-                for key in ("ack", "error", "failure_kind"):
+                for key in ("ack", "error", "failure_kind", "pause"):
                     data.pop(key, None)
                 self._set(b, row["task"], data, state="RESPONDED")
                 continue
-            for key in ("ack", "error", "failure_kind", "response"):
+            for key in ("ack", "error", "failure_kind", "response", "pause"):
                 data.pop(key, None)
             self._set(b, row["task"], data, state="PENDING", run_id=None, session_id=None, view_sha256=None)
 
