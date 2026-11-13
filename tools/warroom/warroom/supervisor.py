@@ -10150,6 +10150,11 @@ class Supervisor:
                             ". 이전 수정 실행의 완료·PR 답글 증거가 확정되지 않았습니다. "
                             "자동 재실행하지 않고 보존했습니다. 운영자 Retry에서 현재 PR/HEAD와 답글을 "
                             "재확인하여 미완료 이벤트만 복구합니다.")
+                if b["method"] == STAGE2_METHOD and not live and not fresh and evs:
+                    redo = self._stage2_unanswered_refix(b, info, evs)
+                    if redo is None:
+                        return
+                    fresh = redo
                 if fresh:
                     if b["method"] == MAINTENANCE_METHOD and not allow_fix:
                         pending_key = f"maintenance_review_pending_{b['id']}"
@@ -10183,6 +10188,8 @@ class Supervisor:
                                 self.store.set(f"last_poll_{b['id']}", "0")
                                 return self.store.log(b["id"], "충돌 확인 중 PR 또는 기준이 바뀌어 다시 감시합니다.", "warn")
                         self.store.delete(f"maintenance_review_pending_{b['id']}")
+                        if b["method"] == STAGE2_METHOD:
+                            self._clear_dead_amend_lock(b)
                         self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
                         self._launch(b, self._fix_kind(b), fresh)
                 return
@@ -10190,6 +10197,55 @@ class Supervisor:
             return self._transient_wait(f"b{b['id']}:watch", e, b["id"])
         except Exception as e:
             return self.store.log(b["id"], f"GitHub 폴링 실패(재시도 예정): {e}", "warn")
+
+    def _stage2_unanswered_refix(self, b, info, evs) -> list[dict] | None:
+        """Stage 2 marks a review event handled when its fix run STARTS. A run that ended with neither a new HEAD (the
+        `-1` still applies to this HEAD) nor a reply from our account after it left the review unanswered for ever
+        (PR #6249). Re-run the fix once per HEAD; a second silent failure stops the batch (ERROR) with its evidence.
+        Returns the events to fix now, [] when nothing is unanswered, or None when the batch was stopped."""
+        login = str(self.cfg["expected_account"]).casefold()
+        replied = max((reviews._ts(c.get("created_at")) for c in self.gh.issue_comments(b["pr_number"])
+                       if str((c.get("user") or {}).get("login") or "").casefold() == login
+                       and str(c.get("body") or "").strip()), default=0.0)
+        pending = [e for e in evs if e.get("kind") in ("review", "comment") and float(e.get("ts") or 0) > replied]
+        if not pending:
+            return []
+        key = f"s2_refix_{b['id']}_{info['head_sha']}"
+        if int(self.store.get(key) or 0) >= 1:
+            self._fail(b, "ERROR", "Stage 2 리뷰 -1이 재수정 뒤에도 새 HEAD와 답글 없이 남았습니다 "
+                       f"({', '.join(e['key'] for e in pending)}). worktree·PR·scratch를 보존합니다.")
+            return None
+        self.store.set(key, "1")
+        self.store.log(b["id"], "Stage 2 리뷰 -1이 새 HEAD·답글 없이 남아 있어 같은 HEAD에서 수정을 한 번 더 실행합니다 "
+                       f"({', '.join(e['key'] for e in pending)})", "warn")
+        return list(evs)   # the same events (with their inline context) the first fix run received
+
+    def _clear_dead_amend_lock(self, b) -> None:
+        """An amend that died leaves `<checkpoint>.amend-lock`. Inside the AI sandbox its owner cannot be probed
+        (kill/ps are denied), so the CLI must treat it as live and every later amend stops. The Supervisor runs outside
+        the sandbox and no AI runs in this worktree now: remove the lock only when its owner pid is provably gone."""
+        try:
+            bb, pp = stage2.split_key(b["batch"])
+            lock = Path(b["worktree"]) / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json.amend-lock"
+            owner = lock.read_text("utf-8")
+            pid = int(owner.split(":", 1)[0])
+        except (OSError, ValueError, KeyError, TypeError):
+            return
+        if pid <= 0:
+            return
+        try:
+            os.kill(pid, 0)
+            return   # the owner still exists (or cannot be probed): keep the lock
+        except ProcessLookupError:
+            pass
+        except OSError:
+            return
+        try:
+            if lock.read_text("utf-8") == owner:
+                lock.unlink()
+                self.store.log(b["id"], f"종료된 amend(pid {pid})가 남긴 checkpoint amend-lock을 제거했습니다", "warn")
+        except OSError:
+            pass
 
     # ---- MERGED / CLEANUP / COMPLETE ---------------------------------
     def _to_cleanup(self, b) -> None:
