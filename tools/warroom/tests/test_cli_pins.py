@@ -9,7 +9,7 @@ from pathlib import Path
 from tests.fakes import World
 from warroom import control
 from warroom.adapters import Handle, OpenCodeAdapter, RunSpec, classify_failure
-from warroom.config import (DEFAULTS, adapters, effort_problem, ordered_models, registry,
+from warroom.config import (DEFAULTS, adapters, config_problem, effort_problem, ordered_models, registry,
                             registry_problems, run_spec)
 from warroom.store import SCHEMA, SCHEMA_V2, Store
 
@@ -146,6 +146,31 @@ class RunPins(unittest.TestCase):
                 w.sup._check_session_pin(b, "unknown", api)
             w.store.add_run(bid, "resume", "session", None, "api.log", "api.exit", model=api.model, effort=api.effort)
             w.sup._check_session_pin(b, "session", RunSpec("p/free-x-free", "low"))
+        w.tmp.cleanup()
+
+    def test_retired_api_model_moves_to_goat_only_when_explicitly_listed(self):
+        """#6027: an unfinished session on the old DeepSeek API model resumes on GOAT only after an explicit opt-in."""
+        w = World()
+        old, goat = RunSpec("deepseek/deepseek-flash", "none"), RunSpec("commandcode/deepseek/deepseek-v4-flash", "none")
+        entry = {"adapter": "opencode", "effort": "low", "tier_efforts": {"api": "none"},
+                 "models": {"free": "p/free-x-free", "go": "opencode-go/deepseek-v4.1-flash", "api": goat.model}}
+        w.cfg["producers"] = {"deepseek": entry}
+        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch="b", worktree="/a")
+        w.store.add_run(bid, "chunk", "session", None, "old.log", "old.exit", model=old.model, effort=old.effort)
+        b = w.store.batch(bid)
+        with self.assertRaises(Exception):                               # default: the session is held
+            w.sup._check_session_pin(b, "session", goat)
+        entry["retired_models"] = {"api": [old.model]}
+        w.sup._check_session_pin(b, "session", goat)                     # explicit old -> GOAT
+        with self.assertRaises(Exception):                               # only towards that tier's current model
+            w.sup._check_session_pin(b, "session", RunSpec("p/free-x-free", "low"))
+        with self.assertRaises(Exception):                               # and never with another effort
+            w.sup._check_session_pin(b, "session", RunSpec(goat.model, "low"))
+        entry["tier_efforts"] = {"api": "low"}
+        with self.assertRaises(Exception):                               # the pinned effort must still match
+            w.sup._check_session_pin(b, "session", RunSpec(goat.model, "low"))
+        entry["retired_models"] = {"api": "deepseek/deepseek-flash"}
+        self.assertIn("retired_models", config_problem({**w.cfg, "producers": {"deepseek": entry}}) or "")
         w.tmp.cleanup()
 
     def test_api_effort_override_is_isolated(self):

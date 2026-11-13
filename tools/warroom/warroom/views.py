@@ -272,7 +272,7 @@ TIER_SWITCH_KEY_STYLE = "b #ffa500"
 TIER_FOOTER = {
     "free": ("Free", "b green"),
     "go": ("Go", TIER_SWITCH_KEY_STYLE),
-    "api": ("API", "b red"),
+    "api": ("GOAT", "b red"),   # #6027: the internal tier key stays `api`
     "mixed": ("혼합", "b yellow"),
     "none": ("DeepSeek Go 모델 미설정", "dim"),
 }
@@ -282,7 +282,7 @@ def tier_footer(state: str) -> str:
     """One-line board footer with the current tier nested under f; values are Rich markup."""
     label, style = TIER_FOOTER.get(state, TIER_FOOTER["none"])
     return (f"[b #ffa500]q[/] Quit · [b #ffa500]Shift+S[/] Stop All · [b #ffa500]r[/] 설정 리로드 · "
-            f"[{TIER_SWITCH_KEY_STYLE}]f[/] Free/Go/API 전환 ([{style}]{label}[/])")
+            f"[{TIER_SWITCH_KEY_STYLE}]f[/] Free/Go/GOAT 전환 ([{style}]{label}[/])")
 
 
 def _maintainer_header(st: dict, who: str) -> str:
@@ -360,7 +360,7 @@ def _pins(reg: dict, st: dict) -> str:
     if reg.get("adapter") in TIERED_ADAPTERS:
         tier = st["tier"]
         effort = reg.get("tier_efforts", {}).get(tier, reg.get("effort"))
-        return f"tier: {tier}   model id: {reg.get('models', {}).get(tier) or '-'}   effort: {effort or '-'}"
+        return f"tier: {control.TIER_LABELS.get(tier, tier)}   model id: {reg.get('models', {}).get(tier) or '-'}   effort: {effort or '-'}"
     permission = (f"   permission_profile: {reg.get('permission_profile') or '(기본)'}"
                   if reg.get("adapter") == "codex" else "")
     return f"model id: {reg.get('model') or '-'}   effort: {reg.get('effort') or '-'}{permission}"

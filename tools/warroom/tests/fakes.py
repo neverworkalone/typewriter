@@ -73,10 +73,11 @@ class FakeAdapter(AgentAdapter):
                         git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
                         worker_path=env.get("PATH"))
 
-    def preflight(self, runner, env, runs):
+    def preflight(self, runner, env, runs, answer_required=frozenset()):
         """Stands in for OpenCode: the provider-qualified (p/...) IDs get the real `opencode models` check."""
         opencode_runs = [r for r in runs if "/" in r.model]
-        return self._opencode.preflight(runner, env, opencode_runs) if opencode_runs else None
+        return (self._opencode.preflight(runner, env, opencode_runs, answer_required=answer_required)
+                if opencode_runs else None)
 
     def finish(self, pid):
         """Simulate the AI process ending (writes log + exit file, runs side effects)."""

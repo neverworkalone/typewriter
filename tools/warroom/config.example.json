@@ -19,10 +19,11 @@
       "models": {
         "free": "opencode/deepseek-v4.1-flash-free",
         "go": "opencode-go/deepseek-v4.1-flash",
-        "api": "deepseek/deepseek-flash"
+        "api": "commandcode/deepseek/deepseek-v4-flash"
       },
       "effort": "low",
-      "tier_efforts": {"api": "none"}
+      "tier_efforts": {"api": "none"},
+      "retired_models": {}
     }
   },
   "model_profiles": {

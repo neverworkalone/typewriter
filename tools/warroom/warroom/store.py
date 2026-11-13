@@ -1451,6 +1451,11 @@ class Store:
             c.execute("UPDATE runs SET submit_failures=COALESCE(submit_failures,0)+1 "
                       "WHERE id=(SELECT MAX(id) FROM runs WHERE batch_id=?)", (batch_id,))
 
+    def run_by_log(self, log_file):
+        """The run that wrote `log_file` (one launch = one log), or None."""
+        with self._conn() as c:
+            return c.execute("SELECT * FROM runs WHERE log_file=? ORDER BY id DESC LIMIT 1", (str(log_file),)).fetchone()
+
     def runs(self, batch_id: int):
         with self._conn() as c:
             return c.execute("SELECT * FROM runs WHERE batch_id=? ORDER BY id DESC", (batch_id,)).fetchall()

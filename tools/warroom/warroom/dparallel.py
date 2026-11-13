@@ -291,6 +291,9 @@ class ParallelD:
     def _after_run(self, b, row, data, run, code, round_: _Round) -> None:
         task, n = row["task"], int(row["task"])
         ad = self._adapter(b)
+        if self.sup._goat_429(run):   # #6027: first, whatever the exit code (even a lost one) and whatever was saved
+            data["pause"], data["goat_429"] = True, True
+            return self._task_failed(b, row, data, f"[{task}] {self.sup.GOAT_429_HOLD}")
         if code is None:
             return self._task_failed(b, row, data, f"[{task}] AI 프로세스가 종료 상태 기록 없이 사라졌습니다. 결과·세션을 보존합니다.")
         cls = self.sup._classify_run(b["producer"], run["log_file"]) if code != 0 else None
@@ -607,7 +610,9 @@ class ParallelD:
     def _halt(self, b, failed) -> None:
         """No worker is running any more: the batch goes to PAUSED (SEARCH_FAILED, usage_limit) or ERROR with every file kept."""
         message = "; ".join(self._data(r).get("error", f"[{r['task']}] 실패") for r in failed)[:900]
-        state = "PAUSED" if all(self._data(r).get("pause") for r in failed) else "ERROR"
+        # A GOAT 429 hold is PAUSED even beside another task's failure (#6027); the other messages are still shown.
+        state = ("PAUSED" if all(self._data(r).get("pause") for r in failed) or any(self._data(r).get("goat_429") for r in failed)
+                 else "ERROR")
         for r in failed:
             self._set(b, r["task"], self._data(r) | {"ack": True})
         self.sup._fail(b, state, f"D 병렬 청크 중지: {message}")
@@ -627,6 +632,7 @@ class ParallelD:
             if used:
                 self.store.set(key, str(used - 1))
             data.pop("ack"), data.pop("error", None), data.pop("pause", None), data.pop("resumed", None)
+            data.pop("goat_429", None)
             data["retry_grants"] = data.get("retry_grants", 0) + 1
             data.pop("kind", None)
             self._set(b, row["task"], data, state="PENDING", run_id=None)

@@ -77,8 +77,44 @@ TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" \
 
 프롬프트·설정·Supervisor는 **운영 메인 checkout**에서만 읽으며 임시 worktree를 실행 루트로 바꾸지 않습니다. **`.local/` 삭제, DB 수동 초기화, 수동 `tmux kill-session`·signal 종료, 코드 로드를 위한 배치 Retry는 금지**합니다. 일반 운영자는 `./war`와 `./kwar` 및 위 공식 코드 갱신 요청만 사용합니다.
 
-DeepSeek 공식 API를 사용하려면 OpenCode에서 `/connect`로 DeepSeek를 등록하고
-`opencode models`에서 `deepseek/deepseek-flash`를 확인한다. 인증 정보는 OpenCode의
-인증 저장소 또는 승인된 환경 변수에만 저장한다. `config.example.json`의 `models.api`와
-`tier_efforts.api`를 참고해 로컬 설정에 추가하면 `f` 선택 창에서 API를 선택할 수 있다.
-API의 `none`은 별도 override이며 Free/Go는 기존 `effort`를 상속한다.
+### DeepSeek GOAT 슬롯 (#6027)
+
+`f` 선택 창의 **GOAT**는 내부 tier `api`입니다(저장값·RunSpec·로그 키는 `api` 유지). OpenCode v2 설정에
+Command Code GOAT provider를 등록합니다. 키는 `COMMANDCODE_API_KEY` 환경 변수로만 주고 repo,
+`.local/config.json`, PR, 로그에 기록하지 않습니다.
+
+```json
+{
+  "providers": {
+    "commandcode": {
+      "name": "Command Code GOAT",
+      "env": ["COMMANDCODE_API_KEY"],
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": { "baseURL": "https://api.commandcode.ai/provider/v1" },
+      "models": {
+        "deepseek/deepseek-v4-flash": {
+          "modelID": "deepseek/deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash",
+          "variants": [{ "id": "none", "settings": { "reasoningEffort": "off" } }]
+        }
+      }
+    }
+  }
+}
+```
+
+- War Room 모델 ID는 `commandcode/deepseek/deepseek-v4-flash`(`opencode models` 표기), provider에 보내는 ID는
+  `modelID`입니다. `tier_efforts.api="none"`은 variant `none` → provider `reasoning_effort=off`로 매핑됩니다.
+  정상 응답은 비추론의 증거가 아닙니다. Free/Go는 기존 `effort`를 상속합니다.
+- Start 전 GOAT probe는 정상 종료·`text` 응답·최상위 오류 없음을 모두 요구합니다. 인증 실패·모델 없음·
+  한도·429는 Start를 막습니다.
+- 실행 중 GOAT의 최상위 provider 429는 한도와 일시 오류를 구분할 증거가 없으므로 종료 코드·저장물과 무관하게
+  자동 재실행·다음 청크 없이 PAUSED로 보류합니다. Command Code Studio에서 확인한 뒤 Retry하면 저장 증거를
+  먼저 재검증해 완료분은 AI 없이 수락하고, 미완료분만 기존 세션 계약으로 재개합니다.
+- **Command Code Auto Top-up은 OFF로 둡니다.** 구독 창을 넘기면 남은 on-demand 잔액이 쓰일 수 있습니다.
+  War Room은 자동 GOAT 전환·GOAT→Go/Free 폴백을 하지 않습니다. 단가 미설정 시 비용은 unknown입니다.
+- 이전 `deepseek/deepseek-flash#none` 세션의 retry/fix resume은 기본적으로 보류됩니다. 검증 후에만
+  `"retired_models": {"api": ["deepseek/deepseek-flash"]}`로 같은 effort·권한의 old→GOAT 재개를 허용합니다.
+- 전환 순서: DeepSeek 직접 API 잔액 소진 → 진행 중 run/청크 종료 확인 → OpenCode에 provider 등록 →
+  Supervisor 시작·교체(`opencode models` 목록은 Supervisor 수명 동안 한 번 읽음) → 로컬 `models.api` 변경 →
+  TUI `r` → 50-record 청크 1개 smoke와 Studio 실제 차감 확인 → 점진 확장.
