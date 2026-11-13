@@ -71,6 +71,20 @@ class UnansweredStage2Review(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), launches)
         self.assertEqual(w.store.batch(b["id"])["state"], "WAITING_REVIEW")
 
+    def test_an_inline_review_thread_reply_is_also_a_rebuttal(self):
+        w, b = self._waiting()
+        self._poll(w, b)
+        self._fix_ends_silently(w, b)
+        head = w.gh.pull(b["pr_number"])["head_sha"]
+        w.gh.inline_ = [{"id": 9, "user": {"login": "neverworkalone-agent"}, "body": "이 행은 정책상 유지합니다: 근거 …",
+                         "commit_id": head, "pull_request_review_id": 77, "in_reply_to_id": 8,
+                         "created_at": "2026-11-13T16:41:00Z"}]
+        launches = len(w.adapter.launches)
+        self._poll(w, b)
+        self._poll(w, b)
+        self.assertEqual(len(w.adapter.launches), launches)
+        self.assertEqual(w.store.batch(b["id"])["state"], "WAITING_REVIEW")
+
     def test_dead_amend_lock_is_removed_before_the_fix_and_a_live_one_is_kept(self):
         w, b = self._waiting()
         lock = Path(b["worktree"]) / ".warroom-scratch" / "relation-admission-001-01-01.json.amend-lock"

@@ -10204,7 +10204,9 @@ class Supervisor:
         (PR #6249). Re-run the fix once per HEAD; a second silent failure stops the batch (ERROR) with its evidence.
         Returns the events to fix now, [] when nothing is unanswered, or None when the batch was stopped."""
         login = str(self.cfg["expected_account"]).casefold()
-        replied = max((reviews._ts(c.get("created_at")) for c in self.gh.issue_comments(b["pr_number"])
+        # A reply is a PR conversation comment or an inline review-thread reply from our account (#6285 review).
+        written = list(self.gh.issue_comments(b["pr_number"])) + list(self.gh.inline_comments(b["pr_number"]))
+        replied = max((reviews._ts(c.get("created_at")) for c in written
                        if str((c.get("user") or {}).get("login") or "").casefold() == login
                        and str(c.get("body") or "").strip()), default=0.0)
         pending = [e for e in evs if e.get("kind") in ("review", "comment") and float(e.get("ts") or 0) > replied]
