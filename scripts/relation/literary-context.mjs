@@ -2035,6 +2035,11 @@ export async function normalizeActiveChunkReadScope({ checkpointPath, chunkNo, s
   return { validSenseIds, excludedSenseIds };
 }
 
+/** Excerpt lines that begin with `[` (e.g. a corpus title marker) must not look like a context key header, so they get a leading space. */
+function excerptText(text) {
+  return String(text).replace(/^(?=\[)/gmu, ' ');
+}
+
 /** Text view of the returned `chunk` items in the documented one-call `jq` format. */
 export function renderChunkText(result) {
   const reserved = result.excluded_pending > 0 ? ` excluded_pending=${result.excluded_pending}` : '';
@@ -2046,7 +2051,7 @@ export function renderChunkText(result) {
       + `hits=${item.total_hits} unseen=${item.unseen_hits}`
       + (Array.isArray(item.shown_range) ? ` shown=${item.shown_range[0]}-${item.shown_range[1]} (contexts before ${item.shown_range[0]} were skipped, not repeated)` : '')
       + '\n'
-      + item.contexts.map((context) => `[${context.k}] ${context.src}\n${context.x}`).join('\n\n');
+      + item.contexts.map((context) => `[${context.k}] ${context.src}\n${excerptText(context.x)}`).join('\n\n');
   });
   return `${head}${items.join('\n\n')}\n`;
 }
