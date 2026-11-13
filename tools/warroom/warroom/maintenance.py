@@ -2591,7 +2591,12 @@ class Maintenance:
                 else:
                     current = state["current"]
                     identity = state["identity"]
-                    if (identity["base_head"] != old_first or identity["branch"] != b["branch"]
+                    # A Supervisor master-integration may have moved the finalization baseline past the Repair
+                    # identity (the Supervisor's own finalize path accepts this with the same proof).
+                    base_moved = (identity["base_head"] != old_first and re.fullmatch(r"[a-f0-9]{40}", identity["base_head"] or "")
+                                  and self.sup.git.verified_supervisor_integration(
+                                      wt, b["branch"], self.cfg["base_branch"], identity["base_head"], old_first))
+                    if ((identity["base_head"] != old_first and not base_moved) or identity["branch"] != b["branch"]
                             or identity["worktree"] != str(wt) or identity["remote_head"] != finalize_remote
                             or not isinstance(current.get("groups"), list)
                             or current.get("cursor") != len(current["groups"])

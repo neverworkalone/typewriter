@@ -201,6 +201,35 @@ class Stage2RepairRebind(unittest.TestCase):
                         integrate.assert_called_once()
                         self.assertEqual(release.call_args.args[3], [(f"s2_finalize_base_{b['id']}", HEAD2)])
 
+    def test_incident_finalize_accepts_integration_moved_baseline_only_with_verified_chain(self):
+        from unittest.mock import patch
+        for proven in (True, False):
+            with self.subTest(proven=proven):
+                w, b, _ = _world(self)   # Repair identity base_head is HEAD1
+                _mark_integrated(w, b)   # Supervisor already moved HEAD and finalize base to HEAD2
+                maint = w.sup.maint
+                d = {"id": 57, "merge_sha": HEAD2}
+                w.git.verified_supervisor_integration = lambda *_a, **_k: proven
+                def apply(*_):
+                    return HEAD2, None
+                with patch.object(maint, "_preserved", return_value=None), \
+                     patch.object(maint, "_fix_not_loaded", return_value=False), \
+                     patch.object(maint, "_apply", side_effect=apply) as integrate, \
+                     patch.object(maint, "_fix_merged_integration_proof", return_value={"head": HEAD2}), \
+                     patch.object(maint, "_archive_report", return_value=True), \
+                     patch.object(maint, "_recovery_snapshot", return_value={}), \
+                     patch.object(maint, "_hold_unprovable") as hold, \
+                     patch.object(w.store, "release_defect", return_value=True) as release:
+                    maint._release_worktree(d, b, {"observed": {}})
+                    if proven:
+                        integrate.assert_called_once()
+                        release.assert_called_once()
+                        hold.assert_not_called()
+                    else:
+                        integrate.assert_not_called()
+                        release.assert_not_called()
+                        hold.assert_called_once()
+
     def test_preflight_incident_without_repair_state_releases_only_with_intact_evidence(self):
         from unittest.mock import patch
         for case in ("clean", "receipt", "run_start", "wrong_error", "dirty", "unfinished"):
