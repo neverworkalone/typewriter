@@ -930,11 +930,14 @@ class CompletionGate(unittest.TestCase):
 class ConfirmedPromptRefusal(unittest.TestCase):
     def test_only_the_exact_structured_codex_terminal_error_matches(self):
         message = "Invalid prompt: your prompt was flagged as potentially violating our usage policy."
+        live = (message + " Please try again with a different prompt: "
+                "https://platform.openai.com/docs/guides/reasoning#advice-on-prompting")
         cases = [
             ("exact event", [started(), failed(message)], message),
             ("ordinary assistant text", [started(), {"type": "item.completed", "item": {
                 "type": "agent_message", "text": message}}], None),
             ("generic invalid prompt", [started(), failed("Invalid prompt")], None),
+            ("live CLI message with advice suffix", [started(), failed(live)], live),
             ("near match", [started(), failed(message + " Please revise it.")], None),
             ("string error", [started(), {"type": "turn.failed", "error": message}], None),
             ("contradictory completion", [started(), failed(message), completed()], None),

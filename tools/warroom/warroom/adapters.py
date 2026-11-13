@@ -720,7 +720,13 @@ _ZSH_NICE_FAILURE = re.compile(r"^\s*(?:zsh:\d+:\s*)?nice(?:\(\d+\))?\s+failed:\
 
 # Exact structured provider error messages. Keep providers empty until their own CLI gives us evidence.
 PROMPT_POLICY_REFUSALS = {
-    "codex": ("Invalid prompt: your prompt was flagged as potentially violating our usage policy.",),
+    "codex": (
+        "Invalid prompt: your prompt was flagged as potentially violating our usage policy.",
+        # The live CLI appends this fixed advice sentence and link (batch 4165 log); both forms are exact.
+        "Invalid prompt: your prompt was flagged as potentially violating our usage policy. "
+        "Please try again with a different prompt: "
+        "https://platform.openai.com/docs/guides/reasoning#advice-on-prompting",
+    ),
     "claude": (),
     "opencode": (),
 }
