@@ -692,6 +692,7 @@ class ParallelC:
                     reset = None
                 if reset is not None:
                     data["limit_until"] = reset
+                data["pause"] = True   # a plan limit is not a defect: PAUSED for the owner's Retry, never a Maintainer incident
             return self._task_failed(b, row, data, f"[{task}] {message}")
         if cls not in ("rate_limit", "network"):   # unknown / session_missing: preserved, never silently re-run
             return self._task_failed(b, row, data, f"[{task}] AI 실행 실패(코드 {code}, {cls}) — 자동 재시도 없이 파일·세션을 보존합니다.")
@@ -1260,7 +1261,7 @@ class ParallelC:
         self.store.log(b["id"], message, "error")
 
     def _halt(self, b, failed) -> None:
-        """No worker is running any more: the batch goes to PAUSED (SEARCH_FAILED) or ERROR with every file kept."""
+        """No worker is running any more: the batch goes to PAUSED (SEARCH_FAILED, usage_limit) or ERROR with every file kept."""
         message = "; ".join(_data(r).get("error", f"[{r['task']}] 실패") for r in failed)[:900]
         state = "PAUSED" if all(_data(r).get("pause") for r in failed) else "ERROR"
         for r in failed:

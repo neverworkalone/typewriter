@@ -332,7 +332,8 @@ class ParallelStage2Recovery(Helpers, unittest.TestCase):
         w.sup._classify_run = lambda _producer, _log: "usage_limit"
         self.finish_code(w, task, 1, "limit\n")
         w.tick(2)
-        self.assertEqual((w.store.active_batch("claude", S2)["state"], self.tasks(w)[task]["state"]), ("ERROR", "FAILED"))
+        # A plan limit is not a defect: PAUSED for the owner's Retry, never an ERROR the Maintainer takes as an incident.
+        self.assertEqual((w.store.active_batch("claude", S2)["state"], self.tasks(w)[task]["state"]), ("PAUSED", "FAILED"))
         w.sup._classify_run = lambda _producer, _log: "unknown"
         saves = len(w.git.task_save_calls)
         self.assertTrue(control.retry(w.store, "claude", S2))

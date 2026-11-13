@@ -47,5 +47,31 @@ class ResumeWaitsForReset(Helpers, unittest.TestCase):
         self.assertGreater(len(w.adapter.launches), launches)         # resumes once the limit has reset
 
 
+class UsageLimitPausesForOwnerRetry(Helpers, unittest.TestCase):
+    """A usage_limit stop is PAUSED, not ERROR: no Maintainer incident (shared_defect) locks the owner's Retry."""
+
+    def test_c_parallel_usage_limit_pauses_without_an_incident_and_retry_stays_enabled(self):
+        w = self.world(senses=12)
+        w.adapter.plan.clear()
+        w.adapter.plan.append({"code": 1, "session": "ses_lim", "text": LIMIT_LOG})
+        w.start("single", "deepseek", "c")
+        w.tick()
+        w.sup._classify_run = lambda _p, log: classify_codex_failure(Path(log).read_text("utf-8"), [])
+        self.finish(w, "001", save=False)
+        w.tick(3)
+        b = w.store.active_batch("deepseek", "c")
+        self.assertEqual(b["state"], "PAUSED")
+        self.assertNotEqual(b["pause_reason"], "shared_defect")
+        self.assertEqual([d for d in w.store.defects() if d["batch_id"] == b["id"]], [])
+        self.assertFalse(control.defect_locked(w.store, b))
+        until = self.data(w, "001")["limit_until"]
+        w.sup.clock = lambda: until + 1
+        launches = len(w.adapter.launches)
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.adapter.plan.append({"code": 0, "session": "ses_lim"})
+        w.tick(3)
+        self.assertGreater(len(w.adapter.launches), launches)
+
+
 if __name__ == "__main__":
     unittest.main()
