@@ -1196,13 +1196,28 @@ class Supervisor:
             return True
         return self._enter_merged(b, info, f"{context} 기존 PR #{info['number']} 확인 후")
 
+    def _completed_fix_run(self, b) -> bool:
+        """The last run is a finished FIX run (exit 0) whose completion the Supervisor verified; replies may still be pending."""
+        last = self._last_run(b)
+        return (last is not None and isinstance(last["kind"], str) and last["kind"].startswith("fix")
+                and last["ended_at"] is not None and str(last["exit_status"]) == "0"
+                and self.store.get(f"verified_completion_run_{b['id']}") == str(last["id"]) and bool(b["pr_number"]))
+
+    def _completed_fix_unpushed(self, b) -> bool:
+        """A completed fix run whose local HEAD strictly descends from the still-current remote/PR HEAD."""
+        if b["pid"] is not None or not self._completed_fix_run(b):
+            return False
+        try:
+            wt = Path(b["worktree"])
+            local, remote = self.git.head(wt), self.git.remote_head(b["branch"])
+            return bool(remote) and local != remote and self.git.is_ancestor(remote, local, path=wt)
+        except Exception:
+            return False
+
     def _verified_fix_exit(self, b) -> bool:
         """The last run is a finished FIX run (exit 0) whose completion evidence the Supervisor recorded."""
         last = self._last_run(b)
-        completed = (last is not None and isinstance(last["kind"], str) and last["kind"].startswith("fix")
-                and last["ended_at"] is not None and str(last["exit_status"]) == "0"
-                and self.store.get(f"verified_completion_run_{b['id']}") == str(last["id"]) and bool(b["pr_number"]))
-        if not completed:
+        if not self._completed_fix_run(b):
             return False
         if b["method"] not in ("a", "b", "c", "d"):
             return True
@@ -2932,6 +2947,10 @@ class Supervisor:
                                                  + self._maintainer_run_facts(b), "fix")
             if b["method"] == STAGE2_METHOD and b["run_kind"] == "fix_resume" and self.store.get(f"s2_unpushed_fix_resume_{b['id']}"):
                 return self._fail(b, "ERROR", "Stage 2 리뷰 수정 재개 결과가 확인되지 않아 새 세션을 시작하지 않습니다. worktree와 PR을 보존합니다.")
+            if b["method"] in ("a", "b", "c", "d") and self._completed_fix_unpushed(b):
+                # Retry after the fix run finished but its owned commit never reached the PR (#5987): resume the
+                # completion path (push, then reply/complete events) instead of relaunching or reading it as divergence.
+                return self._run_ok(b)
             if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD):
                 return self._retry_producer_fix(b)
             return self._launch(b, self._fix_kind(b), self._events(b)[1])
@@ -9483,9 +9502,10 @@ class Supervisor:
             if remote == info["head_sha"] and self._resume_unpushed_stage2_fix(b, info, local):
                 return "stop"
             if (remote == info["head_sha"] and b["method"] in ("a", "b", "c", "d") and b["pid"] is None
-                    and self._verified_fix_exit(b) and self.git.is_ancestor(remote, local, path=wt)):
-                # A verified fix left its owned commit unpushed (the AI's own push was rejected): the Supervisor
-                # pushes that exact commit, never forced, instead of reading it as divergence.
+                    and self._completed_fix_run(b) and self.git.is_ancestor(remote, local, path=wt)):
+                # A completed fix left its owned commit unpushed (the AI's own push was rejected): the Supervisor
+                # pushes that exact commit, never forced, instead of reading it as divergence. Review replies are
+                # posted only after this head check, so the push cannot require them (#5987).
                 self.git.push_owned_fix(wt, b["branch"], remote, local)
                 self.store.log(b["id"], f"검증된 수정 commit {local[:10]}을 Supervisor가 소유 브랜치에 push했습니다")
                 return self._head_lag_wait(b, key, f"push한 local HEAD {local[:10]}의 PR 반영 대기")
