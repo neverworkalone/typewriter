@@ -190,7 +190,7 @@ class TierChoice(ModalScreen[str | None]):
             yield Static("DeepSeek 유료 모델 선택 (다음 실행부터 적용)")
             with Horizontal():
                 yield Button("Go", id="go", variant="primary")
-                yield Button("API" if self.api_available else "API (미설정)", id="api", variant="error",
+                yield Button("GOAT" if self.api_available else "GOAT (미설정)", id="api", variant="error",
                              disabled=not self.api_available)
 
     def on_mount(self) -> None:
@@ -676,7 +676,7 @@ class WarRoom(App):
     """
     BINDINGS = [("q", "quit", "Quit"),
                 Binding("S", "stop_all", "Stop All"),
-                ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go/API 전환"),
+                ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go/GOAT 전환"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
                 Binding("shift+tab", "switch_region", "", show=False, priority=True)]

@@ -405,6 +405,7 @@ def can_stop_all(store: Store, lines) -> bool:
 
 # --- Free/Go model tier (operator switch; the automatic Free->Go switch on quota exhaustion is separate) ---
 TIER_SWITCH_MODELS = ("deepseek",)   # the operator Free/Go switch applies to DeepSeek only
+TIER_LABELS = {"free": "Free", "go": "Go", "api": "GOAT"}   # display only (#6027): stored tier keys stay free/go/api
 
 
 def go_models(cfg: dict) -> list[str]:
@@ -444,9 +445,9 @@ def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
     for b in store.incomplete_batches():
         if b["producer"] in models and b["model_tier"] != tier:
             store.update(b["id"], model_tier=tier)
-            store.log(b["id"], f"운영자가 모델 단계를 {tier.upper()}로 전환 (다음 실행부터 적용)")
+            store.log(b["id"], f"운영자가 모델 단계를 {TIER_LABELS[tier].upper()}로 전환 (다음 실행부터 적용)")
             n += 1
-    store.log(None, f"운영자 모델 단계 전환 → {tier.upper()} ({len(models)}개 모델)")
+    store.log(None, f"운영자 모델 단계 전환 → {TIER_LABELS[tier].upper()} ({len(models)}개 모델)")
     return n
 
 

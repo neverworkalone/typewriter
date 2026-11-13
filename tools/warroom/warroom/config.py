@@ -218,7 +218,8 @@ def registry(cfg: dict) -> dict[str, dict]:
                     "effort": p["effort"] if "effort" in p else LEGACY_EFFORT.get(adapter, ""),
                     "permission_profile": p.get("permission_profile") or "", "fast": p.get("fast"), "governed": governed,
                     "models": {"free": "", "go": "", **(p.get("models") or {})},
-                    "tier_efforts": p.get("tier_efforts") or {}}
+                    "tier_efforts": p.get("tier_efforts") or {},
+                    "retired_models": p.get("retired_models") or {}}
     return out
 
 
@@ -424,6 +425,12 @@ def _entry_problems(name: str, p: dict, fields: tuple[str, ...]) -> list[str]:
         bad.append(f"{name}.tier_efforts는 객체여야 합니다")
     elif isinstance(e, dict):
         bad += [f"{name}.tier_efforts.{k}는 문자열이어야 합니다" for k, v in e.items() if not isinstance(v, str)]
+    r = p.get("retired_models")   # #6027: models an unfinished session may move FROM, per tier (explicit opt-in)
+    if r is not None and not isinstance(r, dict):
+        bad.append(f"{name}.retired_models는 객체여야 합니다")
+    elif isinstance(r, dict):
+        bad += [f"{name}.retired_models.{k}는 모델 ID 문자열 배열이어야 합니다" for k, v in r.items()
+                if not isinstance(v, list) or not all(isinstance(m, str) and _MODEL_ID.match(m) for m in v)]
     return bad
 
 

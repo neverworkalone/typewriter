@@ -29,7 +29,8 @@ from pathlib import Path
 from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, s3parallel, stage1ab,
                stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
-                       classify_codex_failure, final_answer, opencode_free_quota, usage_limit_override_key)
+                       classify_codex_failure, classify_goat_failure, final_answer, is_goat_model, opencode_free_quota,
+                       opencode_provider_errors, usage_limit_override_key)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
@@ -1784,7 +1785,10 @@ class Supervisor:
                 selected = tier if tier is not None else self.store.peek_line(producer, method)["model_tier"]
                 runs = self._pinned_runs(producer, role_of(method))
                 if selected == "api":
-                    runs.append(run_spec(self.cfg, producer, selected, role_of(method)))
+                    api_run = run_spec(self.cfg, producer, selected, role_of(method))
+                    runs.append(api_run)
+                    # The API (GOAT) tier must show a real, clean answer: a provider error is no proof (#6027).
+                    return ad.preflight(self.runner, self.env, runs, answer_required=frozenset({api_run.model}))
             else:
                 runs = self._pinned_runs(producer, role_of(method))
         except ValueError as e:
@@ -2344,14 +2348,20 @@ class Supervisor:
         row = next((r for r in self.store.runs(b["id"]) if r["session_id"] == session and r["model"]), None)
         pinned = (RunSpec(row["model"], row["effort"], row["permission_profile"] or "",
                           fast=None if row["fast_mode"] is None else bool(row["fast_mode"])) if row else None)
-        configured = []
+        configured = {}
         for tier in ("free", "go", "api"):
             try:
-                configured.append(run_spec(self.cfg, b["producer"], tier, role_of(b["method"])))
+                configured[tier] = run_spec(self.cfg, b["producer"], tier, role_of(b["method"]))
             except ValueError:
                 continue
-        compatible = (pinned in configured and run in configured and pinned is not None and
-                      pinned.permission_profile == run.permission_profile and pinned.fast == run.fast)
+        same_rights = pinned is not None and pinned.permission_profile == run.permission_profile and pinned.fast == run.fast
+        compatible = same_rights and pinned in configured.values() and run in configured.values()
+        if not compatible and same_rights:
+            # #6027: a session started on a model the operator explicitly retired for a tier may move to that tier's
+            # current model, with the same effort and rights. Nothing is retired by default (the session is held).
+            retired = registry(self.cfg).get(b["producer"], {}).get("retired_models") or {}
+            compatible = any(pinned.model in (retired.get(t) or []) and run == spec and pinned.effort == spec.effort
+                             for t, spec in configured.items())
         if pinned != run and not compatible:
             raise prompts.PromptError("기존 세션의 모델·effort·권한 핀이 현재 설정과 다르거나 확인되지 않아 재개하지 않습니다")
 
@@ -3092,6 +3102,8 @@ class Supervisor:
         """The checks the normal path applies before it accepts stored output: blocking failure class, identity, completion."""
         try:
             ad = self._adapter(b["producer"])
+            if self._goat_429(self._run_of_log(b["log_file"])):
+                return False   # re-entry must reach the GOAT 429 hold, never accept the saved output and move on
             if code not in (None, 0) and self._classify_run(b["producer"], b["log_file"]) in (
                     "effort", "auth", "usage_limit", "free_quota", "fast_unavailable"):
                 return False
@@ -3148,6 +3160,9 @@ class Supervisor:
         self.store.delete(exit_verdict_key(b["id"]))
 
     def _apply_exit_verdict_do(self, b, code, policy_chunk, policy_refusal) -> None:
+        if self._goat_429(self._run_of_log(b["log_file"])):
+            # Whatever the exit code and whatever was saved: no relaunch, no next chunk. Everything is kept for Retry.
+            return self._fail(b, "PAUSED", self.GOAT_429_HOLD)
         if policy_refusal:
             return self._handle_ab_policy_refusal(b, policy_chunk)
         if code is None:
@@ -9792,9 +9807,34 @@ class Supervisor:
                        "재생산을 막고 수동 확인을 요청합니다.", "error")
         return True
 
+    GOAT_429_HOLD = ("GOAT provider 429 확인: 한도와 일시 오류를 구분할 증거가 없어 자동 재실행·다음 청크 진행을 "
+                     "중단합니다. 저장물·worktree·checkpoint·세션을 보존합니다. Command Code Studio 확인 후 Retry.")
+
+    def _run_of_log(self, log_file):
+        """The run row that wrote `log_file` (a log belongs to exactly one launch), or None."""
+        return self.store.run_by_log(log_file) if log_file else None
+
+    def _goat_429(self, run) -> bool:
+        """#6027: this run ran on GOAT (its PERSISTED model ID) and its log holds a top-level provider 429.
+
+        Shared by the single-run and the parallel C/D task exits. A run an operator Retry already acknowledged (its
+        id <= the batch's usage-limit override, set by Retry) is not held again; a 429 after that Retry is."""
+        if run is None or not is_goat_model(run["model"]) or not run["log_file"]:
+            return False
+        try:
+            override = int(self.store.get(usage_limit_override_key(run["batch_id"])) or 0)
+        except ValueError:
+            override = 0
+        if run["id"] <= override:
+            return False
+        return any(e["status"] == 429 for e in opencode_provider_errors(run["log_file"])[0])
+
     def _classify_run(self, producer: str, log_file) -> str:
         """Failure class of ONE run's log. For the tiered CLI (OpenCode) only a structured provider Free-quota
-        error event is `free_quota`; Codex Fast rejection needs an explicit CLI diagnostic."""
+        error event is `free_quota`; Codex Fast rejection needs an explicit CLI diagnostic. A GOAT run (by its
+        persisted model ID) is classified from top-level provider events and CLI diagnostics only (#6027)."""
+        if self._tiered(producer) and is_goat_model((self._run_of_log(log_file) or {"model": None})["model"]):
+            return classify_goat_failure(log_file)
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")[-30000:]
         except OSError:
@@ -9972,6 +10012,9 @@ class Supervisor:
             return self._fail(b, "PAUSED", f"{cls} 재시도 한도 초과 (무료 한도 소진으로 간주하지 않음)")
         if cls == "auth":
             return self._fail(b, "PAUSED", "인증 실패 — Board 상단의 GitHub 인증 안내를 확인하세요.")
+        if b["run_kind"] == "fix_resume" and is_goat_model((self._run_of_log(b["log_file"]) or {"model": None})["model"]):
+            return self._fail(b, "PAUSED", f"GOAT 실행 실패를 증거로 분류하지 못했습니다(분류={cls}) — 새 세션을 만들지 않고 "
+                              f"worktree·PR·세션을 보존합니다. 로그: {b['log_file']}")
         if b["run_kind"] == "fix_resume":  # session resume impossible -> safe recovery once
             with self.launch_gate.permit():
                 self.store.log(b["id"], "세션 resume 실패 → 새 AI 세션으로 복구", "warn")

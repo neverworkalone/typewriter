@@ -1,4 +1,5 @@
 """OpenCode model+variant is proven at Start, in an isolated probe, before any batch or worktree exists (#1379 review)."""
+import json
 import threading
 import unittest
 from pathlib import Path
@@ -74,6 +75,41 @@ class VariantPreflight(unittest.TestCase):
         self.assertIn("지원하지", first)
         self.assertEqual(first, second)
         self.assertEqual(runner.probes.count(f"{FREE}#bogus"), 1)  # a refusal is final until the Supervisor restarts
+
+    def test_strict_goat_probe_needs_a_clean_answer(self):
+        """#6027: the API (GOAT) tier passes only on exit 0, a top-level text event and no top-level error event."""
+        from warroom.shell import Result
+        text = json.dumps({"type": "text", "part": {"text": "OK"}})
+        def err(status):
+            return json.dumps({"type": "error", "error": {"type": "provider.x", "status": status,
+                                                          "response": {"body": "{\"error\": {\"message\": \"secret-ish\"}}"}}})
+        run = RunSpec("commandcode/deepseek/deepseek-v4-flash", "none")
+        cases = [  # name, exit, output, strict verdict passes, non-strict verdict passes
+            ("clean answer", 0, text, True, True),
+            ("answer then a top-level error", 0, text + "\n" + err(500), False, True),
+            ("answer but abnormal exit", 1, text, False, True),
+            ("provider auth error only", 1, err(401), False, True),
+            ("provider 429 only", 1, err(429), False, True),
+            ("silence", 0, "", False, False),
+        ]
+        for name, code, out, strict_ok, loose_ok in cases:
+            with self.subTest(name):
+                res = Result(code, out + "\n")
+                strict = OpenCodeAdapter._probe_outcome(res, run, True)
+                self.assertEqual(strict is None, strict_ok)
+                self.assertEqual(OpenCodeAdapter._probe_outcome(res, run, False) is None, loose_ok)
+                if strict is not None:
+                    self.assertNotIn("secret-ish", strict)               # the provider body is never echoed
+
+    def test_strict_and_variant_proofs_are_cached_apart(self):
+        runner = ScriptedRunner()
+        runner.probe_answer = "quota"                              # a provider error: a variant proof, not an answer
+        adapter = OpenCodeAdapter("opencode", probe_async=False)
+        self.assertIsNone(adapter.preflight(runner, {}, [RunSpec(GO, "none")]))
+        problem = adapter.preflight(runner, {}, [RunSpec(GO, "none")], answer_required=frozenset({GO}))
+        self.assertIn("정상 응답을 확인하지 못했습니다", problem)
+        self.assertEqual(runner.probes, [f"{GO}#none", f"{GO}#none"])   # one probe each; neither reused the other
+        self.assertIsNone(adapter.preflight(runner, {}, [RunSpec(GO, "none")]))
 
     def test_model_argument_carries_the_variant_suffix(self):
         self.assertEqual(OpenCodeAdapter.model_arg(RunSpec(GO, "high")), f"{GO}#high")
