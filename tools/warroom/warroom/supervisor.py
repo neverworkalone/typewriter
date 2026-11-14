@@ -2910,6 +2910,8 @@ class Supervisor:
                     return self._apply_stage2_repair_answer(b, state)
                 if problem := self._stage2_repair_boundary_problem(b):
                     return self._fail(b, "ERROR", problem)
+                if self._stage2_repair_refresh_stale_unresolved_round(b, state):
+                    return
                 if problem := self._stage2_repair_replay_missing_response(b, state):
                     return self._fail(b, "ERROR", problem)
                 return self._launch_stage2_repair_page(b)
@@ -5060,6 +5062,31 @@ class Supervisor:
             self._stage2_repair_mark_rejected(b, state, final, error, "format")
             return None
         return answer
+
+    def _stage2_repair_refresh_stale_unresolved_round(self, b, state: dict) -> bool:
+        """Retry of an `unresolved` rejection whose preflight basis has since changed (for example a shared validator fix).
+
+        An unresolved answer that no correction can absorb is never replayable, so after a validator fix the Part would
+        stay stuck on the old diagnostics. When nothing of the round was applied and the read-only preflight now has a
+        different fingerprint, the saved page is stale: start a fresh bounded round from the current preflight.
+        Returns True once this Retry was handled; False when the normal replay/launch path applies.
+        """
+        current = state.get("current")
+        attempts = current.get("attempt_log") if isinstance(current, dict) else None
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+        if not isinstance(attempt, dict) or attempt.get("status") != "rejected" or attempt.get("reason_code") != "unresolved" \
+                or current.get("pending_answer") is not None or current.get("applied_candidate_keys") \
+                or current.get("apply_intent") is not None or current.get("duplicate_pair_fallback") is not None:
+            return False
+        bb, pp = stage2.split_key(b["batch"])
+        report = self.git.stage2_preflight(Path(b["worktree"]), b["shard"], bb, pp)
+        if not isinstance(report, dict) or report.get("fingerprint") == current.get("fingerprint") \
+                or report.get("ok") is not True and report.get("repairable") is not True:
+            return False
+        checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+        if not self._stage2_preflight_repair(b, checkpoint, report):
+            self._launch_stage2_next(self.store.batch(b["id"]))
+        return True
 
     def _stage2_repair_replay_missing_response(self, b, state: dict) -> str | None:
         """On operator Retry, recover an old rejected missing-row response without rerunning the full page."""
