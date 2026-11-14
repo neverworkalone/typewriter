@@ -149,6 +149,33 @@ class Stage2RepairRebind(unittest.TestCase):
         self.assertEqual(sum(len(item["candidates"]) for item in checkpoint["items"]), 2)
         self.assertEqual(len(checkpoint["repair_receipts"]), 1)
 
+    def test_repair_rebind_accepts_maintainer_retargeted_run_start_without_finalize_base(self):
+        # Issue #6601: a Maintainer integration during a Repair run moves only the Repair run-start baseline.
+        w, b, path = _world(self, total=2)
+        state = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
+        state["history"][0]["base_head"] = HEAD1
+        w.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, sort_keys=True))
+        start = json.loads(w.store.get(stage2.repair_run_start_key(b["id"])))
+        w.store.set(stage2.repair_run_start_key(b["id"]), json.dumps({**start, "head": HEAD2}, sort_keys=True))
+        w.git.base_sha = HEAD2
+        w.git.local_head = HEAD2
+        w.git.integrated.append((b["worktree"], HEAD2))
+        w.git.ancestor_pairs.update({(HEAD1, HEAD2)})
+        w.git.stage2_prepare_merge(Path(b["worktree"]), b["shard"], "01", "05", refresh=True)
+        self.assertIsNone(w.store.get(f"s2_finalize_base_{b['id']}"))
+
+        checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+        self.assertIsNone(w.sup._stage2_repair_rebind_problem(b, state, checkpoint, "7" * 64))
+        self.assertEqual(state["identity"]["base_head"], HEAD2)
+        self.assertEqual(len(state["rebindings"]), 1)
+
+    def test_repair_rebind_still_rejects_unrelated_head_without_any_baseline(self):
+        w, b, path = _world(self, total=2)
+        state = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
+        w.git.local_head = HEAD2
+        checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+        self.assertIn("finalization HEAD baseline", w.sup._stage2_repair_rebind_problem(b, state, checkpoint, "7" * 64))
+
     def test_repeated_gloss_conflict_gets_one_officially_checked_retry(self):
         from unittest.mock import patch
         w, b, path = _world(self)
