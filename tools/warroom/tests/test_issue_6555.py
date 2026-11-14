@@ -6,7 +6,8 @@ from pathlib import Path
 from tests import test_issue_6249 as t6249
 from warroom.github import GhTransient
 from warroom.gitops import GitError, GitTransient, Stage2AmendRejected
-from warroom.supervisor import S2_FIX_APPLY_ATTEMPTS, S2_FIX_COMMIT_SUBJECT, S2_FIX_RESPONSE
+from warroom.supervisor import (S2_FIX_APPLY_ATTEMPTS, S2_FIX_COMMIT_SUBJECT, S2_FIX_REPLY_LIST_WAIT_SECONDS,
+                                S2_FIX_RESPONSE)
 
 DROP = "data/relation-drops/drop-001.jsonl"
 
@@ -211,6 +212,35 @@ class SupervisedStage2Fix(unittest.TestCase):
         self.assertEqual(b["state"], "FIXING")
         self.assertEqual(len(posts), 1, "a reply GitHub may still be listing is awaited, not posted again")
         self.assertEqual(w.store.handled_event(b["id"], b["pr_number"], base, "review:77")["status"], "LEGACY")
+        w.now += S2_FIX_REPLY_LIST_WAIT_SECONDS   # still unconfirmed after the wait: stop, never post a second reply
+        for _ in range(3):
+            w.tick()
+        b = w.store.batch(b["id"])
+        self.assertEqual((b["state"], len(posts)), ("ERROR", 1))
+        self.assertEqual(w.store.handled_event(b["id"], b["pr_number"], base, "review:77")["status"], "LEGACY")
+
+    def test_a_post_that_timed_out_after_github_accepted_it_is_found_not_posted_again(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        base = w.gh.pull(b["pr_number"])["head_sha"]
+        w.git.stage2_amend_results = [{"changes": {DROP: "drop\n"}}]
+        listed, hidden = w.gh.issue_comments, []
+
+        def accepted_then_timeout(n, body):   # GitHub stores the comment, but the CLI call times out
+            hidden.append(w.gh.add_pr_reply(n, body))
+            raise GhTransient("gh issue comment timed out")
+
+        def lagging_list(n):   # the first listing after the timeout does not show the new comment yet
+            comments = listed(n)
+            if hidden and len(hidden) == 1 and not getattr(lagging_list, "shown", False):
+                lagging_list.shown = True
+                return [comment for comment in comments if comment.get("id") not in hidden]
+            return comments
+        w.gh.comment_issue, w.gh.issue_comments = accepted_then_timeout, lagging_list
+        b = self._settle(w, self._end(w, b, fix))
+        self.assertEqual(len(hidden), 1, "the timed-out post is never repeated")
+        self.assertEqual(len(self._replies(w, b)), 1)
+        self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
+        self._completed(w, b, base, w.git.local_head)
 
     def test_a_reply_with_the_nonce_but_wrong_binding_stops_without_completing(self):
         w, b, wt, fix = self._fix(self.AMEND)

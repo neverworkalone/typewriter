@@ -51,7 +51,7 @@ S2_FIX_RESPONSE = ".warroom-scratch/s2-fix-response.json"
 S2_FIX_AMEND_INPUT = ".warroom-scratch/s2-fix-amend.txt"
 S2_FIX_COMMIT_SUBJECT = "Apply Stage 2 review amendments"
 S2_FIX_APPLY_ATTEMPTS = 2   # returns of a refused judgment to the same session before the batch stops
-S2_FIX_REPLY_LIST_WAIT_SECONDS = 600   # a posted reply GitHub does not list yet is awaited, not posted again
+S2_FIX_REPLY_LIST_WAIT_SECONDS = 600   # a possibly posted reply is awaited, never posted again; then ERROR
 
 
 class DuplicateClaim(Exception):
@@ -3848,21 +3848,26 @@ class Supervisor:
                 posted = json.loads(self.store.get(posted_key) or "")
             except (TypeError, ValueError):
                 posted = None
-            recent = (isinstance(posted, dict) and posted.get("nonce") == baseline["nonce"]
-                      and self.clock() - float(posted.get("at") or 0) < S2_FIX_REPLY_LIST_WAIT_SECONDS)
-            if not recent:   # never post twice while GitHub may still be listing the first post
+            if not (isinstance(posted, dict) and posted.get("nonce") == baseline["nonce"]):
                 reply = response["reply"].strip()
                 missing = "".join(f"[{event}] " for event in response["event_keys"] if f"[{event}]" not in reply)
+                # Recorded before the call: once a post may have reached GitHub it is never posted again (#6555 review).
                 self.store.set(posted_key, json.dumps({"nonce": baseline["nonce"], "at": self.clock()}))
                 try:
                     self.gh.comment_issue(b["pr_number"], "\n".join([f"{missing}{reply}", ""]
                                                                        + self._stage2_fix_reply_lines(baseline, head)))
+                except GhTransient:
+                    raise   # the outcome is unknown (timeout, network): keep the marker and look for the post later
                 except GhError:
-                    self.store.delete(posted_key)   # definitely not posted: the next attempt may post
+                    self.store.delete(posted_key)   # GitHub definitely refused it: a later attempt may post
                     raise
+                posted = {"nonce": baseline["nonce"], "at": self.clock()}
                 reply_id = self._stage2_fix_reply_id(b, baseline, head)
             if reply_id is None:
-                raise GhTransient("게시한 Stage 2 리뷰 수정 답글이 아직 PR 댓글 목록에 없습니다")
+                if self.clock() - float(posted.get("at") or 0) < S2_FIX_REPLY_LIST_WAIT_SECONDS:
+                    raise GhTransient("게시한 Stage 2 리뷰 수정 답글이 아직 PR 댓글 목록에 없습니다")
+                raise GitError(f"Stage 2 리뷰 수정 답글 게시 결과를 {S2_FIX_REPLY_LIST_WAIT_SECONDS}s 동안 확인하지 못했습니다. "
+                               "중복 게시를 피하려고 다시 게시하지 않습니다")
         self.store.set(f"s2_fix_reply_{b['id']}", json.dumps({"nonce": baseline["nonce"], "reply_id": reply_id,
                                                               "head": head}, sort_keys=True))
         return reply_id
