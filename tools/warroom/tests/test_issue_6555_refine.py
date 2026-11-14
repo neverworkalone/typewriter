@@ -6,7 +6,7 @@ from unittest import mock
 
 from tests.fakes import World
 from warroom import refine, stage3
-from warroom.store import STAGE3_METHOD
+from warroom.store import STAGE3_METHOD, LineBusy
 
 
 class RefinementStageRegistry(unittest.TestCase):
@@ -37,6 +37,13 @@ class RefinementStageRegistry(unittest.TestCase):
         self.assertEqual(w.store.line("codex", STAGE3_METHOD)["run"], 0)
         self.assertIsNone(w.store.latest_batch("codex", STAGE3_METHOD))
 
+        # The shard's merged Stage 3 batch is in the store, as in production; it blocks only another Stage 3 batch.
+        done = w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="001", batch="all",
+                                    branch="s3-codex-001", worktree="/tmp/s3-001")
+        w.store.update(done, state="COMPLETE", merged=1)
+        with self.assertRaises(LineBusy):
+            w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="001", batch="all",
+                                 branch="s3-codex-001", worktree="/tmp/s3-001")
         self.assertTrue(w.store.start_stage3("codex", "continuous")[0])
         w.store.set(stage3.SPEC.ok_key("001"), w.git.base_sha)
         self.start().assert_called_once()
