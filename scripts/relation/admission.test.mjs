@@ -566,6 +566,8 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.equal(verifyDrop('→ 만장이.', '만장').drop, 1, 'a redirect headword ending in a particle-like syllable is not a mention of its shorter form');
   assert.throws(() => verifyDrop('→ 만장이.', '만장이'), /named by the gloss/, 'a redirect target itself stays protected from Drop');
   assert.throws(() => verifyDrop('→ 가로.', '가로'), /named by the gloss/, 'an exact redirect target stays protected from Drop');
+  assert.throws(() => verifyDrop('→ 여남은[Ⅰ].', '여남은'), /named by the gloss/, 'a redirect with a group annotation still protects its headword');
+  assert.equal(verifyDrop('→ 여남은[Ⅰ].', '여남').drop, 1, 'a shorter form is not the annotated redirect headword');
   assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'e').drop, 1,
     'a Drop for a connected candidate with no independent expression value may account for a gloss-named candidate');
