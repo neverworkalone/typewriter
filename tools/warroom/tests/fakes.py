@@ -194,6 +194,9 @@ class FakeGit:
         self.stage2_repair_results: list[dict] = []
         self.stage2_amend_results: list = []                  # per call: {"changes": {rel: text}} or an exception
         self.stage2_amend_calls: list[tuple] = []
+        self.refine_amend_results: list = []                  # per new delta: {"changes": {rel: text}} or an exception
+        self.refine_amend_calls: list[tuple] = []
+        self.refine_decision_calls: list[tuple] = []
 
     def fetch_base(self, base):
         return self.base_sha
@@ -672,6 +675,41 @@ class FakeGit:
         outputs = {checkpoint: hashlib.sha256((wt / checkpoint).read_bytes()).hexdigest()}
         outputs.update({rel: hashlib.sha256(body.encode("utf-8")).hexdigest() for rel, body in changes.items()})
         return {"amended": True, "checkpoint": checkpoint, "outputs": outputs, "timing": ""}
+
+    def merge_base(self, path, left, right):
+        return self.__dict__.get("merge_base_sha", "b" * 40)
+
+    def refine_decisions(self, worktree, cli, shard, base, senses=None, *, timeout=900):
+        self.refine_decision_calls.append((shard, base, tuple(sorted(senses or ()))))
+        return self.__dict__.get("refine_decisions_result", {"shard": shard, "base": base, "decisions": [], "rows": []})
+
+    def refine_amend(self, worktree, cli, shard, base, rel_input, *, timeout=900):
+        """A refinement `amend` (#6555): a planned result is {"changes": {rel: text}} (optionally "fail_after_write":
+        the first file is written, then an operational failure) or an exception raised before any write
+        (RefineAmendRejected = the delta was refused; GitError = an operational failure). The same delta again
+        rebuilds the same bytes from base, as the CLI does."""
+        wt = Path(worktree)
+        text = (wt / rel_input).read_text("utf-8")
+        self.refine_amend_calls.append((shard, base, text))
+        state = self.__dict__.setdefault("refine_amend_requests", {})   # delta -> changes
+        if text not in state:
+            result = self.refine_amend_results.pop(0) if self.refine_amend_results else {"changes": {}}
+            if isinstance(result, Exception):
+                raise result
+            state[text] = result["changes"]
+            if result.get("fail_after_write"):
+                rel, body = next(iter(result["changes"].items()))
+                (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+                (wt / rel).write_text(body, "utf-8")
+                self.dirty_text = f" M {rel}\n"
+                raise GitError("edit-cli amend 실패(exit 1): EIO while replacing outputs")
+        changes = state[text]
+        for rel, body in changes.items():
+            (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+            (wt / rel).write_text(body, "utf-8")
+        self.dirty_text = "".join(f" M {rel}\n" for rel in changes)
+        outputs = {rel: hashlib.sha256(body.encode("utf-8")).hexdigest() for rel, body in changes.items()}
+        return {"status": "applied", "outputs": outputs}
 
     def verify_stage2_local(self, worktree, shard, batch, part, *, checkpoint, timeout=900):
         self.local_verify_calls.append((shard, batch, part, checkpoint))

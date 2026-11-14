@@ -28,7 +28,7 @@ _STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_n
            "relation_direction_rule"}
 _STAGE3 = {"shard", "branch", "chunk_id", "chunk_input", "session_note", "s3_policy_card"}
 _STAGE3_FIX = {"pr", "head", "branch", "shard", "review_events", "session_note", "relation_path",
-               "drop_path", "verify_command"}
+               "drop_path", "source_context"}
 _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contract", "output_scope"}
 _C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract", "cli_path",
             "chunk_flag"}
@@ -414,7 +414,12 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
                      f"{retry_note} Correct the judgment and write the response file again.")
     elif b["method"] == "s3":
         template = "s3_fix"
-        note = "" if resumed else "새 Stage 3 리뷰 수정 세션이다. 제공된 현재 HEAD 리뷰 이벤트만 처리한다.\n"
+        note = ("This continues the same Stage 3 review-fix session. Use the review events and PR context already "
+                "given in this session and submit the complete judgment again." if resumed else
+                "This is a fresh Stage 3 review-fix session for the current-HEAD review events below.")
+        if retry_note:
+            note += (" The Supervisor could not apply the previous submission and wrote nothing: "
+                     f"{retry_note} Correct the judgment and write the response file again.")
     else:
         template = "producer_fix"
     values = {"pr": b["pr_number"], "head": b["head_sha"], "branch": b["branch"],
@@ -428,8 +433,7 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
         values["issue"] = b["batch"]
     if b["method"] == "s3":
         values.update(relation_path=f"data/relations/relation-{b['shard']}.jsonl",
-                      drop_path=f"data/relation-drops/drop-{b['shard']}.jsonl",
-                      verify_command=f"node scripts/relation/admission-cli.mjs verify --shard {b['shard']} --json")
+                      drop_path=f"data/relation-drops/drop-{b['shard']}.jsonl")
     if b["method"] in ("a", "b", "c", "d"):
         from . import dchunk, literary, stage1ab
 

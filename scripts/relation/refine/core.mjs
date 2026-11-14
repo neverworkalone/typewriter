@@ -52,6 +52,16 @@ export function fail(message) {
   throw new Error(message);
 }
 
+/** An amend input the CLI refuses (grammar, rows, targets): a new judgment can fix it; the CLI exits 2 with JSON. */
+export class RefineInputError extends Error {}
+
+function asInputError(step) {
+  try { return step(); } catch (error) {
+    if (error instanceof RefineInputError) throw error;
+    throw new RefineInputError(error.message);
+  }
+}
+
 export function jsonlLines(contents, file) {
   const lines = compactRows(contents);
   for (const [index, line] of lines.entries()) {
@@ -501,7 +511,7 @@ export function createRefineCli(rule) {
    * the rule changes rows, then the shared accounting appends orphan `z` Drops and the existing validators check the
    * result. Pure: nothing is written, so `apply` and `amend` reach identical bytes from identical inputs.
    */
-  async function computeEdits(shard, root, relationBase, dropBase, decisions, scope = null) {
+  async function computeEdits(shard, root, relationBase, dropBase, decisions, scope = null, { inputDecisions = false } = {}) {
     const relationFile = RELATION_PATH(shard, root);
     const dropFile = DROP_PATH(shard, root);
     const context = await loadContext(shard, root, { relationText: relationBase.text, dropText: dropBase.text });
@@ -519,7 +529,9 @@ export function createRefineCli(rule) {
     for (const decision of decisions) {
       const original = beforeRelations[decision.row - 1];
       if (!original) fail(`saved decision refers to missing Relation row ${decision.row}`);
-      rule.checkDecision({ decision, original, scope, scopedSenseIds, context });
+      const check = () => rule.checkDecision({ decision, original, scope, scopedSenseIds, context });
+      if (inputDecisions) asInputError(check);
+      else check();
     }
     const { removedRows, afterOwnRows, afterRelationLines, summary } = rule.transform({
       context, beforeRelations, relationLines, decisions });
@@ -664,12 +676,19 @@ export function createRefineCli(rule) {
   }
 
   /** The decisions a refinement PR made, recovered from its own Git diff: the PR is its own state, there is no ledger. */
-  async function listDecisions(shard, root, base) {
+  async function listDecisions(shard, root, base, senses = null) {
     assertShard(shard);
     const state = prState(shard, root, base);
     const { index } = await loadShard(shard, root);
-    return { shard, base, head: state.head,
-      decisions: state.decisions.map((decision) => rule.describeDecision(decision, state.baseRelations, index)) };
+    const describe = (decision) => rule.describeDecision(decision, state.baseRelations, index);
+    const result = { shard, base, head: state.head, decisions: state.decisions.map(describe) };
+    if (senses) {
+      // Every base row of the named source Senses, kept ones included, so a review fix can address any of them.
+      const byRow = new Map(state.decisions.map((decision) => [decision.row, decision]));
+      result.rows = state.baseRelations.flatMap((row, index) => senses.has(row.source_sense_id)
+        ? [describe(byRow.get(index + 1) ?? { row: index + 1, action: 'keep' })] : []);
+    }
+    return result;
   }
 
   /**
@@ -682,8 +701,9 @@ export function createRefineCli(rule) {
     const state = prState(shard, root, base);
     assertCleanInputsFor(root, 'amend', shard);
     const input = path.isAbsolute(inputPath) ? inputPath : path.resolve(root, inputPath);
-    const next = rule.applyDelta(state.decisions, await readFile(input, 'utf8'), state.baseRelations);
-    const edits = await computeEdits(shard, root, state.relationBase, state.dropBase, next);
+    const text = await readFile(input, 'utf8');
+    const next = asInputError(() => rule.applyDelta(state.decisions, text, state.baseRelations));
+    const edits = await computeEdits(shard, root, state.relationBase, state.dropBase, next, null, { inputDecisions: true });
     const relationFile = RELATION_PATH(shard, root);
     const dropFile = DROP_PATH(shard, root);
     const relationCurrent = await readOptional(relationFile);
@@ -721,14 +741,15 @@ export function createRefineCli(rule) {
     const command = argv[0];
     if (command === '--help' || command === '-h') return { command: 'help' };
     if (!COMMANDS.includes(command)) fail(rule.usage);
-    const options = { command, shard: null, batch: null, part: null, input: null, output: null, chunk: null, expect: null, base: null };
+    const options = { command, shard: null, batch: null, part: null, input: null, output: null, chunk: null, expect: null, base: null, senses: null };
     for (let index = 1; index < argv.length; index += 1) {
       const flag = argv[index];
       const value = argv[index + 1];
-      if (!['--shard', '--batch', '--part', '--in', '--out', '--chunk', '--expect-view-sha256', '--base'].includes(flag) || !value || value.startsWith('--')) fail(`invalid arguments\n${rule.usage}`);
+      if (!['--shard', '--batch', '--part', '--in', '--out', '--chunk', '--expect-view-sha256', '--base', '--senses'].includes(flag) || !value || value.startsWith('--')) fail(`invalid arguments\n${rule.usage}`);
       index += 1;
       const key = flag === '--shard' ? 'shard' : flag === '--batch' ? 'batch' : flag === '--part' ? 'part' : flag === '--in' ? 'input'
-        : flag === '--chunk' ? 'chunk' : flag === '--expect-view-sha256' ? 'expect' : flag === '--base' ? 'base' : 'output';
+        : flag === '--chunk' ? 'chunk' : flag === '--expect-view-sha256' ? 'expect' : flag === '--base' ? 'base'
+          : flag === '--senses' ? 'senses' : 'output';
       if (options[key] !== null) fail(`${flag} may be supplied only once`);
       options[key] = value;
     }
@@ -743,6 +764,7 @@ export function createRefineCli(rule) {
     if (['save-chunk', 'amend'].includes(command) && !options.input) fail(`${command} requires --in\n${rule.usage}`);
     if (!['save-chunk', 'amend'].includes(command) && options.input) fail(`--in is only valid for save-chunk/amend\n${rule.usage}`);
     if (['decisions', 'amend'].includes(command) !== (options.base !== null)) fail(`--base is required by, and only valid for, decisions/amend\n${rule.usage}`);
+    if (command !== 'decisions' && options.senses !== null) fail(`--senses is only valid for decisions\n${rule.usage}`);
     if (!['read-chunk', 'report', 'decisions'].includes(command) && options.output) fail(`--out is only valid for read-chunk/report/decisions\n${rule.usage}`);
     if (options.chunk !== null) {
       if (!['read-chunk', 'save-chunk'].includes(command)) fail(`--chunk is only valid for read-chunk/save-chunk\n${rule.usage}`);
@@ -774,7 +796,10 @@ export function createRefineCli(rule) {
     else if (options.command === 'save-chunk' && options.chunk !== null) result = await saveChunkByNumber(options.shard, options.chunk, options.input, options.expect, root);
     else if (options.command === 'save-chunk') result = await saveChunk(options.shard, options.input, root, options.scope);
     else if (options.command === 'apply') result = await applyEdits(options.shard, root, options.scope);
-    else if (options.command === 'decisions') result = await listDecisions(options.shard, root, options.base);
+    else if (options.command === 'decisions') {
+      result = await listDecisions(options.shard, root, options.base,
+        options.senses === null ? null : new Set(options.senses.split(',').filter(Boolean)));
+    }
     else if (options.command === 'amend') result = await amendDecisions(options.shard, root, options.base, options.input);
     else result = await reportEdits(options.shard, root);
     const serialized = `${JSON.stringify(result, null, 2)}\n`;
@@ -790,10 +815,15 @@ export function createRefineCli(rule) {
   return { run };
 }
 
-/** Run a Stage CLI module as a script: print the error message and exit 1 on failure. */
+/** Run a Stage CLI module as a script: an amend input refusal is exit 2 with one JSON line, any other failure exit 1. */
 export function runAsScript(moduleUrl, run) {
   if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(moduleUrl)) {
     run(process.argv.slice(2)).catch((error) => {
+      if (error instanceof RefineInputError) {
+        process.stdout.write(`${JSON.stringify({ version: 1, ok: false, family: 'input', error: error.message })}\n`);
+        process.exitCode = 2;
+        return;
+      }
       console.error(error?.message ?? String(error));
       process.exitCode = 1;
     });

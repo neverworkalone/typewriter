@@ -39,6 +39,11 @@ class Stage2AmendRejected(GitError):
     (#6555). Every other amend failure is a plain GitError: the judgment stands and must not be asked for again."""
 
 
+class RefineAmendRejected(GitError):
+    """A refinement Stage CLI's `amend` refused the submitted delta itself (exit 2, family "input"); nothing was
+    written (#6555). Every other failure is a plain GitError, exactly as for `Stage2AmendRejected`."""
+
+
 class FastForwardRace(GitTransient):
     """The PR or remote branch moved while a safe PR-head fast-forward was being checked."""
 
@@ -861,6 +866,13 @@ class Git:
     def is_ancestor(self, ancestor: str, descendant: str, *, path: Path | None = None) -> bool:
         return self._git("merge-base", "--is-ancestor", ancestor, descendant, cwd=path, check=False).ok
 
+    def merge_base(self, path: Path, left: str, right: str) -> str:
+        """The single best common ancestor of two commits, as seen from `path`."""
+        sha = self._git("merge-base", left, right, cwd=path).out.strip()
+        if not re.fullmatch(r"[a-f0-9]{40}", sha):
+            raise GitError(f"merge-base {left} {right} returned no commit")
+        return sha
+
     def commit_in_range(self, base: str, commit: str, head: str, *, path: Path | None = None) -> bool:
         """Whether `commit` is a merged ancestor after `base` and included by `head`."""
         if not all(re.fullmatch(r"[a-f0-9]{40}", sha or "") for sha in (base, commit, head)):
@@ -1519,6 +1531,46 @@ class Git:
         if not isinstance(payload, dict) or payload.get("amended") is not True or not isinstance(payload.get("outputs"), dict):
             raise GitError("admission-cli amend exited 0 without an {amended:true, outputs} receipt")
         payload["timing"] = next((line for line in (res.err or "").splitlines() if line.startswith("amend_timing ")), "")
+        return payload
+
+    def refine_decisions(self, worktree: Path, cli: str, shard: str, base: str, senses=None, *, timeout: int = 900) -> dict:
+        """A refinement PR's decisions recovered from base..HEAD by its Stage CLI (read-only), optionally with every
+        base row of `senses`."""
+        args = ["node", cli, "decisions", "--shard", shard, "--base", base]
+        if senses:
+            args += ["--senses", ",".join(sorted(senses))]
+        res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
+        try:
+            payload = json.loads(res.out or "")
+        except ValueError:
+            payload = None
+        if not res.ok or not isinstance(payload, dict) or not isinstance(payload.get("decisions"), list):
+            raise GitError(f"{cli} decisions 실패(exit {res.code}): {' '.join((res.err or res.out or '').split())[-1500:]}")
+        return payload
+
+    def refine_amend(self, worktree: Path, cli: str, shard: str, base: str, rel_input: str, *, timeout: int = 900) -> dict:
+        """Rebuild a refinement PR from `base` with its Stage CLI `amend` and return the receipt (#6555).
+
+        A delta refusal is `RefineAmendRejected`; any other failure is `GitError`. The receipt's `outputs` are the
+        sha256 (or null for an absent file) of each shard file the amend established."""
+        res = self.r.run(["node", cli, "amend", "--shard", shard, "--base", base, "--in", rel_input],
+                         cwd=worktree, env=self.env, timeout=timeout)
+        out = (res.out or "").strip()
+        if not res.ok:
+            try:
+                payload = json.loads(out.splitlines()[-1])
+            except (ValueError, IndexError):
+                payload = None
+            if res.code == 2 and isinstance(payload, dict) and payload.get("ok") is False and payload.get("family") == "input":
+                raise RefineAmendRejected(" ".join(str(payload.get("error") or "").split())[-1500:] or "amend input refused")
+            raise GitError(f"{cli} amend 실패(exit {res.code}): {' '.join((res.err or out).split())[-1500:]}")
+        try:
+            payload = json.loads(out)
+        except ValueError:
+            payload = None
+        if not isinstance(payload, dict) or payload.get("status") not in ("applied", "already-applied") \
+                or not isinstance(payload.get("outputs"), dict):
+            raise GitError(f"{cli} amend exited 0 without an {{status, outputs}} receipt")
         return payload
 
     def stage2_repair(self, worktree: Path, shard: str, batch: str, part: str, repair: dict,

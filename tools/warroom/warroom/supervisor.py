@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from pathlib import Path
 
-from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, literary, prbody, progress, prompts, reviews, s2parallel, s3parallel, stage1ab,
+from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, fixcoord, literary, prbody, progress, prompts, reviews, s2parallel, s3parallel, stage1ab,
                stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        classify_codex_failure, classify_goat_failure, final_answer, is_goat_model, opencode_free_quota,
@@ -34,7 +34,7 @@ from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_clau
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
-from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, InspectContextFailure, IntegrationBlocked, ResourceFenced, Stage2AmendRejected
+from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, InspectContextFailure, IntegrationBlocked, RefineAmendRejected, ResourceFenced, Stage2AmendRejected
 from .lanes import Lanes
 from .launch_gate import LaunchDenied, LaunchGate
 from . import maintenance as maint_results
@@ -52,6 +52,11 @@ S2_FIX_AMEND_INPUT = ".warroom-scratch/s2-fix-amend.txt"
 S2_FIX_COMMIT_SUBJECT = "Apply Stage 2 review amendments"
 S2_FIX_APPLY_ATTEMPTS = 2   # returns of a refused judgment to the same session before the batch stops
 S2_FIX_REPLY_LIST_WAIT_SECONDS = 600   # a possibly posted reply is awaited, never posted again; then ERROR
+# #6555: a Stage 3 review fix submits only its judgment; the Review FIXING Coordinator applies it with `edit-cli amend`.
+S3_FIX = fixcoord.FixSpec(prefix="s3", label="Stage 3", response=".warroom-scratch/s3-fix-response.json",
+                          amend_input=".warroom-scratch/s3-fix-amend.txt",
+                          commit_subject="Apply Stage 3 review amendments", amend_header="amend")
+S3_FIX_CONTEXT_ROWS = 400   # base rows shown to a Stage 3 fix; more are read with one `decisions --senses` call
 
 
 class DuplicateClaim(Exception):
@@ -170,6 +175,12 @@ class Supervisor:
         self.dp = dparallel.ParallelD(self)   # parallel D chunk tasks inside a new batch (#3074)
         self.cp = cparallel.ParallelC(self)   # parallel C chunk tasks inside a new batch (#3076)
         self.s3p = s3parallel.ParallelStage3(self)   # parallel Stage 3 chunk tasks inside a new shard (#3149)
+        self.s3fix = fixcoord.ReviewFixCoordinator(self, S3_FIX, fixcoord.FixStage(
+            allowed=lambda b: {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"},
+            amend=lambda b, baseline, wt, rel: self.git.refine_amend(wt, stage3.EDIT_CLI, b["shard"], baseline["base"], rel),
+            rejected=RefineAmendRejected,
+            verify_exact=lambda b, head: self.git.verify_stage2(head, "shard", b["shard"], None, None),
+            completion=self._stage3_fix_completion_problem))
         self.parallel_new_s3 = True   # False only lets a fixture exercise the serial Stage 3 path an already running shard keeps
         self.parallel_new_c = True   # False only lets a fixture exercise the serial path an already running batch keeps
         self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
@@ -2692,6 +2703,11 @@ class Supervisor:
                 checkpoint = None
                 if b["method"] in ("a", "b", "c", "d"):
                     context, fix_context_digests = self._producer_fix_context(b, events)
+                elif b["method"] == STAGE3_METHOD:
+                    head = self.git.head(Path(wt))
+                    base = self.git.merge_base(Path(wt), head, f"origin/{self.cfg['base_branch']}")
+                    context = self._s3_fix_context(b, events or [], base, head)
+                    self.s3fix.begin(b, events or [], head=head, base=base)
                 elif b["method"] == STAGE2_METHOD:
                     context = self._s2_fix_context(b, events)
                     checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
@@ -2965,6 +2981,9 @@ class Supervisor:
             if b["method"] == STAGE2_METHOD and self._verified_fix_exit(b) and \
                     (baseline := self._stage2_supervised_fix(b)) is not None and self._stage2_apply_fix(b, baseline):
                 return   # resumed the Supervisor's own idempotent application
+            if b["method"] == STAGE3_METHOD and self._verified_fix_exit(b) and \
+                    (baseline := self.s3fix.baseline(b)) is not None and self.s3fix.apply(b, baseline):
+                return
             if self._verified_fix_exit(b):
                 # The fix run ended 0 with its own completion evidence: only its push is unverified. No AI, commit or push.
                 try:
@@ -3504,6 +3523,9 @@ class Supervisor:
         if b["state"] == "FIXING" and b["method"] == STAGE2_METHOD and \
                 (baseline := self._stage2_supervised_fix(b)) is not None and self._stage2_apply_fix(b, baseline):
             return
+        if b["state"] == "FIXING" and b["method"] == STAGE3_METHOD and \
+                (baseline := self.s3fix.baseline(b)) is not None and self.s3fix.apply(b, baseline):
+            return
         if b["state"] == "FIXING" and b["method"] in ("a", "b", "c", "d"):
             self._remember_fix_context_delivery(b)
         try:
@@ -3614,8 +3636,10 @@ class Supervisor:
             facts.append(cause)
         return ", ".join(facts)
 
-    def _stage3_fix_result_problem(self, b, info) -> str | None:
-        """Accept a Stage 3 review fix only when its owned PR still has the shard scope and verify passes on its HEAD."""
+    def _stage3_fix_result_problem(self, b, info, verified: str | None = None) -> str | None:
+        """Accept a Stage 3 review fix only when its owned PR still has the shard scope and verify passes on its HEAD.
+
+        `verified` is the HEAD this same call already verified exactly before pushing it (#6555); it is not re-run."""
         if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
                 or info.get("state") != "open" or info.get("merged")):
             return "Stage 3 리뷰 수정이 열린 소유 PR 번호/head 브랜치에서 끝나지 않았습니다. worktree와 PR을 보존합니다."
@@ -3631,6 +3655,8 @@ class Supervisor:
             return f"Stage 3 리뷰 수정 PR 파일 범위를 검증할 수 없습니다: {error}. PR을 보존합니다."
         if shard != b["shard"]:
             return f"Stage 3 리뷰 수정 PR 샤드 {shard}가 소유 샤드 {b['shard']}와 다릅니다. PR을 보존합니다."
+        if verified == head:
+            return None
         try:
             ok, detail = self.git.verify_stage2(head, "shard", b["shard"], None, None)
         except TRANSIENT:
@@ -3641,11 +3667,38 @@ class Supervisor:
             return f"Stage 3 리뷰 수정 HEAD의 shard verify 실패: {detail}. PR을 보존합니다."
         return None
 
-    def _stage3_fix_completion_problem(self, b, info) -> str | None:
+    def _stage3_fix_completion_problem(self, b, info, verified: str | None = None) -> str | None:
         """Share the same PR scope, exact-HEAD verify and event-reply gate across every fix completion route."""
-        if problem := self._stage3_fix_result_problem(b, info):
+        if problem := self._stage3_fix_result_problem(b, info, verified):
             return problem
         return self._complete_producer_fix_events(b)
+
+    def _s3_fix_context(self, b, events, base: str, head: str) -> str:
+        """Bounded Stage 3 review context (#6555): the PR's decisions by base row, for the Senses the review names, or
+        every edit of the PR when it names none. The AI reads nothing else to judge, so a failed lookup is a PromptError
+        and no session starts."""
+        wt = Path(b["worktree"])
+        named = sorted(set(re.findall(r"\bw\d+-s\d+\b", "\n".join(str(e.get("body") or "") for e in events))))
+        try:
+            listed = self.git.refine_decisions(wt, stage3.EDIT_CLI, b["shard"], base, named or None)
+        except TRANSIENT:
+            raise
+        except GitError as e:
+            # Fail closed: without the PR's decisions the judgment would have no evidence, so no session starts and
+            # the review events stay unanswered (#6599 review).
+            raise prompts.PromptError(f"Stage 3 리뷰 수정 PR context(edit-cli decisions)를 만들지 못했습니다: {e}. "
+                                      "PR과 리뷰 이벤트를 보존합니다") from e
+        rows = listed.get("rows") or []
+        scope = f"every base row of the named Senses {', '.join(named)}"
+        if not rows:
+            rows = listed["decisions"]
+            scope = ("every edit of this PR" + (f" (the named Senses {', '.join(named)} have no base row in this shard)"
+                                                  if named else ""))
+        counts = {action: sum(1 for d in listed["decisions"] if d.get("action") == action) for action in ("drop", "repair")}
+        lines = [f"base {base}; PR HEAD {head}; this PR drops {counts['drop']} and repairs {counts['repair']} base rows.",
+                 f"Rows below: {scope}{f' (first {S3_FIX_CONTEXT_ROWS} of {len(rows)})' if len(rows) > S3_FIX_CONTEXT_ROWS else ''}."]
+        lines += [json.dumps(row, ensure_ascii=False, separators=(",", ":")) for row in rows[:S3_FIX_CONTEXT_ROWS]]
+        return "\n".join(lines)
 
     @staticmethod
     def _merged_owned_pr(b, info) -> bool:

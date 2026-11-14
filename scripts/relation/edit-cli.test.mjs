@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { chunkSenseGroups, escapeField, parsePromptView, renderPromptView, run } from './edit-cli.mjs';
 import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
+import { RefineInputError } from './refine/core.mjs';
 
 const jsonl = (rows) => rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length ? '\n' : '');
 const quiet = async (callback) => {
@@ -1092,6 +1093,13 @@ test('#6555 amend recovers a PR\'s decisions from its diff and rebuilds it from 
     'the amended PR equals a fresh apply of the amended decisions');
   const again = await cli(['amend', '--in', input]);
   assert.deepEqual([again.status, again.outputs], ['already-applied', first.outputs], 'the same delta replays to the same bytes');
+  const listed = await cli(['decisions', '--senses', 'w1-s1']);
+  assert.deepEqual(listed.rows.map(({ row, action }) => [row, action]), [[1, 'drop'], [2, 'repair'], [3, 'keep'], [4, 'keep']],
+    'decisions read the committed PR, and --senses lists every base row of those Senses');
+  for (const delta of ['amend\nD 9\n', 'amend\nL 3 w3-s2\n', 'drop 1\n']) {
+    await writeFile(input, delta);
+    await assert.rejects(cli(['amend', '--in', input]), (error) => error instanceof RefineInputError, delta);
+  }
 
   await writeFile(path.join(root, files[0]), `${(await readFile(path.join(root, files[0]), 'utf8'))}${JSON.stringify({
     id: 'w1', sid: 'w1-s1', tt: '새말', tp: 'mood', rv: 1 })}\n`);
