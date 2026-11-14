@@ -424,3 +424,31 @@ test('Method A Candidate v1 rejects gloss restatements, keeps independent words 
   assert.doesNotThrow(() => run(bad));
   assert.doesNotThrow(() => run(bad, { enforceGlossRestatement: true, enforceSourceLemmaContainment: false }));
 });
+
+test('the changed-file validator exempts cross-shard Canonical compounds from Method A gloss restatement', async (t) => {
+  const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-restate-'));
+  t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
+  const canonicalRelativePath = 'data/canonical/stdict-0005.jsonl';
+  const candidateRelativePath = 'data/relation-candidates/005/005_01_a_codex.jsonl';
+  await mkdir(path.join(repositoryDirectory, 'data/canonical'), { recursive: true });
+  await mkdir(path.join(repositoryDirectory, 'data/relation-candidates/005'), { recursive: true });
+  const { canonicalRows, candidateRows } = fixture('동위 원소');
+  canonicalRows[0].senses[0].gloss = '동위 원소를 가리킨다.';
+  const write = (rel, rows) => writeFile(path.join(repositoryDirectory, rel), `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await write(canonicalRelativePath, canonicalRows);
+  // the compound is a Canonical lemma only in another shard
+  await write('data/canonical/stdict-0006.jsonl', [{ id: 'x1', lemma: '동위 원소', senses: [{ id: 'x1-s1', gloss: '같은 원소.' }] }]);
+  await write(candidateRelativePath, candidateRows);
+  const baseSha = 'a'.repeat(40);
+  const headSha = 'b'.repeat(40);
+  const runGit = () => Buffer.from(`${candidateRelativePath}\0`);
+  const [result] = await validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit });
+  assert.equal(result.candidateCount, 1);
+
+  // a non-Canonical restatement is still rejected on the same path
+  candidateRows[0].senses[0].candidates = ['동위 원소를'];
+  canonicalRows[0].senses[0].gloss = '동위 원소를 가리킨다.';
+  await write('data/canonical/stdict-0006.jsonl', [{ id: 'x1', lemma: '다른 말', senses: [{ id: 'x1-s1', gloss: '같은 원소.' }] }]);
+  candidateRows[0].senses[0].candidates = ['동위 원소'];
+  await assert.rejects(validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }), /only restates the source gloss/u);
+});

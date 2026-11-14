@@ -188,7 +188,7 @@ export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForm
 }
 
 /** Candidate v1 content-only failures that can be removed from an exact, source-bound sense. */
-export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment = true, enforceGlossRestatement = false } = {}) {
+export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment = true, enforceGlossRestatement = false, restatementLemmaForms = independentLemmaForms } = {}) {
   const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms, { enforceSourceLemmaContainment });
   if (repeat !== undefined) return { kind: 'source_lemma_repeat', message: repeat };
   if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
@@ -197,7 +197,7 @@ export function candidateV1ContentIssue(candidate, source, sourceSense, independ
       message: `candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`,
     };
   }
-  if (enforceGlossRestatement && isGlossRestatement(candidate, sourceSense.gloss, independentLemmaForms)) {
+  if (enforceGlossRestatement && isGlossRestatement(candidate, sourceSense.gloss, restatementLemmaForms)) {
     return {
       kind: 'gloss_restatement',
       message: `candidate ${JSON.stringify(candidate)} only restates the source gloss words in order`,
@@ -213,6 +213,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
   canonicalLemmaForms,
   enforceSourceLemmaContainment = true,
   enforceGlossRestatement = false,
+  restatementLemmaForms,
 } = {}) {
   const batchNumber = Number(batch);
   if (!Number.isInteger(batchNumber) || ![1, 2].includes(batchNumber)) {
@@ -283,6 +284,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
         const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, {
           enforceSourceLemmaContainment,
           enforceGlossRestatement: enforceGlossRestatement && enforceSourceLemmaContainment,
+          restatementLemmaForms,
         });
         if (issue !== undefined) {
           candidateIssues.push({
@@ -411,7 +413,17 @@ export async function validateCandidateFiles(canonicalPath, candidatePath, optio
   // shardLocalLemmaForms leaves validateCandidateBatch on its bound-shard default.
   const independentLemmaForms = canonicalLemmaForms
     ?? (shardLocalLemmaForms ? undefined : await loadCanonicalLemmaForms(repositoryDirectory));
+  // The gloss-restatement exemption is "any Canonical lemma", independent of the shard-local source-lemma path, so read the
+  // full lemma set (once, lazily) only when a Method A candidate actually has the restatement shape.
+  let restatementLemmaForms = independentLemmaForms;
+  if (isMethodA && shardLocalLemmaForms && canonicalLemmaForms === undefined) {
+    const glossBySense = new Map(canonicalRows.flatMap((row) => row.senses.map((sense) => [sense.id, sense.gloss])));
+    const shaped = candidateRows.some((row) => row?.senses?.some((sense) => sense?.candidates?.some((candidate) => typeof candidate === 'string'
+      && isGlossRestatementShape(candidate, glossBySense.get(sense.sense_id)))));
+    if (shaped) restatementLemmaForms = await loadCanonicalLemmaForms(repositoryDirectory);
+  }
   return validateCandidateBatch(canonicalRows, candidateRows, {
+    restatementLemmaForms,
     batch,
     canonicalLemmaForms: independentLemmaForms,
     enforceGlossRestatement: isMethodA,
