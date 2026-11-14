@@ -136,10 +136,14 @@ class SharedStage2PolicyCard(unittest.TestCase):
         self.assertNotIn("docs/relation-factory.md", fix)
         self.assertNotIn("docs/relation-editorial-policy.md", fix)
         self.assertIn("Do not reread docs or scripts", fix)
-        for phrase in ("verify --shard 001 --batch 01 --part 01 --json", "600000 ms", "foreground",
-                       "GH_CONFIG_DIR", "gh` CLI", "do not use GitHub MCP"):
+        # #6555: the AI submits its judgment; the Supervisor runs amend/verify, commits, pushes and replies.
+        for phrase in (".warroom-scratch/s2-fix-response.json", "You submit the judgment only",
+                       "Do not run `amend` or `verify`", "do not post PR comments yourself"):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, fix)
+        for phrase in ("verify --shard", "git push", "gh pr"):
+            with self.subTest(absent=phrase):
+                self.assertNotIn(phrase, fix)
         self.assertNotIn("{{", chunk + fix)
 
 

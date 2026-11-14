@@ -3182,6 +3182,30 @@ test('shard projection of other-shard rows matches the full path for verify, pre
   }
 });
 
+// #6555: the Supervisor asks the AI for a corrected judgment only when the CLI itself refused the submitted input.
+test('amend reports an input refusal as exit 2 JSON and any other failure as exit 1', async (t) => {
+  const root = await spawnedVerifyRepository(t, { candidates: (index) => index === 0 ? ['먼 바다'] : [] });
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  await mergeForTest(root, checkpoint);
+  const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+  const amend = async (text) => {
+    await writeFile(path.join(root, '.warroom-scratch/exit-amend.txt'), text);
+    return spawnSync(process.execPath, ['scripts/relation/admission-cli.mjs', 'amend', '--checkpoint', checkpoint,
+      '--in', '.warroom-scratch/exit-amend.txt'], { cwd: root, encoding: 'utf8' });
+  };
+  const refused = await amend(`amend w1-s1 @${inspect.digest}\nc9 D e\n`);
+  assert.equal(refused.status, 2, refused.stderr);
+  const payload = JSON.parse(refused.stdout.trim().split('\n').at(-1));
+  assert.deepEqual([payload.ok, payload.family], [false, 'input']);
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), '');
+  const drifted = await amend(`amend w1-s1 @${inspect.digest}\nc1 D e\n`);
+  assert.equal(drifted.status, 1);
+  assert.match(drifted.stderr, /drifted/u);
+  assert.doesNotMatch(drifted.stdout, /"family":"input"/u);
+});
+
 test('foreign reciprocal amend preserves version-zero forward evidence', async (t) => {
   const { root } = await crossShardRepository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

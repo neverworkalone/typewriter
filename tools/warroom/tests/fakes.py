@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import itertools
 import re
 import sqlite3
@@ -191,6 +192,8 @@ class FakeGit:
         self.stage2_repair_checker = None
         self.stage2_repair_apply_results: list = []
         self.stage2_repair_results: list[dict] = []
+        self.stage2_amend_results: list = []                  # per call: {"changes": {rel: text}} or an exception
+        self.stage2_amend_calls: list[tuple] = []
 
     def fetch_base(self, base):
         return self.base_sha
@@ -630,6 +633,45 @@ class FakeGit:
                   "supervisor_nonce": repair["supervisor_nonce"], "candidate_keys": keys}
         self.stage2_repair_results.append(result)
         return result
+
+    def stage2_amend(self, worktree, shard, batch, part, rel_input, *, timeout=900):
+        """The official amend (#6555): a planned result is {"changes": {rel: text}} (optionally "fail_after_write": its
+        journal and first file are written, then an operational failure) or an exception raised before any write
+        (Stage2AmendRejected = the CLI refused the input; GitError = an operational failure). The same input again is a
+        journal replay."""
+        wt = Path(worktree)
+        text = (wt / rel_input).read_text("utf-8")
+        self.stage2_amend_calls.append((shard, batch, part, text))
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        journal = wt / checkpoint.replace(".json", ".amend-state.json")
+        state = self.__dict__.setdefault("stage2_amend_requests", {})   # input -> ["pending"|"done", changes]
+        if text not in state:
+            result = self.stage2_amend_results.pop(0) if self.stage2_amend_results else {"changes": {}}
+            if isinstance(result, Exception):
+                raise result
+            state[text] = ["pending", result["changes"]]
+            if result["changes"]:
+                journal.write_text("{}", "utf-8")
+            if result.get("fail_after_write"):
+                rel, body = next(iter(result["changes"].items()))
+                (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+                (wt / rel).write_text(body, "utf-8")
+                self.dirty_text = f" M {rel}\n"
+                raise GitError("admission-cli amend 실패(exit 1): EIO while replacing outputs")
+        status, changes = state[text]
+        if status == "pending":
+            if changes:   # a changed decision raises the revision, as the CLI does
+                data = json.loads((wt / checkpoint).read_text("utf-8"))
+                data["amend_revision"] = data.get("amend_revision", 0) + 1
+                (wt / checkpoint).write_text(json.dumps(data), "utf-8")
+            for rel, body in changes.items():
+                (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+                (wt / rel).write_text(body, "utf-8")
+            self.dirty_text = "".join(f" M {rel}\n" for rel in changes)
+            state[text][0] = "done"
+        outputs = {checkpoint: hashlib.sha256((wt / checkpoint).read_bytes()).hexdigest()}
+        outputs.update({rel: hashlib.sha256(body.encode("utf-8")).hexdigest() for rel, body in changes.items()})
+        return {"amended": True, "checkpoint": checkpoint, "outputs": outputs, "timing": ""}
 
     def verify_stage2_local(self, worktree, shard, batch, part, *, checkpoint, timeout=900):
         self.local_verify_calls.append((shard, batch, part, checkpoint))
