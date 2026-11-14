@@ -123,6 +123,28 @@ function parseJsonl(contents, file, decode) {
 export const parseRelationJsonl = (contents, file = 'Relation JSONL') => parseJsonl(contents, file, deserializeRelationRow);
 export const parseDropJsonl = (contents, file = 'Drop JSONL') => parseJsonl(contents, file, deserializeDropRow);
 
+// Decode only the lines `select(line)` keeps, with the same locations and errors as the full parse. `position` is the
+// row's index in the full parse result (blank lines skipped), so a caller can later splice a changed row back.
+function parseSelectedJsonl(contents, file, decode, select) {
+  if (typeof contents !== 'string') throw new Error(`${file} contents must be text`);
+  const selected = [];
+  let position = 0;
+  contents.split(/\r?\n/u).forEach((line, index) => {
+    if (!line.trim()) return;
+    if (select(line)) {
+      const location = `${file}:${index + 1}`;
+      let row;
+      try { row = JSON.parse(line); } catch (error) { throw new Error(`${location} is not valid JSON: ${error.message}`); }
+      selected.push({ row: decode(row, location), position });
+    }
+    position += 1;
+  });
+  return selected;
+}
+
+export const parseSelectedRelationJsonl = (contents, file, select) => parseSelectedJsonl(contents, file, deserializeRelationRow, select);
+export const parseSelectedDropJsonl = (contents, file, select) => parseSelectedJsonl(contents, file, deserializeDropRow, select);
+
 function serializeJsonl(rows, encode, family) {
   if (!Array.isArray(rows)) throw new Error(`${family} rows must be an array`);
   return rows.length ? `${rows.map((row, index) => JSON.stringify(encode(row, `${family} row ${index + 1}`))).join('\n')}\n` : '';

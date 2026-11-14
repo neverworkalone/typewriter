@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -3094,6 +3094,90 @@ test('amend attaches a reciprocal candidate to its foreign owner and recovers sa
   await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', input], { root }));
   assert.deepEqual((await readRelationRows(ownerPath))[0].reverse_candidate_forms, []);
   await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+});
+
+// #6555: verify/preflight/merge/amend read only the other-shard rows that name this shard's Senses. The same
+// scenario on the reference path (every other-shard row) must give the same results, errors and bytes, including
+// a foreign reciprocal update that re-serializes a file holding rows outside the projection.
+test('shard projection of other-shard rows matches the full path for verify, preflight, merge and amend recovery', async (t) => {
+  const scenario = async (fullOtherRows, { emptyBaseline }) => {
+    const { root } = await crossShardRepository(t);
+    const cli = (argv) => quiet(() => run(argv, { root, fullOtherRows }));
+    const step = async (argv) => {
+      try { return { ok: JSON.parse(JSON.stringify(await cli(argv)).replaceAll(root, '<root>')) }; } catch (error) { return { error: error.message }; }
+    };
+    const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+    const checkpointPath = path.join(root, checkpoint);
+    const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+    const unrelated = {
+      source_record_id: 'w3', source_sense_id: 'w3-s1', target_record_id: 'w4', target_sense_id: 'w4-s1',
+      type: 'mood', relevance: 3, reverse_type: 'mood', reverse_relevance: 3,
+      candidate_assignment_version: 1, candidate_forms: ['먼말'], reverse_candidate_forms: [],
+    };
+    await writeFile(path.join(root, 'data/canonical/stdict-0003.jsonl'), jsonl([
+      { id: 'w4', lemma: '먼말', senses: [{ id: 'w4-s1', pos: 'noun', gloss: '먼 뜻' }] },
+    ]));
+    await writeFile(path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl'), jsonl([
+      { record_id: 'w1', senses: [{ sense_id: 'w1-s1', candidates: ['공통말'] }] },
+      { record_id: 'w2', senses: [{ sense_id: 'w2-s1', candidates: ['먼말'] }] },
+    ]));
+    await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), emptyBaseline ? '' : relationJsonl([{ ...unrelated,
+      source_record_id: 'w2', source_sense_id: 'w2-s1', target_record_id: 'w4', target_sense_id: 'w4-s1' }]));
+    await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), relationJsonl([unrelated, crossShardCounterpart()]));
+    await writeFile(path.join(root, 'data/relations/relation-003.jsonl'), relationJsonl([{ ...unrelated,
+      source_record_id: 'w4', source_sense_id: 'w4-s1', target_record_id: 'w3', target_sense_id: 'w3-s1', candidate_forms: ['공통말'] }]));
+    await writeFile(path.join(root, 'data/relation-drops/drop-002.jsonl'), dropJsonl([
+      { source_record_id: 'w3', source_sense_id: 'w3-s1', candidate: '다른말', reason: 'e' },
+    ]));
+    const steps = [];
+    await cli(['prepare', '--shard', '001', '--batch', '01', '--part', '01']);
+    await saveAllPrimaryAsDrops(root, checkpoint);
+    await completeOptionalForTest(root, checkpoint);
+    await cli(['prepare-merge', '--checkpoint', checkpoint, '--json']);
+    steps.push(await step(['preflight', '--checkpoint', checkpoint, '--json']));
+    steps.push(await step(['merge', '--checkpoint', checkpoint]));
+    const verify = ['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint, '--json'];
+    steps.push(await step(verify));
+    const inspect = await cli(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1']);
+    const compact = await cli(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'compact']);
+    const alias = /^T(\d+)\tw3-s1\t/mu.exec(compact.text)?.[1];
+    assert.ok(alias);
+    const input = '.warroom-scratch/projection-amend.txt';
+    const amend = ['amend', '--checkpoint', checkpoint, '--in', input];
+    const oldCheckpoint = await readFile(checkpointPath);
+    const oldDrops = await readFile(dropPath);
+    await writeFile(path.join(root, input), `amend w1-s1 @${inspect.digest}\nc1 R mood 4 T${alias}\n`);
+    steps.push(await step(amend));
+    await writeFile(path.join(root, input), `amend w1-s1 @${inspect.digest}\nc1 R scene 4 T${alias}\n`);
+    steps.push(await step(amend), await step(verify));
+    await writeFile(checkpointPath, oldCheckpoint);
+    await writeFile(dropPath, oldDrops);
+    steps.push(await step(amend), await step(amend), await step(verify));
+    const changed = await cli(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1']);
+    const amendedDrops = await fileState(dropPath);
+    await writeFile(dropPath, dropJsonl([{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '공통말', reason: 'x' }]));
+    await writeFile(path.join(root, input), `amend w1-s1 @${changed.digest}\nc1 D e\n`);
+    steps.push(await step(amend));
+    if (amendedDrops.exists) await writeFile(dropPath, amendedDrops.bytes); else await rm(dropPath);
+    steps.push(await step(amend), await step(verify));
+    steps.push(await step(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--json']));
+    const bytes = {};
+    for (const directory of ['data/relations', 'data/relation-drops', '.warroom-scratch']) {
+      for (const name of (await readdir(path.join(root, directory))).sort()) {
+        bytes[`${directory}/${name}`] = (await readFile(path.join(root, directory, name), 'utf8')).replaceAll(root, '<root>');
+      }
+    }
+    return { steps, bytes };
+  };
+  for (const emptyBaseline of [false, true]) {
+    const projected = await scenario(false, { emptyBaseline });
+    assert.deepEqual(projected, await scenario(true, { emptyBaseline }));
+    assert.match(projected.steps[3].error, /already owned by another shard/u);
+    assert.equal(projected.steps[7].ok.already_applied, true);
+    assert.match(projected.steps[9].error, /drifted|incomplete|unrecognized/u);
+    assert.equal(projected.steps.filter((entry) => entry.error).length, 2);
+    assert.match(projected.bytes['data/relations/relation-002.jsonl'], /"sid":"w3-s1","tid":"w4"/u);
+  }
 });
 
 test('foreign reciprocal amend preserves version-zero forward evidence', async (t) => {
