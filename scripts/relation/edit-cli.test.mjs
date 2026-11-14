@@ -1025,3 +1025,43 @@ test('explicit chunk options are validated and refresh-pending reports per-chunk
   git(root, 'commit', '-qm', 'Change completed chunk 001 gloss');
   await assert.rejects(quiet(() => run(['refresh-pending', '--shard', '001'], { root })), /completed chunk 001 inputs changed/u);
 });
+
+test('#6555 projected other-shard rows give the full-path views, apply results, report, and files', async (t) => {
+  const idRelation = (source, target, forms) => ({ source_record_id: source.replace(/-s\d+$/u, ''), source_sense_id: source,
+    target_record_id: target.replace(/-s\d+$/u, ''), target_sense_id: target, type: 'scene', relevance: 4,
+    reverse_type: 'scene', reverse_relevance: 4, candidate_assignment_version: 1, candidate_forms: forms,
+    reverse_candidate_forms: [] });
+  const conflicting = textRelation('w170946-s1', 'w205046-s1');
+  const localRepair = textRelation('w170947-s1', 'w170948-s1');
+  const build = async () => {
+    const root = await repositoryFromRows(t, {
+      localSenseIds: ['w170946-s1', 'w170947-s1', 'w170948-s1'], externalSenseIds: ['w205046-s1', 'w205047-s1'],
+      relations: [conflicting, idRelation('w170947-s1', 'w205046-s1', ['말205046']), localRepair],
+      // One other-shard row touches this shard (an ID pair conflict); the other names no Sense of it.
+      externalRelations: [idRelation('w205046-s1', 'w170946-s1', ['말170946']),
+        idRelation('w205047-s1', 'w205046-s1', ['말205046'])],
+    });
+    await writeFile(path.join(root, 'data/relation-drops/drop-002.jsonl'), serializeDropJsonl([
+      { source_record_id: 'w205047', source_sense_id: 'w205047-s1', candidate: '무관', reason: 'x' },
+    ]));
+    git(root, 'add', 'data');
+    git(root, 'commit', '-qm', 'Add an unrelated other-shard Drop');
+    return root;
+  };
+  const linkTargets = new Map([[`w170946-s1\u0000${conflicting.text}`, 'w205046-s1'],
+    [`w170947-s1\u0000${localRepair.text}`, 'w170948-s1']]);
+  const outcome = async (root, fullOtherRows) => {
+    const cli = (args) => quiet(() => run([...args, '--shard', '001'], { root, fullOtherRows }));
+    const prepared = await cli(['prepare']);
+    const view = await cli(['read-chunk']);
+    await save(root, decisionTextForView(view, { linkTargets, dropIds: new Set(['w170947-s1\u0000w205046-s1']) }));
+    const applied = await cli(['apply']);
+    const files = await Promise.all(['data/relations/relation-001.jsonl', 'data/relation-drops/drop-001.jsonl']
+      .map((file) => readFile(path.join(root, file), 'utf8')));
+    return { prepared, view, applied, report: await cli(['report']), files };
+  };
+  const projected = await outcome(await build(), false);
+  assert.deepEqual(projected, await outcome(await build(), true));
+  assert.equal(projected.applied.repaired, 1);
+  assert.equal(projected.applied.repair_conflicts[0].conflict.kind, 'other_shard_relation');
+});
