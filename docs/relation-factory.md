@@ -268,6 +268,11 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 `edit-cli`의 `prepare`·`refresh-pending`·`apply`도 다른 샤드 Relation 가운데 **이 샤드 Sense를 출발·대상으로 갖는 행만** 읽는다(#6555). ID pair 충돌, reverse 후보형, 고아·text Drop, 행 검증과 accounting은 모두 이 샤드 Sense로 시작하는 키로만 다른 샤드 행을 조회하고, 다른 파일의 Drop 중 이 샤드 Sense를 출발로 갖는 행은 전체 로딩에서도 제외되므로 결과는 전체 행을 읽을 때와 같다.
 
+**Refinement Engine (#6555):** `edit-cli`는 정제 단계(S3 이후) 공통 코어 `scripts/relation/refine/core.mjs`와 Stage 3 규칙 `scripts/relation/refine/rules/s3.mjs`로 이루어진다. 코어는 projection 문맥, Sense 그룹 chunk, prepared view와 digest, checkpoint, 원자적 두 파일 apply, 고아 후보 `z` 회계와 기존 검증기를 맡는다. 규칙은 chunk view, 결정 문법, 결정에 따른 행 변환, Git diff에서 결정을 역산하는 방법만 정한다. 정제 PR의 리뷰 수정은 같은 계산을 다시 쓴다.
+
+- `decisions --shard SSS --base <sha>`: PR base..HEAD diff에서 PR의 결정(base Relation 파일의 1부터 시작하는 행 번호)을 복원한다. 별도 원장 없이 PR 자체가 상태다. base 이후 이 샤드의 두 파일 밖을 바꾼 PR, 행을 추가하거나 순서를 바꾼 PR, base Drop 행을 바꾼 PR은 거부한다.
+- `amend --shard SSS --base <sha> --in <delta>`: `amend` 다음 줄에 `D <row...>`(삭제), `L <row> <target_sense_id>`(Link Repair), `K <row...>`(base 행 유지)를 쓴다. 복원한 결정에 delta를 적용하고 apply와 같은 계산으로 base 파일에서 두 파일을 다시 만든다. 같은 입력이면 같은 bytes가 나오므로 중단 뒤에는 같은 요청을 다시 실행한다. 영수증의 `outputs`는 각 파일의 sha256이다.
+
 ### 5-A. 파일·후보 회계
 
 - **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"z"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.
