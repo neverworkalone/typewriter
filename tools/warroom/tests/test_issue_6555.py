@@ -101,6 +101,56 @@ class SupervisedStage2Fix(unittest.TestCase):
         self.assertEqual(len(failures), 1)
         self._applied(w, b, base)
 
+    def _settle(self, w, b):
+        for _ in range(3):
+            if b["state"] != "FIXING":
+                break
+            w.tick()
+            b = w.store.batch(b["id"])
+        return b
+
+    def test_amend_written_but_not_committed_resumes_by_replaying_the_same_input(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        base = w.gh.pull(b["pr_number"])["head_sha"]
+        w.git.stage2_amend_results = [{"changes": {DROP: "drop\n"}}]
+        original_commit, stops = w.git.commit_paths, []
+
+        def stop_before_commit(*args, **kwargs):   # the Supervisor stops between the amend's writes and its commit
+            if not stops:
+                stops.append(w.git.dirty_text)
+                raise GitTransient("supervisor stopped")
+            return original_commit(*args, **kwargs)
+        w.git.commit_paths = stop_before_commit
+        b = self._settle(w, self._end(w, b, fix))
+        self.assertEqual(stops, [f" M {DROP}\n"])
+        self.assertEqual(len(w.git.stage2_amend_calls), 2, "the resumed application replays the same amend input")
+        self.assertEqual(w.git.stage2_amend_calls[0][3], w.git.stage2_amend_calls[1][3])
+        self.assertEqual(w.git.commits[-1], ([DROP], S2_FIX_COMMIT_SUBJECT))
+        self.assertEqual(w.git.owned_fix_pushes, [(b["branch"], base, w.git.local_head)])
+        self.assertEqual(len(self._replies(w, b)), 1)
+        self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
+        self.assertEqual([run["kind"] for run in w.adapter.launches[-1:]], ["start"], "no new judgment is requested")
+
+    def test_amend_failing_after_partial_writes_is_recovered_with_the_same_input_not_a_new_judgment(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        w.git.stage2_amend_results = [{"changes": {DROP: "drop\n"}, "fail_after_write": True}]
+        b = self._end(w, b, fix)
+        self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
+        self.assertEqual(len(w.git.stage2_amend_calls), 2)
+        self.assertEqual(w.git.commits[-1], ([DROP], S2_FIX_COMMIT_SUBJECT))
+        self.assertTrue((wt / S2_FIX_RESPONSE).exists(), "the accepted submission is kept, never replaced by a retry")
+        self.assertEqual(w.adapter.launches[-1]["pid"], fix["pid"])
+
+    def test_changes_not_made_by_the_submissions_amend_are_preserved_and_stop_the_batch(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        w.adapter.running[fix["pid"]]["effect"] = (lambda effect=w.adapter.running[fix["pid"]]["effect"]:
+                                                   (effect(), setattr(w.git, "dirty_text", " M README.md\n")))
+        b = self._end(w, b, fix)
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("README.md", b["error"])
+        self.assertEqual(w.git.stage2_amend_calls, [])
+        self.assertEqual(self._replies(w, b), [])
+
     def test_disagreement_without_amend_only_replies_and_keeps_full_verification(self):
         w, b, wt, fix = self._fix({"event_keys": ["review:77"], "amend": None, "reply": "[review:77] 유지합니다: 근거 …"})
         local_verifies = len(w.git.local_verify_calls)

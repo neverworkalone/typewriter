@@ -13,7 +13,7 @@ from warroom import control
 from warroom.adapters import AgentAdapter, Handle, OpenCodeAdapter
 from warroom.config import DEFAULTS, Paths
 from warroom.gitops import (CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient,
-                            IntegrationBlocked)
+                            IntegrationBlocked, Stage2AmendRejected)
 from warroom.shell import Result
 from warroom.store import Store
 from warroom.supervisor import Supervisor
@@ -635,23 +635,40 @@ class FakeGit:
         return result
 
     def stage2_amend(self, worktree, shard, batch, part, rel_input, *, timeout=900):
-        """The official amend: writes the planned data files and reports their exact states (#6555)."""
-        self.stage2_amend_calls.append((shard, batch, part, (Path(worktree) / rel_input).read_text("utf-8")))
-        result = self.stage2_amend_results.pop(0) if self.stage2_amend_results else {"changes": {}}
-        if isinstance(result, Exception):
-            raise result
+        """The official amend (#6555): a planned result is {"changes": {rel: text}} (optionally "fail_after_write": its
+        journal and first file are written, then it fails) or an exception. The same input again is a journal replay."""
+        wt = Path(worktree)
+        text = (wt / rel_input).read_text("utf-8")
+        self.stage2_amend_calls.append((shard, batch, part, text))
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
-        if result["changes"]:   # a changed decision raises the revision and leaves recovery evidence, as the CLI does
-            data = json.loads((Path(worktree) / checkpoint).read_text("utf-8"))
-            data["amend_revision"] = data.get("amend_revision", 0) + 1
-            (Path(worktree) / checkpoint).write_text(json.dumps(data), "utf-8")
-            (Path(worktree) / checkpoint.replace(".json", ".amend-state.json")).write_text("{}", "utf-8")
-        outputs = {checkpoint: hashlib.sha256((Path(worktree) / checkpoint).read_bytes()).hexdigest()}
-        for rel, text in result["changes"].items():
-            (Path(worktree) / rel).parent.mkdir(parents=True, exist_ok=True)
-            (Path(worktree) / rel).write_text(text, "utf-8")
-            outputs[rel] = hashlib.sha256(text.encode("utf-8")).hexdigest()
-        self.dirty_text = "".join(f" M {rel}\n" for rel in result["changes"])
+        journal = wt / checkpoint.replace(".json", ".amend-state.json")
+        state = self.__dict__.setdefault("stage2_amend_requests", {})   # input -> ["pending"|"done", changes]
+        if text not in state:
+            result = self.stage2_amend_results.pop(0) if self.stage2_amend_results else {"changes": {}}
+            if isinstance(result, Exception):
+                raise result
+            state[text] = ["pending", result["changes"]]
+            if result["changes"]:
+                journal.write_text("{}", "utf-8")
+            if result.get("fail_after_write"):
+                rel, body = next(iter(result["changes"].items()))
+                (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+                (wt / rel).write_text(body, "utf-8")
+                self.dirty_text = f" M {rel}\n"
+                raise Stage2AmendRejected("EIO while replacing outputs")
+        status, changes = state[text]
+        if status == "pending":
+            if changes:   # a changed decision raises the revision, as the CLI does
+                data = json.loads((wt / checkpoint).read_text("utf-8"))
+                data["amend_revision"] = data.get("amend_revision", 0) + 1
+                (wt / checkpoint).write_text(json.dumps(data), "utf-8")
+            for rel, body in changes.items():
+                (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+                (wt / rel).write_text(body, "utf-8")
+            self.dirty_text = "".join(f" M {rel}\n" for rel in changes)
+            state[text][0] = "done"
+        outputs = {checkpoint: hashlib.sha256((wt / checkpoint).read_bytes()).hexdigest()}
+        outputs.update({rel: hashlib.sha256(body.encode("utf-8")).hexdigest() for rel, body in changes.items()})
         return {"amended": True, "checkpoint": checkpoint, "outputs": outputs, "timing": ""}
 
     def verify_stage2_local(self, worktree, shard, batch, part, *, checkpoint, timeout=900):

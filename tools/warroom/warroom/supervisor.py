@@ -3788,6 +3788,15 @@ class Supervisor:
                        "— 같은 세션에 사유를 전달합니다", "warn")
         return self._launch(self.store.batch(b["id"]), "fix_resume", [], s2_fix_note=problem)
 
+    @staticmethod
+    def _file_sha256(path: Path) -> str | None:
+        return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+
+    def _stage2_amend_state(self, wt: Path, checkpoint_rel: str) -> tuple:
+        """Everything an official amend can write: changed tracked files, the checkpoint and its recovery journal."""
+        rels = sorted(self.git.changed_paths(wt)) + [checkpoint_rel, checkpoint_rel.replace(".json", ".amend-state.json")]
+        return tuple((rel, self._file_sha256(wt / rel)) for rel in rels)
+
     def _stage2_fix_proof(self, b, wt: Path, head: str, outputs: dict) -> dict | None:
         """The `_stage2_final_pr_problem` reuse proof when the clean worktree holds exactly what this call's own amend
         established; None (full verification) otherwise."""
@@ -3844,22 +3853,47 @@ class Supervisor:
         try:
             head = self.git.head(wt)
             if head == base_head:
-                if self.git.dirty(wt).strip():
-                    return self._fail(b, "ERROR", "Stage 2 리뷰 수정 판정 제출 뒤 worktree에 변경이 있습니다. "
-                                      "AI는 파일을 바꾸지 않아야 하므로 적용하지 않고 보존합니다.")
+                checkpoint_rel = f".warroom-scratch/relation-admission-{b['shard']}-{batch}-{part}.json"
+                dirty = self.git.changed_paths(wt)
                 response, problem = self._stage2_fix_response(b, baseline)
                 if problem:
+                    if dirty:
+                        return self._fail(b, "ERROR", f"worktree 변경 {sorted(dirty)}이 있는데 제출 판정을 쓸 수 없습니다: "
+                                          f"{problem}. 보존합니다.")
                     return self._stage2_fix_retry(b, problem)
-                if response["amend"] is not None:
-                    text = response["amend"] if response["amend"].endswith("\n") else response["amend"] + "\n"
-                    (wt / S2_FIX_AMEND_INPUT).write_text(text, "utf-8")
+                text = None if response["amend"] is None else \
+                    response["amend"] if response["amend"].endswith("\n") else response["amend"] + "\n"
+                input_path = wt / S2_FIX_AMEND_INPUT
+                # Changes are resumable only as this submission's own interrupted amend (#6555 review): the data files it
+                # may write, with its exact input still in place. Anything else is preserved untouched.
+                if dirty and (text is None or any(not rel.startswith("data/") for rel in dirty)
+                              or not input_path.is_file() or input_path.read_text("utf-8") != text):
+                    return self._fail(b, "ERROR", f"Stage 2 리뷰 수정 제출과 연결되지 않은 worktree 변경이 있습니다: "
+                                      f"{sorted(dirty)}. 적용하지 않고 보존합니다.")
+                if text is not None:
+                    if not dirty:
+                        input_path.write_text(text, "utf-8")
+                    before = self._stage2_amend_state(wt, checkpoint_rel)
                     try:
                         receipt = timed("amend", self.git.stage2_amend, wt, b["shard"], batch, part, S2_FIX_AMEND_INPUT)
                     except Stage2AmendRejected as e:
-                        return self._stage2_fix_retry(b, f"the official amend refused the submitted input: {e}")
+                        if dirty:   # this input was already accepted once: a failed replay is not a new judgment
+                            return self._fail(b, "ERROR", f"중단된 공식 amend를 같은 입력으로 복구하지 못했습니다: {e}. "
+                                              "입력·journal·worktree를 보존합니다.")
+                        if self._stage2_amend_state(wt, checkpoint_rel) == before:
+                            return self._stage2_fix_retry(b, f"the official amend refused the submitted input: {e}")
+                        # It wrote part of its result before failing: finish the same request, never ask for another.
+                        try:
+                            receipt = timed("amend_recovery", self.git.stage2_amend, wt, b["shard"], batch, part,
+                                            S2_FIX_AMEND_INPUT)
+                        except Stage2AmendRejected as again:
+                            return self._fail(b, "ERROR", f"공식 amend가 일부를 쓴 뒤 실패했고 같은 입력의 복구도 실패했습니다: "
+                                              f"{again}. 입력·journal·worktree를 보존합니다.")
                     changed = self.git.changed_paths(wt)
-                    if not changed <= {rel for rel in receipt["outputs"] if rel.startswith("data/")}:
-                        return self._fail(b, "ERROR", f"공식 amend 뒤 예상 밖 파일이 바뀌었습니다: {sorted(changed)}. 보존합니다.")
+                    data_outputs = {rel: digest for rel, digest in receipt["outputs"].items() if rel.startswith("data/")}
+                    if not changed <= set(data_outputs) or any(
+                            self._file_sha256(wt / rel) != data_outputs[rel] for rel in changed):
+                        return self._fail(b, "ERROR", f"공식 amend 결과와 다른 파일 변경이 있습니다: {sorted(changed)}. 보존합니다.")
                     if changed:
                         timed("commit", self.git.commit_paths, wt, sorted(changed), S2_FIX_COMMIT_SUBJECT)
                         outputs = receipt["outputs"]
