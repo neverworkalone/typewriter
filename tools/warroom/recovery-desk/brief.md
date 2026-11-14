@@ -18,7 +18,7 @@
 - 코드로 풀 수 있는 문제를 오너 조작(Clear, 수동 Retry 등)으로 넘기고 기다리지 않는다. 오너 조작은 코드 수정이
   불가능하거나, 오너가 상시 승인한 범위일 때만 쓴다.
 - PR을 열고 리뷰나 머지를 기다리는 동안은 `IN_PROGRESS`다. `BLOCKED`가 아니다.
-- 내 PR이 현재 HEAD에 `+1`/`+2`, 필수 CI `SUCCESS`, `MERGEABLE`/`CLEAN`인데 60분 넘게 머지되지 않으면 기다리지 않는다.
+- 내 PR이 현재 HEAD에 `+1`, 필수 CI `SUCCESS`, `MERGEABLE`/`CLEAN`인데 30분 넘게 머지되지 않으면 기다리지 않는다.
   `gh pr merge <n> --squash --match-head-commit <HEAD>`로 직접 머지한다(오너 상시 승인).
 - Maintainer의 열린 branch나 PR이 있으면 이어받는다. 같은 Issue로 새 PR을 만들지 않는다.
 - **Maintainer가 맡은 결함은 손대지 않는다.** PR을 만들기 직전에 다시 확인하고, Maintainer Issue/PR이 있으면

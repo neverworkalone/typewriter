@@ -70,10 +70,10 @@
   - 리뷰 PASS 여부는 상관없다. 충돌이나 CI 실패가 있으면 머지되지 않으므로 장애다.
 - **머지 정체 (오너 상시 승인, 점검 1회가 직접 처리)**: 열린 War Room 배치 PR이나 복구 세션 PR이 다음을 모두 만족하면,
   세션을 투입하지 않고 이번 점검에서 직접 squash 머지한다.
-  - 현재 HEAD에 대한 `+1`/`+2`가 있고, 그 뒤 같은 HEAD에 `-1`이 없다. 리뷰 본문의 `HEAD:` 줄로 대조한다.
+  - 현재 HEAD에 대한 `+1`이 있고, 그 뒤 같은 HEAD에 `-1`이 없다. 리뷰 본문의 `HEAD:` 줄로 대조한다.
   - 현재 HEAD의 필수 check(`Validate and test Typewriter`)가 `SUCCESS`다.
   - `mergeable=MERGEABLE`, `mergeStateStatus=CLEAN`이다.
-  - 그 PASS 리뷰가 60분 넘게 지났는데 아직 머지되지 않았다.
+  - 그 `+1`이 30분 넘게 지났는데 아직 머지되지 않았다.
 
   실행은 `gh pr merge <n> --squash --match-head-commit <HEAD> --repo <repo>`로 한다. 머지 뒤에는 원 batch가
   `MERGED → CLEANUP → COMPLETE`로 넘어가는지 확인한다. 오너·외부 PR과 Maintainer PR은 대상이 아니다. 조건 하나라도
