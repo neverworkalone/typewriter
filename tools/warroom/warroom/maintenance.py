@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import NamedTuple
 
-from . import auth, cparallel, dchunk, defects, dparallel, literary, progress, stage2, stage3
+from . import auth, cparallel, dchunk, defects, dparallel, literary, progress, refine, stage2, stage3
 from .config import maintainer_id, maintainer_problem
 from .github import GhTransient
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked, ResourceFenced
@@ -854,10 +854,10 @@ class Maintenance:
                 if (not isinstance(checkpoint, dict) or checkpoint.get("shard") != b["shard"]
                         or chunk != stage3.next_chunk(checkpoint) or not isinstance(base.get("view"), dict)):
                     return None
-                current = stage3.checkpoint(wt, b["shard"])
+                current = refine.ops(b).checkpoint(wt, b["shard"])
                 if current != checkpoint and not stage3.chunk_saved_since(checkpoint, current):
                     return None
-                refreshed = stage3.refresh_pending_chunks(self.sup.runner, self.sup.env, wt, b["shard"])
+                refreshed = refine.ops(b).refresh_pending_chunks(self.sup.runner, self.sup.env, wt, b["shard"])
                 if current == checkpoint:
                     current_view = refreshed.get("current_view")
                     if refreshed.get("current_chunk") != chunk or not isinstance(current_view, dict):
@@ -926,9 +926,9 @@ class Maintenance:
             if self.sup.git.head(wt) != new_head or not self.sup.git.contains(wt, base["head"]) \
                     or self.sup.git.remote_head(b["branch"]) != base["remote_head"]:
                 return None
-            refreshed = stage3.refresh_pending_chunks(self.sup.runner, self.sup.env, wt, b["shard"])   # fails on completed-view/count change
+            refreshed = refine.ops(b).refresh_pending_chunks(self.sup.runner, self.sup.env, wt, b["shard"])   # fails on completed-view/count change
             digests = refreshed.get("pending_view_sha256")
-            state = stage3.checkpoint(wt, b["shard"])
+            state = refine.ops(b).checkpoint(wt, b["shard"])
             if not isinstance(digests, dict) or state is None:
                 return None
             done = set(state["completed_chunks"])
@@ -1219,7 +1219,7 @@ class Maintenance:
     def _progress_snapshot(self, b) -> dict | None:
         try:
             if b["method"] == STAGE3_METHOD:
-                done, total = stage3.progress(stage3.checkpoint(b["worktree"], b["shard"]))
+                done, total = stage3.progress(refine.ops(b).checkpoint(b["worktree"], b["shard"]))
                 return {"kind": "chunks", "done": done, "total": total}
             observed = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
             if observed is None:
@@ -1925,7 +1925,7 @@ class Maintenance:
                 state = stage2.checkpoint(wt, source["shard"], source["batch"])
                 return bool(state is not None and state.get("pending_chunk") == chunk)
             if source["method"] == STAGE3_METHOD and str(source["run_kind"] or "").startswith("s3_chunk_"):
-                state = stage3.checkpoint(wt, source["shard"])
+                state = refine.ops(source).checkpoint(wt, source["shard"])
                 return bool(state is not None and stage3.next_chunk(state) == chunk)
         except (dchunk.DChunkError, literary.LiteraryError, stage3.Stage3Error,
                 OSError, ValueError, KeyError, TypeError):
@@ -2280,7 +2280,7 @@ class Maintenance:
                 saved, _total = dchunk.verified_chunks(Path(batch["worktree"]), batch)
                 return int(chunk) in saved
             if batch["method"] == STAGE3_METHOD:
-                checkpoint = stage3.checkpoint(batch["worktree"], batch["shard"])
+                checkpoint = refine.ops(batch).checkpoint(batch["worktree"], batch["shard"])
                 return checkpoint is not None and chunk in checkpoint["completed_chunks"]
             before = proof.get("baseline_progress")
             after = self._progress_snapshot(batch)

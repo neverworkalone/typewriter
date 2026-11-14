@@ -962,6 +962,9 @@ class FakeGh:
     def latest_stage2_production(self, base):
         return self.latest_stage2_pr
 
+    def latest_refine_production(self, base, spec):
+        return self.latest_stage3_production(base) if spec.id == "s3" else self.__dict__.get(f"latest_{spec.id}_pr")
+
     def latest_stage3_production(self, base):
         self.merged_stage3_prs_calls += 1
         return self.merged_stage3_prs[-1] if self.merged_stage3_prs else None

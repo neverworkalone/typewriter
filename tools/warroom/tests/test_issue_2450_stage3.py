@@ -45,7 +45,7 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
         w.store.set(stage2.ok_key("007", None), "older success")
         self.assertEqual(stage3.choose(**args, latest_pr=latest).shard, "007")
         self.assertEqual(stage3.choose(**{**args, "stage2_batches": [{"shard": "007", "state": "PRODUCING"}]}, latest_pr=latest).status, "wait")
-        self.assertEqual(stage3.choose(**{**args, "stage3_batches": [{"shard": "007", "state": "COMPLETE", "merged": 1}]}, latest_pr=latest).status, "wait")
+        self.assertEqual(stage3.choose(**{**args, "stage3_batches": [{"shard": "007", "batch": "all", "state": "COMPLETE", "merged": 1}]}, latest_pr=latest).status, "wait")
         self.assertEqual(stage3.choose(**args, latest_pr=latest, pin="008").status, "unready")
         self.assertEqual(stage3.choose(**args, latest_pr={"title": "[S3/Codex] 428"}).status, "done")
 
@@ -104,7 +104,7 @@ class Stage3EditContract(unittest.TestCase):
                 stage3.decision_text(answer, "001")
         self.assertIn("s3_policy_card", prompts.ALLOWED)
         self.assertIn("s3_chunk", prompts.ALLOWED)
-        prompt = prompts.stage3_chunk({"shard": "001", "branch": "s3-codex-001"}, "001",
+        prompt = prompts.stage3_chunk({"shard": "001", "batch": "all", "branch": "s3-codex-001"}, "001",
                                       '{"chunk":"001","senses":[]}')
         self.assertIn("chunk 001", prompt)
         self.assertIn("깜빡대다→가물가물", prompt)
@@ -226,7 +226,7 @@ class Stage3PromptView(unittest.TestCase):
                 stage3.refresh_pending_chunks(Runner(done), {}, directory, "001")
 
     def test_model_prompt_carries_the_compact_view_with_stable_prefix(self):
-        b = {"shard": "001", "branch": "s3-codex-001"}
+        b = {"shard": "001", "batch": "all", "branch": "s3-codex-001"}
         first = prompts.stage3_chunk(b, "003", self.PROMPT)
         self.assertIn(self.PROMPT, first)
         self.assertNotIn('"senses"', first)

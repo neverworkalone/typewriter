@@ -70,6 +70,16 @@ class PromptError(Exception):
     pass
 
 
+def _refine_templates(b):
+    """A refinement batch's Stage spec, with its chunk, fix and policy-card templates allowed as Stage 3's are."""
+    from . import refine
+    spec = refine.spec_for(b)
+    ALLOWED.setdefault(spec.chunk_prompt, _STAGE3)
+    ALLOWED.setdefault(spec.fix_prompt, _STAGE3_FIX)
+    ALLOWED.setdefault(spec.policy_card, set())
+    return spec
+
+
 def render(name: str, values: dict, directory: Path | None = None) -> str:
     if name not in ALLOWED:
         raise PromptError(f"알 수 없는 프롬프트: {name!r}")
@@ -260,11 +270,12 @@ def stage3_chunk(b, chunk_id: str, view: str, *, resumed: bool = False,
     chunk_input = (f"아래가 이번 청크의 전체 입력이다. 손실 없이 함께 판단한다.\n"
                    f"<<<STAGE3_CHUNK_BEGIN>>>\n{view}"
                    f"{'' if view.endswith(chr(10)) else chr(10)}<<<STAGE3_CHUNK_END>>>")
-    return render("s3_chunk", {"shard": b["shard"], "branch": b["branch"], "chunk_id": chunk_id,
-                               "chunk_input": chunk_input,
-                               "session_note": "중단된 같은 청크를 다시 본다. checkpoint에 완료된 청크는 건드리지 않는다.\n"
-                               if resumed else "새 AI 세션으로 현재 청크만 편집한다.\n",
-                               "s3_policy_card": render("s3_policy_card", {}, directory).rstrip()}, directory)
+    spec = _refine_templates(b)
+    return render(spec.chunk_prompt, {"shard": b["shard"], "branch": b["branch"], "chunk_id": chunk_id,
+                                      "chunk_input": chunk_input,
+                                      "session_note": "중단된 같은 청크를 다시 본다. checkpoint에 완료된 청크는 건드리지 않는다.\n"
+                                      if resumed else "새 AI 세션으로 현재 청크만 편집한다.\n",
+                                      "s3_policy_card": render(spec.policy_card, {}, directory).rstrip()}, directory)
 
 
 def stage2_chunk_fix(chunk_id: str, problem: str, checkpoint: dict | None = None,
@@ -413,7 +424,7 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
             note += (" The Supervisor could not apply the previous submission and wrote nothing: "
                      f"{retry_note} Correct the judgment and write the response file again.")
     elif b["method"] == "s3":
-        template = "s3_fix"
+        template = _refine_templates(b).fix_prompt
         note = ("This continues the same Stage 3 review-fix session. Use the review events and PR context already "
                 "given in this session and submit the complete judgment again." if resumed else
                 "This is a fresh Stage 3 review-fix session for the current-HEAD review events below.")

@@ -22,7 +22,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from . import prompts, stage3, taskruns
+from . import prompts, refine, stage3, taskruns
 from .gitops import GitError, GitTransient
 from .launch_gate import LaunchDenied, task_launch_scope
 from .github import GhTransient
@@ -155,9 +155,9 @@ class ParallelStage3:
                 return self.sup._fail(b, "ERROR", f"worktree가 있지만 소유 확인 불가: {wt}")
             head, remote = self.sup.git.head(wt), self.sup.git.remote_head(b["branch"])
             env = self._env(b)
-            state = stage3.checkpoint(wt, b["shard"])
+            state = refine.ops(b).checkpoint(wt, b["shard"])
             if state is None:
-                state = stage3.prepare(self.sup.runner, env, wt, b["shard"])
+                state = refine.ops(b).prepare(self.sup.runner, env, wt, b["shard"])
         except TRANSIENT:
             raise
         except _ERRORS as error:
@@ -192,7 +192,7 @@ class ParallelStage3:
         if self.store.get(stage3.plan_key(b["id"])) == "closed":
             return self.continue_after_close(b)
         try:
-            state = stage3.checkpoint(self._wt(b), b["shard"])
+            state = refine.ops(b).checkpoint(self._wt(b), b["shard"])
         except Stage3Error as error:
             return self.sup._fail(b, "ERROR", f"{error}. worktree를 보존합니다.")
         if state is None:
@@ -232,7 +232,7 @@ class ParallelStage3:
         if not rows or any(r["state"] != "SAVED" for r in rows.values()) or taskruns.open_runs(self.store, b["id"]):
             return False
         try:
-            state = stage3.checkpoint(self._wt(b), b["shard"])
+            state = refine.ops(b).checkpoint(self._wt(b), b["shard"])
         except Stage3Error:
             return False
         return state is not None and sorted(state["completed_chunks"]) == sorted(rows)
@@ -289,7 +289,7 @@ class ParallelStage3:
                                   "ownership")
                 continue
             try:
-                result = stage3.save_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task, rel,
+                result = refine.ops(b).save_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task, rel,
                                                      row["view_sha256"])
             except Stage3Error as error:
                 self._task_failed(b, row, data, f"[{task}] 완료 청크의 저장 응답을 확인하지 못했습니다: {error}", "ownership")
@@ -410,10 +410,10 @@ class ParallelStage3:
         if complete_response(final, task) is None:   # no answer / no header / header only: never an implicit `none`
             return self._missing_answer(b, row, data, "현재 청크 헤더와 판정 본문이 있는 응답이 없습니다.")
         try:
-            view, _prompt, sha, _completed = stage3.read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task)
+            view, _prompt, sha, _completed = refine.ops(b).read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task)
             if sha != row["view_sha256"]:
                 return self._task_failed(b, row, data, f"[{task}] 실행 중 청크 view가 바뀌어 응답을 저장하지 않습니다 (응답 보존)", "input_changed")
-            normalized, warnings = stage3.normalize_decisions(final, task, stage3.decision_context(view, task))
+            normalized, warnings = refine.spec_for(b).rule.normalize_decisions(final, task, refine.spec_for(b).rule.decision_context(view, task))
         except Stage3Error as error:
             return self._task_failed(b, row, data, f"[{task}] 응답을 정규화하지 못했습니다: {error}", "no_response")
         body = [line.strip() for line in final.strip().splitlines() if line.strip()][1:]
@@ -445,9 +445,9 @@ class ParallelStage3:
         task, data = row["task"], _data(row)
         rel = stage3.task_path(task, "decisions.txt")
         try:
-            result = stage3.save_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task, rel,
+            result = refine.ops(b).save_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task, rel,
                                                  row["view_sha256"])
-            state = stage3.checkpoint(self._wt(b), b["shard"])
+            state = refine.ops(b).checkpoint(self._wt(b), b["shard"])
         except TRANSIENT:
             raise
         except Stage3Error as error:
@@ -535,7 +535,7 @@ class ParallelStage3:
         try:
             env = self._env(b)
             extra = {"git_dir": sup.git.worktree_gitdir(wt)} if getattr(ad, "needs_git_dir", False) else {}
-            view, prompt_view, sha, completed = stage3.read_chunk_by_number(sup.runner, env, wt, b["shard"], task)
+            view, prompt_view, sha, completed = refine.ops(b).read_chunk_by_number(sup.runner, env, wt, b["shard"], task)
             if completed:
                 raise prompts.PromptError(f"청크 {task}는 이미 checkpoint에 저장돼 있어 다시 판정하지 않습니다")
             prompt = prompts.stage3_chunk(b, task, prompt_view)
@@ -634,7 +634,7 @@ class ParallelStage3:
             path = self._decisions(b, task)
             if hashlib.sha256(path.read_bytes()).hexdigest() != response.get("sha256"):
                 return "보존된 응답 파일이 응답 identity와 다릅니다"
-            _view, _prompt, sha, completed = stage3.read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task)
+            _view, _prompt, sha, completed = refine.ops(b).read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task)
         except (Stage3Error, OSError, ValueError, KeyError) as error:
             return f"응답/view를 확인하지 못했습니다: {error}"
         if completed or sha != row["view_sha256"] or sha != response.get("view_sha256"):

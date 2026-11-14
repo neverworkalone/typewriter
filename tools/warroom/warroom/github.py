@@ -255,10 +255,16 @@ class GhClient:
                 self._api(f"repos/{self.repo}/pulls/{n}/files", paginate=True)]
 
     def latest_stage3_production(self, base: str) -> dict | None:
-        """Search all bounded production results; GitHub relevance order is not merge order."""
+        from . import stage3
+        return self.latest_refine_production(base, stage3.SPEC)
+
+    def latest_refine_production(self, base: str, spec) -> dict | None:
+        """The latest merged production PR of one refinement Stage (`refine.RefineSpec`). Search all bounded production
+        results; GitHub relevance order is not merge order."""
         from urllib.parse import urlencode
+        label = spec.label
         rows = {}
-        for phrase in ('"S3"', '"Relation Stage 3"'):
+        for phrase in spec.search_phrases:
             total = None
             for page in range(1, 11):
                 query = urlencode({"q": f'repo:{self.repo} is:pr is:merged base:{base} {phrase} in:title',
@@ -266,21 +272,21 @@ class GhClient:
                 result = self._api(f"search/issues?{query}")
                 if (not isinstance(result, dict) or result.get("incomplete_results") is not False
                         or not isinstance(result.get("items"), list) or type(result.get("total_count")) is not int):
-                    raise GhTransient("incomplete Stage 3 merged PR search")
+                    raise GhTransient(f"incomplete {label} merged PR search")
                 if total is None:
                     total = result["total_count"]
                 if total > 1000:
-                    raise GhError("Stage 3 merged PR search exceeds 1000 results")
+                    raise GhError(f"{label} merged PR search exceeds 1000 results")
                 if result["total_count"] != total:
-                    raise GhTransient("Stage 3 merged PR search changed its bounded results")
+                    raise GhTransient(f"{label} merged PR search changed its bounded results")
                 items = result["items"]
                 if len(items) != min(100, total - (page - 1) * 100):
-                    raise GhTransient("incomplete Stage 3 merged PR search page")
+                    raise GhTransient(f"incomplete {label} merged PR search page")
                 for row in items:
-                    if prbody.S3_TITLE.fullmatch(row.get("title") or "") and prbody.S3_ISSUE_LINK.search(row.get("body") or ""):
+                    if spec.title.fullmatch(row.get("title") or "") and spec.issue_link.search(row.get("body") or ""):
                         merged = (row.get("pull_request") or {}).get("merged_at")
                         if not isinstance(merged, str) or not merged or type(row.get("number")) is not int:
-                            raise GhTransient("Stage 3 search result lacks merge evidence")
+                            raise GhTransient(f"{label} search result lacks merge evidence")
                         rows[row["number"]] = row
                 if page * 100 >= total:
                     break
@@ -289,11 +295,11 @@ class GhClient:
         ordered = sorted(rows.values(), key=lambda row: row["pull_request"]["merged_at"], reverse=True)
         row = ordered[0]
         if len(ordered) > 1 and ordered[1]["pull_request"]["merged_at"] == row["pull_request"]["merged_at"]:
-            raise GhError("latest Stage 3 production merge time is ambiguous")
+            raise GhError(f"latest {label} production merge time is ambiguous")
         detail = self._api(f"repos/{self.repo}/pulls/{row['number']}")
-        match = re.fullmatch(r"(?:\[S3/([A-Za-z0-9-]+)\]|\[Relation Stage 3\]) (\d{3})", detail.get("title") or "")
+        match = spec.detail_title.fullmatch(detail.get("title") or "")
         head, target = detail.get("head") or {}, detail.get("base") or {}
-        branch = re.fullmatch(r"s3-([A-Za-z0-9-]+)-(\d{3})", head.get("ref") or "")
+        branch = re.fullmatch(rf"{re.escape(spec.id)}-([A-Za-z0-9-]+)-(\d{{3}})", head.get("ref") or "")
         if (not detail.get("merged") or detail.get("state") != "closed"
                 or detail.get("merged_at") != row["pull_request"]["merged_at"]
                 or detail.get("title") != row.get("title") or target.get("ref") != base
@@ -302,9 +308,9 @@ class GhClient:
                 or not match or not branch or match.group(2) != branch.group(2)
                 or (match.group(1) and match.group(1).lower() != branch.group(1).lower())
                 or not 1 <= int(match.group(2)) <= 428
-                or not prbody.S3_ISSUE_LINK.search(detail.get("body") or "")
+                or not spec.issue_link.search(detail.get("body") or "")
                 or not re.fullmatch(r"[a-f0-9]{40}", detail.get("merge_commit_sha") or "")):
-            raise GhError("latest Stage 3 PR identity or merge evidence is incomplete")
+            raise GhError(f"latest {label} PR identity or merge evidence is incomplete")
         return detail
 
     def maintainer_ci_failure(self, pr: int, head: str, branch: str):
