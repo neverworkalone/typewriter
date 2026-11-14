@@ -4529,7 +4529,14 @@ class Supervisor:
             if head == old_head:
                 return None
             finalize_base = self.store.get(f"s2_finalize_base_{b['id']}")
-            if not re.fullmatch(r"[a-f0-9]{40}", finalize_base or "") or finalize_base != head:
+            # A Maintainer master-integration during a Repair run retargets only the Repair run-start baseline
+            # (never `s2_finalize_base`); accept that exact baseline too. The master-integration chain proof below
+            # remains the authority for the HEAD move.
+            try:
+                start_head = json.loads(self.store.get(stage2.repair_run_start_key(b["id"])) or "").get("head")
+            except (ValueError, AttributeError):
+                start_head = None
+            if head not in (finalize_base, start_head) or not re.fullmatch(r"[a-f0-9]{40}", head or ""):
                 return "Stage 2 repair rebind lacks the matching Supervisor finalization HEAD baseline"
 
             bb, pp = stage2.split_key(b["batch"])
@@ -4728,7 +4735,7 @@ class Supervisor:
                     run_start.get("page_keys") != last_attempt.get("target_keys"):
                 return "Stage 2 repair run boundary does not match its completed receipt; preserving state"
             round_base = last_history.get("base_head") or run_start.get("head")
-            if not re.fullmatch(r"[a-f0-9]{40}", round_base or "") or run_start.get("head") != round_base:
+            if not re.fullmatch(r"[a-f0-9]{40}", round_base or "") or run_start.get("head") not in (round_base, head):
                 return "Stage 2 repair round does not retain its original owner HEAD baseline"
 
             rebindings = state.get("rebindings", [])
