@@ -4625,7 +4625,7 @@ class Supervisor:
                 receipts_by_fingerprint.setdefault(receipt_fp, set()).update(keys)
 
             history_fingerprints = set()
-            for entry in histories:
+            for index, entry in enumerate(histories):
                 if not isinstance(entry, dict):
                     return "Stage 2 repair history is malformed; preserving state"
                 entry_fp = entry.get("fingerprint")
@@ -4637,7 +4637,15 @@ class Supervisor:
                     return "Stage 2 repair history or applied candidate set is malformed; preserving state"
                 history_fingerprints.add(entry_fp)
                 receipt_keys = receipts_by_fingerprint.get(entry_fp, set())
-                if set(applied) != receipt_keys or not set(targets).issubset(receipt_keys):
+                # A superseded earlier round legitimately leaves targets unreceipted: they are exactly the next
+                # round's recorded targets (`remaining_candidate_keys`), and later rounds re-examined them.
+                next_entry = histories[index + 1] if index + 1 < len(histories) else None
+                remaining = entry.get("remaining_candidate_keys")
+                superseded = isinstance(next_entry, dict) and not entry.get("resolved") \
+                    and entry.get("residual_fingerprint") == next_entry.get("fingerprint") \
+                    and isinstance(remaining, list) and remaining == next_entry.get("target_keys") \
+                    and set(remaining).issubset(targets)
+                if set(applied) != receipt_keys or not (superseded or set(targets).issubset(receipt_keys)):
                     return "Stage 2 repair receipt does not match its persisted history; preserving state"
             if set(receipts_by_fingerprint) - history_fingerprints:
                 return "Stage 2 checkpoint contains an untracked repair receipt; preserving state"

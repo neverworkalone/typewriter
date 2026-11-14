@@ -204,6 +204,48 @@ class Stage2RepairRebind(unittest.TestCase):
         saved["identity"]["base_head"] = HEAD2
         self.assertNotIn("unfinished", w.sup._stage2_repair_rebind_problem(b, saved, checkpoint, "8" * 64) or "")
 
+    def _partial_round_world(self):
+        # Issue #6601: round 1 targeted two candidates but only applied one; round 2 re-targeted the other.
+        w, b, path = _world(self, total=2)
+        state = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
+        first, second = "source-sense\u0000candidate-0", "source-sense\u0000candidate-1"
+        state["history"][0].update({"target_keys": [first, second], "residual_fingerprint": "9" * 64,
+                                    "remaining_candidate_keys": [second]})
+        state["history"].append({"round": 2, "fingerprint": "9" * 64, "target_keys": [second],
+                                 "applied_candidate_keys": [second], "resolved": False})
+        data = json.loads(path.read_text("utf-8"))
+        data["repair_receipts"].append({"request_id": "8" * 64, "fingerprint": "9" * 64,
+                                        "supervisor_nonce": REPAIR_NONCE, "candidate_keys": [second]})
+        path.write_text(json.dumps(data), "utf-8")
+        # The completed current round is round 2: its page, targets, applied set and applied attempt agree.
+        state["current"].update({
+            "fingerprint": "9" * 64, "target_keys": [second], "applied_candidate_keys": [second],
+            "groups": [{"candidate_keys": [second], "conflicts": [], "candidates": [
+                {"source_sense_id": "source-sense", "candidate": "candidate-1", "same_group_peers": []}]}],
+            "cursor": 1, "last_receipt": "8" * 64,
+            "attempt_log": [{"cursor": 0, "attempt": 1, "fingerprint": "9" * 64, "target_keys": [second],
+                             "status": "applied", "receipt": "8" * 64}]})
+        w.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, sort_keys=True))
+        run_start = json.loads(w.store.get(stage2.repair_run_start_key(b["id"])))
+        run_start.update({"fingerprint": "9" * 64, "page_keys": [second]})
+        w.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(run_start, sort_keys=True))
+        return w, b, state
+
+    def test_superseded_partial_round_does_not_fail_receipt_history_match(self):
+        w, b, state = self._partial_round_world()
+        # Unreceipted targets of round 1 are exactly round 2's targets, so history proof must not reject the receipts.
+        self.assertEqual(self._problem(w, b, state), "")
+
+    def test_partial_round_with_unproven_remaining_targets_still_fails_closed(self):
+        w, b, state = self._partial_round_world()
+        state["history"][0]["remaining_candidate_keys"] = []
+        self.assertIn("persisted history", self._problem(w, b, state))
+
+    def _problem(self, w, b, state):
+        _mark_integrated(w, b)
+        checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+        return w.sup._stage2_repair_rebind_problem(b, state, checkpoint, "7" * 64) or ""
+
     def test_stale_page_with_pending_answer_or_unproven_integration_still_fails_closed(self):
         w, b, state = self._stale_unresolved_world()
         checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
