@@ -396,7 +396,7 @@ def ab_chunk_retry(chunk_no: int, requested: str, problem: str, directory: Path 
 
 
 def fix(b, events, resumed: bool, directory: Path | None = None, source_context: str = "",
-        checkpoint: dict | None = None) -> str:
+        checkpoint: dict | None = None, retry_note: str = "") -> str:
     lines = []
     for e in events:
         loc = f" {e['path']}:{e.get('line')}" if e.get("path") else ""
@@ -406,10 +406,12 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
         template = "m_fix"
     elif b["method"] == STAGE2_METHOD:
         template = "fix"
-        note = ("This continues the same interrupted Stage 2 review-fix session. Use the review events already "
-                "given in this session; finish the outstanding findings and replies. Preserve the existing local "
-                "commit and checkpoint; do not treat an earlier successful amend as a limit." if resumed else
+        note = ("This continues the same Stage 2 review-fix session. Use the review events already given in this "
+                "session and submit the complete judgment again." if resumed else
                 "This is a fresh Stage 2 review-fix session. Do not resume a production or earlier fix session.")
+        if retry_note:
+            note += (" The Supervisor could not apply the previous submission and wrote nothing: "
+                     f"{retry_note} Correct the judgment and write the response file again.")
     elif b["method"] == "s3":
         template = "s3_fix"
         note = "" if resumed else "새 Stage 3 리뷰 수정 세션이다. 제공된 현재 HEAD 리뷰 이벤트만 처리한다.\n"

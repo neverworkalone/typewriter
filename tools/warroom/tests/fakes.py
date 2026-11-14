@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import itertools
 import re
 import sqlite3
@@ -191,6 +192,8 @@ class FakeGit:
         self.stage2_repair_checker = None
         self.stage2_repair_apply_results: list = []
         self.stage2_repair_results: list[dict] = []
+        self.stage2_amend_results: list = []                  # per call: {"changes": {rel: text}} or an exception
+        self.stage2_amend_calls: list[tuple] = []
 
     def fetch_base(self, base):
         return self.base_sha
@@ -630,6 +633,26 @@ class FakeGit:
                   "supervisor_nonce": repair["supervisor_nonce"], "candidate_keys": keys}
         self.stage2_repair_results.append(result)
         return result
+
+    def stage2_amend(self, worktree, shard, batch, part, rel_input, *, timeout=900):
+        """The official amend: writes the planned data files and reports their exact states (#6555)."""
+        self.stage2_amend_calls.append((shard, batch, part, (Path(worktree) / rel_input).read_text("utf-8")))
+        result = self.stage2_amend_results.pop(0) if self.stage2_amend_results else {"changes": {}}
+        if isinstance(result, Exception):
+            raise result
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        if result["changes"]:   # a changed decision raises the revision and leaves recovery evidence, as the CLI does
+            data = json.loads((Path(worktree) / checkpoint).read_text("utf-8"))
+            data["amend_revision"] = data.get("amend_revision", 0) + 1
+            (Path(worktree) / checkpoint).write_text(json.dumps(data), "utf-8")
+            (Path(worktree) / checkpoint.replace(".json", ".amend-state.json")).write_text("{}", "utf-8")
+        outputs = {checkpoint: hashlib.sha256((Path(worktree) / checkpoint).read_bytes()).hexdigest()}
+        for rel, text in result["changes"].items():
+            (Path(worktree) / rel).parent.mkdir(parents=True, exist_ok=True)
+            (Path(worktree) / rel).write_text(text, "utf-8")
+            outputs[rel] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        self.dirty_text = "".join(f" M {rel}\n" for rel in result["changes"])
+        return {"amended": True, "checkpoint": checkpoint, "outputs": outputs, "timing": ""}
 
     def verify_stage2_local(self, worktree, shard, batch, part, *, checkpoint, timeout=900):
         self.local_verify_calls.append((shard, batch, part, checkpoint))

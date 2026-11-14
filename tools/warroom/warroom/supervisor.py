@@ -34,7 +34,7 @@ from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_clau
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
-from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, InspectContextFailure, IntegrationBlocked, ResourceFenced
+from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, InspectContextFailure, IntegrationBlocked, ResourceFenced, Stage2AmendRejected
 from .lanes import Lanes
 from .launch_gate import LaunchDenied, LaunchGate
 from . import maintenance as maint_results
@@ -45,6 +45,12 @@ from .usage import submit_attempts
 
 # A failed *query* asking again can fix. It is never a verdict: callers re-raise it past every broad `except`.
 TRANSIENT = (GhTransient, GitTransient)
+
+# #6555 Stage 2 review fix: the AI writes only its judgment here; the Supervisor applies it with the official CLI.
+S2_FIX_RESPONSE = ".warroom-scratch/s2-fix-response.json"
+S2_FIX_AMEND_INPUT = ".warroom-scratch/s2-fix-amend.txt"
+S2_FIX_COMMIT_SUBJECT = "Apply Stage 2 review amendments"
+S2_FIX_APPLY_ATTEMPTS = 2   # returns of a refused judgment to the same session before the batch stops
 
 
 class DuplicateClaim(Exception):
@@ -2373,7 +2379,7 @@ class Supervisor:
         return env
 
     @_single_launch_scope
-    def _launch(self, b, kind: str, events=None, *, s2_resume_run_id=None) -> None:
+    def _launch(self, b, kind: str, events=None, *, s2_resume_run_id=None, s2_fix_note: str = "") -> None:
         """Launch one run with the current effective settings; Stage 2/3 use bounded review-fix prompts."""
         if (b["method"] == STAGE2_METHOD and str(b["run_kind"] or "").startswith("s2_reconcile|")
                 and isinstance(kind, str) and kind.startswith("fix")):
@@ -2679,7 +2685,7 @@ class Supervisor:
                 if b["method"] in ("a", "b", "c", "d"):
                     source_context, fix_context_digests = self._producer_fix_context(b, events, session_id=sid)
                 h = resume_checked(sid, prompts.fix(b, events, True, source_context=source_context,
-                                               checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
+                                               checkpoint=checkpoint, retry_note=s2_fix_note), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
                 context = ""
                 checkpoint = None
@@ -2694,9 +2700,15 @@ class Supervisor:
                     baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
                                 "checkpoint_sha256": hashlib.sha256(cp_path.read_bytes()).hexdigest(),
                                 "amend_revision": self._stage2_fix_baseline_revision(
-                                    b, wt, checkpoint.get("amend_revision", 0))}
+                                    b, wt, checkpoint.get("amend_revision", 0)),
+                                # #6555: the AI only submits its judgment; the Supervisor applies it (_stage2_apply_fix).
+                                "supervised": True, "event_keys": [e["key"] for e in events or []],
+                                "nonce": uuid.uuid4().hex}
                     self.store.set(f"s2_fix_start_{b['id']}", json.dumps(baseline, sort_keys=True))
                     self.store.delete(f"s2_unpushed_fix_resume_{b['id']}")
+                    self.store.delete(f"s2_fix_apply_attempts_{b['id']}")
+                    for rel in (S2_FIX_RESPONSE, S2_FIX_AMEND_INPUT):
+                        (Path(wt) / rel).unlink(missing_ok=True)
                 h = ad.start(prompts.fix(b, events, False, source_context=context, checkpoint=checkpoint), wt, run_env, run,
                                        f"PR {b['pr_number']} fix", log, ex, **extra)
         except prompts.PromptError as e:   # rendered before any process is started
@@ -2949,6 +2961,9 @@ class Supervisor:
         kind = b["run_kind"] or "produce"
         base = "fix" if kind.startswith("fix") else "produce"
         if base == "fix":
+            if b["method"] == STAGE2_METHOD and self._verified_fix_exit(b) and \
+                    (baseline := self._stage2_supervised_fix(b)) is not None and self._stage2_apply_fix(b, baseline):
+                return   # resumed the Supervisor's own idempotent application
             if self._verified_fix_exit(b):
                 # The fix run ended 0 with its own completion evidence: only its push is unverified. No AI, commit or push.
                 try:
@@ -3485,6 +3500,9 @@ class Supervisor:
             return self._run_ok_stage2_links(b)
         if self._s2_repair_run(b) and b["state"] == "PRODUCING":
             return self._run_ok_stage2_repair(b)
+        if b["state"] == "FIXING" and b["method"] == STAGE2_METHOD and \
+                (baseline := self._stage2_supervised_fix(b)) is not None and self._stage2_apply_fix(b, baseline):
+            return
         if b["state"] == "FIXING" and b["method"] in ("a", "b", "c", "d"):
             self._remember_fix_context_delivery(b)
         try:
@@ -3721,6 +3739,166 @@ class Supervisor:
             return f"Stage 2 PR 검증 실패: {e}"
         return None
 
+    def _stage2_supervised_fix(self, b) -> dict | None:
+        """The current Stage 2 review fix's baseline when its AI run only submits a judgment (#6555)."""
+        try:
+            baseline = json.loads(self.store.get(f"s2_fix_start_{b['id']}") or "")
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(baseline, dict) or baseline.get("supervised") is not True \
+                or baseline.get("branch") != b["branch"] or baseline.get("worktree") != str(b["worktree"]) \
+                or not isinstance(baseline.get("event_keys"), list) or not isinstance(baseline.get("nonce"), str):
+            return None
+        return baseline
+
+    def _stage2_fix_response(self, b, baseline) -> tuple[dict | None, str | None]:
+        """The AI's submitted judgment, or why it cannot be applied as written."""
+        path = Path(b["worktree"]) / S2_FIX_RESPONSE
+        try:
+            data = json.loads(path.read_text("utf-8"))
+        except FileNotFoundError:
+            return None, f"{S2_FIX_RESPONSE} was not written"
+        except (OSError, ValueError) as e:
+            return None, f"{S2_FIX_RESPONSE} is not valid JSON: {e}"
+        if not isinstance(data, dict) or set(data) != {"event_keys", "amend", "reply"}:
+            return None, f"{S2_FIX_RESPONSE} must be one object with exactly event_keys, amend and reply"
+        keys = data["event_keys"]
+        if not isinstance(keys, list) or len(set(map(str, keys))) != len(keys) \
+                or set(keys) != set(baseline["event_keys"]):
+            return None, f"event_keys must list exactly this run's review event keys {sorted(baseline['event_keys'])}"
+        if data["amend"] is not None and (not isinstance(data["amend"], str) or not data["amend"].startswith("amend ")):
+            return None, "amend must be null or the complete amend input text starting with `amend `"
+        if not isinstance(data["reply"], str) or not data["reply"].strip():
+            return None, "reply must be the non-empty PR reply text"
+        return data, None
+
+    def _stage2_fix_retry(self, b, problem: str) -> None:
+        """Return an unusable judgment or a refused official amend to the same fix session, a bounded number of times."""
+        key = f"s2_fix_apply_attempts_{b['id']}"
+        try:
+            attempts = int(self.store.get(key) or 0)
+        except ValueError:
+            attempts = S2_FIX_APPLY_ATTEMPTS
+        if attempts >= S2_FIX_APPLY_ATTEMPTS or not b["session_id"]:
+            return self._fail(b, "ERROR", f"Stage 2 리뷰 수정 판정을 적용하지 못했습니다: {problem}. "
+                              "worktree·PR·세션을 보존합니다.")
+        self.store.set(key, str(attempts + 1))
+        (Path(b["worktree"]) / S2_FIX_RESPONSE).unlink(missing_ok=True)
+        self.store.log(b["id"], f"Stage 2 리뷰 수정 판정 적용 거부 ({attempts + 1}/{S2_FIX_APPLY_ATTEMPTS}): {problem} "
+                       "— 같은 세션에 사유를 전달합니다", "warn")
+        return self._launch(self.store.batch(b["id"]), "fix_resume", [], s2_fix_note=problem)
+
+    def _stage2_fix_proof(self, b, wt: Path, head: str, outputs: dict) -> dict | None:
+        """The `_stage2_final_pr_problem` reuse proof when the clean worktree holds exactly what this call's own amend
+        established; None (full verification) otherwise."""
+        try:
+            for rel, digest in outputs.items():
+                path = wt / rel
+                actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+                if actual != digest:
+                    return None
+            batch, part = stage2.split_key(b["batch"])
+            checkpoint = (wt / ".warroom-scratch" / f"relation-admission-{b['shard']}-{batch}-{part}.json").resolve()
+            stat = checkpoint.stat()
+        except (OSError, ValueError):
+            return None
+        return {"batch_id": b["id"], "checkpoint_path": str(checkpoint), "head": head,
+                "checkpoint_stat": (stat.st_ino, stat.st_size, stat.st_mtime_ns)}
+
+    def _stage2_post_fix_reply(self, b, baseline, response) -> None:
+        """Post the AI's reply once per fix round; a hidden marker makes a re-entered application find its own post."""
+        key = f"s2_fix_reply_{b['id']}"
+        if self.store.get(key) == baseline["nonce"]:
+            return
+        marker = f"<!-- warroom-s2-fix {baseline['nonce']} -->"
+        if not any(marker in (comment.get("body") or "") for comment in self.gh.issue_comments(b["pr_number"])):
+            reply = response["reply"].strip()
+            missing = "".join(f"[{event}] " for event in response["event_keys"] if f"[{event}]" not in reply)
+            self.gh.comment_issue(b["pr_number"], f"{missing}{reply}\n\n{marker}")
+        self.store.set(key, baseline["nonce"])
+
+    def _stage2_apply_fix(self, b, baseline) -> bool:
+        """Apply a Stage 2 review-fix judgment with the official CLI (#6555): amend, commit, exact-HEAD verify, push,
+        reply, then the usual completion gate. Every step is re-entrant: a restart resumes from what is already done.
+
+        False when the run submitted nothing at all: that silent fix keeps the existing unanswered-review handling
+        (PR #6249) of the caller's regular path. True when this call decided the outcome."""
+        if not (Path(b["worktree"]) / S2_FIX_RESPONSE).exists():
+            return False
+        self._stage2_apply_fix_do(b, baseline)
+        return True
+
+    def _stage2_apply_fix_do(self, b, baseline) -> None:
+        wt, timings = Path(b["worktree"]), {}
+        batch, part = stage2.split_key(b["batch"])
+        base_head = baseline["head"]
+        outputs = None
+
+        def timed(stage, call, *args, **kwargs):
+            started = self.clock()
+            try:
+                return call(*args, **kwargs)
+            finally:
+                timings[stage] = round((self.clock() - started) * 1000)
+
+        try:
+            head = self.git.head(wt)
+            if head == base_head:
+                if self.git.dirty(wt).strip():
+                    return self._fail(b, "ERROR", "Stage 2 리뷰 수정 판정 제출 뒤 worktree에 변경이 있습니다. "
+                                      "AI는 파일을 바꾸지 않아야 하므로 적용하지 않고 보존합니다.")
+                response, problem = self._stage2_fix_response(b, baseline)
+                if problem:
+                    return self._stage2_fix_retry(b, problem)
+                if response["amend"] is not None:
+                    text = response["amend"] if response["amend"].endswith("\n") else response["amend"] + "\n"
+                    (wt / S2_FIX_AMEND_INPUT).write_text(text, "utf-8")
+                    try:
+                        receipt = timed("amend", self.git.stage2_amend, wt, b["shard"], batch, part, S2_FIX_AMEND_INPUT)
+                    except Stage2AmendRejected as e:
+                        return self._stage2_fix_retry(b, f"the official amend refused the submitted input: {e}")
+                    changed = self.git.changed_paths(wt)
+                    if not changed <= {rel for rel in receipt["outputs"] if rel.startswith("data/")}:
+                        return self._fail(b, "ERROR", f"공식 amend 뒤 예상 밖 파일이 바뀌었습니다: {sorted(changed)}. 보존합니다.")
+                    if changed:
+                        timed("commit", self.git.commit_paths, wt, sorted(changed), S2_FIX_COMMIT_SUBJECT)
+                        outputs = receipt["outputs"]
+            else:
+                # Re-entry after this application's own commit: a clean direct child of the baseline with our subject.
+                if self.git.dirty(wt).strip() or self.git.commit_parent(wt) != base_head \
+                        or self.git.commit_subject(wt) != S2_FIX_COMMIT_SUBJECT:
+                    return self._fail(b, "ERROR", "Stage 2 리뷰 수정 적용을 재개할 수 없는 worktree 상태입니다 "
+                                      f"(HEAD {head[:10]}, 기준 {base_head[:10]}). 보존합니다.")
+                response, problem = self._stage2_fix_response(b, baseline)
+                if problem:
+                    return self._fail(b, "ERROR", f"Stage 2 리뷰 수정 재개에 제출 판정이 없습니다: {problem}. 보존합니다.")
+            head = self.git.head(wt)
+            if head != base_head:
+                ok, tail = timed("exact_verify", self.git.verify_stage2_exact, head, b["shard"], batch, part)
+                if not ok:
+                    return self._fail(b, "ERROR", f"{stage2.label(b['shard'], b['batch'])} 리뷰 수정 commit의 정확한 HEAD "
+                                      f"verify 실패: {tail}. push하지 않고 보존합니다.")
+                remote = self.git.remote_head(b["branch"])
+                if remote == base_head:
+                    timed("push", self.git.push_owned_fix, wt, b["branch"], remote, head)
+                elif remote != head:
+                    return self._fail(b, "ERROR", f"원격 소유 브랜치가 리뷰 수정 기준에서 이동했습니다 ({remote} / {base_head}). 보존합니다.")
+            timed("reply", self._stage2_post_fix_reply, b, baseline, response)
+            info = self.gh.pull(b["pr_number"])
+        except TRANSIENT:
+            raise
+        except GitError as e:
+            return self._fail(b, "ERROR", f"Stage 2 리뷰 수정 적용 실패: {e}. worktree·PR을 보존합니다.")
+        verified = self._stage2_fix_proof(b, wt, head, outputs) if outputs is not None else None
+        if self._check_fix_head(b, info) != "ok":
+            return
+        if problem := timed("completion", self._stage2_fix_result_problem, b, info, verified):
+            return self._fail(b, "ERROR", problem)
+        self.store.delete(f"s2_fix_start_{b['id']}")
+        self.store.log(b["id"], "Stage 2 리뷰 수정 적용 " + " ".join(f"{k}={v}ms" for k, v in timings.items())
+                       + (" verify=reused" if verified else ""))
+        self._to_review(b, info)
+
     def _stage2_fix_baseline_revision(self, b, wt, current: int) -> int:
         """Amend revision a review fix must exceed.
 
@@ -3736,7 +3914,7 @@ class Supervisor:
             pass
         return current
 
-    def _stage2_fix_result_problem(self, b, info) -> str | None:
+    def _stage2_fix_result_problem(self, b, info, verified=None) -> str | None:
         """A changed review HEAD needs CLI amend evidence; a no-change rebuttal keeps the exact old checkpoint/head."""
         raw = self.store.get(f"s2_fix_start_{b['id']}")
         if raw is None:
@@ -3781,7 +3959,7 @@ class Supervisor:
                 self._stage2_foreign_paths(b, info, files)
                 if rival := self._duplicate_claim(b, info["number"], set(claims)):
                     return f"외부 Relation shard를 열린 PR #{rival}이 점유합니다. worktree와 PR을 보존합니다."
-            return self._stage2_final_pr_problem(b, info)
+            return self._stage2_final_pr_problem(b, info, verified)
         except TRANSIENT:
             raise
         except Exception as e:
