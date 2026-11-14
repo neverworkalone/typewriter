@@ -8,7 +8,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 from tests.test_issue_1684 import S2
-from tests.test_issue_2307 import answer, clean_report, conflict_report, start_repair
+from tests.test_issue_2307 import s2_world, answer, clean_report, conflict_report, start_repair
 from warroom import control, stage2
 
 FP = "4" * 64
@@ -262,6 +262,30 @@ class Stage2RepairMissingCandidates(unittest.TestCase):
         self.assertEqual(len([row for row in w.store.runs(batch["id"]) if row["kind"] == "s2_chunk_new"]), primary_runs)
 
 
+def start_wide_repair(testcase, reports, count):
+    """`start_repair` for a Part with `count` candidates (more than one repair page)."""
+    w = s2_world(testcase)
+    w.git.chunk_view_total = count
+    w.git.optional_candidate_after_chunk = True
+    control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+    rows = "\n".join(f"c{i} D row" for i in range(1, count + 1))
+    w.adapter.plan.append({"code": 0, "session": "ses_chunk", "text": answer("chunk 001-01-01-001\n" + rows)})
+    w.tick()
+    batch = w.store.active_batch("claude", S2)
+    w.adapter.finish(w.adapter.launches[-1]["pid"])
+    w.tick()
+    links = w.adapter.launches[-1]
+    testcase.assertEqual(w.store.batch(batch["id"])["run_kind"], "s2_links_new")
+    digest = json.loads(w.store.get(stage2.links_start_key(batch["id"])))["digest"]
+    skips = "\n".join(f"c{i} skip" for i in range(1, count + 1))
+    w.adapter.running[links["pid"]]["text"] = answer(f"links @{digest}\n{skips}")
+    w.adapter.running[links["pid"]]["session"] = "ses_links"
+    w.git.stage2_preflight_reports.extend(reports)
+    w.adapter.finish(links["pid"])
+    w.tick()
+    return w, w.store.batch(batch["id"])
+
+
 def ordinary_report(fingerprint, names):
     """A conflict page of ordinary (not already-accounted) candidates, the only kind a technical fallback may cover."""
     report = conflict_report(fingerprint, list(names))
@@ -393,23 +417,40 @@ class Stage2RepairCandidateProblems(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), launches + 1)
         self.assertEqual(w.git.stage2_repair_calls, [])
 
-    def test_stale_unresolved_round_refreshes_after_earlier_pages_were_applied(self):
-        """A multi-page round whose earlier pages are applied still refreshes when its rejected page is stale (#6601)."""
-        stale = ordinary_report(FP, self.NAMES)
-        stale["problems"][0]["conflicts"] = []
-        stale["problems"][0]["drop_gloss"] = ['drop:1: "candidate-0" is named by the gloss of source-sense']
-        w, batch = start_repair(self, [stale], candidate_count=3)
+    def test_stale_unresolved_second_page_refreshes_after_first_page_was_applied(self):
+        """#6601: page 1 is applied through the official path, page 2 is rejected as unresolved, and a changed preflight
+        starts a fresh round on Retry while page 1's receipt-backed result stays in the checkpoint."""
+        count = stage2.REPAIR_GROUPS_PER_RUN + 1
+        names = [f"candidate-{i}" for i in range(count)]
+        report = ordinary_report(FP, names)
+        template = report["problems"][0]
+        report["problems"] = [
+            {**template, "candidate_keys": [f"source-sense\u0000{row['candidate']}"], "candidates": [row]}
+            for row in template["candidates"]]
+        report["problems"][-1]["conflicts"] = []   # a drop-gloss-only diagnostic (the later-fixed validator false positive)
+        report["problems"][-1]["drop_gloss"] = [f'drop:1: "{names[-1]}" is named by the gloss of source-sense']
+        report["total"] = count
+        w, batch = start_wide_repair(self, [report], count)
         w.git.stage2_repair_checker = marker_checker(lambda decision: None)
-        rows = [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD} for name in self.NAMES[1:]]
-        unresolved = {"source_sense_id": "source-sense", "candidate": self.NAMES[0], "reason": "redirect names a different headword"}
-        self.run_text(w, f"repair @{FP}\n" + json.dumps({"decisions": rows, "peer_adjustments": [], "unresolved": [unresolved]}))
-        self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
         state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
-        state["current"]["applied_candidate_keys"] = ["earlier-sense\u0000earlier-page"]
-        w.store.set(stage2.repair_state_key(batch["id"]), json.dumps(state, sort_keys=True))
+        self.assertEqual(len(state["current"]["groups"]), count)
+        # The post-apply preflight still reports the unresolved page-2 group (fingerprint unchanged for the round).
+        page1 = [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD} for name in names[:-1]]
+        self.run_text(w, f"repair @{FP}\n" + json.dumps({"decisions": page1, "peer_adjustments": [], "unresolved": []}))
+        self.assertEqual(len(w.git.stage2_repair_calls), 1)
+        state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+        self.assertEqual(state["current"]["cursor"], count - 1)
+        self.assertEqual(len(state["current"]["applied_candidate_keys"]), count - 1)
+        checkpoint = Path(w.store.batch(batch["id"])["worktree"]) / ".warroom-scratch" / "relation-admission-001-01-01.json"
+        saved = json.loads(checkpoint.read_text("utf-8"))
+        receipt = saved["repair_receipts"][0]["request_id"]
+
+        unresolved = {"source_sense_id": "source-sense", "candidate": names[-1], "reason": "redirect names a different headword"}
+        self.run_text(w, f"repair @{FP}\n" + json.dumps({"decisions": [], "peer_adjustments": [], "unresolved": [unresolved]}))
+        self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
         launches = len(w.adapter.launches)
 
-        w.git.stage2_preflight_reports.append(ordinary_report("6" * 64, self.NAMES))
+        w.git.stage2_preflight_reports.append(ordinary_report("6" * 64, [names[-1]]))
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.tick()
         w.tick()
@@ -417,7 +458,15 @@ class Stage2RepairCandidateProblems(unittest.TestCase):
         state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
         self.assertEqual(w.store.batch(batch["id"])["state"], "PRODUCING", w.store.batch(batch["id"])["error"])
         self.assertEqual(state["current"]["fingerprint"], "6" * 64)
+        self.assertEqual(state["current"]["cursor"], 0)
+        self.assertEqual(state["rounds_used"], 2)
         self.assertEqual(len(w.adapter.launches), launches + 1)
+        self.assertEqual(len(w.git.stage2_repair_calls), 1)
+        kept = json.loads(checkpoint.read_text("utf-8"))
+        self.assertEqual(kept["repair_receipts"][0]["request_id"], receipt)
+        self.assertEqual(len(kept["repair_receipts"]), 1)
+        self.assertEqual(kept["repair_receipts"][0]["candidate_keys"],
+                         sorted(f"source-sense\u0000{name}" for name in names[:-1]))
 
     def test_new_problems_are_batched_once_and_valid_rows_are_preserved(self):
         for field_path, condition in (("decision.target_resolution", "required"), ("decision.type", "enum"),
