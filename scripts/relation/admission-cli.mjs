@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { existsSync } from 'node:fs';
 import { link, mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
@@ -23,6 +24,8 @@ import {
   loadOptionalDropJsonl,
   loadOptionalRelationJsonl,
   loadShard,
+  loadShardTouchingDrops,
+  loadShardTouchingRelations,
   mergeCandidates,
   normalizeCandidate,
   partScope,
@@ -31,7 +34,9 @@ import {
   prepareShard,
   relationCandidateKeys,
   sameSpellingTargets,
+  selectShardRelationRows,
   shardDropPath,
+  shardSenseIds,
   shardRelationPath,
   ACTION_TARGET_POS,
   validateRelationRows,
@@ -129,6 +134,37 @@ async function writeTextAtomically(file, text) {
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
+// #6555: one CLI run reuses its read-only Canonical/Candidate load and its shard projection of other shards' rows.
+// Any Relation/Drop/checkpoint write clears the run's values, so nothing read before a write is reused after it.
+// `fullOtherRows` is the reference path for differential tests: every other-shard row, as before the projection.
+const runCache = new AsyncLocalStorage();
+
+function runCached(key, compute) {
+  const store = runCache.getStore();
+  if (!store) return compute();
+  if (!store.values.has(key)) store.values.set(key, compute());
+  return store.values.get(key);
+}
+
+const fullOtherRows = () => runCache.getStore()?.fullOtherRows === true;
+
+function loadShardForRun(shard, root, batch) {
+  return runCached(`shard\u0000${root}\u0000${shard}\u0000${batch}`, () => loadShard(shard, root, { batch }));
+}
+
+// Callers may mutate other-shard rows (a reciprocal merge updates its foreign owner), so each caller gets copies.
+async function otherRelationsForShard(root, shard, senseIds) {
+  if (fullOtherRows()) return loadApprovedRelations(root, { exceptShard: shard });
+  return structuredClone(await runCached(`others\u0000${root}\u0000${shard}`,
+    () => loadShardTouchingRelations(root, { exceptShard: shard, senseIds })));
+}
+
+async function otherDropsForShard(root, shard, senseIds) {
+  if (fullOtherRows()) return loadAllApprovedDrops(root, { exceptShard: shard });
+  return structuredClone(await runCached(`drops\u0000${root}\u0000${shard}`,
+    () => loadShardTouchingDrops(root, { exceptShard: shard, senseIds })));
+}
+
 async function readFileState(file) {
   try {
     const bytes = await readFile(file);
@@ -144,6 +180,7 @@ function sameFileState(left, right) {
 }
 
 async function writeFileStateAtomically(file, state) {
+  runCache.getStore()?.values.clear();
   if (!state.exists) {
     try { await unlink(file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     return;
@@ -1034,11 +1071,13 @@ function requireComplete(inventory, allowPartial) {
   console.error(`PARTIAL: ${message}`);
 }
 
-export async function run(argv, { root } = {}) {
+export async function run(argv, { root, fullOtherRows: referencePath = false } = {}) {
   const options = parseArgs(argv);
-  const timing = options.command === 'verify' ? createVerifyTiming(options) : null;
+  const timing = options.command === 'verify' ? createVerifyTiming(options)
+    : options.command === 'amend' ? createCommandTiming('amend_timing', () => ({ checkpoint: options.checkpoint })) : null;
   try {
-    const result = await runCommand(options, root, timing);
+    const result = await runCache.run({ values: new Map(), fullOtherRows: referencePath === true },
+      () => runCommand(options, root, timing));
     timing?.finish('success');
     return result;
   } catch (error) {
@@ -1048,6 +1087,12 @@ export async function run(argv, { root } = {}) {
 }
 
 function createVerifyTiming(options) {
+  return createCommandTiming('verify_timing', () => ({ shard: options.shard, batch: options.batch, part: options.part,
+    checkpoint: Boolean(options.timingCheckpoint) }), options);
+}
+
+// One stderr summary line per command (#3778 verify, #6555 amend); stdout keeps its JSON contract.
+function createCommandTiming(label, header, options = {}) {
   const started = performance.now();
   const stages = [];
   const active = [];
@@ -1059,13 +1104,13 @@ function createVerifyTiming(options) {
       stages.push({ stage: entry.stage, elapsed_ms: Math.round(performance.now() - entry.started), status: 'success' });
     },
     finish(status) {
+      // A stage still open when the command ends (an early return or a throw) ends with the command's status.
       while (active.length) {
         const entry = active.pop();
-        stages.push({ stage: entry.stage, elapsed_ms: Math.round(performance.now() - entry.started), status: 'failed' });
+        stages.push({ stage: entry.stage, elapsed_ms: Math.round(performance.now() - entry.started), status });
       }
       stages.push({ stage: 'total', elapsed_ms: Math.round(performance.now() - started), status });
-      console.error(`verify_timing ${JSON.stringify({ shard: options.shard, batch: options.batch, part: options.part,
-        checkpoint: Boolean(options.timingCheckpoint), stages })}`);
+      console.error(`${label} ${JSON.stringify({ ...header(), stages })}`);
     },
   };
 }
@@ -1165,7 +1210,7 @@ async function runCommand(options, root, timing) {
     return result;
   }
   if (options.command === 'amend') {
-    const result = await amendCheckpoint(await readCheckpoint(checkpointPath), checkpointPath, options.input, repositoryRoot);
+    const result = await amendCheckpoint(await readCheckpoint(checkpointPath), checkpointPath, options.input, repositoryRoot, timing);
     console.log(JSON.stringify(result));
     return result;
   }
@@ -1205,7 +1250,7 @@ async function runCommand(options, root, timing) {
 
   if (verifiedCheckpoint) timing?.end();
   timing?.start('load_shard');
-  const loaded = await loadShard(options.shard, repositoryRoot, { batch: options.batch });
+  const loaded = await loadShardForRun(options.shard, repositoryRoot, options.batch);
   timing?.end();
   const { canonicalRows, index } = loaded;
   if (options.relationsOnly) {
@@ -1232,7 +1277,10 @@ async function runCommand(options, root, timing) {
   const inventory = options.batch ? candidateInventory(candidateFiles.map((file) => file.name), { batches: [options.batch] }) : loaded.inventory;
   requireComplete(inventory, options.allowPartial);
   timing?.start('load_approved_relations');
-  const others = await loadApprovedRelations(repositoryRoot, { exceptShard: options.shard });
+  // `prepare` builds new checkpoints and peer context: it keeps every other-shard row.
+  const others = options.command === 'prepare'
+    ? await loadApprovedRelations(repositoryRoot, { exceptShard: options.shard })
+    : await otherRelationsForShard(repositoryRoot, options.shard, shardSenseIds(canonicalRows));
   timing?.end();
 
   if (options.command === 'prepare') {
@@ -1308,8 +1356,7 @@ async function runCommand(options, root, timing) {
   timing?.start('relation_validation');
   const relationRows = await loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot));
   const dropRows = await loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot));
-  const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-  validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows: others,
+  validateRelationRows({ relationRows, dropRows, index, shardSenseIds: shardSenseIds(canonicalRows), otherRelationRows: others,
     actionTargetPosSenseIds: options.part ? new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id))) : null });
   timing?.end();
   timing?.start('accounting');
@@ -2821,6 +2868,14 @@ function parseJsonlState(state, family) {
   } catch (error) { throw new Error(`cannot parse premerge ${family} snapshot: ${error.message}`); }
 }
 
+// `parseJsonlState(state, 'Relation')` restricted to the shard projection, as `{ row, position }` entries.
+function selectedRelationState(state, senseIds) {
+  if (!state.exists || state.bytes.length === 0) return [];
+  try {
+    return selectShardRelationRows(state.bytes.toString('utf8'), 'premerge Relation snapshot', senseIds);
+  } catch (error) { throw new Error(`cannot parse premerge Relation snapshot: ${error.message}`); }
+}
+
 function serializedJsonlState(rows, baseline, family) {
   if (rows.length === 0 && !baseline.exists) return { exists: false, bytes: Buffer.alloc(0), sha256: null };
   const text = family === 'Relation' ? serializeRelationJsonl(rows) : serializeDropJsonl(rows);
@@ -2942,15 +2997,15 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
   const existingRelations = parseJsonlState(baseline.relations, 'Relation');
   const existingDrops = parseJsonlState(baseline.drops, 'Drop');
   timing?.end();
+  timing?.start('shard_reload');
+  const loaded = await loadShardForRun(checkpoint.shard, root, checkpoint.batch);
+  const finalShardSenseIds = shardSenseIds(loaded.canonicalRows);
+  timing?.end();
   timing?.start('other_relations_load');
   const others = foreign ? foreign.flatMap(({ rows }) => rows)
-    : await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
-  timing?.end();
-  timing?.start('shard_reload');
-  const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
+    : await otherRelationsForShard(root, checkpoint.shard, finalShardSenseIds);
   timing?.end();
   timing?.start('baseline_validate');
-  const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
   timing?.end();
@@ -2962,7 +3017,7 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
   const { relations: newRelations, relationCandidates, drops: newDrops } = decisionRows(checkpoint);
   timing?.end();
   timing?.start('all_drops_load');
-  const allDrops = await loadAllApprovedDrops(root, { exceptShard: checkpoint.shard });
+  const allDrops = await otherDropsForShard(root, checkpoint.shard, finalShardSenseIds);
   timing?.end();
   timing?.start('reverse_lookup');
   const reverseCandidates = createReverseCandidateFormLookup({
@@ -3084,13 +3139,13 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
   }
   const existingRelations = parseJsonlState(baseline.relations, 'Relation');
   const existingDrops = parseJsonlState(baseline.drops, 'Drop');
-  const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
-  const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
+  const loaded = await loadShardForRun(checkpoint.shard, root, checkpoint.batch);
+  const finalShardSenseIds = shardSenseIds(loaded.canonicalRows);
+  const others = await otherRelationsForShard(root, checkpoint.shard, finalShardSenseIds);
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part, checkpoint.shard);
   const candidateMerge = mergeCandidates(loaded.canonicalRows, scoped.files, {
     canonicalLemmaForms: new Set([...loaded.index.byLemma.keys()].map(normalizeCandidate)),
   });
-  const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   try {
     validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
       shardSenseIds: finalShardSenseIds, otherRelationRows: others });
@@ -3098,7 +3153,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
     throw new Error(`existing Relation/Drop baseline is invalid; no checkpoint repair is safe: ${error.message}`);
   }
   const generated = decisionRows(checkpoint);
-  const allDrops = await loadAllApprovedDrops(root, { exceptShard: checkpoint.shard });
+  const allDrops = await otherDropsForShard(root, checkpoint.shard, finalShardSenseIds);
   const reverseCandidates = createReverseCandidateFormLookup({
     relationRows: [...others, ...existingRelations],
     dropRows: [...allDrops, ...existingDrops, ...generated.drops],
@@ -3721,29 +3776,53 @@ function decodeFileState(value) {
   return { exists: value.exists, bytes, sha256: value.exists ? sha256(bytes) : null };
 }
 
-async function foreignRelationFiles(root, shard, baselines = {}) {
+// Each foreign file keeps its actual and baseline state. Its `rows` are the shard projection of the baseline (every row
+// on the reference path) as fresh objects, because a reciprocal merge updates them in place; `selected` remembers the
+// unchanged rows and their positions so a changed file is re-serialized from its complete baseline rows.
+async function foreignRelationFiles(root, shard, baselines = {}, senseIds = null) {
   const directory = path.join(root, 'data/relations');
   const names = (await readdir(directory)).filter((name) => /^relation-\d{3}\.jsonl$/u.test(name)
     && name !== `relation-${shard}.jsonl`).sort();
   if (Object.keys(baselines).some((name) => !names.includes(name))) throw new Error('foreign Relation baseline file is missing');
+  const full = fullOtherRows() || senseIds === null;
   const files = [];
   for (const name of names) {
-    const actual = await readFileState(path.join(directory, name));
+    const actual = await runCached(`foreign\u0000${directory}\u0000${name}`, () => readFileState(path.join(directory, name)));
     const baseline = baselines[name] ? decodeFileState(baselines[name]) : actual;
-    files.push({ name, actual, baseline, rows: parseJsonlState(baseline, 'Relation') });
+    if (full) {
+      files.push({ name, actual, baseline, rows: parseJsonlState(baseline, 'Relation'), selected: null });
+      continue;
+    }
+    const selected = await runCached(`foreign-rows\u0000${name}\u0000${baseline.sha256}`, () => selectedRelationState(baseline, senseIds));
+    files.push({ name, actual, baseline, rows: structuredClone(selected.map(({ row }) => row)), selected });
   }
   return files;
 }
 
 function foreignResults(files) {
-  return Object.fromEntries(files.map(({ name, baseline, rows }) => [name,
-    sameRows(rows, parseJsonlState(baseline, 'Relation')) ? baseline : serializedJsonlState(rows, baseline, 'Relation')]));
+  return Object.fromEntries(files.map(({ name, baseline, rows, selected }) => {
+    if (selected === null) {
+      return [name, sameRows(rows, parseJsonlState(baseline, 'Relation')) ? baseline : serializedJsonlState(rows, baseline, 'Relation')];
+    }
+    if (sameRows(rows, selected.map(({ row }) => row))) return [name, baseline];
+    const complete = parseJsonlState(baseline, 'Relation');
+    selected.forEach(({ position }, index) => { complete[position] = rows[index]; });
+    return [name, serializedJsonlState(complete, baseline, 'Relation')];
+  }));
 }
 
 async function materializeWithForeign(checkpoint, root, baseline, baselines) {
-  const files = await foreignRelationFiles(root, checkpoint.shard, baselines);
+  const loaded = await loadShardForRun(checkpoint.shard, root, checkpoint.batch);
+  const files = await foreignRelationFiles(root, checkpoint.shard, baselines, shardSenseIds(loaded.canonicalRows));
   const result = await materializePart(checkpoint, root, baseline, null, null, files);
   return { ...result, files, foreign: foreignResults(files) };
+}
+
+// #6555: the exact states an amend established or confirmed, by repository-relative path (null = absent). A caller that
+// ran this CLI itself can compare them with committed blobs instead of re-materializing the same checkpoint.
+function amendOutputs(root, entries) {
+  return Object.fromEntries(entries.map(({ file, state }) => [path.relative(root, file).split(path.sep).join('/'),
+    state.exists ? sha256(state.bytes) : null]).sort(([left], [right]) => left.localeCompare(right)));
 }
 
 async function applyForeignAmendJournal(journal, checkpointPath, root, { checkOnly = false } = {}) {
@@ -3789,12 +3868,13 @@ async function applyForeignAmendJournal(journal, checkpointPath, root, { checkOn
     if (!newMatch) pending = true;
     else if (pending && !oldMatch) throw new Error('amend outputs/checkpoint are in an unrecognized state; preserving all files');
   }
-  if (!pending) return { amended: true, already_applied: true, checkpoint: checkpointPath };
+  const outputs = amendOutputs(root, entries.map((entry) => ({ file: entry.file, state: entry.newState })));
+  if (!pending) return { amended: true, already_applied: true, checkpoint: checkpointPath, outputs };
   if (checkOnly) throw new Error('another amend is incomplete; rerun its exact input before starting a different request');
   for (const entry of entries) {
     if (!sameFileState(await readFileState(entry.file), entry.newState)) await writeFileStateAtomically(entry.file, entry.newState);
   }
-  return { amended: true, checkpoint: checkpointPath };
+  return { amended: true, checkpoint: checkpointPath, outputs };
 }
 
 async function applyAmendJournalState(checkpoint, checkpointPath, root, oldCheckpoint, newCheckpoint, requestHash, journalPath) {
@@ -3808,7 +3888,9 @@ async function applyAmendJournalState(checkpoint, checkpointPath, root, oldCheck
   const actual = { checkpoint: await readFileState(checkpointPath), relations: await readFileState(relationFile), drops: await readFileState(dropFile) };
   const state = classifyAmendState(actual, oldStates, newStates);
   if (!state) throw new Error('amend outputs/checkpoint are in an unrecognized state; preserving all files');
-  if (state === 4) return { amended: true, already_applied: true, checkpoint: checkpointPath };
+  const outputs = amendOutputs(root, [{ file: checkpointPath, state: newStates.checkpoint },
+    { file: relationFile, state: newStates.relations }, { file: dropFile, state: newStates.drops }]);
+  if (state === 4) return { amended: true, already_applied: true, checkpoint: checkpointPath, outputs };
   await writeJsonAtomically(journalPath, {
     version: 1,
     request_sha256: requestHash,
@@ -3819,10 +3901,10 @@ async function applyAmendJournalState(checkpoint, checkpointPath, root, oldCheck
   if (!sameFileState(actual.relations, newStates.relations)) await writeFileStateAtomically(relationFile, newStates.relations);
   if (!sameFileState(actual.drops, newStates.drops)) await writeFileStateAtomically(dropFile, newStates.drops);
   if (!sameFileState(actual.checkpoint, newStates.checkpoint)) await writeFileStateAtomically(checkpointPath, newStates.checkpoint);
-  return { amended: true, changed_candidates: newResult.changed || undefined, checkpoint: checkpointPath };
+  return { amended: true, changed_candidates: newResult.changed || undefined, checkpoint: checkpointPath, outputs };
 }
 
-async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root) {
+async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root, timing = null) {
   if (!checkpoint.merged) throw new Error('amend requires checkpoint.merged=true in the current Part worktree');
   if (!checkpoint.premerge) throw new Error('this merged checkpoint has no premerge snapshot and cannot be amended');
   assertOptionalComplete(checkpoint);
@@ -3836,6 +3918,7 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
   ]);
   const requestHash = sha256(Buffer.from(raw, 'utf8'));
   const current = { checkpoint: await readFileState(checkpointPath), relations: await readFileState(relationFile), drops: await readFileState(dropFile) };
+  timing?.start('recovery_check');
   if (journal?.version === 2) {
     const oldCheckpoint = checkpointFromJournal(journal.old_checkpoint_b64);
     if (journal.request_sha256 === requestHash) {
@@ -3862,14 +3945,21 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
       if (!replay.changed || JSON.stringify(replay.checkpoint) !== JSON.stringify(newCheckpoint)) {
         throw new Error('same amend input does not reproduce its recorded new checkpoint');
       }
-      if (state === 4) return { amended: true, already_applied: true, checkpoint: checkpointPath };
+      if (state === 4) {
+        return { amended: true, already_applied: true, checkpoint: checkpointPath, outputs: amendOutputs(root, [
+          { file: checkpointPath, state: newStates.checkpoint }, { file: relationFile, state: newStates.relations },
+          { file: dropFile, state: newStates.drops }]) };
+      }
       return applyAmendJournalState(checkpoint, checkpointPath, root, oldCheckpoint, newCheckpoint, requestHash, journalPath);
     }
     if (state !== 4) throw new Error('another amend is incomplete; rerun its exact input before starting a different request');
   }
+  timing?.end();
   const foreignBaselines = journal?.version === 2
     ? Object.fromEntries(Object.entries(journal.foreign).map(([name, entry]) => [name, entry.baseline])) : {};
+  timing?.start('current_materialize');
   const currentExpected = await materializeWithForeign(checkpoint, root, baseline, foreignBaselines);
+  timing?.end();
   if (!sameFileState(current.relations, currentExpected.relations) || !sameFileState(current.drops, currentExpected.drops)) {
     throw new Error('current merged outputs do not match materialize(premerge, checkpoint); refusing to amend drifted files');
   }
@@ -3880,8 +3970,15 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
   }
   const parsed = parseAmendInput(raw, checkpoint);
   const applied = applyAmendChanges(checkpoint, parsed);
-  if (!applied.changed) return { amended: true, changed_candidates: 0, unchanged: true, checkpoint: checkpointPath };
+  if (!applied.changed) {
+    return { amended: true, changed_candidates: 0, unchanged: true, checkpoint: checkpointPath, outputs: amendOutputs(root, [
+      { file: checkpointPath, state: current.checkpoint }, { file: relationFile, state: currentExpected.relations },
+      { file: dropFile, state: currentExpected.drops }]) };
+  }
+  timing?.start('next_materialize');
   const next = await materializeWithForeign(applied.checkpoint, root, baseline, foreignBaselines);
+  timing?.end();
+  timing?.start('apply');
   const foreign = {};
   for (const file of currentExpected.files) {
     const oldState = currentExpected.foreign[file.name];
@@ -3980,13 +4077,15 @@ async function acquireAmendLock(lockPath, token, { waitMs = 15000, pollMs = 100 
   }
 }
 
-async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {
+async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root, timing = null) {
   const lockPath = `${checkpointPath}.amend-lock`;
   const token = `${process.pid}:${randomUUID()}:${processStartTime(process.pid)}`;
   await mkdir(path.dirname(lockPath), { recursive: true });
+  timing?.start('lock');
   await acquireAmendLock(lockPath, token);
+  timing?.end();
   try {
-    return await amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root);
+    return await amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root, timing);
   } finally {
     try {
       if ((await readFile(lockPath, 'utf8')) === token) await unlink(lockPath);
