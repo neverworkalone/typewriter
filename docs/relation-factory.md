@@ -266,6 +266,8 @@ node scripts/relation/edit-cli.mjs save-chunk --shard 002 --batch 02 --part 02 -
 node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 ```
 
+`edit-cli`의 `prepare`·`refresh-pending`·`apply`도 다른 샤드 Relation 가운데 **이 샤드 Sense를 출발·대상으로 갖는 행만** 읽는다(#6555). ID pair 충돌, reverse 후보형, 고아·text Drop, 행 검증과 accounting은 모두 이 샤드 Sense로 시작하는 키로만 다른 샤드 행을 조회하고, 다른 파일의 Drop 중 이 샤드 Sense를 출발로 갖는 행은 전체 로딩에서도 제외되므로 결과는 전체 행을 읽을 때와 같다.
+
 ### 5-A. 파일·후보 회계
 
 - **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"z"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.

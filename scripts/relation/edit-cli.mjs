@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -15,12 +16,14 @@ import {
   loadOptionalDropJsonl,
   loadOptionalRelationJsonl,
   loadShard,
+  loadShardTouchingRelations,
   mergeCandidates,
   normalizeCandidate,
   orphanedCandidateDrops,
   partScope,
   assertStage2Part,
   sameSpellingTargets,
+  shardSenseIds as senseIdsOf,
   validateRelationRows,
   verifyAccounting,
 } from './admission.mjs';
@@ -149,6 +152,9 @@ async function writeJsonAtomically(file, value) {
   }
 }
 
+// Differential tests run the CLI with every other-shard row (the path before the #6555 projection) as the reference.
+const referenceRun = new AsyncLocalStorage();
+
 async function loadContext(shard, root, { relationText, dropText } = {}) {
   const loaded = await loadShard(shard, root);
   if (loaded.inventory.missing.length) {
@@ -160,15 +166,21 @@ async function loadContext(shard, root, { relationText, dropText } = {}) {
     relationText === undefined ? loadOptionalRelationJsonl(relationFile) : parseRelationJsonl(relationText, path.basename(relationFile)),
     dropText === undefined ? loadOptionalDropJsonl(dropFile) : parseDropJsonl(dropText, path.basename(dropFile)),
   ]);
-  const [otherRelations, allDrops] = await Promise.all([
-    loadApprovedRelations(root, { exceptShard: shard }),
-    loadAllApprovedDrops(root),
-  ]);
-  const shardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  const shardSenseIds = senseIdsOf(loaded.canonicalRows);
+  // #6555: every consumer below (ID pair conflicts, reverse candidate forms, orphan and text Drops, row validation and
+  // accounting) looks other-shard rows up only by a key whose Sense belongs to this shard, so only Relations touching
+  // a shard Sense can change a result. Drops are looked up only by a source Sense of this shard, and other files' Drops
+  // with such a source are excluded on both paths, so no other-file Drop can either. `fullOtherRows` is the full path.
+  const full = referenceRun.getStore() === true;
+  const [otherRelations, otherDrops] = full
+    ? await Promise.all([
+      loadApprovedRelations(root, { exceptShard: shard }),
+      loadAllApprovedDrops(root).then((rows) => rows.filter((row) => !shardSenseIds.has(row.source_sense_id))),
+    ])
+    : [await loadShardTouchingRelations(root, { exceptShard: shard, senseIds: shardSenseIds }), []];
   const candidateMerge = mergeCandidates(loaded.canonicalRows, loaded.candidateFiles, {
     canonicalLemmaForms: new Set([...loaded.index.byLemma.keys()].map(normalizeCandidate)),
   });
-  const otherDrops = allDrops.filter((row) => !shardSenseIds.has(row.source_sense_id));
   // Callers may validate a Git baseline while the working tree already contains a prior apply result.
   // Keep the selected shard's drop set bound to that same baseline for repeatable apply calculations.
   const scopedAllDrops = [...otherDrops, ...ownDrops];
@@ -1058,7 +1070,11 @@ async function writeOutput(file, text, root) {
   await writeFile(destination, text, 'utf8');
 }
 
-export async function run(argv, { root = REPOSITORY_DIRECTORY } = {}) {
+export async function run(argv, { root = REPOSITORY_DIRECTORY, fullOtherRows = false } = {}) {
+  return referenceRun.run(fullOtherRows === true, () => runCommand(argv, root));
+}
+
+async function runCommand(argv, root) {
   const options = parseArgs(argv);
   if (options.command === 'help') {
     console.log(USAGE);
