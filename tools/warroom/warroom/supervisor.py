@@ -5069,13 +5069,15 @@ class Supervisor:
         An unresolved answer that no correction can absorb is never replayable, so after a validator fix the Part would
         stay stuck on the old diagnostics. When nothing of the round was applied and the read-only preflight now has a
         different fingerprint, the saved page is stale: start a fresh bounded round from the current preflight.
+        Earlier pages of the same round may already be applied (`applied_candidate_keys`): they are checkpoint facts the
+        new preflight already reflects, so only an in-flight apply of the rejected page blocks the refresh.
         Returns True once this Retry was handled; False when the normal replay/launch path applies.
         """
         current = state.get("current")
         attempts = current.get("attempt_log") if isinstance(current, dict) else None
         attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
         if not isinstance(attempt, dict) or attempt.get("status") != "rejected" or attempt.get("reason_code") != "unresolved" \
-                or current.get("pending_answer") is not None or current.get("applied_candidate_keys") \
+                or current.get("pending_answer") is not None \
                 or current.get("apply_intent") is not None or current.get("duplicate_pair_fallback") is not None:
             return False
         bb, pp = stage2.split_key(b["batch"])
