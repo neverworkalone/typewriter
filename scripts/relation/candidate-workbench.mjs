@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { loadCanonicalLemmaForms, normalizeCandidate, sourceLemmaContainmentMessage, validateCandidateBatch } from './candidate-contract.mjs';
+import { isGlossRestatement, isGlossRestatementShape, loadCanonicalLemmaForms, normalizeCandidate, sourceLemmaContainmentMessage, validateCandidateBatch } from './candidate-contract.mjs';
 
 export const CANDIDATE_WORKBENCH_CONTRACT = 'candidate-workbench-v2';
 export const DEFAULT_CANDIDATE_CHUNK_SIZE = 25;
@@ -550,7 +550,7 @@ export async function readCandidateChunkPage({ scratchDirectory, chunk: requeste
 }
 
 /** Remove objective source-lemma containment while validating candidate strings in one pass. */
-function removeSourceSelfRepeats(candidates, source, senseId, location, newCandidateStartIndex = 0) {
+function removeSourceSelfRepeats(candidates, source, senseId, location, newCandidateStartIndex = 0, glossCheck) {
   if (!Array.isArray(candidates)) fail(`${location} candidates must be an array`);
   const autoRemoved = [];
   let retained;
@@ -560,15 +560,30 @@ function removeSourceSelfRepeats(candidates, source, senseId, location, newCandi
       fail(`${location} candidate ${index + 1} ${JSON.stringify(candidate)} must be a non-empty trimmed string`);
     }
     const containment = sourceLemmaContainmentMessage(candidate, source);
-    if (containment !== undefined) {
+    const restatement = containment === undefined && glossCheck !== undefined
+      && isGlossRestatement(candidate, glossCheck.glossOf(senseId), glossCheck.lemmaForms);
+    if (containment !== undefined || restatement) {
       if (retained === undefined) retained = candidates.slice(0, index);
-      autoRemoved.push({ senseId, candidate, reason: 'source lemma repeat' });
+      autoRemoved.push({ senseId, candidate, reason: containment !== undefined ? 'source lemma repeat' : 'gloss restatement' });
     } else {
       retained?.push(candidate);
       if (index >= newCandidateStartIndex) newCandidateCount += 1;
     }
   }
   return { candidates: retained ?? candidates, autoRemoved, newCandidateCount };
+}
+
+/**
+ * Method A only: build the gloss-restatement check for these source records. The Canonical lemma set (exempting
+ * lexicalized compounds) is read only when some candidate actually has the restatement shape.
+ */
+async function glossCheckFor(method, sourceRows, candidateSenses, repositoryDirectory) {
+  if (method !== 'a') return undefined;
+  const glosses = new Map(sourceRows.flatMap((row) => row.senses.map((sense) => [sense.id, sense.gloss])));
+  const shaped = candidateSenses.some((sense) => Array.isArray(sense.candidates)
+    && sense.candidates.some((candidate) => typeof candidate === 'string'
+      && isGlossRestatementShape(candidate, glosses.get(sense.sense_id))));
+  return { glossOf: (senseId) => glosses.get(senseId), lemmaForms: shaped ? await loadCanonicalLemmaForms(repositoryDirectory) : undefined };
 }
 
 function assertCandidateDuplicates(candidates, location) {
@@ -591,7 +606,8 @@ function assertCandidateList(candidates, location) {
 }
 
 /** Check structure and remove only objectively forbidden source-lemma repetitions before saving a complete chunk. */
-async function validateChunkRows(inputRows, sourceRows, chunkNumber) {
+async function validateChunkRows(inputRows, sourceRows, chunkNumber, method, repositoryDirectory) {
+  const glossCheck = await glossCheckFor(method, sourceRows, inputRows.flatMap((row) => Array.isArray(row?.senses) ? row.senses : []), repositoryDirectory);
   const autoRemoved = [];
   const label = `chunk ${String(chunkNumber).padStart(3, '0')}`;
   const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
@@ -615,7 +631,7 @@ async function validateChunkRows(inputRows, sourceRows, chunkNumber) {
       if (senseIds.has(sense.sense_id)) fail(`${location} repeats sense_id ${sense.sense_id}`);
       senseIds.add(sense.sense_id);
       const senseLocation = `${location} record_id ${row.record_id} sense_id ${sense.sense_id}`;
-      const filtered = removeSourceSelfRepeats(sense.candidates, source, sense.sense_id, senseLocation);
+      const filtered = removeSourceSelfRepeats(sense.candidates, source, sense.sense_id, senseLocation, 0, glossCheck);
       assertCandidateDuplicates(filtered.candidates, senseLocation);
       autoRemoved.push(...filtered.autoRemoved);
       checkedSenses.push(filtered.candidates === sense.candidates ? sense : { ...sense, candidates: filtered.candidates });
@@ -634,8 +650,8 @@ async function validateChunkRows(inputRows, sourceRows, chunkNumber) {
 }
 
 /** Validate a complete chunk's input rows and write them (replacing any earlier save of it), in Canonical order. */
-async function writeChunkRows(workspace, chunk, sourceRows, inputRows) {
-  const { autoRemoved, inputRows: checkedRows } = await validateChunkRows(inputRows, sourceRows, chunk.number);
+async function writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory) {
+  const { autoRemoved, inputRows: checkedRows } = await validateChunkRows(inputRows, sourceRows, chunk.number, workspace.checkpoint.batch.method, repositoryDirectory);
   const inputById = new Map(checkedRows.map((row) => [row.record_id, row]));
   const rows = sourceRows.map((source) => {
     const input = inputById.get(source.id);
@@ -713,7 +729,7 @@ export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChu
   const contents = await readFile(resolvedInput, 'utf8');
   if (format === 'compact') {
     const { inputRows, duplicatesRemoved, autoRemoved: parsedRemovals } = parseCompactAnswer(contents, chunk, sourceRows);
-    const result = await writeChunkRows(workspace, chunk, sourceRows, inputRows);
+    const result = await writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory);
     const sourceAliases = new Map(compactSenseModel(sourceRows).map((entry) => [entry.sense.id, entry.alias]));
     const autoRemoved = [
       ...parsedRemovals,
@@ -722,7 +738,7 @@ export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChu
     const { autoRemoved: _discard, ...saved } = result;
     return { ...saved, duplicatesRemoved, autoRemoved: { count: autoRemoved.length, items: autoRemoved } };
   }
-  return writeChunkRows(workspace, chunk, sourceRows, parseJsonl(contents, resolvedInput));
+  return writeChunkRows(workspace, chunk, sourceRows, parseJsonl(contents, resolvedInput), repositoryDirectory);
 }
 
 /**
@@ -771,8 +787,9 @@ export async function patchCandidateSenses({ scratchDirectory, inputPath, reposi
     if (!source) fail(`${location} missing Canonical source record ${patch.record_id} from the prepared chunk`);
     const newCandidateStartIndex = sense.candidates.length;
     sense.candidates.push(...(patch.add ?? []));
+    const glossCheck = await glossCheckFor(workspace.checkpoint.batch.method, [source], [sense], repositoryDirectory);
     const filtered = removeSourceSelfRepeats(sense.candidates, source, patch.sense_id,
-      `${location} ${patch.record_id}/${patch.sense_id}`, newCandidateStartIndex);
+      `${location} ${patch.record_id}/${patch.sense_id}`, newCandidateStartIndex, glossCheck);
     autoRemoved.push(...filtered.autoRemoved);
     sense.candidates = filtered.candidates;
     added += filtered.newCandidateCount;
@@ -808,6 +825,7 @@ export async function mergeCandidateBatch({ scratchDirectory, outPath, replace =
     canonicalLemmaForms,
     sourceName: canonicalPath,
     candidateName: 'Candidate workbench output',
+    enforceGlossRestatement: checkpoint.batch.method === 'a',
   });
   const resolvedOutput = path.resolve(repositoryDirectory, outPath ?? '');
   const relativeOutput = path.relative(repositoryDirectory, resolvedOutput);
