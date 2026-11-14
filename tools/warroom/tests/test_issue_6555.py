@@ -4,7 +4,8 @@ import unittest
 from pathlib import Path
 
 from tests import test_issue_6249 as t6249
-from warroom.github import GhTransient
+from warroom.github import GhClient, GhTransient
+from warroom.shell import Result
 from warroom.gitops import GitError, GitTransient, Stage2AmendRejected
 from warroom.supervisor import (S2_FIX_APPLY_ATTEMPTS, S2_FIX_COMMIT_SUBJECT, S2_FIX_REPLY_LIST_WAIT_SECONDS,
                                 S2_FIX_RESPONSE)
@@ -241,6 +242,55 @@ class SupervisedStage2Fix(unittest.TestCase):
         self.assertEqual(len(self._replies(w, b)), 1)
         self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
         self._completed(w, b, base, w.git.local_head)
+
+    def _post_fails(self, w, b, store_comment, result):
+        """`gh issue comment` exits with `result` (classified by the real GhClient); GitHub may still have stored it."""
+        listed, stored = w.gh.issue_comments, []
+
+        def comment(n, body):
+            if store_comment:
+                stored.append(w.gh.add_pr_reply(n, body))
+            raise GhClient._fail("gh issue comment", result)
+
+        def lagging(n):   # the first two listings after the post do not show it yet
+            lagging.calls = getattr(lagging, "calls", 0) + 1
+            comments = listed(n)
+            return [c for c in comments if c.get("id") not in stored] if stored and lagging.calls <= 3 else comments
+        w.gh.comment_issue, w.gh.issue_comments = comment, lagging
+        return stored
+
+    def test_a_post_whose_gh_process_was_killed_is_found_and_recorded_once(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        base = w.gh.pull(b["pr_number"])["head_sha"]
+        w.git.stage2_amend_results = [{"changes": {DROP: "drop\n"}}]
+        stored = self._post_fails(w, b, True, Result(-9, "", ""))   # a non-transient GhError: outcome still unknown
+        b = self._end(w, b, fix)
+        for _ in range(4):
+            if b["state"] != "FIXING":
+                break
+            w.tick()
+            b = w.store.batch(b["id"])
+        self.assertEqual(len(stored), 1, "an unconfirmed post is never repeated")
+        self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
+        self._completed(w, b, base, w.git.local_head)
+
+    def test_an_unconfirmed_failed_post_is_not_repeated_and_leaves_the_event_open(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        base = w.gh.pull(b["pr_number"])["head_sha"]
+        w.git.stage2_amend_results = [{"changes": {DROP: "drop\n"}}]
+        attempts = []
+        self._post_fails(w, b, False, Result(1, "", "HTTP 422: Validation Failed"))
+        failing = w.gh.comment_issue
+        w.gh.comment_issue = lambda n, body: (attempts.append(body), failing(n, body))
+        b = self._end(w, b, fix)
+        w.tick()
+        w.now += S2_FIX_REPLY_LIST_WAIT_SECONDS
+        for _ in range(3):
+            w.tick()
+        b = w.store.batch(b["id"])
+        self.assertEqual((b["state"], len(attempts)), ("ERROR", 1))
+        self.assertIn("warroom-s2-fix", b["error"])
+        self.assertEqual(w.store.handled_event(b["id"], b["pr_number"], base, "review:77")["status"], "LEGACY")
 
     def test_a_reply_with_the_nonce_but_wrong_binding_stops_without_completing(self):
         w, b, wt, fix = self._fix(self.AMEND)

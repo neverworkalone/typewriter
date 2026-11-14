@@ -3851,23 +3851,23 @@ class Supervisor:
             if not (isinstance(posted, dict) and posted.get("nonce") == baseline["nonce"]):
                 reply = response["reply"].strip()
                 missing = "".join(f"[{event}] " for event in response["event_keys"] if f"[{event}]" not in reply)
-                # Recorded before the call: once a post may have reached GitHub it is never posted again (#6555 review).
-                self.store.set(posted_key, json.dumps({"nonce": baseline["nonce"], "at": self.clock()}))
+                # Recorded before the call and never cleared by a failure: a `gh` exit (timeout, signal, an error
+                # printed after GitHub stored the comment) cannot prove the post did not happen, so a round posts at
+                # most once and afterwards only looks for its own post (#6555 review).
+                posted = {"nonce": baseline["nonce"], "at": self.clock()}
+                self.store.set(posted_key, json.dumps(posted))
                 try:
                     self.gh.comment_issue(b["pr_number"], "\n".join([f"{missing}{reply}", ""]
                                                                        + self._stage2_fix_reply_lines(baseline, head)))
-                except GhTransient:
-                    raise   # the outcome is unknown (timeout, network): keep the marker and look for the post later
-                except GhError:
-                    self.store.delete(posted_key)   # GitHub definitely refused it: a later attempt may post
-                    raise
-                posted = {"nonce": baseline["nonce"], "at": self.clock()}
+                except (GhError, GhTransient) as e:
+                    raise GhTransient(f"Stage 2 리뷰 수정 답글 게시 결과를 확정할 수 없습니다({e}); 게시 여부를 다시 조회합니다") from e
                 reply_id = self._stage2_fix_reply_id(b, baseline, head)
             if reply_id is None:
                 if self.clock() - float(posted.get("at") or 0) < S2_FIX_REPLY_LIST_WAIT_SECONDS:
                     raise GhTransient("게시한 Stage 2 리뷰 수정 답글이 아직 PR 댓글 목록에 없습니다")
-                raise GitError(f"Stage 2 리뷰 수정 답글 게시 결과를 {S2_FIX_REPLY_LIST_WAIT_SECONDS}s 동안 확인하지 못했습니다. "
-                               "중복 게시를 피하려고 다시 게시하지 않습니다")
+                raise GitError(f"Stage 2 리뷰 수정 답글 게시를 시도했지만 {S2_FIX_REPLY_LIST_WAIT_SECONDS}s 동안 PR 댓글에서 확인하지 "
+                               f"못했습니다. 중복을 피하려고 다시 게시하지 않습니다. PR #{b['pr_number']}에 "
+                               f"`<!-- warroom-s2-fix {baseline['nonce']} -->` 댓글이 있는지 확인하세요; 리뷰 이벤트는 미완료로 보존합니다")
         self.store.set(f"s2_fix_reply_{b['id']}", json.dumps({"nonce": baseline["nonce"], "reply_id": reply_id,
                                                               "head": head}, sort_keys=True))
         return reply_id
