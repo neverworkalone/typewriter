@@ -217,13 +217,27 @@ class Stage2RepairRebind(unittest.TestCase):
         data["repair_receipts"].append({"request_id": "8" * 64, "fingerprint": "9" * 64,
                                         "supervisor_nonce": REPAIR_NONCE, "candidate_keys": [second]})
         path.write_text(json.dumps(data), "utf-8")
+        # The completed current round is round 2: its page, targets, applied set and applied attempt agree.
+        state["current"].update({
+            "fingerprint": "9" * 64, "target_keys": [second], "applied_candidate_keys": [second],
+            "groups": [{"candidate_keys": [second], "conflicts": [], "candidates": [
+                {"source_sense_id": "source-sense", "candidate": "candidate-1", "same_group_peers": []}]}],
+            "cursor": 1, "last_receipt": "8" * 64,
+            "attempt_log": [{"cursor": 0, "attempt": 1, "fingerprint": "9" * 64, "target_keys": [second],
+                             "status": "applied", "receipt": "8" * 64}]})
         w.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, sort_keys=True))
+        run_start = json.loads(w.store.get(stage2.repair_run_start_key(b["id"])))
+        run_start.update({"fingerprint": "9" * 64, "page_keys": [second]})
+        w.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(run_start, sort_keys=True))
         return w, b, state
 
     def test_superseded_partial_round_does_not_fail_receipt_history_match(self):
         w, b, state = self._partial_round_world()
         # Unreceipted targets of round 1 are exactly round 2's targets, so history proof must not reject the receipts.
-        self.assertNotIn("persisted history", self._problem(w, b, state))
+        self.assertEqual(self._problem(w, b, state), "")
+
+    def test_partial_round_with_unproven_remaining_targets_still_fails_closed(self):
+        w, b, state = self._partial_round_world()
         state["history"][0]["remaining_candidate_keys"] = []
         self.assertIn("persisted history", self._problem(w, b, state))
 
