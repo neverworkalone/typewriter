@@ -276,6 +276,13 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 **정제 PR 리뷰 수정 (#6555):** War Room의 Stage 3 FIXING에서 AI는 판정만 제출한다. 리뷰가 지적한 Sense의 base 행과 현재 결정을 `decisions --senses`로 받고, `.warroom-scratch/s3-fix-response.json`에 `{event_keys, amend, reply}`를 쓴다. Supervisor의 Review FIXING Coordinator(`tools/warroom/warroom/fixcoord.py`)는 그 amend를 PR base에서 실행하고, amend가 바꾼 샤드 파일만 commit한다. 정확한 commit을 `verify --shard`로 한 번 검증한 뒤 push하고, 답글을 한 번만 게시한다. 완료는 기존 Stage 3 범위·답글 게이트가 판정한다. 입력 거부는 같은 세션에 사유와 함께 정해진 횟수까지 돌려보내고, 실행 실패는 같은 입력으로 한 번 다시 실행한 뒤 보존하고 멈춘다.
 
+**정제 단계 추가 절차 (#6555):** S3 이후 정제 단계(S4~S10)는 War Room의 같은 정제 라인(`s3` method)에서 차례로 실행한다. 한 단계는 앞 단계의 전체 샤드가 끝난 뒤 시작한다. 각 샤드는 Stage 3가 Stage 2에 묶이듯 앞 단계의 그 샤드 완료(`<앞 단계 id>_ok_SSS`)에 묶인다. 병렬 chunk, finalize, merge 후 verify, Review FIXING Coordinator, Maintainer 처리는 모든 단계가 공유하고, batch의 `batch` 값(`spec.tag`, Stage 3는 `all`)으로 단계를 구분한다. 새 단계를 추가할 때 필요한 것은 다음이다.
+
+1. **JS 규칙:** `scripts/relation/refine/rules/sN.mjs`에 허용 결정, chunk view, 결정 문법, 행 변환, diff 역산, amend delta를 정하고, `createRefineCli`로 그 단계의 CLI 진입점을 만든다.
+2. **프롬프트:** `tools/warroom/prompts/`에 chunk, fix, 정책 카드 프롬프트를 둔다(placeholder는 Stage 3와 같다).
+3. **War Room spec:** 단계의 답변 규칙(`decision_text`, `decision_context`, `validate_prompt_view`, `normalize_decisions`)과 `refine.register(refine.RefineSpec(...))` 항목 하나를 둔다. 항목에는 id/tag/label/PR 제목/이슈/CLI/scratch/프롬프트 이름/앞 단계 게이트/`fixcoord.FixSpec`이 들어간다.
+4. **테스트:** 규칙 전용 테스트를 둔다.
+
 ### 5-A. 파일·후보 회계
 
 - **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"z"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.

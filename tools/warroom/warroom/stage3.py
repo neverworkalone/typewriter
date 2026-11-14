@@ -1,35 +1,22 @@
-"""War Room control for the one-PR-per-shard Relation Factory Stage 3 editor (#2450)."""
+"""Stage 3 (#2450, #2455): the first refinement Stage — its spec, its chunk answer rule, and the shared line's keys.
+
+The Stage-independent War Room operations (checkpoint, chunk read/save, apply, report, PR scope, next-shard choice)
+live in `refine.RefineOps`; this module binds them to the Stage 3 spec under their historical names, so `stage3` is
+both the Stage 3 operations and the Stage 3 answer rule (`decision_text`, `decision_context`, `validate_prompt_view`,
+`normalize_decisions`).
+"""
 from __future__ import annotations
 
-import json
 import re
-from dataclasses import dataclass
-from pathlib import Path
+import sys
 
-from . import batches, prbody, stage2
+from . import fixcoord, prbody, refine, stage2
+from .refine import SHARDS, Choice, RefineError as Stage3Error  # noqa: F401 - historical names
 from .store import STAGE3_METHOD
 
 METHOD = STAGE3_METHOD
 EDIT_CLI = "scripts/relation/edit-cli.mjs"
-SHARDS = 428
 _SHARD = re.compile(r"^\d{3}$")
-_PR_TITLE = prbody.S3_TITLE   # new `[S3/<Model>] SSS` and legacy `[Relation Stage 3] SSS` (#2838)
-_ISSUE_LINK = prbody.S3_ISSUE_LINK   # #2455 (production contract) or legacy #2450
-
-
-class Stage3Error(ValueError):
-    pass
-
-
-@dataclass(frozen=True)
-class Choice:
-    status: str  # shard | wait | done
-    shard: str | None = None
-    note: str = ""
-
-
-def ok_key(shard: str) -> str:
-    return f"s3_ok_{shard}"
 
 
 def run_start_key(batch_id: int) -> str:
@@ -58,55 +45,6 @@ def task_path(task: str, name: str) -> str:
     return f"{TASKS_DIR}/{task}/{name}"
 
 
-def checkpoint_path(worktree, shard: str) -> Path:
-    return Path(worktree) / ".warroom-scratch" / f"relation-edit-{shard}.json"
-
-
-def checkpoint(worktree, shard: str) -> dict | None:
-    """Read the compact CLI checkpoint; its persisted structure is intentionally kept owned by edit-cli."""
-    path = checkpoint_path(worktree, shard)
-    if not path.exists():
-        return None
-    try:
-        value = json.loads(path.read_text("utf-8"))
-    except (OSError, ValueError) as error:
-        raise Stage3Error(f"Stage 3 checkpoint cannot be read: {error}") from error
-    if (not isinstance(value, dict) or value.get("version") != 1 or value.get("shard") != shard
-            or type(value.get("chunk_total")) is not int or value["chunk_total"] < 0
-            or not isinstance(value.get("completed_chunks"), list)
-            or not isinstance(value.get("decisions"), list)):
-        raise Stage3Error(f"Stage 3 checkpoint does not match shard {shard}")
-    total = value["chunk_total"]
-    completed = value["completed_chunks"]
-    if any(not isinstance(item, str) or not re.fullmatch(r"\d{3}", item)
-           or not 1 <= int(item) <= total for item in completed):
-        raise Stage3Error(f"Stage 3 checkpoint has invalid completed chunks for shard {shard}")
-    if len(set(completed)) != len(completed):
-        raise Stage3Error(f"Stage 3 checkpoint has invalid completed chunks for shard {shard}")
-    return value
-
-
-def progress(state: dict | None) -> tuple[int, int]:
-    if state is None:
-        return 0, 0
-    return len(state["completed_chunks"]), state["chunk_total"]
-
-
-def next_chunk(state: dict) -> str | None:
-    done = set(state["completed_chunks"])
-    return next((f"{number:03d}" for number in range(1, state["chunk_total"] + 1)
-                 if f"{number:03d}" not in done), None)
-
-
-def chunk_saved_since(before: dict, after: dict | None) -> bool:
-    """The run advanced this shard's checkpoint by exactly its one prepared chunk."""
-    if after is None or before["shard"] != after["shard"] or before["chunk_total"] != after["chunk_total"]:
-        return False
-    old, new = set(before["completed_chunks"]), set(after["completed_chunks"])
-    return (len(new - old) == 1 and old <= new and len(new) == len(old) + 1
-            and next_chunk(before) in (new - old))
-
-
 def decision_text(answer: str, chunk: str) -> str:
     """Accept only the compact answer contract; the edit CLI remains the authority for row/target validation."""
     if not isinstance(answer, str):
@@ -120,112 +58,6 @@ def decision_text(answer: str, chunk: str) -> str:
                              for line in lines[1:]):
         raise Stage3Error("Stage 3 answer must contain only D <row...>, L <row> T<target>, or none")
     return "\n".join(lines) + "\n"
-
-
-def shard_pr(pr: dict) -> str | None:
-    match = _PR_TITLE.fullmatch(pr.get("title") or "")
-    return match.group(1) if match and _ISSUE_LINK.search(pr.get("body") or "") else None
-
-
-def validate_pr(pr: dict, files: list[dict]) -> str:
-    """Validate a merged/open Stage 3 PR's declared shard against its exact allowed data-file scope."""
-    shard = shard_pr(pr)
-    if shard is None or pr.get("base_ref") != "master":
-        raise Stage3Error(f"PR #{pr.get('number')} is not an issue-linked Relation Stage 3 PR on master")
-    if not isinstance(files, list):
-        raise Stage3Error(f"PR #{pr.get('number')} changed file list is unavailable")
-    allowed = {f"data/relations/relation-{shard}.jsonl", f"data/relation-drops/drop-{shard}.jsonl"}
-    paths = [item.get("path") if isinstance(item, dict) else None for item in files]
-    if (any(not isinstance(path, str) for path in paths)
-            or set(paths) - allowed or len(paths) != len(set(paths))):
-        raise Stage3Error(f"PR #{pr.get('number')} changed files do not match Stage 3 shard {shard}")
-    return shard
-
-
-def choose(*, kv, open_prs: list[dict], stage2_batches: list, stage3_batches: list,
-           latest_pr=None, pin: str = "") -> Choice:
-    """Select exactly the successor of the last merged production shard."""
-    previous = int(_PR_TITLE.fullmatch(latest_pr["title"]).group(1)) if latest_pr else 0
-    if previous >= SHARDS:
-        return Choice("done", note="Stage 3 전체 샤드 생산이 완료되었습니다.")
-    shard = f"{previous + 1:03d}"
-    if pin and pin != shard:
-        return Choice("unready", note=f"고정 샤드 {pin}와 Stage 3 순차 대상 {shard} 불일치 / 실행 종료")
-    if any(row["shard"] == shard and row["state"] == "COMPLETE" and row["merged"] for row in stage3_batches):
-        return Choice("wait", note=f"샤드 {shard} 완료의 GitHub 검색 반영 대기")
-    if (any(row["shard"] == shard and row["state"] != "COMPLETE" for row in stage2_batches + stage3_batches)
-            or any(shard in batches.pr_stage2_shards(pr) for pr in open_prs)):
-        return Choice("wait", note=f"샤드 {shard} 작업·PR 점유")
-    if not kv.get(stage2.ok_key(shard, None)):
-        return Choice("unready", note=f"다음 샤드 {shard} Stage 2 미완료 / 실행 종료")
-    return Choice("shard", shard)
-
-
-def cli(runner, env: dict, worktree, *args: str, timeout: int = 900):
-    result = runner.run(["node", EDIT_CLI, *args], cwd=worktree, env=env, timeout=timeout)
-    if not result.ok:
-        raise Stage3Error(" ".join((result.err or result.out).split())[-500:])
-    try:
-        return json.loads(result.out or "null")
-    except ValueError as error:
-        raise Stage3Error(f"edit-cli returned invalid JSON: {error}") from error
-
-
-def prepare(runner, env: dict, worktree, shard: str) -> dict:
-    result = cli(runner, env, worktree, "prepare", "--shard", shard)
-    if not isinstance(result, dict):
-        raise Stage3Error("edit-cli prepare returned an invalid result")
-    state = checkpoint(worktree, shard)
-    if state is None or result.get("chunk_count") != state["chunk_total"]:
-        raise Stage3Error("edit-cli prepare did not create the expected checkpoint")
-    return state
-
-
-def read_chunk_prompt(runner, env: dict, worktree, shard: str) -> tuple[dict, str]:
-    """Return the unchanged prepared view and its validated compact prompt view (never a JSON fallback)."""
-    result = cli(runner, env, worktree, "read-chunk", "--shard", shard)
-    if not isinstance(result, dict) or not isinstance(result.get("chunk"), str):
-        raise Stage3Error("edit-cli read-chunk returned no active chunk")
-    state = checkpoint(worktree, shard)
-    if state is None or result["chunk"] != next_chunk(state):
-        raise Stage3Error("edit-cli read-chunk is not the next checkpoint chunk")
-    if "prompt_view" not in result:
-        raise Stage3Error("edit-cli read-chunk returned no prompt_view")
-    view = {key: value for key, value in result.items() if key != "prompt_view"}
-    validate_prompt_view(result["prompt_view"], decision_context(view, view["chunk"]), state["chunk_total"])
-    return view, result["prompt_view"]
-
-
-def read_chunk(runner, env: dict, worktree, shard: str) -> dict:
-    return read_chunk_prompt(runner, env, worktree, shard)[0]
-
-
-def refresh_pending_chunks(runner, env: dict, worktree, shard: str) -> dict:
-    """Recompute pending views from current Git inputs while preserving checkpointed decisions.
-
-    The CLI requires every completed chunk's full prepared view (including hidden Relation row bindings) to match the
-    current render before it updates any pending scratch view. A changed chunk count or completed view fails closed.
-    """
-    result = cli(runner, env, worktree, "refresh-pending", "--shard", shard)
-    if not isinstance(result, dict) or result.get("shard") != shard or type(result.get("chunk_count")) is not int:
-        raise Stage3Error("edit-cli refresh-pending returned an invalid result")
-    state = checkpoint(worktree, shard)
-    if state is None or result["chunk_count"] != state["chunk_total"]:
-        raise Stage3Error("edit-cli refresh-pending did not preserve the Stage 3 checkpoint")
-    if "prompt_view" not in result:
-        raise Stage3Error("edit-cli refresh-pending returned no prompt_view")
-    prompt_view = result.pop("prompt_view")
-    expected = next_chunk(state)
-    if expected is None:
-        if (result.get("current_chunk") is not None or result.get("current_view") is not None
-                or prompt_view is not None):
-            raise Stage3Error("edit-cli refresh-pending returned a chunk after checkpoint completion")
-        return result
-    if (result.get("current_chunk") != expected or not isinstance(result.get("current_view"), dict)
-            or type(result.get("active_changed")) is not bool):
-        raise Stage3Error("edit-cli refresh-pending returned no exact next chunk view")
-    validate_prompt_view(prompt_view, decision_context(result["current_view"], expected), state["chunk_total"])
-    return result
 
 
 def validate_prompt_view(prompt_view, context: dict, total: int) -> None:
@@ -428,57 +260,25 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
     return normalized, warnings
 
 
-def save_chunk(runner, env: dict, worktree, shard: str, chunk: str, answer: str) -> dict:
-    text = decision_text(answer, chunk)
-    scratch = Path(worktree) / ".warroom-scratch"
-    scratch.mkdir(parents=True, exist_ok=True)
-    input_path = scratch / f"relation-edit-{shard}-decisions.txt"
-    input_path.write_text(text, "utf-8")
-    result = cli(runner, env, worktree, "save-chunk", "--shard", shard,
-                 "--in", f".warroom-scratch/{input_path.name}")
-    if not isinstance(result, dict):
-        raise Stage3Error("edit-cli save-chunk returned an invalid result")
-    return result
-
-
-def apply(runner, env: dict, worktree, shard: str) -> dict:
-    result = cli(runner, env, worktree, "apply", "--shard", shard)
-    if not isinstance(result, dict):
-        raise Stage3Error("edit-cli apply returned an invalid result")
-    return result
-
-
-def report(runner, env: dict, worktree, shard: str) -> dict:
-    scratch = Path(worktree) / ".warroom-scratch"
-    scratch.mkdir(parents=True, exist_ok=True)
-    output = scratch / f"relation-edit-{shard}-report.json"
-    cli(runner, env, worktree, "report", "--shard", shard, "--out", str(output))
-    try:
-        value = json.loads(output.read_text("utf-8"))
-    except (OSError, ValueError) as error:
-        raise Stage3Error(f"edit-cli report did not create valid JSON: {error}") from error
-    if not isinstance(value, dict) or value.get("shard") != shard:
-        raise Stage3Error("edit-cli report returned an invalid shard report")
-    return value
-
-
-def read_chunk_by_number(runner, env: dict, worktree, shard: str, chunk: str) -> tuple[dict, str, str, bool]:
-    """Explicit chunk read: (unchanged prepared view, validated compact prompt view, view digest, completed)."""
-    result = cli(runner, env, worktree, "read-chunk", "--shard", shard, "--chunk", chunk)
-    state = checkpoint(worktree, shard)
-    if (not isinstance(result, dict) or result.get("chunk") != chunk or state is None
-            or not isinstance(result.get("view_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", result["view_sha256"])
-            or type(result.get("completed")) is not bool):
-        raise Stage3Error(f"edit-cli read-chunk --chunk {chunk} returned an invalid result")
-    view = {key: value for key, value in result.items() if key not in ("prompt_view", "view_sha256", "completed")}
-    validate_prompt_view(result.get("prompt_view"), decision_context(view, chunk), state["chunk_total"])
-    return view, result["prompt_view"], result["view_sha256"], result["completed"]
-
-
-def save_chunk_by_number(runner, env: dict, worktree, shard: str, chunk: str, input_rel: str, view_sha256: str) -> dict:
-    """Explicit chunk save bound to the launch-time view digest; `already_saved` is the idempotent success."""
-    result = cli(runner, env, worktree, "save-chunk", "--shard", shard, "--chunk", chunk, "--in", input_rel,
-                 "--expect-view-sha256", view_sha256)
-    if not isinstance(result, dict) or result.get("chunk") != chunk:
-        raise Stage3Error("edit-cli save-chunk --chunk returned an invalid result")
-    return result
+SPEC = refine.register(refine.RefineSpec(
+    id="s3", tag="all", label="Stage 3", short="S3", issue=prbody.S3_ISSUE, cli=EDIT_CLI, scratch="relation-edit",
+    title=prbody.S3_TITLE,   # new `[S3/<Model>] SSS` and legacy `[Relation Stage 3] SSS` (#2838)
+    issue_link=prbody.S3_ISSUE_LINK,   # #2455 (production contract) or legacy #2450
+    detail_title=re.compile(r"(?:\[S3/([A-Za-z0-9-]+)\]|\[Relation Stage 3\]) (\d{3})"),
+    search_phrases=('"S3"', '"Relation Stage 3"'), legacy_title=prbody.s3_legacy_title,
+    chunk_prompt="s3_chunk", fix_prompt="s3_fix", policy_card="s3_policy_card",
+    gate=lambda kv, shard: bool(kv.get(stage2.ok_key(shard, None))), gate_label="Stage 2",
+    rule=sys.modules[__name__],
+    # #6555: a Stage 3 review fix submits only its judgment; the Review FIXING Coordinator applies it with `amend`.
+    fix=fixcoord.FixSpec(prefix="s3", label="Stage 3", response=".warroom-scratch/s3-fix-response.json",
+                         amend_input=".warroom-scratch/s3-fix-amend.txt",
+                         commit_subject="Apply Stage 3 review amendments", amend_header="amend"),
+    module=sys.modules[__name__]))
+OPS = refine.RefineOps(SPEC)
+ok_key = SPEC.ok_key
+progress, next_chunk, chunk_saved_since = refine.progress, refine.next_chunk, refine.chunk_saved_since
+checkpoint_path, checkpoint = OPS.checkpoint_path, OPS.checkpoint
+shard_pr, validate_pr, choose = OPS.shard_pr, OPS.validate_pr, OPS.choose
+cli, prepare, apply, report = OPS.cli, OPS.prepare, OPS.apply, OPS.report
+read_chunk_prompt, read_chunk, refresh_pending_chunks = OPS.read_chunk_prompt, OPS.read_chunk, OPS.refresh_pending_chunks
+save_chunk, read_chunk_by_number, save_chunk_by_number = OPS.save_chunk, OPS.read_chunk_by_number, OPS.save_chunk_by_number

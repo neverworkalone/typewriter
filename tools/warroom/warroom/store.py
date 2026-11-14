@@ -425,8 +425,10 @@ class Store:
                 if held:
                     raise LineBusy(f"Stage 3는 한 번에 한 샤드만 점유합니다: {held['producer']}가 "
                                    f"샤드 {held['shard']}({held['state']})를 소유 중입니다.")
-                prior = c.execute("SELECT producer, state FROM batches WHERE method=? AND shard=? "
-                                  "AND state='COMPLETE' AND merged=1", (STAGE3_METHOD, f["shard"])).fetchone()
+                # A completed shard blocks a repeat of the same refinement Stage only (`batch` is the Stage tag,
+                # #6555): the next Stage runs exactly on the shards the previous one completed.
+                prior = c.execute("SELECT producer, state FROM batches WHERE method=? AND shard=? AND batch=? "
+                                  "AND state='COMPLETE' AND merged=1", (STAGE3_METHOD, f["shard"], f["batch"])).fetchone()
                 if prior:
                     raise LineBusy(f"Stage 3 샤드 {f['shard']}는 이미 {prior['producer']}의 완료 기록이 있습니다.")
                 s2 = c.execute("SELECT producer, batch, state FROM batches WHERE method=? AND shard=? "

@@ -98,12 +98,12 @@ def stage2_body(model: str, shard: str, batch: str, part: str, *, counts: dict |
 
 
 def stage3_body(model: str, shard: str, *, result: dict, apply_pass: bool, shard_verify: bool,
-                cost: str | None = None) -> str:
+                cost: str | None = None, method: str = "S3", issue: int = S3_ISSUE) -> str:
     """`result` is the persisted apply/report outcome; missing members stay unmeasured."""
     reviewed, done, total = _count(result.get("reviewed")), _count(result.get("chunks_done")), _count(result.get("chunks_total"))
     chunks = "미측정" if done is None or total is None else f"{done}/{total}"
     lines = [
-        "- Method: S3",
+        f"- Method: {method}",
         f"- Model: {model}",
         f"- Shard: {shard}",
         "- Scope: Shard-wide editorial audit",
@@ -117,7 +117,7 @@ def stage3_body(model: str, shard: str, *, result: dict, apply_pass: bool, shard
     ]
     if cost:
         lines.append(f"- Token Cost / Duration: {cost}")
-    return "\n".join(lines + ["", f"Refs #{S3_ISSUE}"]) + "\n"
+    return "\n".join(lines + ["", f"Refs #{issue}"]) + "\n"
 
 
 def run_cost(runs) -> str | None:
