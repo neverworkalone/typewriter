@@ -4504,6 +4504,17 @@ class Supervisor:
                 return "Stage 2 legacy rejection proof hash does not match its evidence"
         return None
 
+    @staticmethod
+    def _stage2_repair_page_is_stale(current: dict, fingerprint: str) -> bool:
+        """An unresolved-rejected, unapplied page whose basis a clean preflight (different fingerprint) has superseded."""
+        attempts, groups, cursor = current.get("attempt_log"), current.get("groups"), current.get("cursor")
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+        return isinstance(attempt, dict) and attempt.get("status") == "rejected" \
+            and attempt.get("reason_code") == "unresolved" and current.get("pending_answer") is None \
+            and current.get("apply_intent") is None and current.get("duplicate_pair_fallback") is None \
+            and isinstance(groups, list) and type(cursor) is int and cursor < len(groups) \
+            and current.get("fingerprint") != fingerprint
+
     def _stage2_repair_rebind_problem(self, b, state: dict, checkpoint: dict, fingerprint: str) -> str | None:
         """Advance a completed Repair identity only after current-base preflight and durable owner evidence."""
         try:
@@ -4548,6 +4559,35 @@ class Supervisor:
 
             histories = state.get("history")
             current = state.get("current")
+            if isinstance(histories, list) and histories and isinstance(current, dict) and (
+                    current.get("abandoned") is not None or self._stage2_repair_page_is_stale(current, fingerprint)):
+                # The preflight is clean, so a rejected-unresolved page that never reached an apply boundary has
+                # nothing left to repair. Rebind only the owner identity (verified Supervisor integration), and close
+                # the superseded page instead of leaving an unfinished cursor.
+                if not self.git.verified_supervisor_integration(wt, b["branch"], self.cfg["base_branch"], old_head, head):
+                    return "Stage 2 repair rebind lacks a verified Supervisor master-integration chain"
+                updated = json.loads(json.dumps(state))
+                cur = updated["current"]
+                if cur.get("abandoned") is None:
+                    cur["abandoned"] = {"fingerprint": cur.get("fingerprint"), "cursor": cur.get("cursor"),
+                                        "target_keys": cur.get("target_keys"),
+                                        "applied_candidate_keys": cur.get("applied_candidate_keys"),
+                                        "attempt_log": cur.get("attempt_log"), "last_error": cur.get("last_error"),
+                                        "superseded_by": fingerprint}
+                    for key in ("last_error", "last_response", "schema_repair", "response_correction"):
+                        cur.pop(key, None)
+                    cur.update({"groups": [], "cursor": 0, "attempts": 0, "attempt_log": []})
+                updated.setdefault("rebindings", []).append({
+                    "from_head": old_head, "to_head": head, "branch": b["branch"], "worktree": str(wt),
+                    "base_branch": self.cfg["base_branch"], "remote_head": remote,
+                    "preflight_fingerprint": fingerprint,
+                })
+                updated["identity"]["base_head"] = head
+                updated["identity"]["remote_head"] = remote
+                self._save_stage2_repair_state(b, updated)
+                state.clear()
+                state.update(updated)
+                return None
             if not isinstance(histories, list) or not histories or not isinstance(current, dict):
                 return "Stage 2 repair rebind has no completed repair history; preserving state"
             groups = current.get("groups")
