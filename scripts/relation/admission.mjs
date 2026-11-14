@@ -733,6 +733,13 @@ function glossNamesExactCandidate(gloss, candidate) {
   const normalizedGloss = normalizeCandidate(gloss);
   const normalizedCandidate = normalizeCandidate(candidate);
   if (!normalizedCandidate) return false;
+  // A valid arrow-reference gloss (`→ 만장이.`, `→ 여남은[Ⅰ].`) names exactly its parsed headword. Its trailing syllable
+  // is part of that headword, not a particle, so a shorter candidate (`만장`) must not match through suffix stripping.
+  const reference = parseArrowReference(normalizedGloss);
+  if (reference?.ok) {
+    const { headword } = reference;
+    return normalizedCandidate === headword || normalizedCandidate === headword.replace(/^-/u, '');
+  }
   let offset = normalizedGloss.indexOf(normalizedCandidate);
   const isNumericCandidate = /^\d+(?:[,.]\d+)*$/u.test(normalizedCandidate);
   while (offset !== -1) {
