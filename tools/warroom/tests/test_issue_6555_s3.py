@@ -126,6 +126,24 @@ class SupervisedStage3Fix(unittest.TestCase):
         self.assertEqual([call[2] for call in w.git.refine_amend_calls], ["amend\nK 2\nD 3\n"] * 2)
 
 
+    def test_a_failed_pr_context_lookup_starts_no_session_and_completes_nothing(self):
+        w = self.w
+        batch = self._batch(state="WAITING_REVIEW", run_kind="s3_finalize")
+        w.store.update(batch["id"], pr_number=9, head_sha=HEAD1, session_id="production-session")
+        launches = len(w.adapter.launches)
+        with mock.patch.object(w.git, "refine_decisions", side_effect=GitError("edit-cli decisions 실패(exit 1)")), \
+                mock.patch.object(w.sup, "_preflight", return_value=None), \
+                mock.patch.object(w.sup, "_agent_env", return_value={}), \
+                mock.patch.object(w.sup, "_launch_env", return_value={}):
+            w.sup._launch(w.store.batch(batch["id"]), "fix_new", [EVENT])
+        failed = w.store.batch(batch["id"])
+        self.assertEqual(failed["state"], "ERROR")
+        self.assertIn("PR context", failed["error"])
+        self.assertEqual(len(w.adapter.launches), launches)
+        self.assertEqual(w.store.runs(batch["id"]), [])
+        self.assertIsNone(w.sup.s3fix.baseline(failed))
+        self.assertIsNone(w.store.handled_event(batch["id"], 9, HEAD1, "review:31"))
+
     def test_changes_unrelated_to_the_submission_are_preserved_not_applied(self):
         w = self.w
         batch = self._fix(AMEND)

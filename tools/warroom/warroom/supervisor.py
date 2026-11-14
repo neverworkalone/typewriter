@@ -3675,7 +3675,8 @@ class Supervisor:
 
     def _s3_fix_context(self, b, events, base: str, head: str) -> str:
         """Bounded Stage 3 review context (#6555): the PR's decisions by base row, for the Senses the review names, or
-        every edit of the PR when it names none. The AI reads nothing else to judge."""
+        every edit of the PR when it names none. The AI reads nothing else to judge, so a failed lookup is a PromptError
+        and no session starts."""
         wt = Path(b["worktree"])
         named = sorted(set(re.findall(r"\bw\d+-s\d+\b", "\n".join(str(e.get("body") or "") for e in events))))
         try:
@@ -3683,8 +3684,10 @@ class Supervisor:
         except TRANSIENT:
             raise
         except GitError as e:
-            return (f"PR context unavailable ({e}). base {base}; read it with one "
-                    f"`node scripts/relation/edit-cli.mjs decisions --shard {b['shard']} --base {base} --senses <ids>`.")
+            # Fail closed: without the PR's decisions the judgment would have no evidence, so no session starts and
+            # the review events stay unanswered (#6599 review).
+            raise prompts.PromptError(f"Stage 3 리뷰 수정 PR context(edit-cli decisions)를 만들지 못했습니다: {e}. "
+                                      "PR과 리뷰 이벤트를 보존합니다") from e
         rows = listed.get("rows") or []
         scope = f"every base row of the named Senses {', '.join(named)}"
         if not rows:
