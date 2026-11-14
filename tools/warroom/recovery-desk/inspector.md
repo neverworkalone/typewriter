@@ -37,7 +37,7 @@
 다음은 장애가 아니다.
 
 - run 프로세스가 살아 있고 로그나 scratch가 최근 20분 안에 갱신됨
-- PR이 리뷰·CI·머지 대기이고 Supervisor가 살아 있음 (복구 세션 PR의 해결되지 않은 `-1`은 대기가 아니다)
+- PR이 리뷰·CI·머지 대기이고 Supervisor가 살아 있음 (복구 세션 PR의 해결되지 않은 `-1`, 아래 "머지 정체"는 대기가 아니다)
 - `QUEUED`, `PENDING`, 작업 없는 대기
 - 오너 제어: Line의 `run=0`, `drain=1`, `force_stop=1`, `drain_schedules`, `clear_requests`
   → **절대 해제하지 않는다**
@@ -68,6 +68,16 @@
   - 복구 세션이 만든 PR: 그 case의 세션에 후속 지시로 보낸다. 새 case를 만들지 않는다.
   - 그 외 PR(오너·외부 작업): 손대지 않는다.
   - 리뷰 PASS 여부는 상관없다. 충돌이나 CI 실패가 있으면 머지되지 않으므로 장애다.
+- **머지 정체 (오너 상시 승인, 점검 1회가 직접 처리)**: 열린 War Room 배치 PR이나 복구 세션 PR이 다음을 모두 만족하면,
+  세션을 투입하지 않고 이번 점검에서 직접 squash 머지한다.
+  - 현재 HEAD에 대한 `+1`/`+2`가 있고, 그 뒤 같은 HEAD에 `-1`이 없다. 리뷰 본문의 `HEAD:` 줄로 대조한다.
+  - 현재 HEAD의 필수 check(`Validate and test Typewriter`)가 `SUCCESS`다.
+  - `mergeable=MERGEABLE`, `mergeStateStatus=CLEAN`이다.
+  - 그 PASS 리뷰가 60분 넘게 지났는데 아직 머지되지 않았다.
+
+  실행은 `gh pr merge <n> --squash --match-head-commit <HEAD> --repo <repo>`로 한다. 머지 뒤에는 원 batch가
+  `MERGED → CLEANUP → COMPLETE`로 넘어가는지 확인한다. 오너·외부 PR과 Maintainer PR은 대상이 아니다. 조건 하나라도
+  확인되지 않으면 머지하지 않고 관찰만 기록한다.
 - **리뷰 차단 (즉시 투입, 복구 세션 PR만)**: 리뷰는 GitHub `COMMENTED` 리뷰로 달리고 본문 첫 줄이 `-1`/`+1`/`+2`,
   둘째 줄이 `HEAD: <sha>`다. `reviewDecision`에는 나타나지 않으므로 case PR마다
   `gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate`로 읽는다. 가장 최근 판정 리뷰가 `-1`이고 그 리뷰 뒤로
