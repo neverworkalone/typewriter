@@ -1065,3 +1065,36 @@ test('#6555 projected other-shard rows give the full-path views, apply results, 
   assert.equal(projected.applied.repaired, 1);
   assert.equal(projected.applied.repair_conflicts[0].conflict.kind, 'other_shard_relation');
 });
+
+test('#6555 amend recovers a PR\'s decisions from its diff and rebuilds it from base like apply would', async (t) => {
+  const files = ['data/relations/relation-001.jsonl', 'data/relation-drops/drop-001.jsonl'];
+  const read = (root) => Promise.all(files.map((file) => readFile(path.join(root, file), 'utf8')));
+  const head = (root) => spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  const applied = async (decisions) => {
+    const root = await repository(t);
+    await quiet(() => run(['prepare', '--shard', '001'], { root }));
+    await save(root, decisions);
+    await quiet(() => run(['apply', '--shard', '001'], { root }));
+    return root;
+  };
+  const root = await applied('chunk 001\nD 1\nL 2 T2\n');
+  const base = head(root);
+  git(root, 'commit', '-qam', 'Stage 3 edits');
+  const cli = (args) => quiet(() => run([...args, '--shard', '001', '--base', base], { root }));
+  assert.deepEqual((await cli(['decisions'])).decisions.map(({ row, action, target_sense_id }) => [row, action, target_sense_id]),
+    [[1, 'drop', undefined], [2, 'repair', 'w3-s2']]);
+
+  const input = path.join(root, '.warroom-scratch', 'delta.txt');
+  await writeFile(input, 'amend\nK 1\nD 3\n');
+  const first = await cli(['amend', '--in', input]);
+  assert.equal(first.status, 'applied');
+  assert.deepEqual(await read(root), await read(await applied('chunk 001\nL 2 T2\nD 3\n')),
+    'the amended PR equals a fresh apply of the amended decisions');
+  const again = await cli(['amend', '--in', input]);
+  assert.deepEqual([again.status, again.outputs], ['already-applied', first.outputs], 'the same delta replays to the same bytes');
+
+  await writeFile(path.join(root, files[0]), `${(await readFile(path.join(root, files[0]), 'utf8'))}${JSON.stringify({
+    id: 'w1', sid: 'w1-s1', tt: '새말', tp: 'mood', rv: 1 })}\n`);
+  git(root, 'commit', '-qam', 'Add a Relation by hand');
+  await assert.rejects(cli(['decisions']), /adds or reorders Relation rows/u);
+});
