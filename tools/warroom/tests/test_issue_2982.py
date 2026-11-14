@@ -176,6 +176,43 @@ class Stage2RepairRebind(unittest.TestCase):
         checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
         self.assertIn("finalization HEAD baseline", w.sup._stage2_repair_rebind_problem(b, state, checkpoint, "7" * 64))
 
+    def _stale_unresolved_world(self):
+        # Issue #6601: a rejected-unresolved page never applied; a later clean preflight and master integration moved HEAD.
+        w, b, path = _world(self, total=2)
+        state = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
+        cur = state["current"]
+        cur["groups"].append({"candidate_keys": ["s2\0x"], "conflicts": [], "candidates": []})
+        cur["attempt_log"].append({"cursor": 1, "attempt": 1, "fingerprint": OLD_FINGERPRINT, "target_keys": ["s2\0x"],
+                                   "status": "rejected", "reason_code": "unresolved"})
+        cur["last_error"] = "unresolved: s2/x"
+        w.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, sort_keys=True))
+        _mark_integrated(w, b)
+        return w, b, state
+
+    def test_stale_unresolved_page_rebinds_and_closes_when_preflight_is_clean(self):
+        w, b, state = self._stale_unresolved_world()
+        checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+        self.assertIsNone(w.sup._stage2_repair_rebind_problem(b, state, checkpoint, "7" * 64))
+        saved = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
+        self.assertEqual(saved["identity"]["base_head"], HEAD2)
+        self.assertEqual((saved["current"]["cursor"], len(saved["current"]["groups"])), (0, 0))
+        self.assertEqual(saved["current"]["abandoned"]["cursor"], 1)
+        self.assertEqual(saved["current"]["abandoned"]["superseded_by"], "7" * 64)
+        self.assertEqual(len(saved["rebindings"]), 1)
+        # A later HEAD move on the closed round rebinds again instead of reporting an unfinished page.
+        w.git.local_head = HEAD1
+        saved["identity"]["base_head"] = HEAD2
+        self.assertNotIn("unfinished", w.sup._stage2_repair_rebind_problem(b, saved, checkpoint, "8" * 64) or "")
+
+    def test_stale_page_with_pending_answer_or_unproven_integration_still_fails_closed(self):
+        w, b, state = self._stale_unresolved_world()
+        checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+        pending = json.loads(json.dumps(state))
+        pending["current"]["pending_answer"] = {"decisions": []}
+        self.assertIn("unfinished", w.sup._stage2_repair_rebind_problem(b, pending, checkpoint, "7" * 64))
+        w.git.verified_supervisor_integration = lambda *_a, **_k: False
+        self.assertIn("master-integration chain", w.sup._stage2_repair_rebind_problem(b, state, checkpoint, "7" * 64))
+
     def test_repeated_gloss_conflict_gets_one_officially_checked_retry(self):
         from unittest.mock import patch
         w, b, path = _world(self)
