@@ -367,6 +367,32 @@ class Stage2RepairCandidateProblems(unittest.TestCase):
         self.assertIn("independent_judgment", w.adapter.launches[-1]["prompt"])
         self.assertEqual(w.git.stage2_repair_calls, [])
 
+    def test_retry_after_validator_fix_replaces_stale_unresolved_gloss_round(self):
+        """An unresolved answer to a drop-gloss-only diagnostic cannot be replayed; a changed preflight starts a fresh round."""
+        stale = ordinary_report(FP, self.NAMES)
+        stale["problems"][0]["conflicts"] = []
+        stale["problems"][0]["drop_gloss"] = ['drop:1: "candidate-0" is named by the gloss of source-sense']
+        w, batch = start_repair(self, [stale], candidate_count=3)
+        w.git.stage2_repair_checker = marker_checker(lambda decision: None)
+        rows = [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD} for name in self.NAMES[1:]]
+        unresolved = {"source_sense_id": "source-sense", "candidate": self.NAMES[0], "reason": "redirect names a different headword"}
+        self.run_text(w, f"repair @{FP}\n" + json.dumps({"decisions": rows, "peer_adjustments": [], "unresolved": [unresolved]}))
+        self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+        launches = len(w.adapter.launches)
+
+        fixed = ordinary_report("6" * 64, self.NAMES)
+        w.git.stage2_preflight_reports.append(fixed)
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick()
+        w.tick()
+
+        state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+        self.assertEqual(w.store.batch(batch["id"])["state"], "PRODUCING", w.store.batch(batch["id"])["error"])
+        self.assertEqual(state["current"]["fingerprint"], "6" * 64)
+        self.assertEqual(state["rounds_used"], 2)
+        self.assertEqual(len(w.adapter.launches), launches + 1)
+        self.assertEqual(w.git.stage2_repair_calls, [])
+
     def test_new_problems_are_batched_once_and_valid_rows_are_preserved(self):
         for field_path, condition in (("decision.target_resolution", "required"), ("decision.type", "enum"),
                                       ("decision.a_field_added_later", "a_condition_added_later")):
