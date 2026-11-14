@@ -563,6 +563,9 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.throws(() => verifyDrop('창고나 부두 따위에서, 인부들이 쌀가마니 따위의 무거운 짐을 갈고리로 찍어 당겨서 어깨에 메고 나르는 일. 또는 그 짐.', '인부'), /named by the gloss/, 'the current shard-002 gloss names 인부 in its plural form 인부들이');
   assert.equal(verifyDrop('들판과 떡갈나무가 보인다.', '들').drop, 1, 'a plural marker inside a different compound is not a gloss mention');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로수').drop, 1, 'a longer candidate is not a mention of its prefix');
+  assert.equal(verifyDrop('→ 만장이.', '만장').drop, 1, 'a redirect headword ending in a particle-like syllable is not a mention of its shorter form');
+  assert.throws(() => verifyDrop('→ 만장이.', '만장이'), /named by the gloss/, 'a redirect target itself stays protected from Drop');
+  assert.throws(() => verifyDrop('→ 가로.', '가로'), /named by the gloss/, 'an exact redirect target stays protected from Drop');
   assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'e').drop, 1,
     'a Drop for a connected candidate with no independent expression value may account for a gloss-named candidate');

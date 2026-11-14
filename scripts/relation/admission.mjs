@@ -733,6 +733,10 @@ function glossNamesExactCandidate(gloss, candidate) {
   const normalizedGloss = normalizeCandidate(gloss);
   const normalizedCandidate = normalizeCandidate(candidate);
   if (!normalizedCandidate) return false;
+  // A pure redirect gloss (`→ 만장이.`) names exactly one headword. Its trailing syllable is part of that headword,
+  // not a particle, so a shorter candidate (`만장`) must not be matched through suffix stripping.
+  const redirect = /^\s*→\s*([^\s,;.]+)\s*\.?\s*$/u.exec(normalizedGloss);
+  if (redirect) return normalizeCandidate(redirect[1]) === normalizedCandidate;
   let offset = normalizedGloss.indexOf(normalizedCandidate);
   const isNumericCandidate = /^\d+(?:[,.]\d+)*$/u.test(normalizedCandidate);
   while (offset !== -1) {
