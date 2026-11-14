@@ -123,27 +123,51 @@ function parseJsonl(contents, file, decode) {
 export const parseRelationJsonl = (contents, file = 'Relation JSONL') => parseJsonl(contents, file, deserializeRelationRow);
 export const parseDropJsonl = (contents, file = 'Drop JSONL') => parseJsonl(contents, file, deserializeDropRow);
 
-// Decode only the lines `select(line)` keeps, with the same locations and errors as the full parse. `position` is the
-// row's index in the full parse result (blank lines skipped), so a caller can later splice a changed row back.
-function parseSelectedJsonl(contents, file, decode, select) {
+// Decode only the lines that contain a match of the global `pattern`, with the same locations and errors as the full
+// parse. `position` is the row's index in the full parse result (blank lines skipped), so a caller can splice a changed
+// row back. A text with any escape is decoded line by line in full, because an escaped token need not match `pattern`.
+function parseJsonlLinesMatching(contents, file, decode, pattern) {
   if (typeof contents !== 'string') throw new Error(`${file} contents must be text`);
   const selected = [];
+  const decodeLine = (line, lineNumber, position) => {
+    const location = `${file}:${lineNumber}`;
+    let row;
+    try { row = JSON.parse(line); } catch (error) { throw new Error(`${location} is not valid JSON: ${error.message}`); }
+    selected.push({ row: decode(row, location), position });
+  };
+  if (contents.includes('\\')) {
+    let position = 0;
+    contents.split(/\r?\n/u).forEach((line, index) => {
+      if (!line.trim()) return;
+      decodeLine(line, index + 1, position);
+      position += 1;
+    });
+    return selected;
+  }
+  let lineStart = 0;
+  let lineNumber = 1;
   let position = 0;
-  contents.split(/\r?\n/u).forEach((line, index) => {
-    if (!line.trim()) return;
-    if (select(line)) {
-      const location = `${file}:${index + 1}`;
-      let row;
-      try { row = JSON.parse(line); } catch (error) { throw new Error(`${location} is not valid JSON: ${error.message}`); }
-      selected.push({ row: decode(row, location), position });
+  const advanceTo = (offset) => {
+    for (let newline = contents.indexOf('\n', lineStart); newline !== -1 && newline < offset; newline = contents.indexOf('\n', lineStart)) {
+      if (contents.charCodeAt(lineStart) === 123 || contents.slice(lineStart, newline).trim()) position += 1;
+      lineStart = newline + 1;
+      lineNumber += 1;
     }
-    position += 1;
-  });
+  };
+  pattern.lastIndex = 0;
+  for (let match = pattern.exec(contents); match !== null; match = pattern.exec(contents)) {
+    advanceTo(match.index);
+    const newline = contents.indexOf('\n', lineStart);
+    const lineEnd = newline === -1 ? contents.length : newline;
+    decodeLine(contents.slice(lineStart, lineEnd).replace(/\r$/u, ''), lineNumber, position);
+    pattern.lastIndex = lineEnd;
+    advanceTo(lineEnd + 1);
+  }
   return selected;
 }
 
-export const parseSelectedRelationJsonl = (contents, file, select) => parseSelectedJsonl(contents, file, deserializeRelationRow, select);
-export const parseSelectedDropJsonl = (contents, file, select) => parseSelectedJsonl(contents, file, deserializeDropRow, select);
+export const parseRelationJsonlLinesMatching = (contents, file, pattern) => parseJsonlLinesMatching(contents, file, deserializeRelationRow, pattern);
+export const parseDropJsonlLinesMatching = (contents, file, pattern) => parseJsonlLinesMatching(contents, file, deserializeDropRow, pattern);
 
 function serializeJsonl(rows, encode, family) {
   if (!Array.isArray(rows)) throw new Error(`${family} rows must be an array`);

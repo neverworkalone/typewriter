@@ -7,7 +7,7 @@ import { buildTargetIndex, parseArrowReference, resolveArrowTarget } from '../bu
 import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
 import {
   ADMISSION_TYPES, ASSIGNED_ID_ROW_KEYS, DROP_REASONS, DROP_ROW_KEYS, LEGACY_ID_ROW_KEYS, TEXT_ROW_KEYS, isText,
-  dropRowFieldErrors, dropRowShapeError, parseDropJsonl, parseRelationJsonl, parseSelectedDropJsonl, parseSelectedRelationJsonl,
+  dropRowFieldErrors, dropRowShapeError, parseDropJsonl, parseDropJsonlLinesMatching, parseRelationJsonl, parseRelationJsonlLinesMatching,
   relationPairKey, relationRowFieldErrors, relationRowShapeError, relationTextKey,
 } from './persisted-jsonl.mjs';
 
@@ -901,26 +901,23 @@ export async function loadApprovedRelations(root = REPOSITORY_DIRECTORY, { excep
  * and a Drop only for its source Sense, so a row that names no Sense of this shard cannot change any of those
  * results. Rows are kept in file order, so first/last-match and message order are the full path's.
  *
- * A line is decoded only when one of its quoted tokens is a Sense of this shard (a superset of rows whose decoded
- * source/target Sense is, because persisted IDs are written verbatim) or when it contains an escape; the decoded row
- * is then filtered exactly. Lines that are skipped are not parsed: the shape and validity of other shards' own rows
+ * A line is decoded only when it holds a Sense of this shard as a whole quoted string (a superset of rows whose decoded
+ * source/target Sense is; a file with any escape is decoded in full), and the decoded row is then filtered exactly. Lines that are skipped are not parsed: the shape and validity of other shards' own rows
  * stay with those shards' verify and the CI integration check of changed Relation shards.
  */
 export function shardSenseIds(canonicalRows) {
   return new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
 }
 
-function lineNamesSense(senseIds, lengths) {
-  return (line) => {
-    if (line.includes('\\')) return true;
-    for (let start = line.indexOf('"'); start !== -1;) {
-      const end = line.indexOf('"', start + 1);
-      if (end === -1) return true;
-      if (lengths.has(end - start - 1) && senseIds.has(line.slice(start + 1, end))) return true;
-      start = line.indexOf('"', end + 1);
-    }
-    return false;
-  };
+// One global pattern per Sense set: a line is decoded when it holds one of these Senses as a whole quoted JSON string.
+const senseTokenPatterns = new WeakMap();
+function senseTokenPattern(senseIds) {
+  if (!senseTokenPatterns.has(senseIds)) {
+    const ids = [...senseIds].sort((left, right) => right.length - left.length || left.localeCompare(right));
+    const escaped = ids.map((id) => JSON.stringify(id).slice(1, -1).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'));
+    senseTokenPatterns.set(senseIds, ids.length ? new RegExp(`"(?:${escaped.join('|')})"`, 'gu') : /(?!)/gu);
+  }
+  return senseTokenPatterns.get(senseIds);
 }
 
 export function relationTouchesSenses(row, senseIds) {
@@ -929,8 +926,8 @@ export function relationTouchesSenses(row, senseIds) {
 
 /** Decoded `{ row, position }` entries of one persisted Relation file text that touch `senseIds`. */
 export function selectShardRelationRows(contents, file, senseIds) {
-  const select = lineNamesSense(senseIds, new Set([...senseIds].map((id) => id.length)));
-  return parseSelectedRelationJsonl(contents, file, select).filter(({ row }) => relationTouchesSenses(row, senseIds));
+  return parseRelationJsonlLinesMatching(contents, file, senseTokenPattern(senseIds))
+    .filter(({ row }) => relationTouchesSenses(row, senseIds));
 }
 
 async function shardFiles(directory, pattern, exceptName) {
@@ -951,10 +948,9 @@ export async function loadShardTouchingRelations(root = REPOSITORY_DIRECTORY, { 
 /** `loadAllApprovedDrops(root, { exceptShard })` restricted to Drops whose source Sense is in `senseIds`. */
 export async function loadShardTouchingDrops(root = REPOSITORY_DIRECTORY, { exceptShard, senseIds }) {
   const directory = path.join(root, 'data/relation-drops');
-  const select = lineNamesSense(senseIds, new Set([...senseIds].map((id) => id.length)));
   const rows = [];
   for (const name of await shardFiles(directory, /^drop-\d{3}\.jsonl$/u, `drop-${exceptShard}.jsonl`)) {
-    for (const { row } of parseSelectedDropJsonl(await readFile(path.join(directory, name), 'utf8'), name, select)) {
+    for (const { row } of parseDropJsonlLinesMatching(await readFile(path.join(directory, name), 'utf8'), name, senseTokenPattern(senseIds))) {
       if (senseIds.has(row.source_sense_id)) rows.push(row);
     }
   }

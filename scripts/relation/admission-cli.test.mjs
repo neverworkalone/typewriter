@@ -3124,8 +3124,10 @@ test('shard projection of other-shard rows matches the full path for verify, pre
     await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), emptyBaseline ? '' : relationJsonl([{ ...unrelated,
       source_record_id: 'w2', source_sense_id: 'w2-s1', target_record_id: 'w4', target_sense_id: 'w4-s1' }]));
     await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), relationJsonl([unrelated, crossShardCounterpart()]));
+    // An escaped string makes this file take the full line-by-line decode, which must also keep its touching row.
     await writeFile(path.join(root, 'data/relations/relation-003.jsonl'), relationJsonl([{ ...unrelated,
-      source_record_id: 'w4', source_sense_id: 'w4-s1', target_record_id: 'w3', target_sense_id: 'w3-s1', candidate_forms: ['공통말'] }]));
+      source_record_id: 'w4', source_sense_id: 'w4-s1', target_record_id: 'w3', target_sense_id: 'w3-s1', candidate_forms: ['공통말'] }, {
+      ...unrelated, source_record_id: 'w4', source_sense_id: 'w4-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', candidate_forms: ['출발"어'] }]));
     await writeFile(path.join(root, 'data/relation-drops/drop-002.jsonl'), dropJsonl([
       { source_record_id: 'w3', source_sense_id: 'w3-s1', candidate: '다른말', reason: 'e' },
     ]));
