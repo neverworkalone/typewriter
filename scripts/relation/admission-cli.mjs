@@ -3904,6 +3904,25 @@ async function applyAmendJournalState(checkpoint, checkpointPath, root, oldCheck
   return { amended: true, changed_candidates: newResult.changed || undefined, checkpoint: checkpointPath, outputs };
 }
 
+// #6555: the submitted amend input itself is unacceptable (format, digest/alias, decision policy, or a conflict or
+// validation failure of the decisions it asks for). Thrown before anything is written, so the caller may ask for a
+// corrected judgment. Every other amend failure (lock, drift, recovery state, I/O) is operational, not a judgment.
+class AmendInputError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AmendInputError';
+  }
+}
+
+async function amendInputStep(step) {
+  try {
+    return await step();
+  } catch (error) {
+    if (error instanceof AmendInputError || error?.code !== undefined) throw error;
+    throw new AmendInputError(error.message);
+  }
+}
+
 async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root, timing = null) {
   if (!checkpoint.merged) throw new Error('amend requires checkpoint.merged=true in the current Part worktree');
   if (!checkpoint.premerge) throw new Error('this merged checkpoint has no premerge snapshot and cannot be amended');
@@ -3968,15 +3987,14 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
       throw new Error('foreign Relation output does not match materialize(premerge, checkpoint); refusing to amend drifted files');
     }
   }
-  const parsed = parseAmendInput(raw, checkpoint);
-  const applied = applyAmendChanges(checkpoint, parsed);
+  const applied = await amendInputStep(() => applyAmendChanges(checkpoint, parseAmendInput(raw, checkpoint)));
   if (!applied.changed) {
     return { amended: true, changed_candidates: 0, unchanged: true, checkpoint: checkpointPath, outputs: amendOutputs(root, [
       { file: checkpointPath, state: current.checkpoint }, { file: relationFile, state: currentExpected.relations },
       { file: dropFile, state: currentExpected.drops }]) };
   }
   timing?.start('next_materialize');
-  const next = await materializeWithForeign(applied.checkpoint, root, baseline, foreignBaselines);
+  const next = await amendInputStep(() => materializeWithForeign(applied.checkpoint, root, baseline, foreignBaselines));
   timing?.end();
   timing?.start('apply');
   const foreign = {};
@@ -4145,6 +4163,12 @@ if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === imp
     if (argv[0] === 'repair' && result?.ok !== true) process.exitCode = 2;
   }).catch((error) => {
     // `verify --json`: only a deterministic rows/accounting failure is machine-classifiable (exit 2, one JSON line).
+    // `amend`: a refused input is exit 2 with one JSON line; any other failure stays exit 1 (#6555).
+    if (argv[0] === 'amend' && error instanceof AmendInputError) {
+      console.log(JSON.stringify({ version: 1, ok: false, family: 'input', error: error.message }));
+      process.exitCode = 2;
+      return;
+    }
     if (argv[0] === 'verify' && argv.includes('--json') && error instanceof AdmissionVerifyError) {
       console.log(JSON.stringify({ version: 1, ok: false, family: error.family, errors: error.errors, total: error.total }));
       process.exitCode = 2;

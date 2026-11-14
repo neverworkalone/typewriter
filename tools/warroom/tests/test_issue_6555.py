@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from tests import test_issue_6249 as t6249
-from warroom.gitops import GitTransient, Stage2AmendRejected
+from warroom.gitops import GitError, GitTransient, Stage2AmendRejected
 from warroom.supervisor import S2_FIX_APPLY_ATTEMPTS, S2_FIX_COMMIT_SUBJECT, S2_FIX_RESPONSE
 
 DROP = "data/relation-drops/drop-001.jsonl"
@@ -140,6 +140,25 @@ class SupervisedStage2Fix(unittest.TestCase):
         self.assertEqual(w.git.commits[-1], ([DROP], S2_FIX_COMMIT_SUBJECT))
         self.assertTrue((wt / S2_FIX_RESPONSE).exists(), "the accepted submission is kept, never replaced by a retry")
         self.assertEqual(w.adapter.launches[-1]["pid"], fix["pid"])
+
+    def test_operational_amend_failure_before_any_write_keeps_the_judgment_and_reruns_the_same_input(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        w.git.stage2_amend_results = [GitError("admission-cli amend 실패(exit 1): another amend is active"),
+                                      {"changes": {DROP: "drop\n"}}]
+        b = self._end(w, b, fix)
+        self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
+        self.assertEqual([call[3] for call in w.git.stage2_amend_calls], [w.git.stage2_amend_calls[0][3]] * 2)
+        self.assertEqual(w.adapter.launches[-1]["pid"], fix["pid"], "no new judgment is requested")
+
+    def test_repeated_operational_amend_failure_stops_with_the_judgment_preserved(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        w.git.stage2_amend_results = [GitError("admission-cli amend 실패(exit 1): another amend is active")] * 2
+        b = self._end(w, b, fix)
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("another amend is active", b["error"])
+        self.assertTrue((wt / S2_FIX_RESPONSE).exists())
+        self.assertEqual(w.adapter.launches[-1]["pid"], fix["pid"])
+        self.assertEqual(self._replies(w, b), [])
 
     def test_changes_not_made_by_the_submissions_amend_are_preserved_and_stop_the_batch(self):
         w, b, wt, fix = self._fix(self.AMEND)

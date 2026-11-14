@@ -13,7 +13,7 @@ from warroom import control
 from warroom.adapters import AgentAdapter, Handle, OpenCodeAdapter
 from warroom.config import DEFAULTS, Paths
 from warroom.gitops import (CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient,
-                            IntegrationBlocked, Stage2AmendRejected)
+                            IntegrationBlocked)
 from warroom.shell import Result
 from warroom.store import Store
 from warroom.supervisor import Supervisor
@@ -636,7 +636,9 @@ class FakeGit:
 
     def stage2_amend(self, worktree, shard, batch, part, rel_input, *, timeout=900):
         """The official amend (#6555): a planned result is {"changes": {rel: text}} (optionally "fail_after_write": its
-        journal and first file are written, then it fails) or an exception. The same input again is a journal replay."""
+        journal and first file are written, then an operational failure) or an exception raised before any write
+        (Stage2AmendRejected = the CLI refused the input; GitError = an operational failure). The same input again is a
+        journal replay."""
         wt = Path(worktree)
         text = (wt / rel_input).read_text("utf-8")
         self.stage2_amend_calls.append((shard, batch, part, text))
@@ -655,7 +657,7 @@ class FakeGit:
                 (wt / rel).parent.mkdir(parents=True, exist_ok=True)
                 (wt / rel).write_text(body, "utf-8")
                 self.dirty_text = f" M {rel}\n"
-                raise Stage2AmendRejected("EIO while replacing outputs")
+                raise GitError("admission-cli amend 실패(exit 1): EIO while replacing outputs")
         status, changes = state[text]
         if status == "pending":
             if changes:   # a changed decision raises the revision, as the CLI does

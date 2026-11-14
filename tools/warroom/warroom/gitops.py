@@ -35,7 +35,8 @@ class ResourceFenced(GitTransient):
 
 
 class Stage2AmendRejected(GitError):
-    """The official Stage 2 `amend` refused its input or state; nothing was written (#6555)."""
+    """The official Stage 2 `amend` refused the submitted input itself (exit 2, family "input"); nothing was written
+    (#6555). Every other amend failure is a plain GitError: the judgment stands and must not be asked for again."""
 
 
 class FastForwardRace(GitTransient):
@@ -1501,18 +1502,20 @@ class Git:
     def stage2_amend(self, worktree: Path, shard: str, batch: str, part: str, rel_input: str, *, timeout: int = 900) -> dict:
         """Run the official Part `amend` on `rel_input` and return its JSON receipt (#6555).
 
-        Any refusal is `Stage2AmendRejected` with the CLI's own message; the CLI writes nothing on a refusal.
-        The receipt's `outputs` are the exact file states the amend established or confirmed."""
+        An input refusal is `Stage2AmendRejected` with the CLI's message; any other failure (lock, drift, recovery
+        state, I/O, crash) is `GitError`. The receipt's `outputs` are the exact file states the amend established."""
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
         res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "amend", "--checkpoint", checkpoint, "--in", rel_input],
                          cwd=worktree, env=self.env, timeout=timeout)
-        if not res.ok:
-            detail = "\n".join(line for line in (res.err or res.out or "").splitlines() if not line.startswith("amend_timing "))
-            raise Stage2AmendRejected(" ".join(detail.split())[-1500:] or f"amend exit {res.code}")
         try:
             payload = json.loads((res.out or "").strip().splitlines()[-1])
         except (ValueError, IndexError):
             payload = None
+        if not res.ok:
+            if res.code == 2 and isinstance(payload, dict) and payload.get("ok") is False and payload.get("family") == "input":
+                raise Stage2AmendRejected(" ".join(str(payload.get("error") or "").split())[-1500:] or "amend input refused")
+            detail = "\n".join(line for line in (res.err or res.out or "").splitlines() if not line.startswith("amend_timing "))
+            raise GitError(f"admission-cli amend 실패(exit {res.code}): {' '.join(detail.split())[-1500:]}")
         if not isinstance(payload, dict) or payload.get("amended") is not True or not isinstance(payload.get("outputs"), dict):
             raise GitError("admission-cli amend exited 0 without an {amended:true, outputs} receipt")
         payload["timing"] = next((line for line in (res.err or "").splitlines() if line.startswith("amend_timing ")), "")

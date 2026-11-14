@@ -3876,19 +3876,25 @@ class Supervisor:
                     before = self._stage2_amend_state(wt, checkpoint_rel)
                     try:
                         receipt = timed("amend", self.git.stage2_amend, wt, b["shard"], batch, part, S2_FIX_AMEND_INPUT)
-                    except Stage2AmendRejected as e:
+                    except TRANSIENT:
+                        raise
+                    except GitError as e:
                         if dirty:   # this input was already accepted once: a failed replay is not a new judgment
                             return self._fail(b, "ERROR", f"중단된 공식 amend를 같은 입력으로 복구하지 못했습니다: {e}. "
-                                              "입력·journal·worktree를 보존합니다.")
-                        if self._stage2_amend_state(wt, checkpoint_rel) == before:
+                                              "입력·판정·journal·worktree를 보존합니다.")
+                        if isinstance(e, Stage2AmendRejected) and self._stage2_amend_state(wt, checkpoint_rel) == before:
+                            # Only the CLI's own refusal of the submitted input asks the AI for a corrected judgment.
                             return self._stage2_fix_retry(b, f"the official amend refused the submitted input: {e}")
-                        # It wrote part of its result before failing: finish the same request, never ask for another.
+                        # An operational failure (lock, drift, I/O, a partial write): the judgment stands. Run the same
+                        # input once more; if that fails too, stop with everything preserved.
                         try:
                             receipt = timed("amend_recovery", self.git.stage2_amend, wt, b["shard"], batch, part,
                                             S2_FIX_AMEND_INPUT)
-                        except Stage2AmendRejected as again:
-                            return self._fail(b, "ERROR", f"공식 amend가 일부를 쓴 뒤 실패했고 같은 입력의 복구도 실패했습니다: "
-                                              f"{again}. 입력·journal·worktree를 보존합니다.")
+                        except TRANSIENT:
+                            raise
+                        except GitError as again:
+                            return self._fail(b, "ERROR", f"공식 amend 실행이 판정과 무관하게 실패했고 같은 입력의 재시도도 "
+                                              f"실패했습니다: {again}. 입력·판정·journal·worktree를 보존합니다.")
                     changed = self.git.changed_paths(wt)
                     data_outputs = {rel: digest for rel, digest in receipt["outputs"].items() if rel.startswith("data/")}
                     if not changed <= set(data_outputs) or any(
