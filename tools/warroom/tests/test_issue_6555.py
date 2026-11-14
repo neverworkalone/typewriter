@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from tests import test_issue_6249 as t6249
+from warroom.github import GhTransient
 from warroom.gitops import GitError, GitTransient, Stage2AmendRejected
 from warroom.supervisor import S2_FIX_APPLY_ATTEMPTS, S2_FIX_COMMIT_SUBJECT, S2_FIX_RESPONSE
 
@@ -39,6 +40,7 @@ class SupervisedStage2Fix(unittest.TestCase):
             w.git.ancestor_pairs.add((parent, w.git.local_head))
             return w.git.local_head
         w.git.commit_paths = commit
+        w.gh.comment_issue = lambda n, body: w.gh.add_pr_reply(n, body)   # GitHub assigns the id and author
 
         def push(path, branch, remote_sha, local):   # GitHub moves the PR HEAD with the owned branch
             old_push(path, branch, remote_sha, local)
@@ -69,6 +71,17 @@ class SupervisedStage2Fix(unittest.TestCase):
         self.assertEqual(len(replies), 1)
         self.assertTrue(replies[0].startswith("[review:77] c1을 D e로 바꿨습니다."))
         self.assertIsNone(w.store.get(f"s2_fix_start_{b['id']}"))
+        self._completed(w, b, base, new_head)
+
+    def _completed(self, w, b, event_head, fix_head):
+        """The review event is HANDLED by the fix run with the id of the one reply bound to it and the fix HEAD."""
+        comment = w.gh.issue_comments_[b["pr_number"]][-1]
+        lines = {line.strip() for line in comment["body"].splitlines()}
+        self.assertLessEqual({"WarRoom-Review-Event: review:77", f"WarRoom-Fix-Head: {fix_head}"}, lines)
+        event = w.store.handled_event(b["id"], b["pr_number"], event_head, "review:77")
+        fix_run = next(run for run in w.store.runs(b["id"]) if str(run["kind"]).startswith("fix"))
+        self.assertEqual((event["status"], event["reply_id"], event["run_id"]), ("HANDLED", comment["id"], fix_run["id"]))
+        self.assertIsNotNone(event["completed_at"])
 
     def test_amended_judgment_is_committed_verified_pushed_and_answered(self):
         w, b, wt, fix = self._fix(self.AMEND)
@@ -170,6 +183,45 @@ class SupervisedStage2Fix(unittest.TestCase):
         self.assertEqual(w.git.stage2_amend_calls, [])
         self.assertEqual(self._replies(w, b), [])
 
+    def test_reentry_after_the_reply_records_the_same_comment_once(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        base = w.gh.pull(b["pr_number"])["head_sha"]
+        w.git.stage2_amend_results = [{"changes": {DROP: "drop\n"}}]
+        original_pull, stops = w.gh.pull, []
+
+        def stop_after_reply(n):   # the Supervisor stops right after posting, before the completion gate
+            if self._replies(w, b) and not stops:
+                stops.append(n)
+                raise GhTransient("supervisor stopped")
+            return original_pull(n)
+        w.gh.pull = stop_after_reply
+        b = self._settle(w, self._end(w, b, fix))
+        self.assertEqual(stops, [b["pr_number"]])
+        self._applied(w, b, base)
+
+    def test_a_reply_github_does_not_show_never_completes_the_event(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        base = w.gh.pull(b["pr_number"])["head_sha"]
+        w.git.stage2_amend_results = [{"changes": {DROP: "drop\n"}}]
+        posts = []
+        w.gh.comment_issue = lambda n, body: posts.append(body)   # posted, but GitHub does not list it yet
+        b = self._end(w, b, fix)
+        w.tick()
+        b = w.store.batch(b["id"])
+        self.assertEqual(b["state"], "FIXING")
+        self.assertEqual(len(posts), 1, "a reply GitHub may still be listing is awaited, not posted again")
+        self.assertEqual(w.store.handled_event(b["id"], b["pr_number"], base, "review:77")["status"], "LEGACY")
+
+    def test_a_reply_with_the_nonce_but_wrong_binding_stops_without_completing(self):
+        w, b, wt, fix = self._fix(self.AMEND)
+        base = w.gh.pull(b["pr_number"])["head_sha"]
+        w.git.stage2_amend_results = [{"changes": {DROP: "drop\n"}}]
+        nonce = json.loads(w.store.get(f"s2_fix_start_{b['id']}"))["nonce"]
+        w.gh.add_pr_reply(b["pr_number"], f"다른 답글\n<!-- warroom-s2-fix {nonce} -->", login="someone-else")
+        b = self._end(w, b, fix)
+        self.assertEqual(b["state"], "ERROR")
+        self.assertEqual(w.store.handled_event(b["id"], b["pr_number"], base, "review:77")["status"], "LEGACY")
+
     def test_disagreement_without_amend_only_replies_and_keeps_full_verification(self):
         w, b, wt, fix = self._fix({"event_keys": ["review:77"], "amend": None, "reply": "[review:77] 유지합니다: 근거 …"})
         local_verifies = len(w.git.local_verify_calls)
@@ -179,6 +231,7 @@ class SupervisedStage2Fix(unittest.TestCase):
         self.assertFalse(getattr(w.git, "owned_fix_pushes", []))
         self.assertEqual(len(self._replies(w, b)), 1)
         self.assertEqual(len(w.git.local_verify_calls), local_verifies + 1)
+        self._completed(w, b, w.git.local_head, w.git.local_head)
 
     def test_refused_submission_returns_its_reason_to_the_same_session_then_stops(self):
         refused = {"event_keys": ["review:77"], "amend": "amend w1-s1 @" + "2" * 64 + "\nc9 D e", "reply": "수정했습니다."}

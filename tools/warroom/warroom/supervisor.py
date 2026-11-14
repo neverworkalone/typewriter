@@ -51,6 +51,7 @@ S2_FIX_RESPONSE = ".warroom-scratch/s2-fix-response.json"
 S2_FIX_AMEND_INPUT = ".warroom-scratch/s2-fix-amend.txt"
 S2_FIX_COMMIT_SUBJECT = "Apply Stage 2 review amendments"
 S2_FIX_APPLY_ATTEMPTS = 2   # returns of a refused judgment to the same session before the batch stops
+S2_FIX_REPLY_LIST_WAIT_SECONDS = 600   # a posted reply GitHub does not list yet is awaited, not posted again
 
 
 class DuplicateClaim(Exception):
@@ -2703,7 +2704,7 @@ class Supervisor:
                                     b, wt, checkpoint.get("amend_revision", 0)),
                                 # #6555: the AI only submits its judgment; the Supervisor applies it (_stage2_apply_fix).
                                 "supervised": True, "event_keys": [e["key"] for e in events or []],
-                                "nonce": uuid.uuid4().hex}
+                                "event_head": b["head_sha"], "nonce": uuid.uuid4().hex}
                     self.store.set(f"s2_fix_start_{b['id']}", json.dumps(baseline, sort_keys=True))
                     self.store.delete(f"s2_unpushed_fix_resume_{b['id']}")
                     self.store.delete(f"s2_fix_apply_attempts_{b['id']}")
@@ -3747,7 +3748,8 @@ class Supervisor:
             return None
         if not isinstance(baseline, dict) or baseline.get("supervised") is not True \
                 or baseline.get("branch") != b["branch"] or baseline.get("worktree") != str(b["worktree"]) \
-                or not isinstance(baseline.get("event_keys"), list) or not isinstance(baseline.get("nonce"), str):
+                or not isinstance(baseline.get("event_keys"), list) or not isinstance(baseline.get("nonce"), str) \
+                or not isinstance(baseline.get("event_head"), str):
             return None
         return baseline
 
@@ -3814,17 +3816,83 @@ class Supervisor:
         return {"batch_id": b["id"], "checkpoint_path": str(checkpoint), "head": head,
                 "checkpoint_stat": (stat.st_ino, stat.st_size, stat.st_mtime_ns)}
 
-    def _stage2_post_fix_reply(self, b, baseline, response) -> None:
-        """Post the AI's reply once per fix round; a hidden marker makes a re-entered application find its own post."""
-        key = f"s2_fix_reply_{b['id']}"
-        if self.store.get(key) == baseline["nonce"]:
-            return
-        marker = f"<!-- warroom-s2-fix {baseline['nonce']} -->"
-        if not any(marker in (comment.get("body") or "") for comment in self.gh.issue_comments(b["pr_number"])):
-            reply = response["reply"].strip()
-            missing = "".join(f"[{event}] " for event in response["event_keys"] if f"[{event}]" not in reply)
-            self.gh.comment_issue(b["pr_number"], f"{missing}{reply}\n\n{marker}")
-        self.store.set(key, baseline["nonce"])
+    def _stage2_fix_reply_lines(self, baseline, head: str) -> list[str]:
+        """The reply's binding: this round's nonce, every review event it answers and the PR HEAD it answers with."""
+        return ([f"WarRoom-Review-Event: {key}" for key in baseline["event_keys"]]
+                + [f"WarRoom-Fix-Head: {head}", f"<!-- warroom-s2-fix {baseline['nonce']} -->"])
+
+    def _stage2_fix_reply_id(self, b, baseline, head: str) -> int | None:
+        """The id of this round's reply on GitHub: posted by our account, carrying its nonce, every event key and `head`."""
+        login = str(self.cfg["expected_account"]).casefold()
+        wanted = set(self._stage2_fix_reply_lines(baseline, head))
+        nonce = f"<!-- warroom-s2-fix {baseline['nonce']} -->"
+        for comment in self.gh.issue_comments(b["pr_number"]):
+            body = str(comment.get("body") or "")
+            if nonce not in body:
+                continue
+            lines = {line.strip() for line in body.splitlines()}
+            user = comment.get("user") if isinstance(comment.get("user"), dict) else {}
+            if str(user.get("login") or "").casefold() != login or not wanted <= lines \
+                    or not isinstance(comment.get("id"), int):
+                raise GitError(f"이번 리뷰 수정 답글(nonce {baseline['nonce'][:8]})이 계정·이벤트·HEAD 결속과 다릅니다")
+            return comment["id"]
+        return None
+
+    def _stage2_post_fix_reply(self, b, baseline, response, head: str) -> int:
+        """Post the AI's reply once per fix round and return its GitHub comment id. A re-entered application finds its
+        own post by the nonce instead of posting again; a post GitHub does not list yet is re-read on a later tick."""
+        reply_id = self._stage2_fix_reply_id(b, baseline, head)
+        if reply_id is None:
+            posted_key = f"s2_fix_reply_posted_{b['id']}"
+            try:
+                posted = json.loads(self.store.get(posted_key) or "")
+            except (TypeError, ValueError):
+                posted = None
+            recent = (isinstance(posted, dict) and posted.get("nonce") == baseline["nonce"]
+                      and self.clock() - float(posted.get("at") or 0) < S2_FIX_REPLY_LIST_WAIT_SECONDS)
+            if not recent:   # never post twice while GitHub may still be listing the first post
+                reply = response["reply"].strip()
+                missing = "".join(f"[{event}] " for event in response["event_keys"] if f"[{event}]" not in reply)
+                self.store.set(posted_key, json.dumps({"nonce": baseline["nonce"], "at": self.clock()}))
+                try:
+                    self.gh.comment_issue(b["pr_number"], "\n".join([f"{missing}{reply}", ""]
+                                                                       + self._stage2_fix_reply_lines(baseline, head)))
+                except GhError:
+                    self.store.delete(posted_key)   # definitely not posted: the next attempt may post
+                    raise
+                reply_id = self._stage2_fix_reply_id(b, baseline, head)
+            if reply_id is None:
+                raise GhTransient("게시한 Stage 2 리뷰 수정 답글이 아직 PR 댓글 목록에 없습니다")
+        self.store.set(f"s2_fix_reply_{b['id']}", json.dumps({"nonce": baseline["nonce"], "reply_id": reply_id,
+                                                              "head": head}, sort_keys=True))
+        return reply_id
+
+    def _stage2_record_fix_reply(self, b, baseline, head: str) -> str | None:
+        """Complete this round's review events with the run and reply that answered them (`handled_events`), or say why
+        the fix is not complete. Called only after the fix itself passed the completion gate."""
+        try:
+            record = json.loads(self.store.get(f"s2_fix_reply_{b['id']}") or "")
+        except (TypeError, ValueError):
+            record = None
+        run = self._last_run(b)
+        if not isinstance(record, dict) or record.get("nonce") != baseline["nonce"] or record.get("head") != head \
+                or not isinstance(record.get("reply_id"), int) or run is None or not str(run["kind"]).startswith("fix"):
+            return "Stage 2 리뷰 수정 답글 증거가 이번 실행·HEAD와 결속되지 않았습니다. 이벤트를 완료하지 않고 보존합니다."
+        try:
+            found = self._stage2_fix_reply_id(b, baseline, head)
+        except GitError as e:
+            return f"{e}. 이벤트를 완료하지 않고 보존합니다."
+        if found != record["reply_id"]:
+            return f"기록한 Stage 2 리뷰 수정 답글 #{record['reply_id']}을 PR에서 확인할 수 없습니다. 이벤트를 완료하지 않고 보존합니다."
+        keys = baseline["event_keys"]
+        self.store.mark_handled(b["id"], b["pr_number"], baseline["event_head"], keys,
+                                run_id=run["id"], reply_id=record["reply_id"])
+        for key in keys:
+            event = self.store.handled_event(b["id"], b["pr_number"], baseline["event_head"], key)
+            if event is None or event["status"] != "HANDLED" or event["reply_id"] != record["reply_id"] \
+                    or event["run_id"] != run["id"] or event["completed_at"] is None:
+                return f"리뷰 이벤트 {key}의 완료 기록을 확인하지 못했습니다. 보존합니다."
+        return None
 
     def _stage2_apply_fix(self, b, baseline) -> bool:
         """Apply a Stage 2 review-fix judgment with the official CLI (#6555): amend, commit, exact-HEAD verify, push,
@@ -3923,7 +3991,7 @@ class Supervisor:
                     timed("push", self.git.push_owned_fix, wt, b["branch"], remote, head)
                 elif remote != head:
                     return self._fail(b, "ERROR", f"원격 소유 브랜치가 리뷰 수정 기준에서 이동했습니다 ({remote} / {base_head}). 보존합니다.")
-            timed("reply", self._stage2_post_fix_reply, b, baseline, response)
+            timed("reply", self._stage2_post_fix_reply, b, baseline, response, head)
             info = self.gh.pull(b["pr_number"])
         except TRANSIENT:
             raise
@@ -3932,7 +4000,8 @@ class Supervisor:
         verified = self._stage2_fix_proof(b, wt, head, outputs) if outputs is not None else None
         if self._check_fix_head(b, info) != "ok":
             return
-        if problem := timed("completion", self._stage2_fix_result_problem, b, info, verified):
+        if problem := timed("completion", self._stage2_fix_result_problem, b, info, verified) \
+                or self._stage2_record_fix_reply(b, baseline, head):
             return self._fail(b, "ERROR", problem)
         self.store.delete(f"s2_fix_start_{b['id']}")
         self.store.log(b["id"], "Stage 2 리뷰 수정 적용 " + " ".join(f"{k}={v}ms" for k, v in timings.items())
@@ -9871,7 +9940,10 @@ class Supervisor:
                 if problem := self._complete_producer_fix_events(b):
                     return self._fail(b, "ERROR", problem)
             if b["method"] == STAGE2_METHOD:
-                if problem := self._stage2_fix_result_problem(b, info):
+                supervised = self._stage2_supervised_fix(b)
+                if problem := self._stage2_fix_result_problem(b, info) or (
+                        supervised is not None and (Path(b["worktree"]) / S2_FIX_RESPONSE).exists()
+                        and self._stage2_record_fix_reply(b, supervised, info["head_sha"])):
                     return self._fail(b, "ERROR", problem)
                 self.store.delete(f"s2_fix_start_{b['id']}")
             elif b["method"] == STAGE3_METHOD:
