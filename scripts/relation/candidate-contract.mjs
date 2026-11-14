@@ -126,6 +126,46 @@ export function isThousandsCommaFragment(candidate, gloss) {
   return cut > 0 && intact === 0;
 }
 
+const GLOSS_WORD_SPLIT = /[\s,.;:()·‘’“”<>≪≫]+/u;
+const TRAILING_ENDING = /(?:하다|되다|이다|다|[을를은는이가의에로으도과와])$/u;
+
+/**
+ * Method A hard form gate: a multi-word candidate whose every word is a gloss word (or its inflected stem), in the same
+ * order, only re-packages the source gloss ("한평생을 지낼 계획" -> "평생 계획", "잡가에서, 앉아서 부르다" -> "앉아 부르다").
+ * Independent lexicalized compounds that are themselves Canonical lemmas ("동위 원소") are exempt; the caller supplies
+ * that lemma test so the shared Canonical lemma set is read at most once.
+ */
+export function isGlossRestatementShape(candidate, gloss) {
+  if (typeof gloss !== 'string') return false;
+  const words = normalizeCandidate(candidate).split(' ');
+  if (words.length < 2) return false;
+  const glossWords = gloss.normalize('NFC').split(GLOSS_WORD_SPLIT).filter(Boolean);
+  let from = 0;
+  for (const word of words) {
+    const stem = word.replace(TRAILING_ENDING, '') || word;
+    const at = glossWords.findIndex((glossWord, index) => index >= from && (stem.length >= 2 ? glossWord.includes(stem) : glossWord.startsWith(stem)));
+    if (at < 0) return false;
+    from = at;
+  }
+  return true;
+}
+
+const lemmaSurfaceCache = new WeakMap();
+function lemmaSurfaces(forms) {
+  let surfaces = lemmaSurfaceCache.get(forms);
+  if (!surfaces) {
+    surfaces = new Set([...forms].map((lemma) => normalizeCandidate(lemma).replace(/[\s-]/gu, '')));
+    lemmaSurfaceCache.set(forms, surfaces);
+  }
+  return surfaces;
+}
+
+export function isGlossRestatement(candidate, gloss, canonicalLemmaForms) {
+  if (!isGlossRestatementShape(candidate, gloss)) return false;
+  const surface = normalizeCandidate(candidate).replace(/[\s-]/gu, '');
+  return !(canonicalLemmaForms && lemmaSurfaces(canonicalLemmaForms).has(surface));
+}
+
 function hasExactKeys(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
@@ -148,13 +188,19 @@ export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForm
 }
 
 /** Candidate v1 content-only failures that can be removed from an exact, source-bound sense. */
-export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment = true } = {}) {
+export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment = true, enforceGlossRestatement = false } = {}) {
   const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms, { enforceSourceLemmaContainment });
   if (repeat !== undefined) return { kind: 'source_lemma_repeat', message: repeat };
   if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
     return {
       kind: 'thousands_comma_fragment',
       message: `candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`,
+    };
+  }
+  if (enforceGlossRestatement && isGlossRestatement(candidate, sourceSense.gloss, independentLemmaForms)) {
+    return {
+      kind: 'gloss_restatement',
+      message: `candidate ${JSON.stringify(candidate)} only restates the source gloss words in order`,
     };
   }
   return undefined;
@@ -166,6 +212,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
   candidateName = 'Candidate',
   canonicalLemmaForms,
   enforceSourceLemmaContainment = true,
+  enforceGlossRestatement = false,
 } = {}) {
   const batchNumber = Number(batch);
   if (!Number.isInteger(batchNumber) || ![1, 2].includes(batchNumber)) {
@@ -233,7 +280,10 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
           });
           continue;
         }
-        const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment });
+        const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, {
+          enforceSourceLemmaContainment,
+          enforceGlossRestatement: enforceGlossRestatement && enforceSourceLemmaContainment,
+        });
         if (issue !== undefined) {
           candidateIssues.push({
             record_id: source.id,
@@ -352,6 +402,7 @@ export function validateCandidatePaths(canonicalPath, candidatePath, { repositor
 
 export async function validateCandidateFiles(canonicalPath, candidatePath, options = {}) {
   const { batch } = validateCandidatePaths(canonicalPath, candidatePath, options);
+  const isMethodA = /^\d{3}_0[12]_a_/u.test(path.basename(candidatePath));
   const { repositoryDirectory = REPOSITORY_DIRECTORY, canonicalLemmaForms, shardLocalLemmaForms = false } = options;
   const [canonicalRows, candidateRows] = await Promise.all([
     readJsonl(canonicalPath),
@@ -363,6 +414,7 @@ export async function validateCandidateFiles(canonicalPath, candidatePath, optio
   return validateCandidateBatch(canonicalRows, candidateRows, {
     batch,
     canonicalLemmaForms: independentLemmaForms,
+    enforceGlossRestatement: isMethodA,
     sourceName: canonicalPath,
     candidateName: candidatePath,
   });

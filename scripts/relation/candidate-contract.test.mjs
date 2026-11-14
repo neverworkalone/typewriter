@@ -394,3 +394,33 @@ test('Candidate v1 reports every normalized source-lemma containment in one run 
   valid[1].senses = [sense('w2-s1', ['일기예보', '비구름'])];
   assert.equal(validateCandidateBatch(canonicalRows, valid, { batch: '01' }).candidateCount, 7);
 });
+
+test('Method A Candidate v1 rejects gloss restatements, keeps independent words and Canonical compounds', () => {
+  const glossOf = { w1: '한평생을 지낼 계획.', w2: '고체가 대기 속에서 습기를 흡수하여 녹는 성질.', w3: '잡가에서, 앉아서 부르다.', w4: '동위 원소를 가리킨다.' };
+  const canonicalRows = Array.from({ length: 500 }, (_, index) => ({
+    id: `w${index + 1}`, lemma: `표제어 ${index + 1}`, senses: [{ id: `w${index + 1}-s1`, gloss: glossOf[`w${index + 1}`] ?? '무관한 뜻.' }],
+  }));
+  canonicalRows.push({ id: 'w900', lemma: '동위 원소', senses: [{ id: 'w900-s1', gloss: '같은 원소.' }] });
+  const run = (candidates, options) => {
+    const rows = canonicalRows.slice(0, 500).map((record, index) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: index < 4 ? candidates[index] ?? [] : [] }],
+    }));
+    return validateCandidateBatch(canonicalRows, rows, { batch: '01', ...options });
+  };
+  const bad = [['평생 계획', '백년대계'], ['녹는 성질', '습기'], ['앉아 부르다', '잡가를 부르다', '노래하다'], ['동위 원소']];
+  assert.throws(() => run(bad, { enforceGlossRestatement: true }), (error) => {
+    assert.deepEqual(error.candidateIssues.map((issue) => [issue.candidate, issue.kind]), [
+      ['평생 계획', 'gloss_restatement'], ['녹는 성질', 'gloss_restatement'],
+      ['앉아 부르다', 'gloss_restatement'], ['잡가를 부르다', 'gloss_restatement'],
+    ]);
+    return true;
+  });
+  // Canonical compound (w900 is not in the first 500 rows but its lemma is an independent target) stays allowed
+  assert.doesNotThrow(() => run([[], [], [], ['동위 원소']], {
+    enforceGlossRestatement: true, canonicalLemmaForms: new Set(['동위 원소']),
+  }));
+  // not enforced for other methods or legacy reads
+  assert.doesNotThrow(() => run(bad));
+  assert.doesNotThrow(() => run(bad, { enforceGlossRestatement: true, enforceSourceLemmaContainment: false }));
+});
