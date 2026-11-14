@@ -634,3 +634,32 @@ test('compact save-chunk removes normalized source-lemma containment even for a 
   assert.equal(result.autoRemoved.count, 2);
   assert.ok(result.autoRemoved.items.every((item) => item.reason === 'source lemma repeat'));
 });
+
+test('Method A save-chunk and patch remove gloss restatements but keep other methods and independent words', async (t) => {
+  for (const method of ['a', 'b']) {
+    const context = await setup(t, method);
+    context.canonicalRows[0].senses[0].gloss = '한평생을 지낼 계획.';
+    await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+    await prepare(context);
+    const result = await saveCandidateChunk({
+      scratchDirectory: context.scratchDirectory,
+      chunk: 1,
+      inputPath: await writeInput(context, rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['평생 계획', '백년대계'] }), 'restate.jsonl'),
+      repositoryDirectory: context.repositoryDirectory,
+    });
+    const saved = await readLines(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'));
+    if (method === 'a') {
+      assert.deepEqual(result.autoRemoved.map((item) => [item.candidate, item.reason]), [['평생 계획', 'gloss restatement']]);
+      assert.deepEqual(saved[0].senses[0].candidates, ['백년대계']);
+      const patched = await patchCandidateSenses({
+        scratchDirectory: context.scratchDirectory,
+        inputPath: await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['한평생 계획'] }], 'patch.jsonl'),
+        repositoryDirectory: context.repositoryDirectory,
+      });
+      assert.deepEqual(patched.autoRemoved.map((item) => item.candidate), ['한평생 계획']);
+    } else {
+      assert.deepEqual(result.autoRemoved, []);
+      assert.deepEqual(saved[0].senses[0].candidates, ['평생 계획', '백년대계']);
+    }
+  }
+});
