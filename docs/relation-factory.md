@@ -272,6 +272,9 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 - `decisions --shard SSS --base <sha>`: PR base..HEAD diff에서 PR의 결정(base Relation 파일의 1부터 시작하는 행 번호)을 복원한다. 별도 원장 없이 PR 자체가 상태다. base 이후 이 샤드의 두 파일 밖을 바꾼 PR, 행을 추가하거나 순서를 바꾼 PR, base Drop 행을 바꾼 PR은 거부한다.
 - `amend --shard SSS --base <sha> --in <delta>`: `amend` 다음 줄에 `D <row...>`(삭제), `L <row> <target_sense_id>`(Link Repair), `K <row...>`(base 행 유지)를 쓴다. 복원한 결정에 delta를 적용하고 apply와 같은 계산으로 base 파일에서 두 파일을 다시 만든다. 같은 입력이면 같은 bytes가 나오므로 중단 뒤에는 같은 요청을 다시 실행한다. 영수증의 `outputs`는 각 파일의 sha256이다.
+- 입력 자체가 거부되면(문법, 없는 행, 같은 표기가 아닌 target) exit 2와 `{"version":1,"ok":false,"family":"input","error":…}` 한 줄을 출력하고 아무것도 쓰지 않는다. 그 밖의 실패는 exit 1이다.
+
+**정제 PR 리뷰 수정 (#6555):** War Room의 Stage 3 FIXING에서 AI는 판정만 제출한다. 리뷰가 지적한 Sense의 base 행과 현재 결정을 `decisions --senses`로 받고, `.warroom-scratch/s3-fix-response.json`에 `{event_keys, amend, reply}`를 쓴다. Supervisor의 Review FIXING Coordinator(`tools/warroom/warroom/fixcoord.py`)는 그 amend를 PR base에서 실행하고, amend가 바꾼 샤드 파일만 commit한다. 정확한 commit을 `verify --shard`로 한 번 검증한 뒤 push하고, 답글을 한 번만 게시한다. 완료는 기존 Stage 3 범위·답글 게이트가 판정한다. 입력 거부는 같은 세션에 사유와 함께 정해진 횟수까지 돌려보내고, 실행 실패는 같은 입력으로 한 번 다시 실행한 뒤 보존하고 멈춘다.
 
 ### 5-A. 파일·후보 회계
 

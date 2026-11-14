@@ -26,7 +26,7 @@ export const usage = `Usage:
   node scripts/relation/edit-cli.mjs apply --shard SSS
   node scripts/relation/edit-cli.mjs apply --shard SSS --batch BB --part PP
   node scripts/relation/edit-cli.mjs report --shard SSS [--out <file>]
-  node scripts/relation/edit-cli.mjs decisions --shard SSS --base <sha> [--out <file>]  # a PR's decisions from its diff
+  node scripts/relation/edit-cli.mjs decisions --shard SSS --base <sha> [--senses <id,...>] [--out <file>]  # a PR's decisions
   node scripts/relation/edit-cli.mjs amend --shard SSS --base <sha> --in <delta.txt>  # rebuild the PR from its base`;
 
 function targetAliases(text, index) {
@@ -530,9 +530,13 @@ export function applyDelta(current, text, baseRelations) {
   return [...byRow.values()].sort((left, right) => left.row - right.row);
 }
 
-/** One recovered decision with its base row and target meanings, as bounded review context. */
+/**
+ * One base row with its decision, as bounded review context: the row's meanings, the chosen Link Repair target, and
+ * for a text-only row every exact same-spelling target Sense an `L` amend may choose.
+ */
 export function describeDecision(decision, baseRelations, index) {
   const original = baseRelations[decision.row - 1];
   return { ...decision, relation: describeRelation(index, original),
-    ...(decision.action === 'repair' ? { target: describeSense(index, decision.target_record_id, decision.target_sense_id) } : {}) };
+    ...(decision.action === 'repair' ? { target: describeSense(index, decision.target_record_id, decision.target_sense_id) } : {}),
+    ...('text' in original ? { targets: targetAliases(original.text, index).map(({ alias, ...target }) => target) } : {}) };
 }

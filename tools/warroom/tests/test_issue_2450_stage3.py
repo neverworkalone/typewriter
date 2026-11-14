@@ -350,8 +350,8 @@ class Stage3SupervisorFlow(unittest.TestCase):
         launched = w.adapter.launches[-1]
         self.assertIn("data/relations/relation-001.jsonl", launched["prompt"])
         self.assertIn("data/relation-drops/drop-001.jsonl", launched["prompt"])
-        self.assertIn("verify --shard 001 --json", launched["prompt"])
-        self.assertIn("WarRoom-Review-Event: review:<actual-event-id>", launched["prompt"])
+        self.assertIn(".warroom-scratch/s3-fix-response.json", launched["prompt"])
+        self.assertIn("base " + "b" * 40, launched["prompt"])
         self.assertIn("review:123", launched["prompt"])
         self.assertNotIn("{{canonical}}", launched["prompt"])
         self.assertNotIn("{{method_contract}}", launched["prompt"])
