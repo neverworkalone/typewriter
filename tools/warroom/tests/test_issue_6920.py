@@ -8,7 +8,7 @@ import time
 import unittest
 from pathlib import Path
 
-from warroom.adapters import ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter, RunSpec
+from warroom.adapters import SpawnNotStarted, ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter, RunSpec
 
 BIG = "가" * 400_000   # ~1.2 MB UTF-8: above macOS ARG_MAX and Linux MAX_ARG_STRLEN
 
@@ -83,9 +83,32 @@ class FailedSpawnLeavesNoEvidence(unittest.TestCase):
             log, ex = d / "run.log", d / "run.exit"
             ad = ClaudeCodeAdapter(binary="/bin/true")
             with mock.patch("subprocess.Popen", side_effect=OSError(7, "Argument list too long")):
-                with self.assertRaises(OSError):
+                with self.assertRaises(SpawnNotStarted):
                     ad._spawn(["x"], d, {"PATH": os.environ["PATH"]}, log, ex, stdin_text="p")
             self.assertEqual(sorted(p.name for p in d.iterdir()), [])
+
+    def test_ambiguous_popen_failure_keeps_evidence(self):
+        """Reviewer: an exception that can follow fork (MemoryError, non-exec OSError) must not be read as 'no child'."""
+        from unittest import mock
+        for exc in (MemoryError(), OSError(5, "I/O error")):
+            with self.subTest(exc=repr(exc)), tempfile.TemporaryDirectory() as d:
+                d = Path(d)
+                log, ex = d / "run.log", d / "run.exit"
+                ad = ClaudeCodeAdapter(binary="/bin/true")
+                with mock.patch("subprocess.Popen", side_effect=exc):
+                    with self.assertRaises(type(exc)) as ctx:
+                        ad._spawn(["x"], d, {"PATH": os.environ["PATH"]}, log, ex, stdin_text="p")
+                self.assertNotIsInstance(ctx.exception, SpawnNotStarted)
+                self.assertTrue(log.exists())
+                self.assertTrue((d / "run.log.prompt").exists())
+
+    def test_legacy_event_must_be_a_refused_spawn(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            spawn = {"log_file": str(d / "batch-1-105.log"), "exit_file": str(d / "batch-1-105.exit")}
+            (d / "batch-1-105.log").write_bytes(b"")
+            for msg in ("AI 실행 시작 실패: ", "AI 실행 시작 실패: [Errno 5] I/O error"):
+                self.assertFalse(self._sup([{"id": 5, "ts": 106.0, "msg": msg}])(spawn), msg)
 
     def _sup(self, events=(), runs=()):
         from types import SimpleNamespace

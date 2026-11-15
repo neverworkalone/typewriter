@@ -28,7 +28,7 @@ from pathlib import Path
 
 from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, fixcoord, literary, prbody, progress, prompts, refine, reviews, s2parallel, s3parallel, stage1ab,
                stage2, stage3)
-from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
+from .adapters import (NO_CHILD_ERRNOS, PREFLIGHT_PENDING, SpawnNotStarted, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        classify_codex_failure, classify_goat_failure, final_answer, is_goat_model, opencode_free_quota,
                        opencode_provider_errors, usage_limit_override_key)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
@@ -2408,6 +2408,7 @@ class Supervisor:
         wt = b["worktree"]
         sid = b["session_id"]
         ad = self._adapter(b["producer"])
+        repair_spawn_entered = False
         try:   # never run with a CLI default model or effort
             run = self._run(b)
         except ValueError as e:
@@ -2638,6 +2639,7 @@ class Supervisor:
                         format_error=format_error,
                         type_tier_policy=current.get("type_tier_policy", "legacy-independent"),
                     )
+                    repair_spawn_entered = True
                     h = ad.start(prompt, wt, run_env, run,
                                  f"Stage 2 {stage2.label(b['shard'], b['batch'])} local repair", log, ex, **extra)
                 else:
@@ -2739,7 +2741,10 @@ class Supervisor:
             raise
         except Exception as e:
             if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
-                self._stage2_repair_mark_start_failed(b)
+                if isinstance(e, SpawnNotStarted) or not repair_spawn_entered:
+                    self._stage2_repair_mark_start_failed(b)   # provably no child (refused spawn, or never reached it)
+                else:
+                    return self._fail(b, "ERROR", f"AI 실행 시작 오류(자식 생성 여부 불명, 증거 보존): {e}")
             return self._fail(b, "ERROR", f"{self.START_FAILURE_PREFIX}: {e}")
         self.store.set(f"headlag_{b['id']}", "")   # a new run supersedes any earlier push verification
         if b["method"] == STAGE2_METHOD:
@@ -4868,8 +4873,11 @@ class Supervisor:
             if m is None or type(consumed) is not int:
                 return False
             launched_at = int(m.group(1))
-            return any(e["id"] > consumed and e["ts"] >= launched_at
-                       and str(e["msg"]).startswith(self.START_FAILURE_PREFIX)
+            def refused(msg: str) -> bool:   # only a fork/exec refusal (`[Errno N]`) proves no child existed
+                found = re.search(r"\[Errno (\d+)\]", msg)
+                return str(msg).startswith(self.START_FAILURE_PREFIX) and found is not None \
+                    and int(found.group(1)) in NO_CHILD_ERRNOS
+            return any(e["id"] > consumed and e["ts"] >= launched_at and refused(str(e["msg"]))
                        for e in self.store.batch_events(b["id"]))
         except (OSError, KeyError, TypeError):
             return False
