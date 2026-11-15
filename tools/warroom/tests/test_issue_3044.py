@@ -680,6 +680,13 @@ class Stage2RepairPeersAndRestart(unittest.TestCase):
             Path(spawn[key]).unlink(missing_ok=True)
         w.store.update(batch["id"], state="PRODUCING", error=None)
         w.sup._launch_stage2_repair_page(w.store.batch(batch["id"]))
+        self.assertEqual(len(w.adapter.launches), launches, "absent files are not proof (pre-pid-marker restart window, #6920)")
+        self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+        state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+        state["current"]["attempt_log"][-1]["spawn"]["start_failed"] = True   # durable proof the spawn raised
+        w.store.set(stage2.repair_state_key(batch["id"]), json.dumps(state, sort_keys=True))
+        w.store.update(batch["id"], state="PRODUCING", error=None)
+        w.sup._launch_stage2_repair_page(w.store.batch(batch["id"]))
         self.assertEqual(len(w.adapter.launches), launches + 1, "the unstarted reservation is launched exactly once")
         self.assertEqual([a["status"] for a in self.state(w, batch)["attempt_log"]], ["launched"])
 

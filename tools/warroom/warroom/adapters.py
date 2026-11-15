@@ -6,6 +6,7 @@ own settings: every start and every resume receives an explicit `RunSpec`.
 """
 from __future__ import annotations
 
+import errno
 import json
 import os
 import re
@@ -197,6 +198,17 @@ def _ids_in(obj):
             yield from _ids_in(v)
 
 
+class SpawnNotStarted(OSError):
+    """`Popen` failed in a way that guarantees no child exists (fork/exec refused; Python reaps a failed exec child)."""
+
+
+# errno values `fork`/`execve` report for a refusal; an exception outside this set (MemoryError, a pipe-read error,
+# KeyboardInterrupt, ...) can surface after the child was created, so it never proves "not started".
+NO_CHILD_ERRNOS = frozenset(getattr(errno, name) for name in (
+    "E2BIG", "ENOENT", "EACCES", "ENOEXEC", "ENAMETOOLONG", "ENOTDIR", "ELOOP", "EISDIR", "ETXTBSY",
+    "ENOMEM", "EAGAIN", "EPERM") if hasattr(errno, name))
+
+
 class ProcessAdapter(AgentAdapter):
     """Process handling shared by every CLI: detached group, exit wrapper, liveness, stop, log scan."""
     # True: do not wrap this adapter in the common chunk sandbox. Its own CLI policy (or compatibility needs)
@@ -242,6 +254,13 @@ class ProcessAdapter(AgentAdapter):
                 p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],
                                      cwd=cwd, env=env, stdin=stdin_file or subprocess.DEVNULL,
                                      stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        except OSError as error:
+            if error.errno not in NO_CHILD_ERRNOS:
+                raise   # a child may exist: keep every file as evidence
+            # fork/exec refused: no process exists, so leave no log/prompt that recovery would read as "a run may have started".
+            log_file.unlink(missing_ok=True)
+            log_file.with_name(log_file.name + ".prompt").unlink(missing_ok=True)
+            raise SpawnNotStarted(error.errno, error.strerror) from error
         finally:
             if stdin_file:
                 stdin_file.close()

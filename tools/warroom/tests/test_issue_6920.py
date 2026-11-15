@@ -8,7 +8,7 @@ import time
 import unittest
 from pathlib import Path
 
-from warroom.adapters import ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter, RunSpec
+from warroom.adapters import SpawnNotStarted, ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter, RunSpec
 
 BIG = "가" * 400_000   # ~1.2 MB UTF-8: above macOS ARG_MAX and Linux MAX_ARG_STRLEN
 
@@ -71,6 +71,96 @@ class ClearRemovesPromptFiles(unittest.TestCase):
                 Supervisor._remove_run_files(sup, {"id": 7, "log_file": None, "exit_file": None})
                 self.assertFalse(prompt.exists())
                 self.assertFalse(log.exists())
+
+
+class FailedSpawnLeavesNoEvidence(unittest.TestCase):
+    """The #6920 recurrence: a failed Popen left an empty log, so recovery refused to re-run a launch that never ran."""
+
+    def test_failed_spawn_removes_log_and_prompt(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            log, ex = d / "run.log", d / "run.exit"
+            ad = ClaudeCodeAdapter(binary="/bin/true")
+            with mock.patch("subprocess.Popen", side_effect=OSError(7, "Argument list too long")):
+                with self.assertRaises(SpawnNotStarted):
+                    ad._spawn(["x"], d, {"PATH": os.environ["PATH"]}, log, ex, stdin_text="p")
+            self.assertEqual(sorted(p.name for p in d.iterdir()), [])
+
+    def test_ambiguous_popen_failure_keeps_evidence(self):
+        """Reviewer: an exception that can follow fork (MemoryError, non-exec OSError) must not be read as 'no child'."""
+        from unittest import mock
+        for exc in (MemoryError(), OSError(5, "I/O error")):
+            with self.subTest(exc=repr(exc)), tempfile.TemporaryDirectory() as d:
+                d = Path(d)
+                log, ex = d / "run.log", d / "run.exit"
+                ad = ClaudeCodeAdapter(binary="/bin/true")
+                with mock.patch("subprocess.Popen", side_effect=exc):
+                    with self.assertRaises(type(exc)) as ctx:
+                        ad._spawn(["x"], d, {"PATH": os.environ["PATH"]}, log, ex, stdin_text="p")
+                self.assertNotIsInstance(ctx.exception, SpawnNotStarted)
+                self.assertTrue(log.exists())
+                self.assertTrue((d / "run.log.prompt").exists())
+
+    def test_legacy_event_must_be_a_refused_spawn(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            spawn = {"log_file": str(d / "batch-1-105.log"), "exit_file": str(d / "batch-1-105.exit")}
+            (d / "batch-1-105.log").write_bytes(b"")
+            for msg in ("AI 실행 시작 실패: ", "AI 실행 시작 실패: [Errno 5] I/O error"):
+                self.assertFalse(self._sup([{"id": 5, "ts": 106.0, "msg": msg}])(spawn), msg)
+
+    def _sup(self, events=(), runs=()):
+        from types import SimpleNamespace
+        from warroom.supervisor import Supervisor
+        sup = SimpleNamespace(START_FAILURE_PREFIX=Supervisor.START_FAILURE_PREFIX,
+                              store=SimpleNamespace(runs=lambda _i: list(runs), batch_events=lambda _i: list(events)))
+        return lambda spawn, attempt=None, current=None: Supervisor._spawn_never_started(
+            sup, {"id": 1}, spawn, attempt or {"prior_run_id": 0}, current or {})
+
+    def test_unregistered_start_window_is_not_never_started(self):
+        """Reviewer race: child spawned, Supervisor died before the pid/run row; no files yet => must stay fail-closed."""
+        with tempfile.TemporaryDirectory() as d:
+            spawn = {"log_file": str(Path(d) / "a.log"), "exit_file": str(Path(d) / "a.exit")}
+            check = self._sup()
+            self.assertFalse(check(spawn))                       # nothing on disk, no failure proof
+            Path(spawn["log_file"]).write_bytes(b"")
+            self.assertFalse(check(spawn))                       # empty log alone is not proof
+
+    def test_durable_failure_proof(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            spawn = {"log_file": str(d / "a.log"), "exit_file": str(d / "a.exit"), "start_failed": True}
+            check = self._sup()
+            (d / "a.log").write_bytes(b"")
+            self.assertTrue(check(spawn))
+            (d / "a.log").write_text("output")
+            self.assertFalse(check(spawn))                       # worker wrote output
+            (d / "a.log").write_bytes(b"")
+            Path(str(d / "a.exit") + ".pid").write_text("1")
+            self.assertFalse(check(spawn))                       # wrapper started
+            Path(str(d / "a.exit") + ".pid").unlink()
+            (d / "a.exit").write_text("0")
+            self.assertFalse(check(spawn))
+            self.assertFalse(check({}))
+
+    def test_legacy_proof_is_attributed_to_this_reservations_launch(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            spawn = {"log_file": str(d / "batch-1-105.log"), "exit_file": str(d / "batch-1-105.exit")}
+            (d / "batch-1-105.log").write_bytes(b"")
+            msg = "AI 실행 시작 실패: [Errno 7] Argument list too long"
+            mine = [{"id": 5, "ts": 105.2, "msg": msg}]
+            self.assertTrue(self._sup(mine)(spawn))
+            self.assertFalse(self._sup(mine)(spawn, current={"start_failure_consumed_event": 5}))
+            # earlier launch A failed at t=100; reservation B (same prior_run_id) spawned at 105, then the
+            # Supervisor restarted before the wrapper wrote its pid: A's event must not vouch for B
+            older = [{"id": 4, "ts": 100.3, "msg": msg}]
+            self.assertFalse(self._sup(older)(spawn, {"prior_run_id": 3}))
+            self.assertFalse(self._sup(older + [{"id": 6, "ts": 106.0, "msg": "other"}])(spawn))
+            # unparseable launch time stays fail-closed
+            odd = {"log_file": str(d / "x.log"), "exit_file": str(d / "x.exit")}
+            self.assertFalse(self._sup(mine)(odd))
 
 
 if __name__ == "__main__":
