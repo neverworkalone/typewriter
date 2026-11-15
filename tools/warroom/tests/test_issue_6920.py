@@ -87,24 +87,50 @@ class FailedSpawnLeavesNoEvidence(unittest.TestCase):
                     ad._spawn(["x"], d, {"PATH": os.environ["PATH"]}, log, ex, stdin_text="p")
             self.assertEqual(sorted(p.name for p in d.iterdir()), [])
 
-    def test_never_started_predicate(self):
+    def _sup(self, events=(), runs=()):
+        from types import SimpleNamespace
         from warroom.supervisor import Supervisor
+        sup = SimpleNamespace(START_FAILURE_PREFIX=Supervisor.START_FAILURE_PREFIX,
+                              store=SimpleNamespace(runs=lambda _i: list(runs), batch_events=lambda _i: list(events)))
+        return lambda spawn, attempt=None, current=None: Supervisor._spawn_never_started(
+            sup, {"id": 1}, spawn, attempt or {"prior_run_id": 0}, current or {})
+
+    def test_unregistered_start_window_is_not_never_started(self):
+        """Reviewer race: child spawned, Supervisor died before the pid/run row; no files yet => must stay fail-closed."""
+        with tempfile.TemporaryDirectory() as d:
+            spawn = {"log_file": str(Path(d) / "a.log"), "exit_file": str(Path(d) / "a.exit")}
+            check = self._sup()
+            self.assertFalse(check(spawn))                       # nothing on disk, no failure proof
+            Path(spawn["log_file"]).write_bytes(b"")
+            self.assertFalse(check(spawn))                       # empty log alone is not proof
+
+    def test_durable_failure_proof(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            log, ex = d / "a.log", d / "a.exit"
-            spawn = {"log_file": str(log), "exit_file": str(ex)}
-            self.assertTrue(Supervisor._spawn_never_started(spawn))        # nothing on disk
-            log.write_bytes(b"")
-            self.assertTrue(Supervisor._spawn_never_started(spawn))        # empty log from a failed spawn (#6920 e2)
-            log.write_text("output")
-            self.assertFalse(Supervisor._spawn_never_started(spawn))       # a worker wrote output
-            log.write_bytes(b"")
-            Path(str(ex) + ".pid").write_text("1")
-            self.assertFalse(Supervisor._spawn_never_started(spawn))       # wrapper started
-            Path(str(ex) + ".pid").unlink()
-            ex.write_text("0")
-            self.assertFalse(Supervisor._spawn_never_started(spawn))       # finished
-            self.assertFalse(Supervisor._spawn_never_started(None or {}))  # missing binding stays fail-closed
+            spawn = {"log_file": str(d / "a.log"), "exit_file": str(d / "a.exit"), "start_failed": True}
+            check = self._sup()
+            (d / "a.log").write_bytes(b"")
+            self.assertTrue(check(spawn))
+            (d / "a.log").write_text("output")
+            self.assertFalse(check(spawn))                       # worker wrote output
+            (d / "a.log").write_bytes(b"")
+            Path(str(d / "a.exit") + ".pid").write_text("1")
+            self.assertFalse(check(spawn))                       # wrapper started
+            Path(str(d / "a.exit") + ".pid").unlink()
+            (d / "a.exit").write_text("0")
+            self.assertFalse(check(spawn))
+            self.assertFalse(check({}))
+
+    def test_legacy_proof_is_the_unconsumed_start_failure_event(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            spawn = {"log_file": str(d / "a.log"), "exit_file": str(d / "a.exit")}
+            (d / "a.log").write_bytes(b"")
+            ev = [{"id": 5, "ts": 10.0, "msg": "AI 실행 시작 실패: [Errno 7] Argument list too long"}]
+            self.assertTrue(self._sup(ev)(spawn))
+            self.assertFalse(self._sup(ev)(spawn, current={"start_failure_consumed_event": 5}))
+            self.assertFalse(self._sup([{"id": 6, "ts": 1.0, "msg": ev[0]["msg"]}],
+                                       [{"id": 3, "started_at": 9.0}])(spawn, {"prior_run_id": 3}))
 
 
 if __name__ == "__main__":

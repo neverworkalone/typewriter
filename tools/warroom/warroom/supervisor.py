@@ -2738,7 +2738,9 @@ class Supervisor:
         except TRANSIENT:
             raise
         except Exception as e:
-            return self._fail(b, "ERROR", f"AI 실행 시작 실패: {e}")
+            if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
+                self._stage2_repair_mark_start_failed(b)
+            return self._fail(b, "ERROR", f"{self.START_FAILURE_PREFIX}: {e}")
         self.store.set(f"headlag_{b['id']}", "")   # a new run supersedes any earlier push verification
         if b["method"] == STAGE2_METHOD:
             self.store.delete(f"s2_safe_ff_{b['id']}")
@@ -4837,13 +4839,16 @@ class Supervisor:
         except Exception as error:
             return f"Stage 2 repair rebind evidence check failed: {error}; preserving prior decisions and receipts"
 
-    @staticmethod
-    def _spawn_never_started(spawn: dict) -> bool:
-        """True when a reserved launch's files prove no worker ran (#6920).
+    START_FAILURE_PREFIX = "AI 실행 시작 실패"
 
-        The detached wrapper writes `<exit>.pid` before anything else and the CLI's first output goes to the log, so
-        a failed spawn (e.g. `[Errno 7] Argument list too long`) leaves at most an empty log and no exit/pid file.
-        A missing binding or any exit/pid file, or a non-empty log, keeps the fail-closed "may have started" verdict."""
+    def _spawn_never_started(self, b, spawn: dict, attempt: dict, current: dict) -> bool:
+        """True only with durable proof that this reservation's launch FAILED before any worker existed (#6920).
+
+        Absence of files is never proof: the detached wrapper writes `<exit>.pid` after `Popen` returns and the parent
+        stores the pid/run row after that, so a restart in between would look identical to a never-started launch.
+        Proof is (1) the `start_failed` marker `_launch` stored when `ad.start` raised, or (2) for a reservation made
+        before that marker existed, a start-failure audit event newer than the last consumed one and than the prior
+        run. Either way no exit/pid file may exist and the log must be absent or empty."""
         log, ex = spawn.get("log_file"), spawn.get("exit_file")
         if not isinstance(log, str) or not isinstance(ex, str):
             return False
@@ -4851,9 +4856,31 @@ class Supervisor:
             if Path(ex).exists() or Path(ex + ".pid").exists():
                 return False
             logp = Path(log)
-            return not logp.exists() or logp.stat().st_size == 0
-        except OSError:
+            if logp.exists() and logp.stat().st_size != 0:
+                return False
+            if spawn.get("start_failed") is True:
+                return True
+            consumed = current.get("start_failure_consumed_event", 0)
+            prior = next((r for r in self.store.runs(b["id"]) if r["id"] == attempt.get("prior_run_id")), None)
+            since = prior["started_at"] if prior else 0
+            return type(consumed) is int and any(
+                e["id"] > consumed and e["ts"] >= since and str(e["msg"]).startswith(self.START_FAILURE_PREFIX)
+                for e in self.store.batch_events(b["id"]))
+        except (OSError, KeyError, TypeError):
             return False
+
+    def _stage2_repair_mark_start_failed(self, b) -> None:
+        """Durably record that the reserved launch raised before a worker existed (see `_spawn_never_started`)."""
+        try:
+            state = self._stage2_repair_state(b, required=True)
+            current = state.get("current")
+            attempts = current.get("attempt_log") if isinstance(current, dict) else None
+            last = attempts[-1] if isinstance(attempts, list) and attempts else None
+            if isinstance(last, dict) and last.get("status") == "launched" and isinstance(last.get("spawn"), dict):
+                last["spawn"]["start_failed"] = True
+                self._save_stage2_repair_state(b, state)
+        except Exception:
+            pass   # without the marker the recovery stays fail-closed
 
     def _stage2_repair_recover_launched(self, b, state: dict, current: dict) -> bool:
         """Settle a `launched` attempt left by a restart: attach, judge a finished run, or re-run a never-started one.
@@ -4882,13 +4909,15 @@ class Supervisor:
                 self._fail(b, "ERROR", "Stage 2 repair attempt has a process but no recorded run; preserving all evidence")
                 return True
             spawn = attempt.get("spawn")
-            if not isinstance(spawn, dict) or not self._spawn_never_started(spawn):
+            if not isinstance(spawn, dict) or not self._spawn_never_started(b, spawn, attempt, current):
                 self._fail(b, "ERROR", "Stage 2 repair attempt has no recorded run, but its launch may have started a "
                            "process (log/exit files exist or the launch binding is missing); not re-running, preserving all evidence")
                 return True
             # reserved but never started: drop the stale reservation and let the caller launch the same request once
             attempts.pop()
             current["attempts"] = max(0, current.get("attempts", 1) - 1)
+            events = self.store.batch_events(b["id"])
+            current["start_failure_consumed_event"] = max([e["id"] for e in events], default=0)
             self._save_stage2_repair_state(b, state)
             return False
         run = newer[0]
