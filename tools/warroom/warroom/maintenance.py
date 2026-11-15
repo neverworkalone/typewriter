@@ -31,7 +31,9 @@ _NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` re
 _PY_TEST = re.compile(r"tools/warroom/tests/test_[^/]+\.py")
 _TESTISH = re.compile(r"(?:^|/)(?:tests?|__tests__)/|\.(?:test|spec)\.|(?:^|/)test_[^/]+\.py$")
 _SUPPORT_FILE = re.compile(r"(?:^|/)(?:fixtures?|helpers?)/|(?:^|/)(?:fakes|fake_runner|__init__)\.py$|^tools/warroom/tests/fake_[^/]+\.py$")   # test support, not a test
-_DOC = re.compile(r"\.md$|^docs/|^tools/warroom/prompts/")
+# Documentation, prompts and per-shard Relation drop data: nothing runnable to test; the resumed Stage's own admission
+# accounting is the verification of a drop record.
+_DOC = re.compile(r"\.md$|^docs/|^tools/warroom/prompts/|^data/relation-drops/drop-\d+\.jsonl$")
 VERIFY_TIMEOUT = 900
 OPEN_DEFECT = ("REPORTED", "LINKED", "FIX_MERGED", "HELD", "RECOVERING")
 # Query failures asking again can fix (#2810). The diagnosis path re-raises them before any broad `except`, so the
