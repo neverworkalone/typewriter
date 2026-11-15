@@ -73,5 +73,39 @@ class ClearRemovesPromptFiles(unittest.TestCase):
                 self.assertFalse(log.exists())
 
 
+class FailedSpawnLeavesNoEvidence(unittest.TestCase):
+    """The #6920 recurrence: a failed Popen left an empty log, so recovery refused to re-run a launch that never ran."""
+
+    def test_failed_spawn_removes_log_and_prompt(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            log, ex = d / "run.log", d / "run.exit"
+            ad = ClaudeCodeAdapter(binary="/bin/true")
+            with mock.patch("subprocess.Popen", side_effect=OSError(7, "Argument list too long")):
+                with self.assertRaises(OSError):
+                    ad._spawn(["x"], d, {"PATH": os.environ["PATH"]}, log, ex, stdin_text="p")
+            self.assertEqual(sorted(p.name for p in d.iterdir()), [])
+
+    def test_never_started_predicate(self):
+        from warroom.supervisor import Supervisor
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            log, ex = d / "a.log", d / "a.exit"
+            spawn = {"log_file": str(log), "exit_file": str(ex)}
+            self.assertTrue(Supervisor._spawn_never_started(spawn))        # nothing on disk
+            log.write_bytes(b"")
+            self.assertTrue(Supervisor._spawn_never_started(spawn))        # empty log from a failed spawn (#6920 e2)
+            log.write_text("output")
+            self.assertFalse(Supervisor._spawn_never_started(spawn))       # a worker wrote output
+            log.write_bytes(b"")
+            Path(str(ex) + ".pid").write_text("1")
+            self.assertFalse(Supervisor._spawn_never_started(spawn))       # wrapper started
+            Path(str(ex) + ".pid").unlink()
+            ex.write_text("0")
+            self.assertFalse(Supervisor._spawn_never_started(spawn))       # finished
+            self.assertFalse(Supervisor._spawn_never_started(None or {}))  # missing binding stays fail-closed
+
+
 if __name__ == "__main__":
     unittest.main()

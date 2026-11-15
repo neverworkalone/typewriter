@@ -242,6 +242,11 @@ class ProcessAdapter(AgentAdapter):
                 p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],
                                      cwd=cwd, env=env, stdin=stdin_file or subprocess.DEVNULL,
                                      stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        except BaseException:
+            # No process exists: leave no log/prompt behind that a later recovery would read as "a run may have started".
+            log_file.unlink(missing_ok=True)
+            log_file.with_name(log_file.name + ".prompt").unlink(missing_ok=True)
+            raise
         finally:
             if stdin_file:
                 stdin_file.close()

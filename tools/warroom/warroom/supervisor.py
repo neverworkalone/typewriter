@@ -4837,6 +4837,24 @@ class Supervisor:
         except Exception as error:
             return f"Stage 2 repair rebind evidence check failed: {error}; preserving prior decisions and receipts"
 
+    @staticmethod
+    def _spawn_never_started(spawn: dict) -> bool:
+        """True when a reserved launch's files prove no worker ran (#6920).
+
+        The detached wrapper writes `<exit>.pid` before anything else and the CLI's first output goes to the log, so
+        a failed spawn (e.g. `[Errno 7] Argument list too long`) leaves at most an empty log and no exit/pid file.
+        A missing binding or any exit/pid file, or a non-empty log, keeps the fail-closed "may have started" verdict."""
+        log, ex = spawn.get("log_file"), spawn.get("exit_file")
+        if not isinstance(log, str) or not isinstance(ex, str):
+            return False
+        try:
+            if Path(ex).exists() or Path(ex + ".pid").exists():
+                return False
+            logp = Path(log)
+            return not logp.exists() or logp.stat().st_size == 0
+        except OSError:
+            return False
+
     def _stage2_repair_recover_launched(self, b, state: dict, current: dict) -> bool:
         """Settle a `launched` attempt left by a restart: attach, judge a finished run, or re-run a never-started one.
 
@@ -4864,8 +4882,7 @@ class Supervisor:
                 self._fail(b, "ERROR", "Stage 2 repair attempt has a process but no recorded run; preserving all evidence")
                 return True
             spawn = attempt.get("spawn")
-            if not isinstance(spawn, dict) or any(Path(spawn.get(key) or "/nonexistent/").exists()
-                                                  for key in ("log_file", "exit_file")):
+            if not isinstance(spawn, dict) or not self._spawn_never_started(spawn):
                 self._fail(b, "ERROR", "Stage 2 repair attempt has no recorded run, but its launch may have started a "
                            "process (log/exit files exist or the launch binding is missing); not re-running, preserving all evidence")
                 return True
