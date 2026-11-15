@@ -4984,6 +4984,12 @@ class Supervisor:
                 # relaunches the same cursor with the size-budgeted page (guaranteed to be a different, smaller page)
                 attempts.pop()
                 current["attempts"] = max(0, current.get("attempts", 1) - 1)
+                if self._stage2_repair_correction(current) is not None:
+                    # a correction re-asks its rejected page and would keep that oversized boundary; its accepted rows
+                    # cover the whole old page, so it cannot be re-scoped to a smaller one. Drop the correction (the
+                    # rejected attempt stays in attempt_log as evidence) and ask the cursor again as a fresh budgeted page.
+                    for key in ("schema_repair", "response_correction", "last_response", "last_error"):
+                        current.pop(key, None)
                 self._save_stage2_repair_state(b, state)
                 self.store.log(b["id"], "Stage 2 repair 입력이 turn/start 크기 상한을 넘어 거부됨 — 작업 없이 거부된 attempt를 폐기하고 "
                                "크기 상한 page로 다시 시작합니다", "warn")
@@ -5010,13 +5016,7 @@ class Supervisor:
                 return
             if self._stage2_repair_noncandidate_attempts(current) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
                 return self._fail(b, "ERROR", "Stage 2 repair response retry limit reached; saved checkpoint and round evidence are preserved")
-            log = current.get("attempt_log")
-            previous_attempt = log[-1] if isinstance(log, list) and log and isinstance(log[-1], dict) else {}
-            # a correction re-asks its rejected attempt's page, so that page keeps its recorded boundary;
-            # every other launch is a new page and gets the size budget
-            recorded = previous_attempt.get("target_keys") if previous_attempt.get("status") == "rejected" \
-                and previous_attempt.get("cursor") == cursor and self._stage2_repair_correction(current) is not None else None
-            page = stage2.repair_page(groups, cursor, recorded)
+            page = self._stage2_repair_launch_page(current)
             page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
             if not page_keys:
                 return self._fail(b, "ERROR", "Stage 2 repair page has no target candidates")
@@ -5085,6 +5085,15 @@ class Supervisor:
             raise
         except (OSError, ValueError, KeyError, TypeError, GitError) as error:
             return self._fail(b, "ERROR", f"Stage 2 repair page 준비 실패: {error}. worktree와 checkpoint를 보존합니다.")
+
+    def _stage2_repair_launch_page(self, current: dict) -> list:
+        """Page for the next launch: a correction re-asks its rejected attempt's page (recorded boundary);
+        every other launch is a new page and gets the size budget."""
+        log, cursor = current.get("attempt_log"), current["cursor"]
+        previous = log[-1] if isinstance(log, list) and log and isinstance(log[-1], dict) else {}
+        recorded = previous.get("target_keys") if previous.get("status") == "rejected" \
+            and previous.get("cursor") == cursor and self._stage2_repair_correction(current) is not None else None
+        return stage2.repair_page(current["groups"], cursor, recorded)
 
     @staticmethod
     def _stage2_repair_active_page(current: dict) -> list:
