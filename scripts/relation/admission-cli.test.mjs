@@ -2986,6 +2986,48 @@ test('save-optional accepts multiple exact target links per candidate and reject
   assert.equal(relations.filter((row) => row.source_sense_id === 'w1-s1' && row.target_record_id === 'w501').length, 3);
 });
 
+test('amend removes optional links of an existing-coverage candidate with skip and explains why D is refused', async (t) => {
+  const { root } = await chunkRepository(t);
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonical = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  canonical.find((record) => record.id === 'w501').senses.push({ id: 'w501-s3', pos: 'noun', gloss: '표기가 같은 세 번째 뜻' });
+  await writeFile(canonicalPath, jsonl(canonical));
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const prior = (await readRelationRows(relationPath))[0];
+  const existing = {
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w501', target_sense_id: 'w501-s1',
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+  };
+  await writeFile(relationPath, relationJsonl([prior, existing]));
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  const view = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional'], { root }));
+  const input = '.warroom-scratch/optional-input.txt';
+  await writeFile(path.join(root, input), `links @${view.digest}\nc1 R near 3 T2\nc1 R mood 4 T3\n`);
+  await quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root }));
+  await mergeForTest(root, checkpoint);
+  const countLinks = async () => (await readRelationRows(relationPath))
+    .filter((row) => row.source_sense_id === 'w1-s1' && row.target_record_id === 'w501').length;
+  assert.equal(await countLinks(), 3);
+
+  const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'compact'], { root }));
+  assert.match(inspect.text, /# amend: .*skip/u, 'inspect advertises the existing-coverage amend grammar');
+  const amend = '.warroom-scratch/amend-existing.txt';
+  await writeFile(path.join(root, amend), `amend w1-s1 @${inspect.digest}\nc1 D e\n`);
+  await assert.rejects(
+    () => quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amend], { root })),
+    /c1 already has an existing approved Relation[\s\S]*<alias> skip/u,
+  );
+  assert.equal(await countLinks(), 3, 'a refused amend changes nothing');
+  await writeFile(path.join(root, amend), `amend w1-s1 @${inspect.digest}\nc1 skip\n`);
+  const result = await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amend], { root }));
+  assert.equal(result.amended, true);
+  assert.equal(await countLinks(), 1, 'only the optional links go; the existing Relation stays');
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+  assert.equal(counts.missing, 0);
+});
+
 test('cancel-revision only clears the exact active revision and leaves its decision and cursor intact', async (t) => {
   const { root } = await sixCandidateRepository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

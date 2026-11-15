@@ -1812,6 +1812,7 @@ function renderInspect(checkpoint, selected, digest, page, pageSize) {
     `inspect ${selected.senseIds.join(',')} @${digest}`,
     `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${totalPages} · candidates ${rows.length}/${model.candidates.length}`,
     `# optional_review_complete ${checkpoint.optional_review_complete === true}`,
+    '# amend: ordinary candidate -> R <type> <tier> T<k> | D x|e; existing-coverage candidate -> skip (remove optional links) | R <type> <tier> T<k>',
     '# T<k> target_sense_id target_record_id lemma pos full_gloss',
     ...[...model.targets.values()].filter((target) => usedTargets.has(target.alias)
       || rows.some((row) => row.candidate.decision?.target_sense_id === target.sense_id
@@ -3592,7 +3593,9 @@ function parseAmendDecision(line, row, targets, selectedOptional = [], checkpoin
     return { optional: true, skip: true, relations: [] };
   }
   if (kind === 'D') {
-    if (row.candidate.already_accounted === true) throw new Error('existing coverage can only add or skip optional links');
+    if (row.candidate.already_accounted === true) throw new Error(`${alias} already has an existing approved Relation, which amend never removes; `
+      + 'to remove its optional links submit "<alias> skip" (clears every optional link, keeps the existing coverage), '
+      + 'or "<alias> R <type> <tier> T<k>" to replace them with exact optional links');
     const reason = line.slice(alias.length).trim().slice(kind.length).trim();
     const decision = { source_sense_id: row.item.sense_id, candidate: row.candidate.text, disposition: 'drop', reason };
     validateDecision(row.item, row.candidate, decision);
