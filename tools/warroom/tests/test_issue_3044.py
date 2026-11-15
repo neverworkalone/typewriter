@@ -690,6 +690,26 @@ class Stage2RepairPeersAndRestart(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), launches + 1, "the unstarted reservation is launched exactly once")
         self.assertEqual([a["status"] for a in self.state(w, batch)["attempt_log"]], ["launched"])
 
+    def test_failed_run_without_answer_is_rerun_once_then_preserved(self):
+        w, batch = self.start(lambda decision: None)
+        run = w.adapter.launches[-1]
+        launches = len(w.adapter.launches)
+        w.adapter.finish(run["pid"])
+        w.store.update(batch["id"], pid=None)
+        w.store.finish_runs(batch["id"], "1")          # e.g. turn/start input_too_large: exit 1, no answer
+        w.store.update(batch["id"], state="PRODUCING", error=None)
+        w.sup._launch_stage2_repair_page(w.store.batch(batch["id"]))
+        self.assertEqual(len(w.adapter.launches), launches + 1, "a failed answer-only run is re-run once")
+        self.assertEqual([a["status"] for a in self.state(w, batch)["attempt_log"]], ["launched"])
+        run = w.adapter.launches[-1]
+        w.adapter.finish(run["pid"])
+        w.store.update(batch["id"], pid=None)
+        w.store.finish_runs(batch["id"], "1")
+        w.store.update(batch["id"], state="PRODUCING", error=None)
+        w.sup._launch_stage2_repair_page(w.store.batch(batch["id"]))
+        self.assertEqual(len(w.adapter.launches), launches + 1, "the second failure is not re-run")
+        self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+
 
 class Stage2RepairCliContract(unittest.TestCase):
     """`Git.stage2_repair` keeps exit 2 (candidate-local) apart from every global failure, without parsing text."""

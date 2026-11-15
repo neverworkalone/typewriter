@@ -4959,8 +4959,20 @@ class Supervisor:
             self.store.finish_runs(b["id"], code)
             run = next(row for row in self.store.runs(b["id"]) if row["id"] == run["id"])
         if str(run["exit_status"]) != "0":
-            self._fail(b, "ERROR", f"Stage 2 repair run ended with exit {run['exit_status']}; preserving all evidence")
-            return True
+            # A repair run is answer-only (it never changes the checkpoint), so a run that failed without a usable
+            # exit may be re-run once per page with the same reserved request; further failures preserve evidence.
+            failures = current.setdefault("failed_run_relaunches", {})
+            slot = str(attempt.get("cursor"))
+            if failures.get(slot, 0) >= stage2.MAX_FAILED_RUN_RELAUNCHES:
+                self._fail(b, "ERROR", f"Stage 2 repair run ended with exit {run['exit_status']}; preserving all evidence")
+                return True
+            failures[slot] = failures.get(slot, 0) + 1
+            attempts.pop()
+            current["attempts"] = max(0, current.get("attempts", 1) - 1)
+            current["start_failure_consumed_event"] = max([e["id"] for e in self.store.batch_events(b["id"])], default=0)
+            self._save_stage2_repair_state(b, state)
+            self.store.log(b["id"], f"Stage 2 repair run ended with exit {run['exit_status']} without an answer; re-running the same page once", "warn")
+            return False
         self.store.log(b["id"], "Stage 2 repair run already finished before the restart; judging its saved output without re-running", "warn")
         self._run_ok_stage2_repair(self.store.batch(b["id"]))
         return True

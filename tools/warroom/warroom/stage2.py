@@ -336,6 +336,7 @@ def repair_page(groups: list, cursor: int, recorded_keys: list | None = None) ->
         page.append(group)
     return page
 REPAIR_ATTEMPTS_PER_PAGE = 2
+MAX_FAILED_RUN_RELAUNCHES = 1   # a repair run that exited non-zero may be re-run once per page
 _ROW = re.compile(r"c(\d+)\s")
 _ROW_START = re.compile(r"c\d+(?:\s|$)")
 _RELATION_TYPES = r"near|mood|scene|sensory|action|association"
