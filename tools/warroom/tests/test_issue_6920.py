@@ -49,5 +49,29 @@ class OversizedPrompt(unittest.TestCase):
         self.assertTrue(all(int(l[4:]) < 4096 for l in out.splitlines() if l.startswith("ARG:")))
 
 
+class ClearRemovesPromptFiles(unittest.TestCase):
+    def test_clear_removes_prompt_files_of_every_adapter(self):
+        from types import SimpleNamespace
+        from warroom.supervisor import Supervisor
+        for cls, kw in ((ClaudeCodeAdapter, {}), (CodexCLIAdapter, {}), (OpenCodeAdapter, {"probe_async": False})):
+            with self.subTest(adapter=cls.__name__), tempfile.TemporaryDirectory() as d:
+                d = Path(d).resolve()
+                fake = d / "fakecli"
+                fake.write_text("#!/bin/sh\ncat >/dev/null\n")
+                fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+                log, ex = d / "batch-7-1.log", d / "batch-7-1.exit"
+                ad = cls(binary=str(fake), **kw)
+                run = RunSpec("m", "medium", permission_profile="p")
+                extra = {"git_dir": str(d)} if cls is CodexCLIAdapter else {}
+                ad.start(BIG, d, {"PATH": os.environ["PATH"]}, run, "t", log, ex, **extra)
+                prompt = d / "batch-7-1.log.prompt"
+                self.assertTrue(prompt.exists())
+                sup = SimpleNamespace(paths=SimpleNamespace(logs=d),
+                                      store=SimpleNamespace(runs=lambda _id: [{"log_file": str(log), "exit_file": str(ex)}]))
+                Supervisor._remove_run_files(sup, {"id": 7, "log_file": None, "exit_file": None})
+                self.assertFalse(prompt.exists())
+                self.assertFalse(log.exists())
+
+
 if __name__ == "__main__":
     unittest.main()

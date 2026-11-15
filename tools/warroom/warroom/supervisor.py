@@ -1575,7 +1575,9 @@ class Supervisor:
         logs = self.paths.logs.resolve()
         files = {Path(f) for r in self.store.runs(b["id"]) for f in (r["log_file"], r["exit_file"]) if f}
         files |= {Path(f) for f in (b["log_file"], b["exit_file"]) if f}
+        files |= {f.with_name(f.name + ".prompt") for f in files if f.suffix == ".log"}   # oversized prompt (#6920)
         files |= set(logs.glob(f"batch-{b['id']}-*.log")) | set(logs.glob(f"batch-{b['id']}-*.exit"))
+        files |= set(logs.glob(f"batch-{b['id']}-*.log.prompt"))
         for f in files:
             if f.parent.resolve() == logs and f.name.startswith(f"batch-{b['id']}-"):
                 f.unlink(missing_ok=True)
