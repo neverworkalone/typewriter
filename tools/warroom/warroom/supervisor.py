@@ -4847,8 +4847,8 @@ class Supervisor:
         Absence of files is never proof: the detached wrapper writes `<exit>.pid` after `Popen` returns and the parent
         stores the pid/run row after that, so a restart in between would look identical to a never-started launch.
         Proof is (1) the `start_failed` marker `_launch` stored when `ad.start` raised, or (2) for a reservation made
-        before that marker existed, a start-failure audit event newer than the last consumed one and than the prior
-        run. Either way no exit/pid file may exist and the log must be absent or empty."""
+        before that marker existed, a start-failure audit event newer than the last consumed one and not older than this
+        reservation's own launch second (so an earlier launch's failure never vouches for it). Either way no exit/pid file may exist and the log must be absent or empty."""
         log, ex = spawn.get("log_file"), spawn.get("exit_file")
         if not isinstance(log, str) or not isinstance(ex, str):
             return False
@@ -4861,11 +4861,16 @@ class Supervisor:
             if spawn.get("start_failed") is True:
                 return True
             consumed = current.get("start_failure_consumed_event", 0)
-            prior = next((r for r in self.store.runs(b["id"]) if r["id"] == attempt.get("prior_run_id")), None)
-            since = prior["started_at"] if prior else 0
-            return type(consumed) is int and any(
-                e["id"] > consumed and e["ts"] >= since and str(e["msg"]).startswith(self.START_FAILURE_PREFIX)
-                for e in self.store.batch_events(b["id"]))
+            # Attribute the event to THIS reservation: `_launch` names the log `batch-<id>-<launch second>.log` and a
+            # later reservation only exists after the earlier failure moved the batch out of PRODUCING, so an earlier
+            # launch's failure event is older than this launch second. No parseable launch time => no attribution.
+            m = re.fullmatch(r"batch-\d+-(\d+)\.log", logp.name)
+            if m is None or type(consumed) is not int:
+                return False
+            launched_at = int(m.group(1))
+            return any(e["id"] > consumed and e["ts"] >= launched_at
+                       and str(e["msg"]).startswith(self.START_FAILURE_PREFIX)
+                       for e in self.store.batch_events(b["id"]))
         except (OSError, KeyError, TypeError):
             return False
 

@@ -121,16 +121,23 @@ class FailedSpawnLeavesNoEvidence(unittest.TestCase):
             self.assertFalse(check(spawn))
             self.assertFalse(check({}))
 
-    def test_legacy_proof_is_the_unconsumed_start_failure_event(self):
+    def test_legacy_proof_is_attributed_to_this_reservations_launch(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            spawn = {"log_file": str(d / "a.log"), "exit_file": str(d / "a.exit")}
-            (d / "a.log").write_bytes(b"")
-            ev = [{"id": 5, "ts": 10.0, "msg": "AI 실행 시작 실패: [Errno 7] Argument list too long"}]
-            self.assertTrue(self._sup(ev)(spawn))
-            self.assertFalse(self._sup(ev)(spawn, current={"start_failure_consumed_event": 5}))
-            self.assertFalse(self._sup([{"id": 6, "ts": 1.0, "msg": ev[0]["msg"]}],
-                                       [{"id": 3, "started_at": 9.0}])(spawn, {"prior_run_id": 3}))
+            spawn = {"log_file": str(d / "batch-1-105.log"), "exit_file": str(d / "batch-1-105.exit")}
+            (d / "batch-1-105.log").write_bytes(b"")
+            msg = "AI 실행 시작 실패: [Errno 7] Argument list too long"
+            mine = [{"id": 5, "ts": 105.2, "msg": msg}]
+            self.assertTrue(self._sup(mine)(spawn))
+            self.assertFalse(self._sup(mine)(spawn, current={"start_failure_consumed_event": 5}))
+            # earlier launch A failed at t=100; reservation B (same prior_run_id) spawned at 105, then the
+            # Supervisor restarted before the wrapper wrote its pid: A's event must not vouch for B
+            older = [{"id": 4, "ts": 100.3, "msg": msg}]
+            self.assertFalse(self._sup(older)(spawn, {"prior_run_id": 3}))
+            self.assertFalse(self._sup(older + [{"id": 6, "ts": 106.0, "msg": "other"}])(spawn))
+            # unparseable launch time stays fail-closed
+            odd = {"log_file": str(d / "x.log"), "exit_file": str(d / "x.exit")}
+            self.assertFalse(self._sup(mine)(odd))
 
 
 if __name__ == "__main__":
