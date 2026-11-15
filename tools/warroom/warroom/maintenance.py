@@ -2465,6 +2465,11 @@ class Maintenance:
             return ("s2_chunk" if k.startswith("s2_chunk_") else "s2_links" if k in ("s2_links_new", "s2_links_fix")
                     else "s2_repair" if k == "s2_repair_new" else "s2_finalize" if k == "s2_deterministic_finalize" else None)
         if m == STAGE3_METHOD:
+            if (b["paused_from"] == "PREPARE" and k in ("", "s3_chunk_new")
+                    and self.store.get(stage3.mode_key(b["id"])) == stage3.PARALLEL
+                    and self.store.get(stage3.parallel_start_key(b["id"])) is None
+                    and self.store.get(stage3.run_start_key(b["id"])) is None):
+                return "s3_prepare"
             return "s3_chunk" if k.startswith("s3_chunk_") else None
         return None
 
@@ -2504,6 +2509,47 @@ class Maintenance:
         if kind == "s3_chunk":
             return sup._stage3_chunk_boundary_problem(b, base)
         return "사전 실행할 guard가 없습니다"
+
+    def _s3_prepare_boundary(self, d, b, env, head: str | None = None) -> str | None:
+        """Only an untouched Stage 3 shard whose parallel plan preparation failed (no baseline, checkpoint, task or
+        run was ever recorded) may be restarted at PREPARE after integration; the failed prepare wrote nothing."""
+        try:
+            obs = env["observed"]
+            facts = obs["git"]["value"]
+            old = facts["head"]
+            wt = Path(b["worktree"])
+            if (env["batch_id"] != b["id"] or env["branch"] != b["branch"]
+                    or env["worktree"] != b["worktree"] or env["paused_from"] != "PREPARE"
+                    or env["run_kind"] not in ("", "s3_chunk_new")
+                    or not str(env["error"]).startswith("Stage 3 병렬 청크 계획 준비 실패:")
+                    or obs["git"]["status"] != "ok"
+                    or obs["checkpoint"]["status"] != "missing" or obs["runs"]["status"] != "missing"
+                    or facts["registered"] != b["branch"] or facts["dirty"] or facts["pr_number"] is not None
+                    or facts["pr_head"] is not None or not isinstance(old, str)
+                    or not re.fullmatch(r"[0-9a-f]{40}", old)
+                    or b["pr_number"] is not None or b["head_sha"] is not None or b["pid"] is not None
+                    or b["session_id"] is not None or self.store.runs(b["id"])
+                    or self.store.task_rows(b["id"])
+                    or self.store.get(stage3.parallel_start_key(b["id"])) is not None
+                    or self.store.get(stage3.run_start_key(b["id"])) is not None
+                    or self.store.get(stage3.plan_key(b["id"])) is not None
+                    or refine.ops(b).checkpoint(wt, b["shard"]) is not None
+                    or self._workers_running(b)):
+                return "S3 PREPARE 이전의 빈 생산 경계를 증명할 수 없습니다"
+            current = self._git_facts(b)
+            if (current["registered"] != b["branch"] or current["dirty"]
+                    or current["remote_head"] != facts["remote_head"] or current["pr_number"] is not None
+                    or current["pr_head"] is not None or (head is not None and current["head"] != head)):
+                return "S3 PREPARE Git 소유 경계가 변경되었습니다"
+            if current["head"] != old:
+                if self._fix_merged_integration_proof(b, d, old, current["head"]) is None:
+                    return "S3 PREPARE HEAD가 원본 또는 승인된 수정 통합이 아닙니다"
+                if head is None and not self.sup.git.verified_supervisor_integration(
+                        wt, b["branch"], self.cfg["base_branch"], old, current["head"]):
+                    return "S3 PREPARE 이전 통합의 Supervisor 소유 증거가 없습니다"
+            return None
+        except (KeyError, TypeError, ValueError, OSError):
+            return "S3 PREPARE 접수 증거를 확인할 수 없습니다"
 
     def _s2_prepare_boundary(self, d, b, env, head: str | None = None) -> str | None:
         """Only an untouched, pre-checkpoint Part may be restarted at PREPARE after integration."""
@@ -2554,13 +2600,13 @@ class Maintenance:
         if self._fix_not_loaded(d):
             return
         old_first = ((env.get("observed", {}).get("git", {}).get("value") or {}).get("head")
-                     if kind == "s2_prepare" else self._first_head(b, kind) if kind != "fix" else None)
+                     if kind in ("s2_prepare", "s3_prepare") else self._first_head(b, kind) if kind != "fix" else None)
         if kind != "fix" and not old_first:
             return self._hold_unprovable(d, b, "최초 기준 HEAD를 확인할 수 없습니다")
         if why := self._preserved(b, env["observed"], head_moves=True):
             return self._hold_unprovable(d, b, why)
-        if kind == "s2_prepare":
-            if why := self._s2_prepare_boundary(d, b, env):
+        if kind in ("s2_prepare", "s3_prepare"):
+            if why := (self._s2_prepare_boundary if kind == "s2_prepare" else self._s3_prepare_boundary)(d, b, env):
                 return self._hold_unprovable(d, b, why)
         finalize_remote = None
         if kind == "s2_finalize":
@@ -2614,8 +2660,8 @@ class Maintenance:
             pending = self._fix_merged_integration_proof(b, d, old_first, head)
             if pending is None:
                 return self._hold_unprovable(d, b, "수정 통합 HEAD를 FIX_MERGED 상태에서 직접 증명하지 못했습니다")
-            if kind == "s2_prepare":
-                if why := self._s2_prepare_boundary(d, b, env, head):
+            if kind in ("s2_prepare", "s3_prepare"):
+                if why := (self._s2_prepare_boundary if kind == "s2_prepare" else self._s3_prepare_boundary)(d, b, env, head):
                     return self._hold_unprovable(d, b, why)
                 pairs = []
             elif kind == "s2_finalize":
