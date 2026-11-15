@@ -205,7 +205,14 @@ class ProcessAdapter(AgentAdapter):
     # Opt-in seam for #3787, after every task launcher has been connected.
     required_launch_gate = None
 
-    def _spawn(self, cmd: list[str], cwd, env, log_file: Path, exit_file: Path) -> Handle:
+    # A prompt this large cannot ride in argv (macOS ARG_MAX ~1 MiB for argv+env, Linux 128 KiB per argument):
+    # it is fed on stdin instead, so launching never fails with `[Errno 7] Argument list too long`.
+    ARGV_PROMPT_LIMIT = 64 * 1024
+
+    def _prompt_via_stdin(self, prompt: str) -> bool:
+        return len(prompt.encode("utf-8", errors="replace")) > self.ARGV_PROMPT_LIMIT
+
+    def _spawn(self, cmd: list[str], cwd, env, log_file: Path, exit_file: Path, stdin_text: str | None = None) -> Handle:
         gate = self.required_launch_gate
         if gate is not None and not gate.held():
             raise RuntimeError("AI spawn requires the current thread's launch permit")
@@ -225,10 +232,19 @@ class ProcessAdapter(AgentAdapter):
         # findable through that record or has no worker at all.
         wrapper = ['echo $$ > "$WARROOM_EXIT_FILE.pid" || { echo 126 > "$WARROOM_EXIT_FILE"; exit 126; }', '"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
         env["WARROOM_EXIT_FILE"] = str(exit_file)
-        with open(log_file, "wb") as log:   # a launch's log is its own: never continued behind an earlier run's events
-            p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],
-                                 cwd=cwd, env=env, stdin=subprocess.DEVNULL,
-                                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        stdin_file = None
+        if stdin_text is not None:
+            prompt_file = log_file.with_name(log_file.name + ".prompt")
+            prompt_file.write_text(stdin_text, "utf-8")
+            stdin_file = open(prompt_file, "rb")
+        try:
+            with open(log_file, "wb") as log:   # a launch's log is its own: never continued behind an earlier run's events
+                p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],
+                                     cwd=cwd, env=env, stdin=stdin_file or subprocess.DEVNULL,
+                                     stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        finally:
+            if stdin_file:
+                stdin_file.close()
         return Handle(p.pid, exit_file, log_file)
 
     def stop(self, pid: int) -> None:
@@ -318,12 +334,21 @@ class OpenCodeAdapter(ProcessAdapter):
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         cmd = [self.binary, "run", "--auto", "--format", "json", "--title", title,
                "--model", self.model_arg(_pinned(run))]
-        return self._spawn(cmd + [prompt], cwd, env, log_file, exit_file)
+        return self._spawn(cmd + [self._argv_prompt(prompt, log_file)], cwd, env, log_file, exit_file)
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         cmd = [self.binary, "run", "--auto", "--format", "json", "--session", session_id,
                "--model", self.model_arg(_pinned(run))]
-        return self._spawn(cmd + [prompt], cwd, env, log_file, exit_file)
+        return self._spawn(cmd + [self._argv_prompt(prompt, log_file)], cwd, env, log_file, exit_file)
+
+    def _argv_prompt(self, prompt: str, log_file) -> str:
+        """opencode takes the message only as arguments: an oversized prompt goes to a file it is told to follow."""
+        if not self._prompt_via_stdin(prompt):
+            return prompt
+        f = Path(log_file).with_name(Path(log_file).name + ".prompt")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(prompt, "utf-8")
+        return f"Your complete instructions are in the file {f}. Read it in full and follow it exactly as this task's prompt."
 
     def preflight(self, runner, env, runs, answer_required=frozenset()):
         """`answer_required`: models (the GOAT/API tier) whose probe must show a clean answer, not just a provider reply."""
@@ -521,12 +546,16 @@ class ClaudeCodeAdapter(ProcessAdapter):
         return args
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
-        cmd = [self.binary, "-p", prompt, *self._pins(_pinned(run)), "--name", title, *self._answer_only_args(env)]
-        return self._spawn(cmd, cwd, env, log_file, exit_file)
+        big = self._prompt_via_stdin(prompt)
+        cmd = [self.binary, "-p", *([] if big else [prompt]), *self._pins(_pinned(run)), "--name", title,
+               *self._answer_only_args(env)]
+        return self._spawn(cmd, cwd, env, log_file, exit_file, **({"stdin_text": prompt} if big else {}))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
-        cmd = [self.binary, "-p", prompt, "--resume", session_id, *self._pins(_pinned(run)), *self._answer_only_args(env)]
-        return self._spawn(cmd, cwd, env, log_file, exit_file)
+        big = self._prompt_via_stdin(prompt)
+        cmd = [self.binary, "-p", *([] if big else [prompt]), "--resume", session_id, *self._pins(_pinned(run)),
+               *self._answer_only_args(env)]
+        return self._spawn(cmd, cwd, env, log_file, exit_file, **({"stdin_text": prompt} if big else {}))
 
     def preflight(self, runner, env, runs):
         v = runner.run([self.binary, "--version"], env=env, timeout=60)
@@ -810,9 +839,10 @@ class CodexCLIAdapter(ProcessAdapter):
     def start(self, prompt, cwd, env, run, title, log_file, exit_file, git_dir=None):
         run = _pinned(run)
         grant = [] if is_stage2_chunk(env) else ["--add-dir", self._git_dir(git_dir)]
-        cmd = [self.binary, "exec", *self._launch_args(env, run, grant), prompt]
+        big = self._prompt_via_stdin(prompt)
+        cmd = [self.binary, "exec", *self._launch_args(env, run, grant), "-" if big else prompt]
         _baseline_path(log_file).unlink(missing_ok=True)   # a fresh start has no baseline: every turn is its own
-        return self._spawn(cmd, cwd, env, log_file, exit_file)
+        return self._spawn(cmd, cwd, env, log_file, exit_file, **({"stdin_text": prompt} if big else {}))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file, git_dir=None):
         run = _pinned(run)
@@ -823,12 +853,13 @@ class CodexCLIAdapter(ProcessAdapter):
                                  "열 수 없습니다. producer 설정에 permission_profile을 지정하세요.")
             grant = ["-c", f"permissions.{run.permission_profile}.filesystem="
                            f"{{{json.dumps(self._git_dir(git_dir))}=\"write\"}}"]
-        cmd = [self.binary, "exec", "resume", session_id, *self._launch_args(env, run, grant), prompt]
+        big = self._prompt_via_stdin(prompt)
+        cmd = [self.binary, "exec", "resume", session_id, *self._launch_args(env, run, grant), "-" if big else prompt]
         # The turns recorded before this run: only turns after this baseline belong to this run.
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         _baseline_path(log_file).write_text(json.dumps({"thread": session_id,
                                                          "turns": len(_turn_contexts(session_id))}))
-        return self._spawn(cmd, cwd, env, log_file, exit_file)
+        return self._spawn(cmd, cwd, env, log_file, exit_file, **({"stdin_text": prompt} if big else {}))
 
     def session_id(self, log_file):
         try:
