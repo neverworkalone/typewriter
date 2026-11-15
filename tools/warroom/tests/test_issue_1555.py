@@ -13,7 +13,7 @@ from pathlib import Path
 from tests.fakes import HEAD1, HEAD2
 from tests.test_lines import PRODUCERS, multi_world
 from tests.test_supervisor import review
-from warroom import control, dchunk, defects, dparallel, literary, stage2
+from warroom import control, dchunk, defects, dparallel, literary, stage2, stage3
 from warroom.config import config_problem, maintainer_problem, reload_problem, registry
 from warroom.gitops import Git, IntegrationBlocked
 from warroom.shell import Runner
@@ -1488,6 +1488,36 @@ class IncidentRecoveryProof(unittest.TestCase):
                     self.assertEqual((resumed["state"], resumed["run_kind"]), ("PRODUCING", "s2_parallel"))
                     self.assertTrue(w.store.task_rows(b["id"]))
                     self.assertIsNotNone(stage2.checkpoint(b["worktree"], b["shard"], b["batch"]))
+
+    def test_stage3_prepare_incident_integrates_only_an_untouched_shard(self):
+        from unittest.mock import patch
+        for changed in (False, True):
+            with self.subTest(changed=changed):
+                if changed:
+                    self.tearDown()
+                    self.setUp()
+                w = self.w
+                b = make_batch(w, "s3", shard="054", batch="all", run_kind="s3_chunk_new", state="PREPARE")
+                w.store.set(stage3.mode_key(b["id"]), stage3.PARALLEL)
+                w.store.update(b["id"], state="ERROR", paused_from="PREPARE", error=(
+                    "Stage 3 병렬 청크 계획 준비 실패: Relation Admission accounting failed: x. worktree를 보존합니다."))
+                w.git.changed[MERGE] = ["data/relation-drops/drop-054.jsonl"]
+                w.tick(2)
+                d, = incidents(w)
+                b, d = self.merge_fix(b, d)
+                w.git.integrate_updates_head = True
+                if changed:
+                    w.store.add_tasks(b["id"], [("unexpected", "001")])
+                with patch.object(w.sup.maint, "_verify", return_value=None):
+                    w.sup.maint._release_incident(d, b)
+                d = w.store.defect(d["id"])
+                b = w.store.batch(b["id"])
+                if changed:
+                    self.assertEqual((d["state"], b["state"]), ("HELD", "PAUSED"))
+                else:
+                    self.assertEqual((d["state"], b["state"], d["integrated_sha"]),
+                                     ("RELEASED", "PREPARE", MERGE))
+                    self.assertTrue(w.git.contains(Path(b["worktree"]), MERGE))
 
     # ---- Runtime-only ---------------------------------------------------------------------------------------------
     def test_prompt_only_fix_resumes_without_restart_integration_or_line_flag_change(self):
