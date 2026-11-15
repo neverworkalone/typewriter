@@ -313,6 +313,28 @@ MAX_CANDIDATE_RETRIES = 1   # one persisted same-session repair; plural failures
 MAX_CANDIDATE_FIX_DIAGNOSTIC_CHARS = 6_000  # bound the one shared correction prompt for one pending chunk
 MAX_REPAIR_ROUNDS = 4
 REPAIR_GROUPS_PER_RUN = 8
+REPAIR_PAGE_MAX_CHARS = 600_000   # one repair prompt must stay well under the 1,048,576-char turn input limit
+
+
+def repair_page(groups: list, cursor: int, recorded_keys: list | None = None) -> list:
+    """Next repair page: up to REPAIR_GROUPS_PER_RUN groups, cut early to the char budget (always at least one).
+
+    A page already recorded by an attempt (``recorded_keys`` = its target_keys) keeps the boundary it was created with,
+    so state written before the size budget (fixed 8-group pages) stays valid; the budget applies to new pages only."""
+    window = groups[cursor:cursor + REPAIR_GROUPS_PER_RUN]
+    if recorded_keys:
+        keys: set = set()
+        for count, group in enumerate(window, 1):
+            keys.update(group.get("candidate_keys", [])) if isinstance(group, dict) else None
+            if sorted(keys) == list(recorded_keys):
+                return window[:count]
+    page, size = [], 0
+    for group in window:
+        size += len(json.dumps(group, ensure_ascii=False, separators=(",", ":")))
+        if page and size > REPAIR_PAGE_MAX_CHARS:
+            break
+        page.append(group)
+    return page
 REPAIR_ATTEMPTS_PER_PAGE = 2
 _ROW = re.compile(r"c(\d+)\s")
 _ROW_START = re.compile(r"c\d+(?:\s|$)")

@@ -522,7 +522,7 @@ class Supervisor:
                         and current.get("apply_intent") is None and isinstance(attempts, list) and attempts
                         and isinstance(attempts[-1], dict) and attempts[-1].get("status") == "rejected"
                         and isinstance(groups, list) and type(cursor) is int and 0 <= cursor < len(groups)
-                        and any(group.get("candidate_keys") for group in groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN])
+                        and any(group.get("candidate_keys") for group in stage2.repair_page(groups, cursor))
                         and self._stage2_repair_noncandidate_attempts(current) < stage2.REPAIR_ATTEMPTS_PER_PAGE):
                     # The retry either fails its existing guards or launches a fresh repair page; it cannot apply
                     # an old answer in this state. The page launch renders the operating checkout's s2_repair.
@@ -2615,7 +2615,7 @@ class Supervisor:
                     groups = current.get("groups")
                     if type(cursor) is not int or not isinstance(groups, list) or cursor >= len(groups):
                         raise prompts.PromptError("Stage 2 repair page cursor is outside its saved conflict list")
-                    page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+                    page = self._stage2_repair_active_page(current)
                     page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
                     correction = self._stage2_repair_correction(current)
                     bb, pp = stage2.split_key(b["batch"])
@@ -4377,7 +4377,7 @@ class Supervisor:
             cursor = attempt.get("cursor") if isinstance(attempt, dict) else None
             if type(cursor) is not int or not 0 <= cursor < len(groups):
                 return normalized, "legacy repair attempt cursor is invalid"
-            page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+            page = stage2.repair_page(groups, cursor, attempt.get("target_keys"))
             page_keys = sorted({key for group in page if isinstance(group, dict)
                                 for key in group.get("candidate_keys", [])})
             if not page_keys or attempt.get("target_keys") != page_keys:
@@ -4695,7 +4695,7 @@ class Supervisor:
                     if type(run_id) is not int or run_id < 1 or run_id in recorded_run_ids:
                         return "Stage 2 repair attempts have a malformed or duplicate run identity"
                     recorded_run_ids.add(run_id)
-                page = groups[attempt["cursor"]:attempt["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
+                page = stage2.repair_page(groups, attempt["cursor"], attempt.get("target_keys"))
                 page_targets = sorted({key for group in page if isinstance(group, dict)
                                        for key in group.get("candidate_keys", [])})
                 if not page_targets or attempt.get("target_keys") != page_targets:
@@ -4981,7 +4981,13 @@ class Supervisor:
                 return
             if self._stage2_repair_noncandidate_attempts(current) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
                 return self._fail(b, "ERROR", "Stage 2 repair response retry limit reached; saved checkpoint and round evidence are preserved")
-            page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+            log = current.get("attempt_log")
+            previous_attempt = log[-1] if isinstance(log, list) and log and isinstance(log[-1], dict) else {}
+            # a correction re-asks its rejected attempt's page, so that page keeps its recorded boundary;
+            # every other launch is a new page and gets the size budget
+            recorded = previous_attempt.get("target_keys") if previous_attempt.get("status") == "rejected" \
+                and previous_attempt.get("cursor") == cursor and self._stage2_repair_correction(current) is not None else None
+            page = stage2.repair_page(groups, cursor, recorded)
             page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
             if not page_keys:
                 return self._fail(b, "ERROR", "Stage 2 repair page has no target candidates")
@@ -5051,6 +5057,14 @@ class Supervisor:
         except (OSError, ValueError, KeyError, TypeError, GitError) as error:
             return self._fail(b, "ERROR", f"Stage 2 repair page 준비 실패: {error}. worktree와 checkpoint를 보존합니다.")
 
+    @staticmethod
+    def _stage2_repair_active_page(current: dict) -> list:
+        """The active page; an already launched attempt keeps the boundary recorded in its target_keys."""
+        log = current.get("attempt_log")
+        last = log[-1] if isinstance(log, list) and log and isinstance(log[-1], dict) else {}
+        recorded = last.get("target_keys") if last.get("cursor") == current["cursor"] else None
+        return stage2.repair_page(current["groups"], current["cursor"], recorded)
+
     def _stage2_repair_prompt_input(self, current: dict, page: list, page_keys: list[str]) -> dict:
         """Render only the active page, or only its persisted correction candidates."""
         correction = self._stage2_repair_correction(current)
@@ -5106,7 +5120,7 @@ class Supervisor:
         if not isinstance(attempt, dict) or attempt.get("status") != "launched" \
                 or not isinstance(groups, list) or type(cursor) is not int or not 0 <= cursor < len(groups):
             raise ValueError("repair response has no active persisted page attempt")
-        page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+        page = stage2.repair_page(groups, cursor, attempt.get("target_keys"))
         page_keys = sorted({key for group in page if isinstance(group, dict)
                             for key in group.get("candidate_keys", [])})
         if not page_keys or attempt.get("fingerprint") != current.get("fingerprint") \
@@ -5242,7 +5256,7 @@ class Supervisor:
         groups, cursor = current.get("groups"), current.get("cursor")
         if not isinstance(groups, list) or type(cursor) is not int or not 0 <= cursor < len(groups):
             return "Rejected Stage 2 repair response has no valid persisted page; preserving all evidence"
-        page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+        page = stage2.repair_page(groups, cursor, attempt.get("target_keys"))
         page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
         final = current.get("last_response")
         run_id = attempt.get("run_id")
@@ -5302,7 +5316,7 @@ class Supervisor:
 
     def _stage2_repair_cli_input(self, current: dict, answer: dict) -> dict:
         """The one CLI repair input shared by `repair --check` and the apply call (the nonce is added by apply)."""
-        page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
+        page = self._stage2_repair_active_page(current)
         targets = {}
         for group in page:
             for candidate in group["candidates"]:
@@ -5445,7 +5459,7 @@ class Supervisor:
         answer = stage2.extract_repair_answer(final, current["fingerprint"])
         if answer is None:
             return None
-        page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
+        page = self._stage2_repair_active_page(current)
         required = {}
         allowed_peers = {}
         for group in page:
@@ -5761,7 +5775,7 @@ class Supervisor:
             info = self._find_recovery_pr(b)
             if info is not None:
                 return self._fail(b, "ERROR", f"Stage 2 repair cannot continue after PR creation; unexpected PR #{info['number']} found")
-            page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
+            page = self._stage2_repair_active_page(current)
             repair_input = self._stage2_repair_cli_input(current, answer)
             candidate_keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair_input["decisions"])
             intent = current.get("apply_intent")
@@ -6216,7 +6230,7 @@ class Supervisor:
                 rows = [{"source_sense_id": c["source_sense_id"], "candidate": c["candidate"], "decision": c["decision"]}
                         for g in groups for c in g.get("candidates", []) if not c.get("already_accounted")]
                 keys = sorted({key for g in groups for key in g.get("candidate_keys", [])})
-                eligible = (len(groups) <= stage2.REPAIR_GROUPS_PER_RUN and keys and
+                eligible = (len(stage2.repair_page(groups, 0)) == len(groups) and keys and
                             all(g.get("drop_gloss") and not g.get("conflicts") for g in groups) and
                             sorted(f"{r['source_sense_id']}\0{r['candidate']}" for r in rows) == keys and
                             fingerprint not in state.get("gloss_rechecks", []))
