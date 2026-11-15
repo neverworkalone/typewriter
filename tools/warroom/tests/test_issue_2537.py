@@ -74,3 +74,12 @@ class Stage3PackedLinkRepair(unittest.TestCase):
                 self.assertEqual(len(warnings), 1)
                 self.assertIn("잘못된 제안 줄만 폐기", warnings[0])
 
+
+
+class Stage3DropLineBadToken(unittest.TestCase):
+    def test_bad_token_discards_only_itself(self):
+        text, warnings = stage3.normalize_decisions(
+            "chunk 007\nD 66 84-90 91\n", "007", context())
+        self.assertEqual(text, "chunk 007\nD 66\nD 91\n")
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("84-90", warnings[0])
