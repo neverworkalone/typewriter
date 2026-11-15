@@ -165,3 +165,75 @@ class FailedSpawnLeavesNoEvidence(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OversizedRepairPageRelaunch(unittest.TestCase):
+    """Recurrence e3: turn/start rejected a recorded 8-group page (input_too_large); the retry must relaunch a budgeted page."""
+
+    REJECT = ('{"type":"thread.started","thread_id":"t"}\nError: turn/start: turn/start failed: Input exceeds the maximum '
+              'length of 1048576 characters. (code -32602), data: {"input_error_code":"input_too_large","max_chars":1048576}\n')
+
+    def _check(self, log_text, keys_of_page=8, n_groups=16):
+        from types import SimpleNamespace
+        from warroom.supervisor import Supervisor
+        groups = [{"candidate_keys": [f"k{i:02d}"], "blob": "가" * 160_000} for i in range(n_groups)]
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "run.log"
+            log.write_text(log_text, encoding="utf-8")
+            current = {"groups": groups, "cursor": 0}
+            attempt = {"target_keys": sorted(f"k{i:02d}" for i in range(keys_of_page))}
+            return Supervisor._stage2_repair_input_rejected(
+                SimpleNamespace(), {"log_file": str(log)}, attempt, current)
+
+    def test_rejected_oversized_recorded_page_is_dropped_for_relaunch(self):
+        self.assertTrue(self._check(self.REJECT))
+
+    def test_other_failures_and_worked_runs_are_not_dropped(self):
+        self.assertFalse(self._check("Error: some other failure\n"))
+        self.assertFalse(self._check(self.REJECT + '{"type":"item.completed"}\n'))
+
+    def test_already_budgeted_page_is_not_looped(self):
+        self.assertFalse(self._check(self.REJECT, keys_of_page=3))
+
+
+class CorrectionInputRejectedTransition(unittest.TestCase):
+    """Review 5911292931: an oversized *correction* attempt must not be re-reserved with its rejected boundary."""
+
+    def test_correction_attempt_rejected_for_size_relaunches_smaller_page(self):
+        from types import SimpleNamespace
+        from warroom.supervisor import Supervisor
+        n = 16
+        groups = [{"candidate_keys": [f"k{i:02d}"], "blob": "가" * 160_000} for i in range(n)]
+        old_keys = sorted(f"k{i:02d}" for i in range(8))
+        with tempfile.TemporaryDirectory() as d:
+            log, ex = Path(d) / "run.log", Path(d) / "run.exit"
+            log.write_text(OversizedRepairPageRelaunch.REJECT, encoding="utf-8")
+            ex.write_text("1")
+            rejected = {"cursor": 0, "attempt": 1, "status": "rejected", "target_keys": old_keys, "fingerprint": "f"}
+            launched = {"cursor": 0, "attempt": 2, "status": "launched", "target_keys": old_keys, "fingerprint": "f",
+                        "prior_run_id": 1, "run_id": 2, "correction_candidate_keys": ["k00"],
+                        "spawn": {"log_file": str(log), "exit_file": str(ex)}}
+            current = {"groups": groups, "cursor": 0, "fingerprint": "f", "attempts": 2,
+                       "attempt_log": [rejected, launched], "last_response": "r",
+                       "response_correction": {"page_keys": old_keys, "requested_keys": ["k00"]}}
+            run = {"id": 2, "kind": "s2_repair_new", "log_file": str(log), "exit_file": str(ex), "pid": None,
+                   "ended_at": 1, "exit_status": "1"}
+            b = {"id": 1, "pid": None, "log_file": str(log), "exit_file": str(ex)}
+            saved = []
+            sup = SimpleNamespace(
+                _adapter=lambda _p: SimpleNamespace(alive=lambda _pid: False),
+                store=SimpleNamespace(runs=lambda _id: [run], log=lambda *a: None),
+                _save_stage2_repair_state=lambda *_a: saved.append(True),
+                _fail=lambda *a: self.fail("must not fail"),
+                _stage2_repair_correction=Supervisor._stage2_repair_correction,
+                _stage2_repair_noncandidate_attempts=lambda c: 0)
+            sup._stage2_repair_input_rejected = lambda *a: Supervisor._stage2_repair_input_rejected(sup, *a)
+            sup._stage2_repair_launch_page = lambda c: Supervisor._stage2_repair_launch_page(sup, c)
+            b["producer"] = "codex"
+            self.assertIs(Supervisor._stage2_repair_recover_launched(sup, b, {}, current), False)
+            self.assertTrue(saved)
+            self.assertEqual([a["status"] for a in current["attempt_log"]], ["rejected"])
+            self.assertNotIn("response_correction", current)
+            page = sup._stage2_repair_launch_page(current)
+            self.assertLess(len(page), 8)
+            self.assertEqual(len(page), 3)
