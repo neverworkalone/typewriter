@@ -4895,6 +4895,26 @@ class Supervisor:
         except Exception:
             pass   # without the marker the recovery stays fail-closed
 
+    def _stage2_repair_input_rejected(self, run, attempt: dict, current: dict) -> bool:
+        """True only with proof that this run's turn/start rejected the prompt as `input_too_large` before any work,
+        and that the recorded page is larger than the budgeted page a relaunch would use (so a relaunch makes progress)."""
+        try:
+            logp = Path(str(run["log_file"]))
+            if not logp.is_file() or logp.stat().st_size > 65_536:
+                return False
+            text = logp.read_text(encoding="utf-8", errors="replace")
+            if '"input_error_code":"input_too_large"' not in text or "turn/start" not in text \
+                    or '"type":"item.' in text or '"type":"turn.completed"' in text:
+                return False
+            groups, cursor = current.get("groups"), current.get("cursor")
+            if not isinstance(groups, list) or type(cursor) is not int or not 0 <= cursor < len(groups):
+                return False
+            budgeted = sorted({key for group in stage2.repair_page(groups, cursor) for key in group.get("candidate_keys", [])})
+            return bool(budgeted) and attempt.get("target_keys") != budgeted \
+                and set(budgeted) < set(attempt.get("target_keys") or [])
+        except (OSError, KeyError, TypeError, AttributeError):
+            return False
+
     def _stage2_repair_recover_launched(self, b, state: dict, current: dict) -> bool:
         """Settle a `launched` attempt left by a restart: attach, judge a finished run, or re-run a never-started one.
 
@@ -4959,6 +4979,15 @@ class Supervisor:
             self.store.finish_runs(b["id"], code)
             run = next(row for row in self.store.runs(b["id"]) if row["id"] == run["id"])
         if str(run["exit_status"]) != "0":
+            if self._stage2_repair_input_rejected(run, attempt, current):
+                # turn/start refused the oversized page before any model work: drop that attempt so the caller
+                # relaunches the same cursor with the size-budgeted page (guaranteed to be a different, smaller page)
+                attempts.pop()
+                current["attempts"] = max(0, current.get("attempts", 1) - 1)
+                self._save_stage2_repair_state(b, state)
+                self.store.log(b["id"], "Stage 2 repair 입력이 turn/start 크기 상한을 넘어 거부됨 — 작업 없이 거부된 attempt를 폐기하고 "
+                               "크기 상한 page로 다시 시작합니다", "warn")
+                return False
             self._fail(b, "ERROR", f"Stage 2 repair run ended with exit {run['exit_status']}; preserving all evidence")
             return True
         self.store.log(b["id"], "Stage 2 repair run already finished before the restart; judging its saved output without re-running", "warn")
