@@ -210,6 +210,14 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
                 add(int(raw_number), "D")
             continue
         tokens = line.split()
+        if tokens and tokens[0] == "D" and any(re.fullmatch(r"\d+", t) for t in tokens[1:]):
+            # A D line is a list of independent rows: one bad token (e.g. a `468-495` range) must not void its valid rows.
+            for token in tokens[1:]:
+                if re.fullmatch(r"\d+", token):
+                    add(int(token), "D")
+                else:
+                    warnings.append(f"D 줄의 형식이 잘못된 토큰 {token[:40]} 폐기; 나머지 행 번호는 계속 판정")
+            continue
         if tokens and tokens[0] == "L":
             pairs = tokens[1:]
             if (len(pairs) >= 2 and len(pairs) % 2 == 0
