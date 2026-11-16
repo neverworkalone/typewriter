@@ -212,6 +212,30 @@ class RunProblem(unittest.TestCase):
                 self.assertEqual(ClaudeCodeAdapter().denied_actions(log), want)
 
 
+    def test_transient_classifier_denial_retried_successfully_is_resolved(self):
+        def use(i):
+            return {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": i, "name": "Bash", "input": {"command": "git push"}}]}}
+
+        def res(i, err):
+            return {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": i, "is_error": err}]}}
+
+        def den(i, reason="Classifier unavailable"):
+            return {"type": "system", "subtype": "permission_denied", "tool_use_id": i, "decision_reason_type": "classifier", "decision_reason": reason}
+
+        d1 = {"tool_name": "Bash", "tool_use_id": "a", "tool_input": {"command": "git push"}}
+        cases = [
+            ([use("a"), den("a"), res("a", True), use("b"), res("b", False)], []),
+            ([use("a"), den("a"), res("a", True)], [d1]),                                  # never retried
+            ([use("a"), den("a"), res("a", True), use("b"), res("b", True)], [d1]),         # retry failed
+            ([use("a"), den("a", "policy"), res("a", True), use("b"), res("b", False)], [d1]),  # real policy denial
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            for events, want in cases:
+                log.write_text(stream(init(), *events, result(denials=[d1])))
+                self.assertEqual(ClaudeCodeAdapter().denied_actions(log), want)
+
+
 class Classification(unittest.TestCase):
     def test_table(self):
         cases = [
