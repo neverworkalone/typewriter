@@ -381,6 +381,8 @@ class ParallelStage3:
         cls = self.sup._classify_run(b["producer"], run["log_file"])
         self.store.log(b["id"], f"[{task}] AI 종료 코드 {code}, 분류={cls}", "warn")
         hard = cls in HARD
+        if not hard and self._policy_refusal_skip(b, row, data, run):
+            return
         if not hard:   # a complete current answer with a proven run identity survives an ordinary non-zero exit
             ad, log = self._adapter(b), Path(run["log_file"])
             sid = run["session_id"] or ad.session_id(log)
@@ -403,6 +405,54 @@ class ParallelStage3:
             self._set(b, task, data, state="PENDING", run_id=None, session_id=None)
             return self.store.log(b["id"], f"[{task}] 일시 실패 — 이 task만 {retries + 1}번째 재시도 예약", "warn")
         self._task_failed(b, row, data, f"[{task}] AI 실행 실패(코드 {code}, {cls}) 재시도 한도 초과", "transient")
+
+    def _policy_refusal_skip(self, b, row, data, run) -> bool:
+        """An exact provider refusal of this chunk's prompt (never retried: the same prompt is refused again) is saved as
+        an explicit Keep-all `none` - no Relation is dropped - and the chunk is handed to the owner as a manual Issue
+        request, like the A/B policy skip (#2292). True when handled (saved path entered or the batch failed closed)."""
+        task, ad = row["task"], self._adapter(b)
+        log = Path(run["log_file"])
+        if not ad.confirmed_prompt_refusal(log):
+            return False
+        sid = run["session_id"] or row["session_id"] or ad.session_id(log)
+        if problem := ad.output_identity_problem(log, taskruns.recorded_spec(run), sid, b["worktree"], self.sup.env):
+            self._task_failed(b, row, data, f"[{task}] 정책 거부 실행의 소유권/핀 확인 실패: {problem[1]}", "ownership")
+            return True
+        try:
+            view, _prompt, sha, completed = refine.ops(b).read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task)
+        except Stage3Error as error:
+            self._task_failed(b, row, data, f"[{task}] 정책 거부 청크 view를 확인하지 못했습니다: {error}", "no_response")
+            return True
+        if completed or sha != row["view_sha256"]:
+            self._task_failed(b, row, data, f"[{task}] 정책 거부 청크가 이미 저장됐거나 view가 바뀌어 Keep-all을 저장하지 않습니다", "input_changed")
+            return True
+        senses = view.get("senses") or []
+        lines = [f"Stage 3 {b['shard']} chunk {task}: 정책 거부로 AI 판정 없이 Keep-all(`none`) 저장됨 — 사람 검토 필요",
+                 f"relation_count={view.get('relation_count')}"]
+        for sense in senses:
+            src = sense.get("source") or {}
+            for rel in sense.get("relations") or []:
+                lines.append(f"{src.get('lemma')}\t{src.get('pos')}\t#{rel.get('n')}\t{rel.get('type')}\t{rel.get('target') or rel.get('text') or ''}")
+        title = f"[Policy Skip][S3/{b['producer']}] {b['shard']} Chunk {task}"
+        event_key = f"s3-policy-skip:{b['shard']}:{b['batch']}:{b['producer']}:{task}"
+        try:
+            request_id = self.sup.maint.report_issue(title, "\n".join(lines), urgent=False, event_key=event_key)
+        except Exception as error:   # persist the request before the effect; otherwise keep everything
+            self._task_failed(b, row, data, f"[{task}] 정책 Skip 수동 Issue 요청을 영속화하지 못했습니다: {error}", "run_failed")
+            return True
+        normalized = f"chunk {task}\nnone\n"
+        path = self._decisions(b, task)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(normalized, "utf-8")
+        tmp.replace(path)
+        data["response"] = {"run_id": run["id"], "session_id": run["session_id"], "model": run["model"],
+                            "effort": run["effort"], "sha256": hashlib.sha256(normalized.encode("utf-8")).hexdigest(),
+                            "view_sha256": sha}
+        data.pop("failure_kind", None)
+        self._set(b, task, data, state="RESPONDED")
+        self.store.log(b["id"], f"[{task}] Codex 정책 거부: Keep-all `none` 저장 경로로 진행하고 수동 Issue 요청 #{request_id}를 남겼습니다", "warn")
+        return True
 
     def _accept_answer(self, b, row, data, run) -> None:
         task, ad = row["task"], self._adapter(b)

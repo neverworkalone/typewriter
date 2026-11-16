@@ -471,3 +471,40 @@ class MaintainerRelease(Helpers, unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PolicyRefusal(Helpers, unittest.TestCase):
+    """#7144: an exact Codex prompt-policy refusal on one chunk must not stop the parallel line."""
+    MESSAGE = ("Invalid prompt: your prompt was flagged as potentially violating our usage policy. "
+               "Please try again with a different prompt: "
+               "https://platform.openai.com/docs/guides/reasoning#advice-on-prompting")
+
+    def refuse(self, w, task, message=None):
+        from warroom.adapters import CodexCLIAdapter
+        w.adapter.confirmed_prompt_refusal = CodexCLIAdapter().confirmed_prompt_refusal
+        pid = self.pid_of(w, task)
+        events = [{"type": "thread.started", "thread_id": "t"}, {"type": "turn.started"},
+                  {"type": "error", "message": message or self.MESSAGE},
+                  {"type": "turn.failed", "error": {"message": message or self.MESSAGE}}]
+        w.adapter.running[pid].update(code=1, text="".join(json.dumps(e) + "\n" for e in events))
+        w.adapter.finish(pid)
+
+    def test_refused_chunk_is_saved_as_keep_all_with_a_manual_issue_and_siblings_continue(self):
+        w = self.world(2)
+        self.refuse(w, "001")
+        self.respond(w, "002")
+        w.tick(3)
+        self.assertEqual(self.states(w), {"001": "SAVED", "002": "SAVED"})
+        self.assertEqual(sorted(w.runner.edit.saves), ["001", "002"])
+        self.assertNotIn("AI 실행 실패", self.batch(w)["error"] or "")   # the fake CLI has no `apply`: only finalize stops
+        requests = [r for r in w.store.issue_requests() if "Policy Skip" in r["title"]]
+        self.assertEqual(len(requests), 1)
+        self.assertIn("001", requests[0]["event_key"])
+
+    def test_other_nonzero_exits_and_inexact_messages_still_fail_closed(self):
+        w = self.world(1)
+        self.refuse(w, "001", self.MESSAGE + " Please revise it.")
+        w.tick()
+        self.assertEqual(self.states(w)["001"], "FAILED")
+        self.assertEqual(self.batch(w)["state"], "ERROR")
+        self.assertEqual(w.runner.edit.saves, [])
