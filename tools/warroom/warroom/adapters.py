@@ -489,6 +489,40 @@ CLAUDE_REQUIRED_FLAGS = ("--model", "--effort", "--resume", "--name", "--output-
 _CLAUDE_EFFORT_FALLBACK = "ignoring it and using the default effort"   # the CLI's own warning for an unknown --effort
 
 
+def _transient_classifier_resolved(text: str) -> set[str]:
+    """tool_use ids denied only because the auto-mode classifier gave no verdict ("Classifier unavailable": a transient
+    check failure, not a policy refusal) AND whose identical call (same tool, same input) later ran to a non-error
+    result. Such a denial is resolved; every other denial (policy, approval, a retry that failed) stays."""
+    transient: set[str] = set()
+    calls: dict[str, tuple[str, str]] = {}
+    order: list[tuple[str, str]] = []
+    ok: set[str] = set()
+    for o in _json_objects(text):
+        if o.get("type") == "system" and o.get("subtype") == "permission_denied":
+            if o.get("decision_reason_type") == "classifier" and o.get("decision_reason") == "Classifier unavailable":
+                transient.add(str(o.get("tool_use_id")))
+            continue
+        msg = o.get("message")
+        content = msg.get("content") if isinstance(msg, dict) else None
+        if not isinstance(content, list):
+            continue
+        for c in content:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "tool_use":
+                calls[str(c.get("id"))] = (str(c.get("name")), json.dumps(c.get("input"), sort_keys=True))
+                order.append(str(c.get("id")))
+            elif c.get("type") == "tool_result" and not c.get("is_error"):
+                ok.add(str(c.get("tool_use_id")))
+    resolved: set[str] = set()
+    for tid in transient:
+        sig = calls.get(tid)
+        if sig and any(i != tid and i not in transient and calls[i] == sig and i in ok
+                       and order.index(i) > order.index(tid) for i in order):
+            resolved.add(tid)
+    return resolved
+
+
 def _json_objects(text: str):
     for line in text.splitlines():
         try:
@@ -642,8 +676,11 @@ class ClaudeCodeAdapter(ProcessAdapter):
         if result is None:
             return None
         denials = result.get("permission_denials") if result is not None else None
-        return [d if isinstance(d, dict) else {"tool_name": str(d)} for d in denials] \
-            if isinstance(denials, list) else None
+        if not isinstance(denials, list):
+            return None
+        out = [d if isinstance(d, dict) else {"tool_name": str(d)} for d in denials]
+        resolved = _transient_classifier_resolved(text)
+        return [d for d in out if d.get("tool_use_id") not in resolved]
 
     def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
         """An exited run is accepted only with its own evidence: the session its init event reported AND a final
