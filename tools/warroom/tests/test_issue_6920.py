@@ -66,6 +66,11 @@ class ClearRemovesPromptFiles(unittest.TestCase):
                 ad.start(BIG, d, {"PATH": os.environ["PATH"]}, run, "t", log, ex, **extra)
                 prompt = d / "batch-7-1.log.prompt"
                 self.assertTrue(prompt.exists())
+                for _ in range(300):   # the detached wrapper writes its exit file last; cleaning up before that races it
+                    if ex.exists() and ex.read_text().strip():
+                        break
+                    time.sleep(0.1)
+                self.assertEqual(ex.read_text().strip(), "0")
                 sup = SimpleNamespace(paths=SimpleNamespace(logs=d),
                                       store=SimpleNamespace(runs=lambda _id: [{"log_file": str(log), "exit_file": str(ex)}]))
                 Supervisor._remove_run_files(sup, {"id": 7, "log_file": None, "exit_file": None})
