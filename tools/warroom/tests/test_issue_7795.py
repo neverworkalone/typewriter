@@ -21,7 +21,9 @@ class RereadContract(unittest.TestCase):
     def test_cli_reread_rejection_is_correctable_guidance(self):
         cli = (ROOT / "scripts/relation/d-chunk-cli.mjs").read_text(encoding="utf-8")
         self.assertEqual(cli.count("proven completed condition"), 2)
-        self.assertEqual(cli.count("`, 'reread')"), 2)
+        self.assertEqual(cli.count("`, 'reread')"), 1)
+        self.assertEqual(cli.count("`, 'reread-batch')"), 1)
+        self.assertIn("resend the complete corrected requests array", cli)
 
 
 if __name__ == "__main__":

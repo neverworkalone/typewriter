@@ -227,7 +227,9 @@ function cursorInputError(ref, reason, guidance = 'preserve') {
   const nextStep = guidance === 'no-pending'
     ? 'check the last recorded status and exact forms/order/boundary; next resumes an unfinished LIMITED search and is a no-op after completion'
     : guidance === 'reread'
-      ? 'reread only re-reads a condition already recorded as completed; for an unfinished LIMITED condition resend that request with cursor:"next" and without reread, and for a new condition omit reread; this request alone was rejected, so correct it and resend; other conditions are unaffected'
+      ? 'reread only re-reads a condition already recorded as completed; for an unfinished LIMITED condition resend that request with cursor:"next" and without reread, and for a new condition omit reread; this single search was rejected, so correct it and resend'
+    : guidance === 'reread-batch'
+      ? 'reread only re-reads a condition already recorded as completed; the whole batch was rejected, so none of its requests was searched or recorded; fix this request (for an unfinished LIMITED condition use cursor:"next" without reread, for a new condition omit reread) and resend the complete corrected requests array, including every other request'
     : guidance === 'duplicate'
       ? 'an unfinished LIMITED search already exists; continue it with next under the same condition, or start only a different condition without a cursor'
       : guidance === 'batch'
@@ -849,7 +851,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     }
     const condition = recordedCondition({ recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense });
     if (reread && !condition.complete) {
-      throw cursorInputError(request.sense, `reread requires a proven completed condition (status=${condition.recorded_status ?? condition.status}, hits=${condition.recorded_hits})`, 'reread');
+      throw cursorInputError(request.sense, `reread requires a proven completed condition (status=${condition.recorded_status ?? condition.status}, hits=${condition.recorded_hits})`, 'reread-batch');
     }
     const cursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense, senseRefs: senseRefsByRecord(meta) });
     if (cursor !== null) {
