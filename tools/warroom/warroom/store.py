@@ -756,6 +756,13 @@ class Store:
                 if (proof.get("status") != "APPROVED" or followup_task not in (proof.get("followup_tasks") or [])
                         or followup is None or followup["state"] != "SAVED" or new_run is None):
                     return False
+            elif (isinstance(proof, dict) and task is not None and proof.get("saved_checkpoint_accept") is True
+                  and proof.get("recovery_type") == "resume_report_task" and proof.get("status") == "APPROVED"
+                  and proof.get("baseline_task_state") in ("RUNNING", "FIXQ")
+                  and proof.get("task") == task):
+                # #7812: the checkpoint was already fully saved; accepting it creates no run. Only the approved
+                # task's own SAVED transition (checked below) is the progress; the baseline row was never SAVED.
+                pass
             elif isinstance(proof, dict) and task is not None:
                 baseline = proof.get("baseline_run_id")
                 if "baseline_run_id" not in proof:

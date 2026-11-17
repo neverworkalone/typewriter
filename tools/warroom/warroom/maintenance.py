@@ -1779,7 +1779,12 @@ class Maintenance:
                         "next_action": defects.public(data["next_action"].strip()),
                         "baseline_task_state": task_row["state"] if task_row is not None else None,
                         "baseline_task_run_id": task_row["run_id"] if task_row is not None else None,
-                        "baseline_tasks": evidence.get("task_scope") if recovery["type"] == "continue_after_saved_report" else None}
+                        "baseline_tasks": evidence.get("task_scope") if recovery["type"] == "continue_after_saved_report" else None,
+                        # #7812: a fully saved C checkpoint is accepted without a new run; the SAVED transition is the progress.
+                        "saved_checkpoint_accept": bool(
+                            recovery["type"] == "resume_report_task" and source["method"] == literary.METHOD
+                            and task_row is not None and not self._c_report_task_pending(source, recovery["task"])
+                            and self._c_report_task_saved_unaccepted(source, recovery["task"], task_row))}
             proof = {"version": 3, "issue": data["issue"], "outcome": "no_code_resume", "base": base,
                      "branch": b["branch"], "worktree": str(b["worktree"]), **approval}
             self.store.set(f"m_diag_{b['id']}", json.dumps(proof, sort_keys=True))

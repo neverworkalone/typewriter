@@ -106,6 +106,39 @@ class RecoveryLaneTests(unittest.TestCase):
         w.store.finish_run(new_run, 0)
         self.assertTrue(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
 
+    def test_saved_checkpoint_c_report_resume_completes_without_new_run(self):
+        # #7812: a fully saved C checkpoint is accepted by the existing poll without a run; only the flagged path may skip the run.
+        for flagged in (True, False):
+            with self.subTest(saved_checkpoint_accept=flagged):
+                fixture = fixtures.NoCodeRecovery()
+                fixture.setUp()
+                self.addCleanup(fixture.doCleanups)
+                w = fixture.w
+                batch_id, defect_id, maint, _ = fixture.prepare_failed_d_task()
+                w.store.update_task(batch_id, '002', state='RUNNING')
+                row = w.store.task_row(batch_id, '002')
+                with w.store._conn() as c:
+                    c.execute("UPDATE batches SET method='c', run_kind='c_parallel' WHERE id=?", (batch_id,))
+                    c.execute("UPDATE runs SET kind='c_chunk_new', ended_at=1 WHERE id=?", (row['run_id'],))
+                    c.execute("UPDATE runs SET ended_at=1 WHERE batch_id=? AND ended_at IS NULL", (maint['id'],))
+                source = w.store.batch(batch_id)
+                owner = {'task': '002', 'chunk': '002', 'row_state': 'RUNNING', 'task_run_id': row['run_id'],
+                         'run_id': row['run_id'], 'run_kind': 'c_chunk_new', 'session_id': row['session_id'],
+                         'path': 'report.json'}
+                proof = {'batch_id': batch_id, 'event_key': w.store.defect(defect_id)['event_key'],
+                         'source_error_seq': source['error_seq'], 'task': '002', 'chunk': '002',
+                         'recovery_type': 'resume_report_task', 'baseline_task_state': 'RUNNING',
+                         'baseline_task_run_id': row['run_id'], 'session_id': row['session_id'],
+                         'run_id': row['run_id'], 'task_report_path': 'report.json', 'task_report': owner,
+                         'saved_checkpoint_accept': flagged}
+                self.assertTrue(w.store.approve_no_code_resume(maint['id'], 101, defect_id, proof))
+                self.assertFalse(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'))
+                w.store.update_task(batch_id, '002', state='SAVED')   # accepted by the poll, no new run
+                self.assertEqual(w.store.finish_no_code_recovery(101, defect_id, batch_id, '002'), flagged)
+                if flagged:
+                    self.assertEqual(w.store.defect(defect_id)['state'], 'RELEASED')
+                    self.assertEqual(w.store.maintenance(101)['state'], 'DONE')
+
     def test_legacy_approval_requires_successful_run_started_after_approval(self):
         fixture = fixtures.NoCodeRecovery()
         fixture.setUp()
