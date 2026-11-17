@@ -1779,7 +1779,12 @@ class Maintenance:
                         "next_action": defects.public(data["next_action"].strip()),
                         "baseline_task_state": task_row["state"] if task_row is not None else None,
                         "baseline_task_run_id": task_row["run_id"] if task_row is not None else None,
-                        "baseline_tasks": evidence.get("task_scope") if recovery["type"] == "continue_after_saved_report" else None}
+                        "baseline_tasks": evidence.get("task_scope") if recovery["type"] == "continue_after_saved_report" else None,
+                        # #7812: a fully saved C checkpoint is accepted without a new run; the SAVED transition is the progress.
+                        "saved_checkpoint_accept": bool(
+                            recovery["type"] == "resume_report_task" and source["method"] == literary.METHOD
+                            and task_row is not None and not self._c_report_task_pending(source, recovery["task"])
+                            and self._c_report_task_saved_unaccepted(source, recovery["task"], task_row))}
             proof = {"version": 3, "issue": data["issue"], "outcome": "no_code_resume", "base": base,
                      "branch": b["branch"], "worktree": str(b["worktree"]), **approval}
             self.store.set(f"m_diag_{b['id']}", json.dumps(proof, sort_keys=True))
@@ -1835,6 +1840,22 @@ class Maintenance:
         except (literary.LiteraryError, OSError, TypeError, ValueError):
             return False
 
+    def _c_report_task_saved_unaccepted(self, source, task: str, row) -> bool:
+        """A worker saved every Sense of its chunk and only afterwards wrote a shared-defect report (#7812): the report
+        scan stops the poll before the finished RUNNING task is accepted, so the row never reaches SAVED. Once the
+        report is archived, the ordinary `_track` -> `_after_run` accepts that fully saved checkpoint: the task row
+        moving to SAVED is the post-approval progress. Only the exact readable, non-repair chunk qualifies."""
+        if row is None or row["state"] not in ("RUNNING", "FIXQ"):
+            return False
+        try:
+            rec = literary.read_active(Path(source["worktree"]), source, int(task))
+            if rec is None or rec.get("repair"):
+                return False
+            literary.read_view(Path(source["worktree"]), rec, int(task))
+            return not self.sup.cp._pending(source, rec)
+        except (literary.LiteraryError, OSError, TypeError, ValueError):
+            return False
+
     def _validate_report_task(self, source, evidence: dict, recovery: dict) -> bool:
         """Validate the exact task whose stable shared-defect file caused the automatic pause."""
         owner = evidence.get("task_report")
@@ -1877,8 +1898,9 @@ class Maintenance:
             return False
         if source["method"] == literary.METHOD and recovery.get("type") == "resume_report_task":
             # A stopped worker may have saved before writing its report, while its task row is still FIXQ.
-            # The restart path accepts that checkpoint without a new run; it is not post-approval progress.
-            if not self._c_report_task_pending(source, task):
+            # Unsaved Senses remain, or the checkpoint is fully saved but its row was never accepted (#7812).
+            if not (self._c_report_task_pending(source, task)
+                    or self._c_report_task_saved_unaccepted(source, task, row)):
                 return False
         if source["method"] == STAGE2_METHOD and not str(source["run_kind"] or "").startswith("s2_"):
             return False

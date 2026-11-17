@@ -65,6 +65,19 @@ class ParallelC(Helpers, unittest.TestCase):
         self.assertFalse(w.sup.maint._c_report_task_pending(b, "001"))
         self.assertFalse(w.sup.maint._c_report_task_pending(b, "999"))
 
+    def test_report_recovery_accepts_saved_checkpoint_whose_row_was_never_accepted(self):
+        w = self.world(senses=13)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        row = self.tasks(w)["001"]
+        self.assertEqual(row["state"], "RUNNING")
+        self.assertFalse(w.sup.maint._c_report_task_saved_unaccepted(b, "001", row))  # Senses still pending
+        self.save(w, "001")
+        self.assertTrue(w.sup.maint._c_report_task_saved_unaccepted(b, "001", row))
+        self.assertFalse(w.sup.maint._c_report_task_saved_unaccepted(b, "999", row))
+        self.assertFalse(w.sup.maint._c_report_task_saved_unaccepted(b, "001", None))
+
     def test_fast_unavailable_blocks_a_completed_chunk_after_abnormal_exit(self):
         w = self.world(senses=12)
         w.adapter.plan.clear()
