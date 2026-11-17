@@ -1354,6 +1354,14 @@ withWorld('cursor next resumes recorded search pages and invalid cursor input le
     ref: 's1', forms: ['새벽안개'], cursor: 'not-a-recorded-cursor', databasePath: world.options.databasePath, root: world.root,
   }), /INVALID_CURSOR: s1/u);
   assert.equal(await readFile(searchesPath, 'utf8'), beforeInvalid, 'invalid cursor input appends no failure evidence');
+  const rereadFailure = await runCli(['search-batch', '--dir', world.root], JSON.stringify({
+    requests: [{ sense: 's1', forms: ['새벽안개'], reread: true }],
+  }), { TYPEWRITER_APPROVED_CORPUS_DB: world.options.databasePath });
+  assert.notEqual(rereadFailure.code, 0);
+  assert.match(rereadFailure.stderr, /INVALID_CURSOR: s1: reread requires a proven completed condition/u);
+  assert.match(rereadFailure.stderr, /cursor:"next"/u, 'a rejected reread names the correctable continuation');
+  assert.doesNotMatch(rereadFailure.stderr, /report the conflict|do not retry or restart/u, 'a malformed request is not an unrecoverable conflict');
+  assert.equal(await readFile(searchesPath, 'utf8'), beforeInvalid, 'a rejected reread records no evidence');
 
   const previous = beforeInvalid.split('\n').filter(Boolean).map(JSON.parse).find((entry) => entry.record_id === 'w001' && entry.forms[0] === '새벽안개');
   assert.equal(previous.status, 'LIMITED', 'prepare-issued cursor is persisted as unfinished evidence');
