@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from . import literary, prompts, taskruns
@@ -357,6 +358,17 @@ def _legacy_scope_recovery_proven(store, b, row, data, run, rec, pending, outcom
         return True
     except (OSError, ValueError, KeyError, TypeError, literary.LiteraryError):
         return False
+
+
+def _retire_stale_submit(wt: Path, b, chunk_no: int) -> None:
+    """A continuation session covers only the still-pending Senses. The previous session's submit file (already
+    consumed by the CLI, possibly with a Sense missing) must not stay at the official path where the new session can
+    re-submit it unchanged (#7494): keep it beside as `.prev` evidence and let the session write a fresh file."""
+    submit = wt / f"{literary.names(b).submit_prefix}{chunk_no:03d}.submit.json"
+    diag = submit.with_name(submit.name + ".diag.json")
+    for path in (submit, diag):
+        if path.is_file():
+            os.replace(path, path.with_name(path.name + ".prev"))
 
 
 class _Round:
@@ -1171,6 +1183,8 @@ class ParallelC:
             if kind == SCOPE_RECOVERY and (not isinstance(recovery, dict) or recovery.get("attempts") != 1
                     or recovery.get("launch_started") is not False):
                 raise prompts.PromptError("legacy chunk_scope 복구 예산이 이미 사용됐거나 손상되었습니다")
+            if kind == NEW and (data.get("continued") or len(remaining) < len(rec["sense_ids"])):
+                _retire_stale_submit(wt, b, n)
             prompt = self._prompt(b, kind, rec, remaining, data)
             if kind in (FIX, SCOPE_RECOVERY):
                 sup._check_session_pin(b, sid, run)
@@ -1256,7 +1270,8 @@ class ParallelC:
             view = literary.view_for_senses(view, remaining)
         elif data.get("continued") or len(remaining) < len(rec["sense_ids"]):
             note += ("같은 활성 청크의 미완료 Sense만 새 세션으로 이어간다. 제공된 view와 제출 배열에는 아래 남은 ID만 포함하고, "
-                     "checkpoint에 저장된 Sense는 다시 판독하거나 제출하지 않는다: " + ", ".join(remaining) + "\n")
+                     "checkpoint에 저장된 Sense는 다시 판독하거나 제출하지 않는다. 이전 세션의 제출 파일은 치워졌으니 기존 파일을 재제출하지 말고 "
+                     "남은 Sense만으로 새 제출 파일을 작성해 제출한다: " + ", ".join(remaining) + "\n")
             view = literary.view_for_senses(view, remaining)
         card = len(prompts.c_chunk(b, n, checkpoint, view="", note=note, scoped=True).encode("utf-8"))
         if literary.delivery(card, view) == "inline":
