@@ -2037,9 +2037,19 @@ export async function normalizeActiveChunkReadScope({ checkpointPath, chunkNo, s
   return { validSenseIds, excludedSenseIds };
 }
 
-/** Excerpt lines that begin with `[` (e.g. a corpus title marker) must not look like a context key header, so they get a leading space. */
+/**
+ * Keeps one context unambiguous in the text view, where contexts are separated by a blank line:
+ * - any line ending (CR, CRLF, U+0085, U+2028/2029) becomes `\n`;
+ * - a blank line inside an excerpt (a paragraph break) becomes a visible `¶` line, so the paragraph after it is never read
+ *   as a separate, header-less context body (#8187);
+ * - lines that begin with `[` (corpus title marker) or `#` (sense header) get a leading space so they are not read as headers.
+ */
 function excerptText(text) {
-  return String(text).replace(/^(?=\[)/gmu, ' ');
+  return String(text)
+    .replace(/\r\n|[\r\u0085\u2028\u2029]/gu, '\n')
+    .replace(/^(?:[ \t\u3000]*\n)+|(?:\n[ \t\u3000]*)+$/gu, '')
+    .replace(/\n(?:[ \t\u3000]*\n)+/gu, '\n¶\n')
+    .replace(/^(?=[[#])/gmu, ' ');
 }
 
 /** Text view of the returned `chunk` items in the documented one-call `jq` format. */

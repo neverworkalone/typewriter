@@ -144,6 +144,8 @@ jq -r '
 ' .warroom-scratch/chunk-01.read.json
 ```
 
+The CLI's `--format text` view is the same layout, except inside an excerpt: line endings are normalized to `\n`, each paragraph break (blank line) is shown as a `¶` line, and a line starting with `[` or `#` gets a leading space. Contexts are separated only by a blank line, so an excerpt paragraph is never mistaken for a header-less context (#8187).
+
 ### Lossless text view and per-sense status
 
 `chunk --format text` prints exactly what the `jq` command above formats (progress header, each sense's
