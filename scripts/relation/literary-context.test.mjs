@@ -1068,6 +1068,31 @@ test('chunk --skip rejects invalid ranges, missing evidence and mismatched shown
   }
 });
 
+test('chunk CLI distinguishes an empty skip window from an exhausted 16-context cap (#8069)', async () => {
+  const fixture = await makeFixture({ unitCount: 20 });
+  try {
+    const run = (args) => {
+      const rejected = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', ...args]));
+      assert.equal(rejected.status, 1);
+      const diagnostic = JSON.parse(rejected.stderr);
+      assert.equal(diagnostic.diagnostic, 'usage');
+      return diagnostic.message;
+    };
+    for (const args of [['--skip', '8', '--contexts', '8'], ['--skip', '15', '--contexts', '8']]) {
+      const message = run(args);
+      assert.match(message, /raise --contexts above --skip.*--skip 8 --contexts 16/u);
+      assert.doesNotMatch(message, /submit/u);
+    }
+    for (const args of [['--skip', '16', '--contexts', '16'], ['--skip', '17', '--contexts', '16']]) {
+      const message = run(args);
+      assert.match(message, /--skip 16 or more has nothing left to read.*submit/u);
+      assert.doesNotMatch(message, /raise --contexts/u);
+    }
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('chunk CLI identifies an exhausted or missing skip prefix without changing evidence', async () => {
   const fixture = await makeFixture({ unitCount: 6 });
   try {
@@ -1835,7 +1860,7 @@ test('CLI usage diagnostics are fixed and validation precedes checkpoint/databas
       [['--sense-ids', 'a', 'b'], 'arguments must use --option value pairs'],
       [['--unknown', 'private-value'], 'unsupported option'],
       [['--skip', '0'], '--skip requires --sense-ids'],
-      [['--sense-ids', 'sense-000001', '--skip', '16', '--contexts', '16'], '--skip must be an integer 0..contexts-1'],
+      [['--sense-ids', 'sense-000001', '--skip', '16', '--contexts', '16'], '--skip must be an integer 0..contexts-1; each Sense exposes at most 16 contexts, so --skip 16 or more has nothing left to read: submit with the contexts already read'],
     ];
     for (const [args, expectedMessage] of cases) {
       const result = runCli(fixture, cliChunkArgs(fixture, args));
