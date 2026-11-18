@@ -309,7 +309,8 @@ NETWORK_TOKENS = (
     "service unavailable", "gateway time-out",
     # #5633: GitHub's receive side answering a push with a reasonless `! [remote rejected] ... (failed)` or
     # `(internal error)` is a server fault; real rejections carry a reason (hook declined, protected branch, ...).
-    "(failed)", "(internal error)",
+    # #7922: the same fault spelled `remote: Internal Server Error` / `(Internal Server Error)`.
+    "(failed)", "(internal error)", "(internal server error)", "remote: internal server error",
 )
 
 

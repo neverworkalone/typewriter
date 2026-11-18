@@ -54,6 +54,7 @@ class Classifier(unittest.TestCase):
             (Result(128, "", "fatal: unable to access 'https://github.com/o/r/': Failed to connect to github.com port 443"), True),
             (Result(1, "", "To https://github.com/o/r\n ! [remote rejected] HEAD -> b (failed)\nerror: failed to push some refs"), True),
             (Result(1, "", " ! [remote rejected] HEAD -> b (internal error)"), True),
+            (Result(1, "", "remote: Internal Server Error\nremote: Request ID X\nTo https://github.com/o/r\n ! [remote rejected] HEAD -> b (Internal Server Error)\nerror: failed to push some refs"), True),
             (Result(1, "", " ! [remote rejected] HEAD -> b (protected branch hook declined)"), False),
             (Result(1, "", "error: cannot lock ref 'refs/remotes/origin/master': is at 1ac573c but expected d02755d\n"
                            " ! d02755d..1ac573c master -> origin/master  (unable to update local ref)"), True),
