@@ -1081,6 +1081,8 @@ test('chunk CLI identifies an exhausted or missing skip prefix without changing 
     assert.equal(diagnostic.diagnostic, 'skip_evidence');
     assert.equal(diagnostic.code, 'LITERARY_SKIP_PREFIX');
     assert.equal(diagnostic.repair_scope, 'check_each_sense');
+    assert.equal(diagnostic.recorded_shown, 6);
+    assert.equal(diagnostic.max_skip, 6);
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
     const reread = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', id, '--contexts', '16']));
     assert.equal(reread.status, 0, reread.stderr);

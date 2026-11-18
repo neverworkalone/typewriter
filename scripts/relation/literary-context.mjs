@@ -1476,7 +1476,9 @@ function completeShownSample(sense, digest, result) {
 function assertSkipPrefix(prior, digest, allUnitRowIds, skippedContexts) {
   if (!prior || prior.forms_sha256 !== digest || !Array.isArray(prior.unit_rowids)
     || prior.unit_rowids.length < skippedContexts) {
-    throw codedError('LITERARY_SKIP_PREFIX', 'skip requires matching previously shown context evidence for this sense');
+    const error = codedError('LITERARY_SKIP_PREFIX', 'skip requires matching previously shown context evidence for this sense');
+    error.recordedShown = prior && prior.forms_sha256 === digest && Array.isArray(prior.unit_rowids) ? prior.unit_rowids.length : 0;
+    throw error;
   }
   const priorPrefix = prior.unit_rowids.slice(0, skippedContexts);
   if (priorPrefix.length !== skippedContexts
