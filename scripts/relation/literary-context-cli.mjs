@@ -70,19 +70,21 @@ function only(options, ...allowed) {
   if (unexpected.length > 0) fail('unsupported option');
 }
 
+const SKIP_RANGE_MESSAGE = '--skip must be an integer 0..contexts-1; each Sense exposes at most 16 contexts, so a skip at or beyond --contexts (or 16) has nothing left to read: submit with the contexts already read';
+
 function integerOption(options, name, minimum, maximum, defaultValue) {
   const value = options[name];
   if (value === undefined) return defaultValue;
   if (!/^\d+$/u.test(value)) {
     fail(name === 'contexts' ? '--contexts must be an integer 1..16'
       : name === 'limit' ? '--limit must be an integer 1..50'
-        : '--skip must be an integer 0..contexts-1');
+        : SKIP_RANGE_MESSAGE);
   }
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
     fail(name === 'contexts' ? '--contexts must be an integer 1..16'
       : name === 'limit' ? '--limit must be an integer 1..50'
-        : '--skip must be an integer 0..contexts-1');
+        : SKIP_RANGE_MESSAGE);
   }
   return parsed;
 }
@@ -407,7 +409,7 @@ main().catch((error) => {
       '--shard is required', '--batch is required', '--model is required', '--input is required', '--output is required',
       '--sense-ids is required', '--sense-id is required', '--form is required', '--basis is required', '--candidate is required',
       'unsupported option', '--contexts must be an integer 1..16', '--limit must be an integer 1..50',
-      '--skip must be an integer 0..contexts-1', '--skip requires --sense-ids',
+      SKIP_RANGE_MESSAGE, '--skip requires --sense-ids',
       '--sense-ids must be a comma-separated list of valid IDs', '--sense-ids must contain unique IDs',
       '--format must be json or text', 'unknown command', '--chunk must be a positive chunk number',
       '--chunk requires --sense-ids', '--exclude-sense-ids cannot be combined with --sense-ids',
