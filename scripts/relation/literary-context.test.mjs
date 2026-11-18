@@ -1905,7 +1905,7 @@ test('chunk --format text carries every sense, state and context of the JSON res
     for (const item of parsed.items) {
       assert.ok(asText.stdout.includes(`## ${item.sense_id} — ${item.lemma} [${item.pos}]\n${item.gloss}\n`));
       assert.ok(asText.stdout.includes(`hits=${item.total_hits} unseen=${item.unseen_hits}`));
-      for (const context of item.contexts) assert.ok(asText.stdout.includes(`[${context.k}] ${context.src}\n${context.x}`), 'context key, source and excerpt are verbatim');
+      for (const context of item.contexts) assert.ok(asText.stdout.includes(`[${context.k}] ${context.src}\n${context.x.replace(/\r\n|\r/gu, '\n').replace(/\n(?:[ \t]*\n)+/gu, '\n¶\n')}`), 'context key, source and excerpt (paragraph breaks marked) are present');
     }
     assert.ok(check.records.length > 0);
     const bad = runCli(fixture, cliChunkArgs(fixture, ['--format', 'xml']));
@@ -1924,6 +1924,7 @@ test('renderChunkText table: header, forms line, status-only items and empty chu
     ['status only', { ...base, items: [{ sense_id: 's2', status: 'SEARCH_FAILED' }, { sense_id: 's3', status: 'UNSEARCHABLE' }] }, '## s2 — SEARCH_FAILED\n\n## s3 — UNSEARCHABLE\n'],
     ['empty', { ...base, items: [] }, 'not_yet_read=2\n\n\n'],
     ['bracketed excerpt line is not a context key', { ...base, items: [{ ...withContexts, contexts: [{ k: 'aaaaaaaaaaaa', src: 's', x: '[2717-이무영-제1과제1장]\n본문 [중간]' }] }] }, '[aaaaaaaaaaaa] s\n [2717-이무영-제1과제1장]\n본문 [중간]\n'],
+    ['paragraph breaks and CR stay inside one context', { ...base, items: [{ ...withContexts, contexts: [{ k: 'aaaaaaaaaaaa', src: 's', x: '\n앞 문단\r\n\r\n밭 이틀갈이\r\n\n\n## 끝\n' }, { k: 'bbbbbbbbbbbb', src: 't', x: '다음' }] }] }, '[aaaaaaaaaaaa] s\n앞 문단\n¶\n밭 이틀갈이\n¶\n ## 끝\n\n[bbbbbbbbbbbb] t\n다음\n'],
   ];
   for (const [name, result, expected] of cases) {
     const text = renderChunkText(result);
