@@ -393,8 +393,9 @@ main().catch((error) => {
     const prefix = error.code === 'LITERARY_SKIP_PREFIX';
     process.stderr.write(`${JSON.stringify({ status: 'FAILED', diagnostic: 'skip_evidence', code: error.code,
       message: prefix
-        ? 'The requested skip exceeds matching previously shown evidence for at least one Sense. Check each Sense and its initial view; exclude exhausted Senses or reread without skip when evidence is missing.'
+        ? 'The requested skip exceeds matching previously shown evidence for at least one Sense. recorded_shown is the number of contexts recorded for the failing Sense and max_skip is the largest accepted --skip; use it instead of counting the initial view. exclude exhausted Senses or reread without skip when evidence is missing.'
         : 'The previously shown context order no longer matches. Stop and report; do not bypass the evidence check.',
+      ...(prefix ? { recorded_shown: error.recordedShown ?? 0, max_skip: error.recordedShown ?? 0 } : {}),
       repair_scope: prefix ? 'check_each_sense' : 'stop_and_report' })}\n`);
     process.exitCode = 1;
     return;
