@@ -1276,6 +1276,22 @@ def usage_limit_reset_at(log_text: str) -> float | None:
         except ValueError:
             continue
         return when.timestamp()
+    return _opencode_retry_after(log_text)
+
+
+def _opencode_retry_after(log_text: str) -> float | None:
+    """Epoch seconds a top-level OpenCode 429 `error` event states through `retryAfterMs` (event time + delay)."""
+    for line in log_text.splitlines():
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        err = ev.get("error") if isinstance(ev, dict) and ev.get("type") == "error" else None
+        if not isinstance(err, dict) or err.get("status") != 429:
+            continue
+        delay, stamp = err.get("retryAfterMs"), ev.get("timestamp")
+        if all(isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0 for v in (delay, stamp)):
+            return (stamp + delay) / 1000
     return None
 
 
