@@ -420,6 +420,20 @@ test('A/B patch filters source-lemma containment, preserves valid additions, and
   }
 });
 
+test('Method B workbench merge rejects a mechanical gloss restatement', async (t) => {
+  const context = await setup(t, 'b');
+  context.canonicalRows[1].senses[0].gloss = '성질이 차가운 고체.';
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context);
+  await saveAll(context, { 1: { 'w002-s1': ['차가운 고체', '산들바람'] } });
+  const outPath = path.join(context.scratchDirectory, 'merged.jsonl');
+  await assert.rejects(
+    mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory }),
+    /only restates the source gloss words in order/u,
+  );
+  await assert.rejects(readFile(outPath, 'utf8'), { code: 'ENOENT' });
+});
+
 // ---- compact I/O (#2035 PR A) ----
 
 const compactLines = (text) => text.split('\n').filter((line) => line && !line.startsWith('#')).map((line) => line.split('\t'));
