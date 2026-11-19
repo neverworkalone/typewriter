@@ -320,6 +320,16 @@ class Git:
             raise FastForwardRace("push 직전에 원격 브랜치가 이동했습니다")
         self._git("push", "origin", f"{local}:refs/heads/{branch}", cwd=path, timeout=600, net=True)
 
+    @_locked("repo_lock")
+    def fast_forward(self, path: Path, sha: str) -> str:
+        """Move the worktree's branch forward to `sha` (a descendant of HEAD) without rewriting any commit."""
+        if not re.fullmatch(r"[a-f0-9]{40}", sha):
+            raise GitError("invalid fast-forward target")
+        if not self.is_ancestor(self.head(path), sha, path=path):
+            raise GitError("fast-forward target does not descend from the worktree HEAD")
+        self._git("merge", "--ff-only", sha, cwd=path)
+        return self.head(path)
+
     def dirty(self, path: Path) -> str:
         self.ignore_scratch()
         return self._git("status", "--porcelain=v1", "--untracked-files=all", cwd=path).out

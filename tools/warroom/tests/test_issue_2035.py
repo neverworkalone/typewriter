@@ -609,6 +609,18 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(wb.merges, 1)
         self.assertNotIn('"후보1-1"', (w.wt() / stage1ab.names(w.row_()).output).read_text())
 
+    def test_gloss_restatement_rejection_fast_forwards_a_candidate_less_worktree_first(self):
+        w = ABWorld(method="b")
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "b")
+        w.git.ancestor_pairs.add((HEAD1, w.git.base_sha))
+        wb = w.runner.workbench
+        wb.restate, wb.strip_restate_from_save = "후보1-1", 4
+        w.run_chunks(3)
+        self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
+        self.assertEqual([sha for _, sha in w.git.fast_forwards], [w.git.base_sha])
+        self.assertEqual(w.store.get(f"ab_base_head_{w.row_()['id']}"), w.git.base_sha)
+
     def test_interrupted_resave_pass_is_redone_for_all_chunks_on_reentry(self):
         w = ABWorld(method="b")
         self.addCleanup(w.tmp.cleanup)
