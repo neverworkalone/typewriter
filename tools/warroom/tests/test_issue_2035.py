@@ -600,11 +600,30 @@ class SerialChunks(unittest.TestCase):
         w = ABWorld(method="b")
         self.addCleanup(w.tmp.cleanup)
         w.start("single", "deepseek", "b")
-        w.runner.workbench.merge_error = 'Candidate v1 invalid: candidate "작은 목소리" only restates the source gloss words in order'
+        wb = w.runner.workbench
+        wb.restate, wb.strip_restate_from_save = "후보1-1", 4        # the three ordinary saves keep it; re-saves strip it
         w.run_chunks(3)
         self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
         self.assertEqual(len(w.adapter.launches), 3)                            # no regeneration: only the 3 ordinary chunks
-        self.assertEqual(w.runner.workbench.merges, 1)
+        self.assertEqual(wb.saves, 6)                                           # every saved chunk was re-saved
+        self.assertEqual(wb.merges, 1)
+        self.assertNotIn('"후보1-1"', (w.wt() / stage1ab.names(w.row_()).output).read_text())
+
+    def test_interrupted_resave_pass_is_redone_for_all_chunks_on_reentry(self):
+        w = ABWorld(method="b")
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "b")
+        wb = w.runner.workbench
+        wb.restate, wb.strip_restate_from_save, wb.fail_save_call = "후보1-1", 4, 5   # chunk 1 re-saved, chunk 2 fails
+        w.run_chunks(3)
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertEqual(wb.merges, 0)
+        wb.fail_save_call = None
+        self.assertTrue(control.retry(w.store, "deepseek", "b"))
+        w.tick(3)
+        self.assertEqual(w.row_()["state"], "WAITING_REVIEW", w.row_()["error"])
+        self.assertEqual(len(w.adapter.launches), 3)                            # still no AI call
+        self.assertEqual(wb.merges, 1)
 
     def test_unidentifiable_merge_rejection_is_an_error_and_nothing_is_regenerated(self):
         w = self.w
