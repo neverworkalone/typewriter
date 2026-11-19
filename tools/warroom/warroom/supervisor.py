@@ -9594,15 +9594,14 @@ class Supervisor:
                 try:
                     coverage = stage1ab.merge(self.runner, self.env, wt, b)
                 except stage1ab.MergeRejected as e:
-                    resave_key = f"ab_resave_{b['id']}"
-                    if "only restates the source gloss" not in e.raw or self.store.get(resave_key):
+                    if "only restates the source gloss" not in e.raw:
                         raise
                     # Chunks saved before the save-time gloss-restatement cleanup covered this method: re-save them
                     # once through the current rules (no AI), then merge again.
                     self._ab_sync_worktree(b, wt)   # the worktree's workbench may predate the save-time cleanup
-                    # Recorded only after every chunk was re-saved, so an interrupted pass is redone on re-entry.
+                    # One pass per finalize attempt (the second merge is outside this handler); an interrupted or
+                    # no-op pass is simply redone on the next attempt, so no completion marker is kept.
                     changed = stage1ab.resave_saved_chunks(self.runner, self.env, wt, b, cp, on_saved=lambda c: self._ab_remember(b, c))
-                    self.store.set(resave_key, "1")
                     self.store.log(b["id"], f"저장된 청크 {changed}개를 현재 save-chunk 규칙으로 재정제한 뒤 merge를 다시 시도합니다", "warn")
                     coverage = stage1ab.merge(self.runner, self.env, wt, b)
             except stage1ab.MergeRejected as e:
