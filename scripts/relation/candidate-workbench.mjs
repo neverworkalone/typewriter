@@ -574,11 +574,11 @@ function removeSourceSelfRepeats(candidates, source, senseId, location, newCandi
 }
 
 /**
- * Method A only: build the gloss-restatement check for these source records. The Canonical lemma set (exempting
+ * Methods A and B (the methods merge enforces): build the gloss-restatement check for these source records. The Canonical lemma set (exempting
  * lexicalized compounds) is read only when some candidate actually has the restatement shape.
  */
 async function glossCheckFor(method, sourceRows, candidateSenses, repositoryDirectory) {
-  if (method !== 'a') return undefined;
+  if (method !== 'a' && method !== 'b') return undefined;
   const glosses = new Map(sourceRows.flatMap((row) => row.senses.map((sense) => [sense.id, sense.gloss])));
   const shaped = candidateSenses.some((sense) => Array.isArray(sense.candidates)
     && sense.candidates.some((candidate) => typeof candidate === 'string'

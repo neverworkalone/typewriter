@@ -420,18 +420,16 @@ test('A/B patch filters source-lemma containment, preserves valid additions, and
   }
 });
 
-test('Method B workbench merge rejects a mechanical gloss restatement', async (t) => {
+test('Method B save-chunk removes a mechanical gloss restatement so the final merge passes', async (t) => {
   const context = await setup(t, 'b');
   context.canonicalRows[1].senses[0].gloss = '성질이 차가운 고체.';
   await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
   await prepare(context);
   await saveAll(context, { 1: { 'w002-s1': ['차가운 고체', '산들바람'] } });
   const outPath = path.join(context.scratchDirectory, 'merged.jsonl');
-  await assert.rejects(
-    mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory }),
-    /only restates the source gloss words in order/u,
-  );
-  await assert.rejects(readFile(outPath, 'utf8'), { code: 'ENOENT' });
+  const merged = await mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory });
+  assert.equal(merged.validation.candidateCount, 1);
+  assert.doesNotMatch(await readFile(outPath, 'utf8'), /차가운 고체/u);
 });
 
 // ---- compact I/O (#2035 PR A) ----
@@ -649,7 +647,7 @@ test('compact save-chunk removes normalized source-lemma containment even for a 
   assert.ok(result.autoRemoved.items.every((item) => item.reason === 'source lemma repeat'));
 });
 
-test('Method A save-chunk and patch remove gloss restatements but keep other methods and independent words', async (t) => {
+test('Method A and B save-chunk and patch remove gloss restatements', async (t) => {
   for (const method of ['a', 'b']) {
     const context = await setup(t, method);
     context.canonicalRows[0].senses[0].gloss = '한평생을 지낼 계획.';
@@ -662,18 +660,13 @@ test('Method A save-chunk and patch remove gloss restatements but keep other met
       repositoryDirectory: context.repositoryDirectory,
     });
     const saved = await readLines(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'));
-    if (method === 'a') {
-      assert.deepEqual(result.autoRemoved.map((item) => [item.candidate, item.reason]), [['평생 계획', 'gloss restatement']]);
-      assert.deepEqual(saved[0].senses[0].candidates, ['백년대계']);
-      const patched = await patchCandidateSenses({
-        scratchDirectory: context.scratchDirectory,
-        inputPath: await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['한평생 계획'] }], 'patch.jsonl'),
-        repositoryDirectory: context.repositoryDirectory,
-      });
-      assert.deepEqual(patched.autoRemoved.map((item) => item.candidate), ['한평생 계획']);
-    } else {
-      assert.deepEqual(result.autoRemoved, []);
-      assert.deepEqual(saved[0].senses[0].candidates, ['평생 계획', '백년대계']);
-    }
+    assert.deepEqual(result.autoRemoved.map((item) => [item.candidate, item.reason]), [['평생 계획', 'gloss restatement']]);
+    assert.deepEqual(saved[0].senses[0].candidates, ['백년대계']);
+    const patched = await patchCandidateSenses({
+      scratchDirectory: context.scratchDirectory,
+      inputPath: await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['한평생 계획'] }], 'patch.jsonl'),
+      repositoryDirectory: context.repositoryDirectory,
+    });
+    assert.deepEqual(patched.autoRemoved.map((item) => item.candidate), ['한평생 계획']);
   }
 });
