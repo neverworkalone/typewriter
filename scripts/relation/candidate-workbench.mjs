@@ -825,7 +825,7 @@ export async function mergeCandidateBatch({ scratchDirectory, outPath, replace =
     canonicalLemmaForms,
     sourceName: canonicalPath,
     candidateName: 'Candidate workbench output',
-    enforceGlossRestatement: checkpoint.batch.method === 'a',
+    enforceGlossRestatement: checkpoint.batch.method === 'a' || checkpoint.batch.method === 'b',
   });
   const resolvedOutput = path.resolve(repositoryDirectory, outPath ?? '');
   const relativeOutput = path.relative(repositoryDirectory, resolvedOutput);
