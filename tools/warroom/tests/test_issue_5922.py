@@ -21,6 +21,16 @@ class UsageLimitReset(unittest.TestCase):
                          datetime.datetime(2026, 12, 1, 0, 5))
         self.assertIsNone(usage_limit_reset_at("session limit reached"))
 
+    def test_opencode_free_limit_retry_after_ms_is_the_reset(self):
+        # Issue #8413: the OpenCode free-limit 429 states its wait only as retryAfterMs; without it a resumed task relaunched at once.
+        event = json.dumps({"type": "error", "timestamp": 1795061327894, "error": {
+            "type": "provider.free-limit", "status": 429, "retryAfterMs": 71838000}})
+        self.assertEqual(usage_limit_reset_at("noise\n" + event), (1795061327894 + 71838000) / 1000)
+        for bad in ({"type": "text", "timestamp": 1, "error": {"status": 429, "retryAfterMs": 5}},
+                    {"type": "error", "timestamp": 1, "error": {"status": 500, "retryAfterMs": 5}},
+                    {"type": "error", "error": {"status": 429, "retryAfterMs": 5}}):
+            self.assertIsNone(usage_limit_reset_at(json.dumps(bad)))
+
 
 class OperatorRetryOverridesStatedReset(Helpers, unittest.TestCase):
     def test_operator_retry_before_the_stated_reset_relaunches_at_once(self):
