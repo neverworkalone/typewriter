@@ -1924,3 +1924,39 @@ withWorld('prepare of another chunk no longer fails because a different chunk is
   await assert.rejects(prepareChunk({ ...world.options, chunkNumber: 2 }), /temporary files for chunk 002 already exist/u);
   assert.equal((await prepareChunk({ ...world.options, chunkNumber: 3 })).status, 'AUTO_COMPLETE');
 });
+
+test('search-batch converges same-condition Records at different cursor positions into one shared result', () => {
+  const records = [
+    rec('w1', '고지', [['noun', '정의 하나.']]),
+    rec('w2', '고지', [['noun', '정의 둘.']]),
+  ];
+  const metaValue = { senses: [
+    { ref: 's1', record_id: 'w1', sense_id: 'w1-s1', auto: false },
+    { ref: 's2', record_id: 'w2', sense_id: 'w2-s1', auto: false },
+  ] };
+  const forms = ['고지'];
+  const calls = [];
+  const search = (searchForms, options) => {
+    calls.push(options.cursor);
+    return { result: { status: 'LIMITED', items: [1, 2, 3, 4].map((n) => ({ paragraph_rowid: calls.length * 10 + n, excerpt: `ctx-${options.cursor}-${n}` })),
+      next_cursor: `${options.cursor}+`, scanned_rows: 1 } };
+  };
+  search.corpusRows = 10;
+  // w2 already searched page c0 -> c1 alone; w1 is still at c0.
+  const first = buildSearchBatch({ requests: [{ sense: 's2', cursor: 'next', contexts: 4 }], meta: metaValue, records, search,
+    priorEntries: [cursorEvidence('w1', forms, null, 'c0'), cursorEvidence('w2', forms, null, 'c0')],
+    validateCursor: () => {} });
+  assert.equal(first.output.results[0].cursor_in, 'c0');
+  assert.equal(first.output.results[0].cursor_out, 'c0+');
+  const prior = [cursorEvidence('w1', forms, null, 'c0'), cursorEvidence('w2', forms, null, 'c0'), ...first.evidence];
+  calls.length = 0;
+  const { output, evidence } = buildSearchBatch({
+    requests: [{ sense: 's1', cursor: 'next', contexts: 4 }, { sense: 's2', cursor: 'next', contexts: 4 }],
+    meta: metaValue, records, search, priorEntries: prior, validateCursor: () => {},
+  });
+  assert.equal(output.result_count, 1);
+  assert.deepEqual(output.results[0].shared_by.map((item) => item.record_id), ['w1', 'w2']);
+  assert.equal(output.results[0].cursor_in, 'c0+');
+  assert.deepEqual(calls, ['c0+']);
+  assert.deepEqual(evidence.map((entry) => [entry.record_id, entry.cursor_in]).sort(), [['w1', 'c0'], ['w1', 'c0+'], ['w2', 'c0+']]);
+});

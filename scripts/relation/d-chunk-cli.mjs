@@ -808,6 +808,28 @@ function canonicalOwnerForActiveSense(activeSense, senseIndex, ref) {
   return owner;
 }
 
+/**
+ * The corpus page for one exact condition and cursor does not depend on the Record asking for it. When a sibling
+ * Record already searched the page this Record's cursor points at, adopt that recorded page as this Record's own
+ * evidence and advance, so same-condition Records converge on one cursor and share one result instead of the
+ * lagging Record re-reading the page the producer has already seen.
+ */
+function adoptSiblingPages({ record, forms, boundary, contexts, cursor, entries }) {
+  const key = searchKey(forms, boundary);
+  const adopted = [];
+  let current = cursor;
+  while (current !== null) {
+    const wanted = requestKey(forms, boundary, searchOptions(contexts, boundary, current));
+    const page = entries.find((entry) => entry.record_id !== record.id && entry.key === key
+      && entry.cursor_in === current && entry.request_key === wanted
+      && (entry.status === 'LIMITED' || entry.status === 'COMPLETE') && entry.source !== undefined);
+    if (!page) break;
+    adopted.push({ ...page, record_id: record.id });
+    current = page.status === 'LIMITED' && typeof page.cursor_out === 'string' ? page.cursor_out : null;
+  }
+  return { adopted, cursor: current };
+}
+
 /** Resolve and deduplicate all same-condition searches before they reach the approved read-only index. */
 export function buildSearchBatch({ requests, meta, records, search, priorEntries = [], validateCursor, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
   if (!Array.isArray(requests) || requests.length === 0) fail('search-batch needs a non-empty requests array');
@@ -816,6 +838,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
   const groups = new Map();
   const resolved = [];
   const recordConditions = new Map();
+  const adoptedEvidence = [];
   const allowed = new Set(['sense', 'forms', 'boundary', 'cursor', 'contexts', 'reread']);
 
   requests.forEach((request, index) => {
@@ -849,14 +872,23 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     if (!Number.isInteger(contexts) || contexts < 1 || contexts > MAX_CALL_CONTEXTS) {
       fail(`${requestId}.contexts must be 1..${MAX_CALL_CONTEXTS}`);
     }
-    const condition = recordedCondition({ recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense });
+    let condition = recordedCondition({ recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense });
     if (reread && !condition.complete) {
       throw cursorInputError(request.sense, `reread requires a proven completed condition (status=${condition.recorded_status ?? condition.status}, hits=${condition.recorded_hits})`, 'reread-batch');
     }
-    const cursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense, senseRefs: senseRefsByRecord(meta) });
+    let cursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense, senseRefs: senseRefsByRecord(meta) });
     if (cursor !== null) {
       if (typeof validateCursor !== 'function') throw cursorInputError(request.sense, 'corpus cursor validation is required');
       validateCursor(cursor, forms, boundary, request.sense);
+      if (!reread) {
+        const adoption = adoptSiblingPages({ record, forms, boundary, contexts, cursor, entries: [...priorEntries, ...adoptedEvidence] });
+        if (adoption.adopted.length > 0) {
+          adoptedEvidence.push(...adoption.adopted);
+          cursor = adoption.cursor;
+          condition = recordedCondition({ recordId: record.id, forms, boundary,
+            entries: [...priorEntries, ...adoptedEvidence], ref: request.sense });
+        }
+      }
     }
     const options = searchOptions(contexts, boundary, cursor);
     const exactRequestKey = requestKey(forms, boundary, options);
@@ -883,7 +915,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     resolved.push({ ...requester, result_id: group.result_id });
   });
 
-  const evidence = [];
+  const evidence = [...adoptedEvidence];
   const corpusRows = Math.max(1, Math.floor(search.corpusRows ?? DEFAULT_REQUEST_SCAN_BUDGET_ROWS));
   const scanBudgetRows = corpusRows * BATCH_SCAN_BUDGET_PASSES;
   let scannedRows = 0;
