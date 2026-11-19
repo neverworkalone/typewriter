@@ -423,6 +423,9 @@ class Classification(unittest.TestCase):
             ("Unsupported model gpt-9", "unknown"),
             (lines({"type": "error", "message": "Selected model is at capacity. Please try a different model."}), "rate_limit"),
             (lines({"type": "item.completed", "item": {"type": "agent_message", "text": "Selected model is at capacity."}}), "unknown"),
+            (lines({"type": "error", "message": "Incomplete response returned, reason: max_output_tokens"},
+                   {"type": "turn.failed", "error": {"message": "Incomplete response returned, reason: max_output_tokens"}}), "rate_limit"),
+            (lines({"type": "item.completed", "item": {"type": "agent_message", "text": "Incomplete response returned, reason: max_output_tokens"}}), "unknown"),
             (lines({"type": "item.completed", "item": {"type": "agent_message", "text": "Fast mode is unavailable"}}), "unknown"),
         ]
         for text, want in cases:

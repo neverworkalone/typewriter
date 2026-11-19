@@ -1328,6 +1328,10 @@ def classify_codex_failure(log_text: str, quota_patterns: list[str]) -> str:
     # existing bounded transient retry path, but only for CLI diagnostics.
     if re.search(r"\bselected model is at capacity\b", low):
         return "rate_limit"
+    # A turn cut off by the model's output cap ("Incomplete response ... reason: max_output_tokens") is a transient,
+    # input-independent model-side stop: the saved work is intact, so it takes the same bounded retry/continuation.
+    if re.search(r"incomplete response returned[^\n]{0,40}\bmax_output_tokens\b", low):
+        return "rate_limit"
     if re.search(r"\b(?:401|403)\b|unauthori[sz]ed|invalid api key|authentication|not logged in", low):
         return "auth"
     fast_key = r"(?:service_tier|features\.fast_mode)"
