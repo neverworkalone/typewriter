@@ -18,6 +18,10 @@ class FakeWorkbenchCli:
         self.calls: list[list[str]] = []
         self.merge_error: str | None = None   # a merge rejection (naming a record), consumed once
         self.merges = 0
+        self.restate: str | None = None        # a candidate that merge rejects as a gloss restatement while it is saved
+        self.strip_restate_from_save: int | None = None   # save-chunk call number (1-based) from which saves strip it
+        self.fail_save_call: int | None = None   # save-chunk call number that fails (interrupts a re-save pass)
+        self.saves = 0
 
     def rows(self) -> list[dict]:
         return [{"id": f"w{n:04d}", "lemma": f"표제{n}",
@@ -101,6 +105,9 @@ class FakeWorkbenchCli:
         return Result(0, json.dumps({"chunk": n}))
 
     def _save(self, argv, base, cwd):
+        self.saves += 1
+        if self.fail_save_call == self.saves:
+            return Result(1, "", "injected save failure")
         n = int(self.opt(argv, "--chunk"))
         chunk, src = self._chunk(base, n)
         lines = (cwd / self.opt(argv, "--input")).read_text("utf-8").split("\n")
@@ -139,6 +146,9 @@ class FakeWorkbenchCli:
                     reason = "normalized duplicate"
                 elif candidate == rec["lemma"]:
                     reason = "source lemma repeat"
+                elif (candidate == self.restate and self.strip_restate_from_save is not None
+                      and self.saves >= self.strip_restate_from_save):
+                    reason = "gloss restatement"
                 if reason:
                     auto_removed.append({"alias": alias, "senseId": sense["id"], "candidate": candidate, "reason": reason})
                     continue
@@ -169,6 +179,9 @@ class FakeWorkbenchCli:
         rows = []
         for chunk in cp["chunks"]:
             rows += [l for l in (base / "candidates" / chunk["file"]).read_text("utf-8").splitlines() if l]
+        if self.restate and any(self.restate in json.loads(r)["senses"][i]["candidates"]
+                                for r in rows for i in range(len(json.loads(r)["senses"]))):
+            return Result(1, "", f'Candidate v1 invalid: candidate "{self.restate}" only restates the source gloss words in order')
         out = cwd / self.opt(argv, "--out")
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text("\n".join(rows) + "\n", "utf-8")
