@@ -596,6 +596,16 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.row_()["state"], "ERROR")
         self.assertIn("정정 2회", w.row_()["error"])
 
+    def test_gloss_restatement_merge_rejection_resaves_saved_chunks_once_without_ai(self):
+        w = ABWorld(method="b")
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "b")
+        w.runner.workbench.merge_error = 'Candidate v1 invalid: candidate "작은 목소리" only restates the source gloss words in order'
+        w.run_chunks(3)
+        self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
+        self.assertEqual(len(w.adapter.launches), 3)                            # no regeneration: only the 3 ordinary chunks
+        self.assertEqual(w.runner.workbench.merges, 1)
+
     def test_unidentifiable_merge_rejection_is_an_error_and_nothing_is_regenerated(self):
         w = self.w
         w.start("single", "deepseek", "a")

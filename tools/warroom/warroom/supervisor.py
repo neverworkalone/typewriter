@@ -9575,7 +9575,18 @@ class Supervisor:
             if problem := self._ab_chunks_problem(b, cp):
                 return self._fail(b, "ERROR", problem)
             try:
-                coverage = stage1ab.merge(self.runner, self.env, wt, b)
+                try:
+                    coverage = stage1ab.merge(self.runner, self.env, wt, b)
+                except stage1ab.MergeRejected as e:
+                    resave_key = f"ab_resave_{b['id']}"
+                    if "only restates the source gloss" not in e.raw or self.store.get(resave_key):
+                        raise
+                    # Chunks saved before the save-time gloss-restatement cleanup covered this method: re-save them
+                    # once through the current rules (no AI), then merge again.
+                    self.store.set(resave_key, "1")
+                    changed = stage1ab.resave_saved_chunks(self.runner, self.env, wt, b, cp)
+                    self.store.log(b["id"], f"저장된 청크 {changed}개를 현재 save-chunk 규칙으로 재정제한 뒤 merge를 다시 시도합니다", "warn")
+                    coverage = stage1ab.merge(self.runner, self.env, wt, b)
             except stage1ab.MergeRejected as e:
                 chunk = stage1ab.chunk_of_error(cp, e.raw)
                 if chunk is None:

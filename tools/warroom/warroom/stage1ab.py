@@ -410,6 +410,22 @@ def saved_answer_lines(worktree, b, chunk: dict) -> list[str]:
             for i, s in enumerate((s for rec in _read_jsonl(source) for s in rec["senses"]), 1)]
 
 
+def resave_saved_chunks(runner, env, worktree, b, cp: dict) -> int:
+    """Re-run every saved chunk through the current save-chunk rules, deterministically and without an AI. Chunks saved
+    before a rule was tightened (e.g. gloss restatement removal for Method B) are cleaned the way a fresh save would.
+    Returns how many chunk files changed; a chunk the save rejects raises ABChunkError and stays as it was."""
+    import hashlib
+    changed = 0
+    for chunk in cp["chunks"]:
+        saved = _chunk_files(worktree, b, chunk)[1]
+        before = hashlib.sha256(saved.read_bytes()).hexdigest()
+        ok, diag = save(runner, env, worktree, b, chunk, saved_answer_lines(worktree, b, chunk))
+        if not ok:
+            raise ABChunkError(f"청크 {chunk['number']:03d} 재저장이 거부됐습니다: {diag[:300]}")
+        changed += hashlib.sha256(saved.read_bytes()).hexdigest() != before
+    return changed
+
+
 # ---- merge (final, once) -----------------------------------------------------------------------------------------------
 def merge(runner, env, worktree, b) -> dict:
     """The one Candidate v1 batch check. Returns coverage; a failure raises MergeRejected with the chunk it points at."""
