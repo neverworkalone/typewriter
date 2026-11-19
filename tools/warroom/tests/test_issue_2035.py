@@ -621,6 +621,26 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual([sha for _, sha in w.git.fast_forwards], [w.git.base_sha])
         self.assertEqual(w.store.get(f"ab_base_head_{w.row_()['id']}"), w.git.base_sha)
 
+    def test_retry_after_a_completed_no_op_resave_pass_syncs_resaves_and_merges_again(self):
+        w = ABWorld(method="b")
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "b")
+        wb = w.runner.workbench
+        wb.restate = "후보1-1"                    # the worktree's stale workbench never strips it: the first pass changes nothing
+        w.run_chunks(3)
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertEqual(wb.saves, 6)               # a full no-op re-save pass completed
+        self.assertFalse(getattr(w.git, "fast_forwards", []))
+        w.git.ancestor_pairs.add((HEAD1, w.git.base_sha))   # now the base can be fast-forwarded to the fixed workbench
+        wb.strip_restate_from_save = wb.saves + 1
+        self.assertTrue(control.retry(w.store, "deepseek", "b"))
+        w.tick(3)
+        self.assertEqual(w.row_()["state"], "WAITING_REVIEW", w.row_()["error"])
+        self.assertEqual([sha for _, sha in w.git.fast_forwards], [w.git.base_sha])
+        self.assertEqual(wb.saves, 9)
+        self.assertEqual(len(w.adapter.launches), 3)  # no AI call
+        self.assertEqual(wb.merges, 1)
+
     def test_interrupted_resave_pass_is_redone_for_all_chunks_on_reentry(self):
         w = ABWorld(method="b")
         self.addCleanup(w.tmp.cleanup)
