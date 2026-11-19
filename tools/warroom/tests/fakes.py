@@ -887,6 +887,12 @@ class FakeGit:
         self.local_head = commit
         self.integrated.append((str(path), commit))
 
+    def fast_forward(self, path, sha):
+        self.fast_forwards = getattr(self, "fast_forwards", [])
+        self.fast_forwards.append((str(path), sha))
+        self.local_head = sha
+        return sha
+
     def is_ancestor(self, ancestor, descendant, *, path=None):
         return ancestor == descendant or (ancestor, descendant) in self.ancestor_pairs
 

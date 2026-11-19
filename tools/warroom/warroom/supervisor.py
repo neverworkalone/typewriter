@@ -9120,6 +9120,22 @@ class Supervisor:
             return f"HEAD 결속을 확인하지 못했습니다: {e}"
         return f"worktree HEAD {head[:10]}가 배치 기준 HEAD {base[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
 
+    def _ab_sync_worktree(self, b, wt: Path) -> bool:
+        """Fast-forward a Candidate-less A/B worktree to the current base so its workbench carries later fixes.
+        Only while HEAD is still the batch's recorded base, the tree is clean, nothing was committed or pushed, and the
+        base descends from HEAD; the recorded base HEAD moves with it. No rebase, no rewrite."""
+        base = self.store.get(f"ab_base_head_{b['id']}")
+        head = self.git.head(wt)
+        if base is None or head != base or self.git.dirty(wt).strip() or self.git.remote_head(b["branch"]) is not None:
+            return False
+        target = self.git.fetch_base(self.cfg["base_branch"])
+        if target == head or not self.git.is_ancestor(head, target, path=wt):
+            return False
+        new = self.git.fast_forward(wt, target)
+        self.store.set(f"ab_base_head_{b['id']}", new)
+        self.store.log(b["id"], f"Candidate 커밋 전 worktree를 최신 {self.cfg['base_branch']}로 fast-forward했습니다 ({head[:10]} → {new[:10]})", "warn")
+        return True
+
     def _ab_chunks_problem(self, b, cp: dict, skip: int | None = None) -> str | None:
         """Every chunk accepted earlier must still be byte-identical (an AI session never edits a saved chunk)."""
         wt = Path(b["worktree"])
@@ -9583,6 +9599,7 @@ class Supervisor:
                         raise
                     # Chunks saved before the save-time gloss-restatement cleanup covered this method: re-save them
                     # once through the current rules (no AI), then merge again.
+                    self._ab_sync_worktree(b, wt)   # the worktree's workbench may predate the save-time cleanup
                     # Recorded only after every chunk was re-saved, so an interrupted pass is redone on re-entry.
                     changed = stage1ab.resave_saved_chunks(self.runner, self.env, wt, b, cp, on_saved=lambda c: self._ab_remember(b, c))
                     self.store.set(resave_key, "1")
