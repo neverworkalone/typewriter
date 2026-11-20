@@ -27,6 +27,7 @@ import {
   searchActive,
   searchBatchActive,
   searchForContexts,
+  writeStdoutSync,
 } from './d-chunk-cli.mjs';
 
 const SYLLABLES = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차'];
@@ -1959,4 +1960,31 @@ test('search-batch converges same-condition Records at different cursor position
   assert.equal(output.results[0].cursor_in, 'c0+');
   assert.deepEqual(calls, ['c0+']);
   assert.deepEqual(evidence.map((entry) => [entry.record_id, entry.cursor_in]).sort(), [['w1', 'c0'], ['w1', 'c0+'], ['w2', 'c0+']]);
+});
+
+withWorld('search and search-batch record no evidence when the response cannot be delivered', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const searchesPath = chunkPath(world, 'searches');
+  const before = await readFile(searchesPath, 'utf8');
+  const undeliverable = () => { throw new Error('stdout closed'); };
+  await assert.rejects(searchBatchActive({
+    requests: [{ sense: 's1', forms: ['새벽안개'], boundary: 'left', contexts: 1 }],
+    databasePath: world.options.databasePath, root: world.root, emit: undeliverable,
+  }), /stdout closed/u);
+  await assert.rejects(searchActive({
+    ref: 's1', forms: ['새벽안개'], boundary: 'left', contexts: 1,
+    databasePath: world.options.databasePath, root: world.root, emit: undeliverable,
+  }), /stdout closed/u);
+  assert.equal(await readFile(searchesPath, 'utf8'), before, 'undelivered responses leave no recorded hits');
+  const delivered = [];
+  const output = await searchBatchActive({
+    requests: [{ sense: 's1', forms: ['새벽안개'], boundary: 'left', contexts: 1 }],
+    databasePath: world.options.databasePath, root: world.root, emit: (value) => delivered.push(value),
+  });
+  assert.deepEqual(delivered, [output], 'the response is emitted before evidence is recorded');
+  assert.notEqual(await readFile(searchesPath, 'utf8'), before);
+});
+
+test('writeStdoutSync fails loudly on a closed descriptor', () => {
+  assert.throws(() => writeStdoutSync('x', 987654), /could not deliver the search response/u);
 });
