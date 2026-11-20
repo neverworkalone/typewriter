@@ -9303,7 +9303,7 @@ class Supervisor:
             aliases = [row[0] for row in stage1ab.view_rows(view)]
             answer = wt / stage1ab.answer_path(b, chunk["number"])
             try:
-                previous = stage1ab.split_rows(answer.read_text("utf-8").split("\n")[1:-1])
+                previous = stage1ab.prune_outside_view(stage1ab.split_rows(answer.read_text("utf-8").split("\n")[1:-1]), aliases)
             except (OSError, stage1ab.ABChunkError) as e:
                 raise prompts.PromptError(f"부분 정정의 기존 답변을 확인할 수 없어 새 세션을 시작하지 않습니다: {e}") from e
             if set(previous) != set(aliases) or not set(st["requested"]) <= set(previous):
@@ -9432,7 +9432,8 @@ class Supervisor:
                 if repair and not answer_file.exists():
                     answer_file.parent.mkdir(parents=True, exist_ok=True)
                     answer_file.write_text(stage1ab.compact_text(chunk["number"], stage1ab.saved_answer_lines(wt, b, chunk)), "utf-8")
-                previous = stage1ab.split_rows(answer_file.read_text("utf-8").split("\n")[1:-1])
+                previous = stage1ab.prune_outside_view(
+                    stage1ab.split_rows(answer_file.read_text("utf-8").split("\n")[1:-1]), [row[0] for row in rows])
             lines = stage1ab.merge_answer(previous, st["requested"], revised)
             if problem := self._saved_chunk_identity_problem(b):
                 return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")

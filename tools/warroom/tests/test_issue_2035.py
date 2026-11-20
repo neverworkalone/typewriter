@@ -760,6 +760,12 @@ class Helpers(unittest.TestCase):
         rows = stage1ab.split_rows(["S1\t 낚시\t마이크 \t\u00a0엄숙하다\t \t", "S2"])
         self.assertEqual(rows, {"S1": "S1\t낚시\t마이크\t엄숙하다", "S2": "S2"})
 
+    def test_prune_outside_view_drops_stray_alias_rows(self):
+        prev = {"S1": "S1\ta", "S2": "S2", "S3": "S3"}
+        pruned = stage1ab.prune_outside_view({**prev, "S4": "S4"}, ["S1", "S2", "S3"])
+        self.assertEqual(pruned, prev)
+        self.assertEqual(stage1ab.merge_answer(pruned, ["S2"], {"S2": "S2\tc"}), ["S1\ta", "S2\tc", "S3"])
+
     def test_merge_answer_and_rejected_aliases(self):
         prev = {"S1": "S1\ta", "S2": "S2\tb", "S3": "S3"}
         self.assertEqual(stage1ab.merge_answer(prev, ["S2"], {"S2": "S2\tc"}), ["S1\ta", "S2\tc", "S3"])
