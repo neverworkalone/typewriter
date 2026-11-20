@@ -260,6 +260,8 @@ to 16 `{entry_number, reason, field}` items; `issues_truncated: true` means more
 items were found. Unknown Sense IDs are not echoed. These diagnostics never
 include the submitted key, source excerpt, locator, local path, or stack.
 
+`missing_verified` means the entry has candidates but an empty `verified`. When every hit (16 or fewer) was shown and none is the source sense, submit `verified: []` with `candidates: []`; this is a normal completion, not a CLI defect.
+
 For a rejected submission, match each reported array position to that entry in
 the original JSON file and correct only the reported item or field. Compare an
 `unknown_sense` entry with the active chunk's exact Sense IDs to determine
