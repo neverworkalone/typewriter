@@ -1840,7 +1840,7 @@ test('chunk CLI emits each shared-form Sense’s unread suffix within the C chun
       assert.deepEqual(suffixKeys.get(id), suffixKeys.get(ids[0]));
     }
     assert.match(extra.stdout, /hits=42 unseen=26 shown=9-16 /u);
-    assert.doesNotMatch(first.stdout, /shown=/u);
+    assert.match(first.stdout, /hits=42 unseen=34 shown=1-8\n/u);
     const checkpoint = await load(fixture);
     assert.equal(checkpoint.records[0].senses[0].sense_id, 'w68162-s1');
     assert.equal(checkpoint.records[0].senses[0].shown.unit_rowids.length, 16);
@@ -1919,7 +1919,7 @@ test('renderChunkText table: header, forms line, status-only items and empty chu
   const base = { batch: { shard: '001', batch: '01' }, done_senses: 3, total_senses: 5, zero_hit_recorded: 1, not_yet_read: 2 };
   const withContexts = { sense_id: 's1', lemma: '가나', pos: '명사', gloss: '뜻', total_hits: 4, unseen_hits: 2, contexts: [{ k: 'aaaaaaaaaaaa', src: '제목 / 작가', x: '원문 한 줄' }, { k: 'bbbbbbbbbbbb', src: '', x: '둘째' }] };
   const cases = [
-    ['plain', { ...base, items: [withContexts] }, '## s1 — 가나 [명사]\n뜻\nhits=4 unseen=2\n[aaaaaaaaaaaa] 제목 / 작가\n원문 한 줄\n\n[bbbbbbbbbbbb] \n둘째\n'],
+    ['plain', { ...base, items: [withContexts] }, '## s1 — 가나 [명사]\n뜻\nhits=4 unseen=2 shown=1-2\n[aaaaaaaaaaaa] 제목 / 작가\n원문 한 줄\n\n[bbbbbbbbbbbb] \n둘째\n'],
     ['forms', { ...base, items: [{ ...withContexts, forms: ['가나', '가날'] }] }, 'forms: 가나, 가날\nhits=4'],
     ['status only', { ...base, items: [{ sense_id: 's2', status: 'SEARCH_FAILED' }, { sense_id: 's3', status: 'UNSEARCHABLE' }] }, '## s2 — SEARCH_FAILED\n\n## s3 — UNSEARCHABLE\n'],
     ['empty', { ...base, items: [] }, 'not_yet_read=2\n\n\n'],
