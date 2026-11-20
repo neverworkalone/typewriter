@@ -756,6 +756,10 @@ class Helpers(unittest.TestCase):
             with self.subTest(name), self.assertRaises(stage1ab.ABChunkError):
                 stage1ab.extract_block(text, 3)
 
+    def test_split_rows_reads_literal_tab_placeholder_as_separator(self):
+        rows = stage1ab.split_rows(["S1", "S2<TAB>차창밖<TAB>풍경 <TAB>기차 여행"])
+        self.assertEqual(rows, {"S1": "S1", "S2": "S2\t차창밖\t풍경\t기차 여행"})
+
     def test_split_rows_trims_candidate_whitespace(self):
         rows = stage1ab.split_rows(["S1\t 낚시\t마이크 \t\u00a0엄숙하다\t \t", "S2"])
         self.assertEqual(rows, {"S1": "S1\t낚시\t마이크\t엄숙하다", "S2": "S2"})

@@ -302,6 +302,9 @@ def split_rows(body: list[str]) -> dict[str, str]:
     """alias -> full line; an alias twice or a line without an S<n> alias is a defect the caller reports."""
     rows: dict[str, str] = {}
     for line in body:
+        # The prompt's format example writes the separator as the placeholder `<TAB>`; models sometimes echo it
+        # literally instead of emitting a real tab. A candidate can never contain it, so read it as the separator.
+        line = line.replace("<TAB>", "\t")
         alias = line.split("\t", 1)[0]
         if not re.fullmatch(r"S[1-9]\d*", alias):
             raise ABChunkError(f"답변 줄이 S<n> 별칭으로 시작하지 않습니다: {line[:60]!r}")
