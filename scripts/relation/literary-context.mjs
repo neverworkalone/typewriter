@@ -2061,7 +2061,8 @@ export function renderChunkText(result) {
     return `## ${item.sense_id} — ${item.lemma} [${item.pos}]\n${item.gloss}\n`
       + (Array.isArray(item.forms) && item.forms.length > 0 ? `forms: ${item.forms.join(', ')}\n` : '')
       + `hits=${item.total_hits} unseen=${item.unseen_hits}`
-      + (Array.isArray(item.shown_range) ? ` shown=${item.shown_range[0]}-${item.shown_range[1]} (contexts before ${item.shown_range[0]} were skipped, not repeated)` : '')
+      // Always state the shown range: `hits` counts every match, so an initial view with unseen>0 must not be read as fully shown (--skip max = shown count).
+      + (Array.isArray(item.shown_range) ? ` shown=${item.shown_range[0]}-${item.shown_range[1]} (contexts before ${item.shown_range[0]} were skipped, not repeated)` : ` shown=1-${item.contexts.length}`)
       + '\n'
       + item.contexts.map((context) => `[${context.k}] ${context.src}\n${excerptText(context.x)}`).join('\n\n');
   });
