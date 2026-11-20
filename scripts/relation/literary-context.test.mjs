@@ -862,6 +862,24 @@ test('contexts per sense are capped at 16, unseen hits stay explicit and any sho
   }
 });
 
+test('#9051 fully shown small hit set with no source-sense context completes only with empty verified and candidates', async () => {
+  const fixture = await makeFixture({ unitCount: 2 });
+  try {
+    const senseId = 'sense-000001';
+    const item = (await chunk(fixture, { senseIds: senseId, contexts: 8 })).items[0];
+    assert.equal(item.contexts.length, 2);
+    assert.equal(item.unseen_hits, 0);
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: senseId, verified: [], candidates: ['침전'] }]), 'missing_verified');
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+    assert.equal((await submit(fixture, [{ sense_id: senseId, verified: [], candidates: [] }])).status, 'SAVED');
+    const report = reportLiteraryCheckpointSenses(await load(fixture), senseId);
+    assert.equal(report.all_done, true);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('an empty submission completes a fully sampled sense with no verified context despite unread hits', async () => {
   const fixture = await makeFixture({ unitCount: 20 });
   try {
