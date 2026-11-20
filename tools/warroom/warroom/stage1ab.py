@@ -314,6 +314,13 @@ def split_rows(body: list[str]) -> dict[str, str]:
     return rows
 
 
+def prune_outside_view(previous: dict[str, str], aliases) -> dict[str, str]:
+    """Earlier-answer rows whose alias is not in the chunk's view. A row outside the view maps to no sense, so carrying it
+    into every merge only makes save-chunk reject the same stray alias forever (e.g. a producer's extra `S74`)."""
+    valid = set(aliases)
+    return {alias: line for alias, line in previous.items() if alias in valid}
+
+
 def merge_answer(previous: dict[str, str] | None, requested: list[str] | None, revised: dict[str, str]) -> list[str]:
     """Complete answer lines (alias order) from the earlier answer plus the revised rows. When aliases were requested,
     ONLY those may change and every one must be present; an unrequested alias row is a violation."""
