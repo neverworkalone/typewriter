@@ -11,7 +11,7 @@
 // the AI's reading, and the semantic review stays with the independent PR review.
 
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, writeSync } from 'node:fs';
 import { appendFile, mkdir, readdir, readFile, rename, rmdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -1035,7 +1035,7 @@ export async function currentActiveStates({ root, canonicalRoot, chunkNumber }) 
   return { chunk_no: meta.chunk_no, view_sha256: meta.view_sha256, states };
 }
 
-export async function searchBatchActive({ requests, databasePath, root = '.warroom-scratch', chunkNumber, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
+export async function searchBatchActive({ requests, databasePath, root = '.warroom-scratch', chunkNumber, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES, emit }) {
   const { directory, meta } = await findActive(root, chunkNumber);
   const rows = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
   const activeRecords = new Set(meta.records.map((record) => record.record_id));
@@ -1052,11 +1052,13 @@ export async function searchBatchActive({ requests, databasePath, root = '.warro
   } finally {
     database.close?.();
   }
+  // Deliver the response before recording evidence: a lost response must not leave recorded hits the worker never saw.
+  if (emit) await emit(batch.output);
   await appendSearchEvidence(directory, meta, batch.evidence);
   return batch.output;
 }
 
-export async function searchActive({ ref, forms, boundary, cursor, contexts, reread = false, databasePath, root, chunkNumber }) {
+export async function searchActive({ ref, forms, boundary, cursor, contexts, reread = false, databasePath, root, chunkNumber, emit }) {
   const { directory, meta, files } = await findActive(root, chunkNumber);
   const sense = meta.senses.find((item) => item.ref === ref);
   if (!sense) fail(`${ref} is not a sense of the active chunk`);
@@ -1089,7 +1091,9 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
       scanned_rows: 0,
     };
     const text = `${renderContexts(result)}\ncontext_source=${condition.context_source}\nCompleted evidence contains no readable contexts; reuse the prior view/search response, or request reread only after context loss.`;
-    return { result, text, decision_state: currentDecisionState(), context_source: condition.context_source };
+    const state = currentDecisionState();
+    if (emit) await emit({ text, state });
+    return { result, text, decision_state: state, context_source: condition.context_source };
   }
   const database = openReadonlyDb(databasePath);
   let result;
@@ -1108,13 +1112,31 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
     result = { ...result, status: searchStatus === 'SEARCH_FAILED' ? 'SEARCH_FAILED' : 'REREAD',
       search_status: searchStatus, recorded_status: condition.recorded_status, recorded_hits: condition.recorded_hits, next_cursor: null };
     const text = `${renderContexts(result)}\nsearch_status=${searchStatus} (reread sample only)\nrecorded_status=${condition.recorded_status} recorded_hits=${condition.recorded_hits} (this exact search condition only; decision_state below aggregates every search of the whole record, so its hits may differ)\ncontext_source=reread\nReread adds no search evidence; hit totals and decision state are unchanged. Do not continue the reread sample with cursor next.`;
-    return { result, text, decision_state: currentDecisionState(), context_source: 'reread' };
+    const state = currentDecisionState();
+    if (emit) await emit({ text, state });
+    return { result, text, decision_state: state, context_source: 'reread' };
   }
   const exactRequestKey = requestKey(list, boundary, options);
   const evidence = { ...entryOf(record.id, list, boundary, result, 'search', cursorIn, exactRequestKey),
     chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 };
+  const text = renderContexts(result);
+  const state = decisionStateAfterSearch(priorEntries, [evidence], record.id);
+  if (emit) await emit({ text, state });
   await appendSearchEvidence(directory, meta, [evidence]);
-  return { result, text: renderContexts(result), decision_state: decisionStateAfterSearch(priorEntries, [evidence], record.id) };
+  return { result, text, decision_state: decisionStateAfterSearch(priorEntries, [evidence], record.id) };
+}
+
+/** Fully write stdout synchronously (retrying EAGAIN); throws if the response cannot be delivered. */
+export function writeStdoutSync(text, fd = 1) {
+  const buffer = Buffer.from(text);
+  let offset = 0;
+  while (offset < buffer.length) {
+    try {
+      offset += writeSync(fd, buffer, offset);
+    } catch (error) {
+      if (error.code !== 'EAGAIN') fail(`could not deliver the search response (${error.code ?? error.message}); no search evidence was recorded. Run the same request again.`);
+    }
+  }
 }
 
 // ---- save -----------------------------------------------------------------------------------------------------------
@@ -1407,13 +1429,12 @@ async function main(argv) {
     only(options, 'forms', 'boundary', 'cursor', 'contexts', 'reread', 'dir', 'chunk');
     if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--chunk NNN] [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16] [--reread]');
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
-    const { result, text, decision_state: state } = await searchActive({
+    const { result } = await searchActive({
       ref: positional[0], forms: options.forms?.split(',').map((item) => item.trim()).filter(Boolean), boundary: options.boundary,
       cursor: options.cursor, contexts: options.contexts === undefined ? undefined : Number(options.contexts), reread: options.reread === true,
       databasePath, root: options.dir, chunkNumber: optionalChunk(options),
+      emit: ({ text, state }) => writeStdoutSync(`${text}\ndecision_state=${state.state} scope=record searches=${state.searches} recorded_hits=${state.recorded_hits} all_complete=${state.all_complete}\n`),
     });
-    console.log(text);
-    console.log(`decision_state=${state.state} scope=record searches=${state.searches} recorded_hits=${state.recorded_hits} all_complete=${state.all_complete}`);
     return result.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'search-batch') {
@@ -1436,8 +1457,8 @@ async function main(argv) {
     const unexpected = Object.keys(input).filter((key) => key !== 'requests');
     if (unexpected.length > 0) fail(`search-batch input has unsupported field(s): ${unexpected.join(', ')}`);
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
-    const output = await searchBatchActive({ requests: input.requests, databasePath, root: options.dir, chunkNumber: optionalChunk(options) });
-    console.log(JSON.stringify(output));
+    const output = await searchBatchActive({ requests: input.requests, databasePath, root: options.dir, chunkNumber: optionalChunk(options),
+      emit: (value) => writeStdoutSync(`${JSON.stringify(value)}\n`) });
     return output.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'save') {
