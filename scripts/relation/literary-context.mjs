@@ -464,7 +464,8 @@ export async function inspectCorpusIndex(databasePath, { scratchDirectory = path
   }
 }
 
-function assertIndexData(database, metadata) {
+/** Cheap content sanity (row counts vs metadata, FTS row count); no FTS posting rebuild. */
+function assertIndexCounts(database, metadata) {
   const counts = {
     file_count: database.prepare('SELECT count(*) AS count FROM source_files').get().count,
     work_count: database.prepare('SELECT count(*) AS count FROM works').get().count,
@@ -472,6 +473,11 @@ function assertIndexData(database, metadata) {
   };
   for (const key of Object.keys(counts)) if (counts[key] !== metadata[key]) fail(`literary index ${key} does not match index_metadata`);
   if (database.prepare('SELECT count(*) AS count FROM unit_fts').get().count !== counts.unit_count) fail('literary index FTS content count does not match text_units');
+  return counts;
+}
+
+function assertIndexData(database, metadata) {
+  const counts = assertIndexCounts(database, metadata);
   const actualTrigramTokens = database.prepare('SELECT count(*) AS count FROM temp.literary_unit_fts_vocab').get().count;
   const expectedTrigramTokens = database.prepare(`SELECT coalesce(sum(CASE WHEN length(text) > 2 THEN length(text) - 2 ELSE 0 END), 0) AS count FROM text_units`).get().count;
   if (actualTrigramTokens !== expectedTrigramTokens) fail('literary index FTS trigram token coverage does not match text_units');
@@ -755,7 +761,7 @@ function readUnitWindow(database, { file_id: fileId, ordinal, unit_rowid: unitRo
 /**
  * ctime changes on metadata-only operations (chmod, xattr, backup tools, copy-back) without touching content.
  * When ONLY ctime differs from the recorded fingerprint (dev/ino/size/mtimeNs/schema/provenance digests equal),
- * the index is re-verified deeply (full schema, FTS posting and count checks against the metadata) and, if sound,
+ * the index is re-verified cheaply (schema and row-count checks against the metadata; no FTS posting rebuild) and, if sound,
  * the checkpoint's recorded fingerprint is re-baselined to the current one under the checkpoint lock.
  * Any other difference still stops with LITERARY_INDEX_IDENTITY.
  */
@@ -782,8 +788,11 @@ async function assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata
   if (!ctimeOnly || !checkpointPath) throw identityError();
   let verified;
   try {
-    verified = openLiteraryIndex(databasePath, { prepareFtsVocabulary: true });
-    assertIndexData(verified.database, verified.metadata);
+    // Not the full FTS posting rebuild: that takes over a minute on the real index, workers time out before the
+    // checkpoint is re-baselined, and every parallel call repeats it. dev/ino/size/mtimeNs, schema and both provenance
+    // digests are already equal here, so schema + metadata row counts are enough for a metadata-only ctime change.
+    verified = openLiteraryIndex(databasePath);
+    assertIndexCounts(verified.database, verified.metadata);
     if (verified.metadata.input_manifest_sha256 !== metadata.input_manifest_sha256
       || verified.metadata.logical_rows_sha256 !== metadata.logical_rows_sha256) throw identityError();
   } catch {

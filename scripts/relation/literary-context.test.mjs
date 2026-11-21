@@ -864,6 +864,25 @@ test('a ctime-only change of the approved index is re-verified and re-baselined;
   }
 });
 
+test('an index content change (mtime moves) still stops with index_identity and leaves the checkpoint fingerprint untouched', async () => {
+  const fixture = await makeFixture({ unitCount: 2 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const recorded = JSON.parse(await readFile(fixture.checkpointPath, 'utf8')).index.fingerprint;
+    const { mtimeNs } = await stat(fixture.databasePath, { bigint: true });
+    const database = new DatabaseSync(fixture.databasePath);
+    database.prepare("DELETE FROM unit_fts WHERE rowid = (SELECT max(rowid) FROM unit_fts)").run();
+    database.close();
+    const restored = await stat(fixture.databasePath, { bigint: true });
+    assert.notEqual(restored.mtimeNs, mtimeNs); // content edits move mtime, so this takes the non-ctime-only stop
+    const result = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] });
+    assert.ok(result.stderr.includes('index_identity') || result.stdout.includes('index_identity'), result.stderr + result.stdout);
+    assert.equal(JSON.parse(await readFile(fixture.checkpointPath, 'utf8')).index.fingerprint, recorded);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('contexts per sense are capped at 16, unseen hits stay explicit and any shown context can be cited', async () => {
   const fixture = await makeFixture({ unitCount: 20 });
   try {
