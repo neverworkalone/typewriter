@@ -1221,6 +1221,10 @@ def classify_goat_failure(log_file: str | Path) -> str:
         # message are the evidence (a transient fault, retried within the existing bounded network backoff).
         if e["type"] == "provider.transport" and classify_failure(e["message"], []) == "network":
             return "network"
+        # A response stream cut off before its terminating finish_reason is a truncated transfer (also status 200),
+        # not a model or contract fault: the same transient class, resumed in the preserved session.
+        if e["type"] == "provider.invalid-output" and "stream ended without finish_reason" in e["message"].lower():
+            return "network"
     if errors:
         return "unknown"
     # CLI diagnostics may prove a CLI-side condition, never billing, limit or auth (those need a provider event).
