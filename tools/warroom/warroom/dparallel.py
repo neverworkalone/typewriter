@@ -36,6 +36,32 @@ PARALLEL = "parallel"
 NEW, FIX, RESUME = "d_chunk_new", "d_chunk_fix", "d_chunk_resume"
 
 
+def session_lacks_shell(log_file) -> bool:
+    """True when a finished run never had a shell tool: no `shell`/`bash` call ran and the worker looked for one.
+
+    Such a session can never run the chunk CLI (search/save), so resuming it only repeats the same dead end.
+    """
+    try:
+        text = Path(log_file).read_text(encoding="utf-8", errors="replace")
+    except (OSError, TypeError, ValueError):
+        return False
+    looked = False
+    for line in text.splitlines():
+        try:
+            part = json.loads(line).get("part") or {}
+        except (ValueError, AttributeError):
+            continue
+        if part.get("type") != "tool" and not part.get("tool"):
+            continue
+        tool = str(part.get("tool") or "")
+        if tool in ("shell", "bash"):
+            return False
+        code = str((part.get("state") or {}).get("input", {}).get("code", "")) if isinstance(part.get("state"), dict) else ""
+        if tool == "execute" and ("tools.shell" in code or "Object.keys(tools" in code):
+            looked = True
+    return looked
+
+
 def mode_key(batch_id: int) -> str:
     return f"d_mode_{batch_id}"
 
@@ -378,8 +404,18 @@ class ParallelD:
                                       f"{diag.get('error_count', len(diag['errors']))}건). 같은 세션에서 지목된 판정만 수정합니다 "
                                       f"({used + 1}/{dchunk.MAX_FIXES})", "warn")
             return self._technical_skip(b, row, data, rec, round_)
+        if rec is not None and not rejected and not searching_failed and sid and not data.get("fresh_no_shell") \
+                and session_lacks_shell(run["log_file"]):
+            # The worker session had no shell tool (an environment fault of that session, not of the chunk): resuming it
+            # cannot save anything. Continue the prepared chunk once in a FRESH session; files and budgets are kept.
+            data["fresh_no_shell"] = True
+            data["kind"] = "new"
+            data["continued"] = True
+            data.pop("resumed", None)
+            self._set(b, task, data, state="FIXQ", run_id=None, session_id=None)
+            return self.store.log(b["id"], f"[{task}] 세션에 셸 도구가 없어 저장할 수 없습니다 — 새 세션으로 같은 청크를 1회 이어갑니다", "warn")
         if rec is not None and not rejected and not searching_failed and run["kind"] != FIX \
-                and sid and not data.get("resumed"):
+                and sid and not data.get("resumed") and not data.get("fresh_no_shell"):
             data["resumed"] = True
             data["kind"] = "resume"
             data["continued"] = True
@@ -427,7 +463,7 @@ class ParallelD:
             raise
         except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError) as error:
             return self._task_failed(b, row, data, f"[{task}] 저장된 청크를 확인하지 못했습니다: {error}. 보존합니다.")
-        for key in ("kind", "continued", "resumed", "retry_after", "error"):
+        for key in ("kind", "continued", "resumed", "fresh_no_shell", "retry_after", "error"):
             data.pop(key, None)
         self._set(b, task, data, state="SAVED", run_id=None)
         self.store.log(b["id"], f"[{task}] D 청크 저장을 확인했습니다 ({len(self._saved_rows(b))}/{len(self.store.task_rows(b['id']))})")
@@ -633,9 +669,10 @@ class ParallelD:
                 self.store.set(key, str(used - 1))
             data.pop("ack"), data.pop("error", None), data.pop("pause", None), data.pop("resumed", None)
             data.pop("goat_429", None)
+            no_shell = bool(data.pop("fresh_no_shell", None))   # that session has no shell: never resume it on Retry
             data["retry_grants"] = data.get("retry_grants", 0) + 1
             data.pop("kind", None)
-            self._set(b, row["task"], data, state="PENDING", run_id=None)
+            self._set(b, row["task"], data, state="PENDING", run_id=None, **({"session_id": None} if no_shell else {}))
             round_.force = True
             fresh = self.store.task_row(b["id"], row["task"])
             try:
