@@ -317,7 +317,7 @@ class Store:
             row = c.execute("SELECT state,pid,run_kind FROM batches WHERE id=?", (b["id"],)).fetchone()
             line = c.execute("SELECT retry_batch,force_stop FROM lines WHERE model=? AND method=?",
                              (b["producer"], b["method"])).fetchone()
-            if (row is None or row["state"] != "ERROR" or row["pid"] is not None
+            if (row is None or row["state"] not in ("ERROR", "PAUSED") or row["pid"] is not None
                     or row["run_kind"] != b["run_kind"] or line is None
                     or line["retry_batch"] != b["id"] or line["force_stop"]
                     or c.execute("SELECT 1 FROM clear_requests WHERE model=? AND method=?", (b["producer"], b["method"])).fetchone()
