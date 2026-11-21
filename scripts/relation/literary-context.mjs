@@ -752,31 +752,56 @@ function readUnitWindow(database, { file_id: fileId, ordinal, unit_rowid: unitRo
   };
 }
 
-async function assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata) {
+/**
+ * ctime changes on metadata-only operations (chmod, xattr, backup tools, copy-back) without touching content.
+ * When ONLY ctime differs from the recorded fingerprint (dev/ino/size/mtimeNs/schema/provenance digests equal),
+ * the index is re-verified deeply (full schema, FTS posting and count checks against the metadata) and, if sound,
+ * the checkpoint's recorded fingerprint is re-baselined to the current one under the checkpoint lock.
+ * Any other difference still stops with LITERARY_INDEX_IDENTITY.
+ */
+async function assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata, { checkpointPath = null, scratchDirectory = null } = {}) {
+  const identityError = () => codedError('LITERARY_INDEX_IDENTITY', 'approved literary index identity or provenance changed after checkpoint initialization');
   let current;
-  let recorded;
+  let databaseRealPath;
   try {
-    const databaseRealPath = await realpath(databasePath);
-    [current, recorded] = await Promise.all([
-      stat(databaseRealPath, { bigint: true }),
-      stat(checkpoint.index.path, { bigint: true }),
-    ]);
+    databaseRealPath = await realpath(databasePath);
+    current = await stat(databaseRealPath, { bigint: true });
   } catch {
     throw codedError('LITERARY_INDEX_ACCESS', 'approved literary index identity could not be checked');
   }
   const fingerprint = [String(current.dev), String(current.ino), String(current.size), String(current.mtimeNs), String(current.ctimeNs)].join(':');
-  const unchanged = String(current.dev) === String(recorded.dev)
-    && String(current.ino) === String(recorded.ino)
-    && String(current.size) === String(recorded.size)
-    && String(current.mtimeNs) === String(recorded.mtimeNs)
-    && String(current.ctimeNs) === String(recorded.ctimeNs)
-    && fingerprint === checkpoint.index.fingerprint
-    && checkpoint.index.schema_version === metadata.schema_version
+  const provenanceMatches = checkpoint.index.schema_version === metadata.schema_version
     && checkpoint.index.input_manifest_sha256 === metadata.input_manifest_sha256
     && checkpoint.index.logical_rows_sha256 === metadata.logical_rows_sha256;
-  if (!unchanged) {
-    throw codedError('LITERARY_INDEX_IDENTITY', 'approved literary index identity or provenance changed after checkpoint initialization');
+  if (fingerprint === checkpoint.index.fingerprint && provenanceMatches) return;
+  const recordedParts = String(checkpoint.index.fingerprint ?? '').split(':');
+  const currentParts = fingerprint.split(':');
+  const ctimeOnly = recordedParts.length === 5 && provenanceMatches && checkpoint.index.path === databaseRealPath
+    && recordedParts.slice(0, 4).every((part, index) => part === currentParts[index])
+    && recordedParts[4] !== currentParts[4];
+  if (!ctimeOnly || !checkpointPath) throw identityError();
+  let verified;
+  try {
+    verified = openLiteraryIndex(databasePath, { prepareFtsVocabulary: true });
+    assertIndexData(verified.database, verified.metadata);
+    if (verified.metadata.input_manifest_sha256 !== metadata.input_manifest_sha256
+      || verified.metadata.logical_rows_sha256 !== metadata.logical_rows_sha256) throw identityError();
+  } catch {
+    throw identityError();
+  } finally {
+    verified?.database.close();
   }
+  const after = await stat(databaseRealPath, { bigint: true });
+  const afterFingerprint = [String(after.dev), String(after.ino), String(after.size), String(after.mtimeNs), String(after.ctimeNs)].join(':');
+  if (afterFingerprint !== fingerprint) throw identityError();
+  await withCheckpointLock(checkpointPath, async () => {
+    const { checkpoint: latest } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory: scratchDirectory ?? path.dirname(checkpointPath) });
+    if (latest.index.fingerprint === fingerprint) return;
+    if (latest.index.fingerprint !== checkpoint.index.fingerprint) throw identityError();
+    latest.index.fingerprint = fingerprint;
+    await writeCheckpointLocked(checkpointPath, latest);
+  });
+  checkpoint.index.fingerprint = fingerprint;
 }
 
 function cursorEncode(value) {
@@ -1525,7 +1550,7 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
   let unqueried = 0;
   const response = {};
   try {
-    await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata);
+    await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata, { checkpointPath: resolvedCheckpoint, scratchDirectory });
     items = [];
     zeroUpdates = [];
     shownUpdates = [];
@@ -1755,7 +1780,7 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
   const { database, metadata } = openLiteraryIndex(databasePath);
   const accepted = [];
   try {
-    await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata);
+    await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata, { checkpointPath: resolvedCheckpoint, scratchDirectory });
     for (const [index, entry] of submission.senses.entries()) {
       const entryNumber = index + 1;
       const { record, sense } = findSense(checkpoint, entry.sense_id);
