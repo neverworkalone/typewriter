@@ -1044,7 +1044,8 @@ class Supervisor:
                 and self.cp.auto_recover_integrated_no_submission(b)):
             return
         if ln["retry_batch"] == b["id"]:
-            if b["state"] == "ERROR" and self._ab_chunk_run(b) and not b["pr_number"]:
+            # An owner Stop turns the exhausted ERROR into PAUSED, so Stop & Retry arrives here as PAUSED.
+            if b["state"] in ("ERROR", "PAUSED") and self._ab_chunk_run(b) and not b["pr_number"]:
                 if self._ab_operator_recovery(b):
                     return
             if b["state"] == "ERROR" and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:

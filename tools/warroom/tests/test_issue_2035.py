@@ -468,6 +468,28 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 4)
         self.assertIsNone(w.store.line("deepseek", "a")["retry_batch"])
 
+    def test_stop_then_retry_of_exhausted_chunk_starts_fresh_correction_cycle(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        for _ in range(4):
+            w.ai(w.block(1, end=False), session="ses_1")
+        for _ in range(4):
+            w.tick()
+            w.finish_last()
+            w.tick()
+        b = w.row_()
+        self.assertEqual(b["state"], "ERROR")
+        self.assertTrue(control.stop_batch(w.store, "deepseek", "a", b["id"]))
+        w.tick(2)
+        self.assertEqual(w.row_()["state"], "PAUSED")
+        launches = len(w.adapter.launches)
+        w.ai(w.block(1), session="ses_recovery")
+        self.assertTrue(control.retry(w.store, "deepseek", "a", b["id"]))
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), launches + 1)
+        st = stage1ab.load_state(w.store, b["id"], 1)
+        self.assertEqual(st["tries"], 0)
+
     def test_three_source_lemma_repeats_are_removed_together_and_other_rows_are_preserved(self):
         w = self.w
         w.start("single", "deepseek", "a")
