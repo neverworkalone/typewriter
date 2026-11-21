@@ -74,5 +74,41 @@ class UnsavedNoShell(unittest.TestCase):
         self.assertNotIn("session_id", c)
 
 
+class RetryAfterNoShell(unittest.TestCase):
+    def test_operator_retry_starts_a_fresh_session_and_keeps_chunk_and_budget(self):
+        with tempfile.TemporaryDirectory() as d:
+            sets, budget = [], {}
+            row = {"task": "019", "state": "FAILED", "session_id": "ses_noshell", "run_id": 5, "attempts": 2,
+                   "data": json.dumps({"ack": True, "error": "x", "fresh_no_shell": True, "continued": True})}
+            rows = [row]
+
+            def _set(b, task, data=None, **kw):
+                sets.append((dict(data or {}), kw))
+                if "session_id" in kw:
+                    row["session_id"] = kw["session_id"]
+                if "state" in kw:
+                    row["state"] = kw["state"]
+            store = SimpleNamespace(task_rows=lambda i: rows, task_row=lambda i, t: row,
+                                    get=lambda k: budget.get(k), set=lambda k, v: budget.__setitem__(k, v))
+            sup = SimpleNamespace(store=store, runner=None, _d_env=lambda b: {})
+            drv = dparallel.ParallelD(sup)
+            drv._data = lambda r: json.loads(r["data"])
+            drv._wt = lambda b: Path(d)
+            drv._set = _set
+            key = dchunk.fix_key(1, 19)
+            budget[key] = "1"
+            with mock.patch.object(dchunk, "read_active", return_value={"view_sha256": "v"}), \
+                    mock.patch.object(dchunk, "read_rejection", return_value=None), \
+                    mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=None):
+                drv._reset_acknowledged_failures({"id": 1}, SimpleNamespace(force=False))
+            data, kw = sets[-1]
+            self.assertEqual(data["kind"], "new")                 # never "resume" of the shell-less session
+            self.assertTrue(data["continued"])
+            self.assertNotIn("fresh_no_shell", data)
+            self.assertIsNone(row["session_id"])
+            self.assertEqual(row["state"], "FIXQ")                # prepared chunk kept, not restarted from scratch
+            self.assertEqual(budget[key], "0")                    # exactly one more correction chance
+
+
 if __name__ == "__main__":
     unittest.main()

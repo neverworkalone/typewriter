@@ -669,9 +669,10 @@ class ParallelD:
                 self.store.set(key, str(used - 1))
             data.pop("ack"), data.pop("error", None), data.pop("pause", None), data.pop("resumed", None)
             data.pop("goat_429", None)
+            no_shell = bool(data.pop("fresh_no_shell", None))   # that session has no shell: never resume it on Retry
             data["retry_grants"] = data.get("retry_grants", 0) + 1
             data.pop("kind", None)
-            self._set(b, row["task"], data, state="PENDING", run_id=None)
+            self._set(b, row["task"], data, state="PENDING", run_id=None, **({"session_id": None} if no_shell else {}))
             round_.force = True
             fresh = self.store.task_row(b["id"], row["task"])
             try:
