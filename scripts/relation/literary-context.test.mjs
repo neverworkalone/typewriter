@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, unlink, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, unlink, writeFile } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
@@ -841,6 +841,26 @@ test('submit index access and identity failures stop safely and leave the checkp
     assert.equal(await readFile(changed.checkpointPath, 'utf8'), before);
   } finally {
     await cleanup(changed);
+  }
+});
+
+test('a ctime-only change of the approved index is re-verified and re-baselined; other changes still stop', async () => {
+  const fixture = await makeFixture({ unitCount: 2 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const recorded = JSON.parse(await readFile(fixture.checkpointPath, 'utf8')).index.fingerprint;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await chmod(fixture.databasePath, 0o640); // changes ctime only
+    const afterStat = await stat(fixture.databasePath, { bigint: true });
+    assert.notEqual(recorded.split(':')[4], String(afterStat.ctimeNs));
+    const result = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] });
+    assert.notEqual(result.stderr.includes('index_identity'), true, result.stderr);
+    const rebaselined = JSON.parse(await readFile(fixture.checkpointPath, 'utf8')).index.fingerprint;
+    assert.equal(rebaselined.split(':')[4], String(afterStat.ctimeNs));
+    assert.equal(rebaselined.split(':').slice(0, 4).join(':'), recorded.split(':').slice(0, 4).join(':'));
+    assert.ok((await chunk(fixture)).items);
+  } finally {
+    await cleanup(fixture);
   }
 });
 
