@@ -1561,6 +1561,19 @@ class IncidentRecoveryProof(unittest.TestCase):
         w.sup.prompt_checkout_clean = lambda paths: False
         self.assertTrue(w.sup.maint._fix_not_loaded(d))
 
+    def test_c_cli_fix_waits_for_supervisor_checkout_before_worktree_release(self):
+        # #9291: C workers run the official CLI from the Supervisor checkout; a fix only in the worktree never reaches them.
+        w = self.w
+        b, d = self.merged(["scripts/relation/literary-context.mjs"], method="c", run_kind="c_parallel")
+        w.git.ancestor_pairs.discard((MERGE, w.sup.code_sha))
+        d = self.settle(d)
+        self.assertEqual((d["state"], w.store.batch(b["id"])["state"]), ("FIX_MERGED", "PAUSED"))
+        self.assertFalse(any(path == b["worktree"] for path, *_ in w.git.integrated))
+        w.git.ancestor_pairs.add((MERGE, w.sup.code_sha))
+        self.assertFalse(w.sup.maint._fix_not_loaded(d))
+        w.sup.prompt_checkout_clean = lambda paths: False
+        self.assertTrue(w.sup.maint._fix_not_loaded(d))
+
     def test_a_prompt_the_resumed_launch_does_not_render_holds(self):
         w = self.w
         b, d = self.merged(["tools/warroom/prompts/d_chunk.md"], session_id="ses_1")   # a resume sends only d_chunk_resume

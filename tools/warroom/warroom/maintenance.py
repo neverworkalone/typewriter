@@ -2715,11 +2715,18 @@ class Maintenance:
         try:
             files = self.sup.git.changed_files(d["merge_sha"])
             batch = self.store.batch(d["batch_id"])
-            # D's official CLI and its imports run from the Supervisor checkout, even when the
-            # same fix is also integrated into the producer worktree. Both copies must carry it.
-            d_modules = {"scripts/relation/d-chunk-cli.mjs", "scripts/relation/corpus-utility.mjs",
-                         "scripts/relation/candidate-contract.mjs", "scripts/relation/literary-context.mjs"}
-            d_runtime = batch is not None and batch["method"] == dchunk.METHOD and bool(d_modules.intersection(files))
+            # The official D and C CLIs (and their imports) run from the Supervisor checkout (literary.cli_path /
+            # d-chunk CLI), even when the same fix is also integrated into the producer worktree. Both copies
+            # must carry it, or workers keep running the stale CLI and fail identically (#9291).
+            cli_modules = {
+                dchunk.METHOD: {"scripts/relation/d-chunk-cli.mjs", "scripts/relation/corpus-utility.mjs",
+                                "scripts/relation/candidate-contract.mjs", "scripts/relation/literary-context.mjs"},
+                literary.METHOD: {"scripts/relation/literary-context-cli.mjs",
+                                  "scripts/relation/literary-context-supervisor-cli.mjs",
+                                  "scripts/relation/literary-context.mjs", "scripts/relation/candidate-contract.mjs"},
+            }
+            d_modules = cli_modules.get(batch["method"], set()) if batch is not None else set()
+            d_runtime = bool(d_modules.intersection(files))
             runtime = any(f.startswith("tools/warroom/warroom/") for f in files) or d_runtime
             if not runtime:
                 return False
