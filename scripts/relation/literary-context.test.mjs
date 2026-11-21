@@ -864,6 +864,67 @@ test('a ctime-only change of the approved index is re-verified and re-baselined;
   }
 });
 
+test('ctime-only drift with corrupted FTS postings and a restored mtime is refused; a recorded deep verification re-baselines cheaply', async () => {
+  const fixture = await makeFixture({ unitCount: 2 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const recorded = JSON.parse(await readFile(fixture.checkpointPath, 'utf8')).index.fingerprint;
+    const before = await stat(fixture.databasePath, { bigint: true });
+    // Same counts, wrong postings: drop one row's postings and re-add it with different text of the same length.
+    const database = new DatabaseSync(fixture.databasePath);
+    const text = database.prepare('SELECT text FROM text_units WHERE unit_rowid = 1').get().text;
+    database.prepare("INSERT INTO unit_fts(unit_fts, rowid, text) VALUES ('delete', 1, ?)").run(text);
+    database.prepare('INSERT INTO unit_fts(rowid, text) VALUES (1, ?)').run([...text].reverse().join(''));
+    database.close();
+    const restore = spawnSync('python3', ['-c', 'import os,sys; os.utime(sys.argv[1], ns=(int(sys.argv[2]), int(sys.argv[2])))',
+      fixture.databasePath, String(before.mtimeNs)], { encoding: 'utf8' });
+    assert.equal(restore.status, 0, restore.stderr);
+    const after = await stat(fixture.databasePath, { bigint: true });
+    assert.equal(after.mtimeNs, before.mtimeNs);
+    assert.equal(after.size, before.size);
+    assert.notEqual(after.ctimeNs, before.ctimeNs);
+    const result = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] });
+    assert.ok((result.stderr + result.stdout).includes('index_identity'), result.stderr + result.stdout);
+    assert.equal(JSON.parse(await readFile(fixture.checkpointPath, 'utf8')).index.fingerprint, recorded);
+  } finally {
+    await cleanup(fixture);
+  }
+  const clean = await makeFixture({ unitCount: 2 });
+  try {
+    await inspectLiteraryIndex(clean.databasePath, { scratchDirectory: clean.scratchDirectory, deep: true });
+    const marks = JSON.parse(await readFile(path.join(clean.scratchDirectory, 'literary-index-deep-verified.json'), 'utf8'));
+    assert.equal(Object.keys(marks).length, 1);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await chmod(clean.databasePath, 0o640);
+    const [item] = (await chunk(clean)).items;
+    const result = await submitCli(clean, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] });
+    assert.equal((result.stderr + result.stdout).includes('index_identity'), false, result.stderr + result.stdout);
+    const afterStat = await stat(clean.databasePath, { bigint: true });
+    assert.equal(JSON.parse(await readFile(clean.checkpointPath, 'utf8')).index.fingerprint.split(':')[4], String(afterStat.ctimeNs));
+  } finally {
+    await cleanup(clean);
+  }
+});
+
+test('an index content change (mtime moves) still stops with index_identity and leaves the checkpoint fingerprint untouched', async () => {
+  const fixture = await makeFixture({ unitCount: 2 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const recorded = JSON.parse(await readFile(fixture.checkpointPath, 'utf8')).index.fingerprint;
+    const { mtimeNs } = await stat(fixture.databasePath, { bigint: true });
+    const database = new DatabaseSync(fixture.databasePath);
+    database.prepare("DELETE FROM unit_fts WHERE rowid = (SELECT max(rowid) FROM unit_fts)").run();
+    database.close();
+    const restored = await stat(fixture.databasePath, { bigint: true });
+    assert.notEqual(restored.mtimeNs, mtimeNs); // content edits move mtime, so this takes the non-ctime-only stop
+    const result = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] });
+    assert.ok(result.stderr.includes('index_identity') || result.stdout.includes('index_identity'), result.stderr + result.stdout);
+    assert.equal(JSON.parse(await readFile(fixture.checkpointPath, 'utf8')).index.fingerprint, recorded);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('contexts per sense are capped at 16, unseen hits stay explicit and any shown context can be cited', async () => {
   const fixture = await makeFixture({ unitCount: 20 });
   try {

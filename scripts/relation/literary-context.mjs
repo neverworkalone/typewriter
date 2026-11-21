@@ -464,7 +464,8 @@ export async function inspectCorpusIndex(databasePath, { scratchDirectory = path
   }
 }
 
-function assertIndexData(database, metadata) {
+/** Cheap content sanity (row counts vs metadata, FTS row count); no FTS posting rebuild. */
+function assertIndexCounts(database, metadata) {
   const counts = {
     file_count: database.prepare('SELECT count(*) AS count FROM source_files').get().count,
     work_count: database.prepare('SELECT count(*) AS count FROM works').get().count,
@@ -472,6 +473,11 @@ function assertIndexData(database, metadata) {
   };
   for (const key of Object.keys(counts)) if (counts[key] !== metadata[key]) fail(`literary index ${key} does not match index_metadata`);
   if (database.prepare('SELECT count(*) AS count FROM unit_fts').get().count !== counts.unit_count) fail('literary index FTS content count does not match text_units');
+  return counts;
+}
+
+function assertIndexData(database, metadata) {
+  const counts = assertIndexCounts(database, metadata);
   const actualTrigramTokens = database.prepare('SELECT count(*) AS count FROM temp.literary_unit_fts_vocab').get().count;
   const expectedTrigramTokens = database.prepare(`SELECT coalesce(sum(CASE WHEN length(text) > 2 THEN length(text) - 2 ELSE 0 END), 0) AS count FROM text_units`).get().count;
   if (actualTrigramTokens !== expectedTrigramTokens) fail('literary index FTS trigram token coverage does not match text_units');
@@ -580,6 +586,25 @@ async function cachedDatabaseDigest(databasePath, scratchDirectory) {
   return { sha256: digest, bytes: Number(fileStat.size), cached: false, path: absolutePath, fingerprint, validation_contract: null };
 }
 
+const DEEP_VERIFIED_FILE = 'literary-index-deep-verified.json';
+
+/** Content-keyed record that the full FTS posting verification passed for exactly these index bytes. */
+async function readDeepVerified(scratchDirectory) {
+  try {
+    const value = JSON.parse(await readFile(path.join(scratchDirectory, DEEP_VERIFIED_FILE), 'utf8'));
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch (error) {
+    if (error.code === 'ENOENT' || error instanceof SyntaxError) return {};
+    throw error;
+  }
+}
+
+async function recordDeepVerified(scratchDirectory, contentSha256, metadata, bytes) {
+  const marks = await readDeepVerified(scratchDirectory);
+  marks[contentSha256] = { bytes, input_manifest_sha256: metadata.input_manifest_sha256, logical_rows_sha256: metadata.logical_rows_sha256 };
+  await writeJsonAtomic(path.join(scratchDirectory, DEEP_VERIFIED_FILE), marks);
+}
+
 async function databaseIdentity(databasePath) {
   const absolutePath = await realpath(databasePath);
   const fileStat = await stat(absolutePath, { bigint: true });
@@ -599,6 +624,7 @@ async function inspectLiteraryIndexInternal(databasePath, scratchDirectory, { de
     if (deep) assertIndexData(database, metadata);
     const after = await databaseIdentity(databasePath);
     if (after.fingerprint !== identity.fingerprint) fail('literary index changed while its read-only preflight was running');
+    if (deep) await recordDeepVerified(scratchDirectory, identity.sha256, metadata, identity.bytes);
     const runtimeSqliteVersion = database.prepare('SELECT sqlite_version() AS version').get().version;
     return {
       identity,
@@ -755,7 +781,7 @@ function readUnitWindow(database, { file_id: fileId, ordinal, unit_rowid: unitRo
 /**
  * ctime changes on metadata-only operations (chmod, xattr, backup tools, copy-back) without touching content.
  * When ONLY ctime differs from the recorded fingerprint (dev/ino/size/mtimeNs/schema/provenance digests equal),
- * the index is re-verified deeply (full schema, FTS posting and count checks against the metadata) and, if sound,
+ * the exact index bytes must already have passed the full FTS posting verification (content-hash keyed record), which is run and recorded once if missing and, if sound,
  * the checkpoint's recorded fingerprint is re-baselined to the current one under the checkpoint lock.
  * Any other difference still stops with LITERARY_INDEX_IDENTITY.
  */
@@ -780,16 +806,33 @@ async function assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata
     && recordedParts.slice(0, 4).every((part, index) => part === currentParts[index])
     && recordedParts[4] !== currentParts[4];
   if (!ctimeOnly || !checkpointPath) throw identityError();
-  let verified;
+  // The recorded fingerprint cannot prove the content (mtime can be restored after a restore/rewrite), so bind the
+  // re-baseline to the exact bytes: hash the file (~1s) and require a prior full FTS posting verification of those
+  // bytes. Without one, run the full verification now and record it so later calls and sibling workers skip it.
+  const markDirectory = scratchDirectory ?? path.dirname(checkpointPath);
+  let contentSha256;
   try {
-    verified = openLiteraryIndex(databasePath, { prepareFtsVocabulary: true });
-    assertIndexData(verified.database, verified.metadata);
-    if (verified.metadata.input_manifest_sha256 !== metadata.input_manifest_sha256
-      || verified.metadata.logical_rows_sha256 !== metadata.logical_rows_sha256) throw identityError();
+    contentSha256 = await hashFile(databaseRealPath);
   } catch {
-    throw identityError();
-  } finally {
-    verified?.database.close();
+    throw codedError('LITERARY_INDEX_ACCESS', 'approved literary index identity could not be checked');
+  }
+  const mark = (await readDeepVerified(markDirectory))[contentSha256];
+  const alreadyVerified = mark?.bytes === Number(current.size)
+    && mark.input_manifest_sha256 === metadata.input_manifest_sha256 && mark.logical_rows_sha256 === metadata.logical_rows_sha256;
+  if (!alreadyVerified) {
+    let verified;
+    try {
+      verified = openLiteraryIndex(databasePath, { prepareFtsVocabulary: true });
+      assertIndexData(verified.database, verified.metadata);
+      if (verified.metadata.input_manifest_sha256 !== metadata.input_manifest_sha256
+        || verified.metadata.logical_rows_sha256 !== metadata.logical_rows_sha256) throw identityError();
+    } catch {
+      throw identityError();
+    } finally {
+      verified?.database.close();
+    }
+    if (await hashFile(databaseRealPath) !== contentSha256) throw identityError();
+    await recordDeepVerified(markDirectory, contentSha256, metadata, Number(current.size));
   }
   const after = await stat(databaseRealPath, { bigint: true });
   const afterFingerprint = [String(after.dev), String(after.ino), String(after.size), String(after.mtimeNs), String(after.ctimeNs)].join(':');
