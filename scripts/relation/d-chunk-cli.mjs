@@ -1427,6 +1427,11 @@ async function main(argv) {
   }
   if (command === 'search') {
     only(options, 'forms', 'boundary', 'cursor', 'contexts', 'reread', 'dir', 'chunk');
+    // An unquoted --forms value containing spaces (e.g. `--forms 호밀풀,호 밀풀`) is split by the shell into extra
+    // positionals; rejoin them with the single space that was lost instead of failing the whole search.
+    if (options.forms !== undefined && positional.length > 1 && SENSE_REF.test(positional[0])) {
+      options.forms = [options.forms, ...positional.splice(1)].join(' ');
+    }
     if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--chunk NNN] [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16] [--reread]');
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
     const { result } = await searchActive({
