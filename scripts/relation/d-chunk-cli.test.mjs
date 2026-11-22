@@ -198,6 +198,11 @@ withWorld('the current Supervisor D CLI uses explicit owner-worktree roots and s
   const searched = await runCli(['search', firstSense.ref, '--contexts', '1', '--dir', scratch], '',
     { TYPEWRITER_APPROVED_CORPUS_DB: world.options.databasePath }, ownerRoot, officialCli);
   assert.equal(searched.code, 0, searched.stderr);
+  // An unquoted --forms value with spaces reaches the CLI as extra positionals; it must be rejoined, not rejected.
+  const spaced = await runCli(['search', firstSense.ref, '--contexts', '1', '--forms', '새벽,안개', '새벽', '안개', '--dir', scratch], '',
+    { TYPEWRITER_APPROVED_CORPUS_DB: world.options.databasePath }, ownerRoot, officialCli);
+  assert.equal(spaced.code, 0, spaced.stderr);
+  assert.doesNotMatch(spaced.stderr, /usage:/u);
   const searches = (await readFile(path.join(scratch, 'd-001_01/search-001.jsonl'), 'utf8'))
     .split(/\r?\n/u).filter(Boolean).map(JSON.parse);
   const byRecord = new Map();
