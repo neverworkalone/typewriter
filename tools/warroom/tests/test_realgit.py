@@ -80,7 +80,7 @@ class PoisonedStub(unittest.TestCase):
             with self.assertRaises(batches.BatchError):
                 batches._counts(runner, self.tmp.name, env, "origin/master", "x")
             with self.assertRaises(batches.BatchError):
-                batches._candidate_counts(runner, self.tmp.name, env, "origin/master")
+                batches._candidate_paths(runner, self.tmp.name, env, "origin/master")
         runner.run.assert_not_called()
         self.assertFalse(marker.exists())
 

@@ -143,10 +143,10 @@ class AuthIsolation(unittest.TestCase):
 
 
 class BatchSelection(unittest.TestCase):
-    def pick(self, canon, done, prs=(), owned=()):
-        r = ScriptedRunner()
+    def pick(self, canon, done, prs=(), owned=(), method="a", runner=None):
+        r = runner or ScriptedRunner()
         r.set_batches(canon, done)
-        return batches.next_batch(r, ".", {}, ref="origin/master", method="a", producer="deepseek",
+        return batches.next_batch(r, ".", {}, ref="origin/master", method=method, producer="deepseek",
                                   open_prs=list(prs), owned=set(owned))
 
     def path(self, s, b):
@@ -170,9 +170,21 @@ class BatchSelection(unittest.TestCase):
                 self.assertEqual((b.shard, b.batch), want)
         self.assertEqual(self.pick(canon, {**d1, self.path(1, 2): 500, self.path(2, 1): 500}).records, 100)
 
-    def test_corrupt_master_file_is_error_not_skipped(self):
+    def test_completion_is_by_path_and_reads_only_the_selected_canonical_shard(self):
+        """#9571: completed Candidates are never grepped; only the selected shard's Canonical is counted."""
+        r = ScriptedRunner()
+        self.assertEqual(self.pick({1: 1000, 2: 1000}, {self.path(1, 1): 499, self.path(1, 2): 500}, runner=r).stem,
+                         "002_01")
+        greps = [c[c.index("--") + 1:] for c in r.calls if c[:2] == ["git", "grep"]]
+        self.assertEqual(greps, [["data/canonical/stdict-0002.jsonl"]])
+
+    def test_shared_queue_conflict_and_missing_selected_canonical_are_errors(self):
+        both = {"data/relation-candidates/001/001_01_d_codex.jsonl": 500,
+                "data/relation-candidates/001/001_01_d_claude.jsonl": 500}
         with self.assertRaises(batches.BatchError):
-            self.pick({1: 1000}, {self.path(1, 1): 499})
+            self.pick({1: 1000}, both, method="d")
+        with self.assertRaises(batches.BatchError):
+            self.pick({1: 1000}, {self.path(1, 1): 500, self.path(1, 2): 500})
 
     def test_exhausted(self):
         self.assertIsNone(batches.next_batch(
