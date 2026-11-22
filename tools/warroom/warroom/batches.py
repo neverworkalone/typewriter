@@ -1,10 +1,11 @@
 """Pick the next unfinished, unclaimed 500-record batch for one Line.
 
-Follows #860 (A/B), #1155 (C) and #1156 (D): scan shards in order; a batch is done when master has a
-Candidate file with the exact record count; an open PR touching the same candidate file claims it.
-A/B keep one queue per (method, model). C/D share one queue per method across every model: a file or
-open PR of any model completes/claims the batch, so two models never produce the same C/D batch.
-Corrupt/partial master files and conflicting C/D files are surfaced, never skipped or regenerated.
+Follows #860 (A/B), #1155 (C) and #1156 (D): scan shards in order; a batch is done when master has its
+formal Candidate path (path/existence only: historical Candidate content is never re-read, #9571); an open
+PR touching the same candidate file claims it. A/B keep one queue per (method, model). C/D share one queue
+per method across every model: a file or open PR of any model completes/claims the batch, so two models
+never produce the same C/D batch. Conflicting C/D files are surfaced, never skipped or regenerated. Only
+the selected batch's Canonical shard is counted, for its record total.
 """
 from __future__ import annotations
 
@@ -112,18 +113,13 @@ def _counts(runner: Runner, root, env, ref: str, pathspec: str) -> dict[str, int
     return out
 
 
-def _candidate_counts(runner: Runner, root, env, ref: str) -> dict[str, int]:
-    """Every Candidate file that exists on `ref` -> its line count.
-
-    Existence comes from `git ls-tree`, counts from `git grep -c ''`: grep prints nothing for a committed
-    0-byte file, so a file missing from the grep output counts as 0 records (corrupt), never as absent.
-    """
+def _candidate_paths(runner: Runner, root, env, ref: str) -> list[str]:
+    """Every formal Candidate path on `ref`, from the tree alone (`git ls-tree`): no file content is read."""
     res = runner.run([_git_bin(env), "ls-tree", "-r", "--name-only", ref, "--", "data/relation-candidates"],
                      cwd=root, env=env, timeout=120)
     if not res.ok:
         raise BatchError(f"git ls-tree data/relation-candidates: {res.err.strip()}")
-    counts = _counts(runner, root, env, ref, "data/relation-candidates/*/*.jsonl")
-    return {p: counts.get(p, 0) for p in res.out.splitlines() if _CAND.fullmatch(p)}
+    return [p for p in res.out.splitlines() if _CAND.fullmatch(p)]
 
 
 def expected_records(canon: dict[str, int], shard: int, batch: int) -> int:
@@ -135,40 +131,37 @@ def expected_records(canon: dict[str, int], shard: int, batch: int) -> int:
 
 def next_batch(runner: Runner, root, env, *, ref: str, method: str, producer: str,
                open_prs: list[dict], owned: set[tuple[str, str]]) -> Batch | None:
-    """None means every batch is done/claimed. Raises BatchError on corrupt master data.
+    """None means every batch is done/claimed. Raises BatchError on conflicting C/D files, an unknown open-PR file
+    list or a missing selected Canonical shard.
 
     `owned` is what this War Room already holds: the Line's own batches for A/B, every model's for C/D.
     """
     shared = is_shared_queue(method)
-    canon = _counts(runner, root, env, ref, "data/canonical/stdict-*.jsonl")
-    done: dict[tuple[str, str], list[tuple[str, int]]] = {}
-    for path, n in _candidate_counts(runner, root, env, ref).items():
+    done: dict[tuple[str, str], list[str]] = {}
+    for path in _candidate_paths(runner, root, env, ref):
         m = _CAND.fullmatch(path)
-        if m and m.group(3) == method and (shared or m.group(4) == producer):
-            done.setdefault((m.group(1), m.group(2)), []).append((path, n))
+        if m.group(3) == method and (shared or m.group(4) == producer):
+            done.setdefault((m.group(1), m.group(2)), []).append(path)
     for key, files in done.items():
         if len(files) > 1:   # two models' files for one shared batch: never pick one automatically
             raise BatchError(f"{method.upper()} {key[0]}_{key[1]}에 모델 파일이 {len(files)}개 있습니다 "
-                             f"({', '.join(sorted(p for p, _ in files))}): 오너 확인 필요")
+                             f"({', '.join(sorted(files))}): 오너 확인 필요")
     claimed = set(owned)
     for pr in open_prs:
         for shard, batch, m, who in pr_candidates(pr):
             if m == method and (shared or who == producer):
                 claimed.add((shard, batch))
+    canon: dict[str, int] = {}   # only the shards of selectable batches are counted
     for s in range(1, SHARDS + 1):
         for b in (1, 2):
+            key = (f"{s:03d}", f"{b:02d}")
+            if key in done or key in claimed:
+                continue
+            path = f"data/canonical/stdict-{s:04d}.jsonl"
+            if path not in canon:
+                canon.update({p: n for p, n in _counts(runner, root, env, ref, path).items() if p == path})
             n = expected_records(canon, s, b)
             if n == 0:
-                continue
-            key = (f"{s:03d}", f"{b:02d}")
-            if key in done:
-                path, count = done[key][0]
-                if count != n:
-                    raise BatchError(
-                        f"{path} has {count} records, expected {n}: corrupt/partial, "
-                        "needs owner attention (not regenerating)")
-                continue
-            if key in claimed:
                 continue
             return Batch(key[0], key[1], n)
     return None

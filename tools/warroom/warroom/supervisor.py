@@ -8356,7 +8356,7 @@ class Supervisor:
         base = f"origin/{self.cfg['base_branch']}"
         self.git.fetch_base(self.cfg["base_branch"])
         shared = batches.is_shared_queue(b["method"])
-        for path in batches._candidate_counts(self.runner, self.paths.repo_root, self.env, base):
+        for path in batches._candidate_paths(self.runner, self.paths.repo_root, self.env, base):
             m = batches._CAND.fullmatch(path)
             if m and (m.group(1), m.group(2), m.group(3)) == (b["shard"], b["batch"], b["method"]) \
                     and (shared or m.group(4) == b["producer"]):
