@@ -285,19 +285,24 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/relation/admission.mjs',
           'scripts/relation/candidate-contract.mjs',
           'scripts/relation/persisted-jsonl.mjs',
+          'scripts/relation/relation-delta.mjs',
         ]),
       },
       {
-        ...affectedTestCheck('scripts/relation/edit-cli.test.mjs', 'Test Stage 3 Relation edit CLI and direct apply', [
+        ...affectedTestCheck('scripts/relation/edit-cli.test.mjs', 'Test Stage 3 Relation edit CLI, direct apply and replayed amend', [
           'scripts/relation/edit-cli.mjs',
+          'scripts/relation/replay-cli.mjs',
+          'scripts/relation/relation-delta.mjs',
           'scripts/relation/admission.mjs',
           'scripts/relation/candidate-contract.mjs',
           'scripts/relation/persisted-jsonl.mjs',
         ]),
       },
       {
-        ...affectedTestCheck('scripts/relation/polish-cli.test.mjs', 'Test Polish direct Relation Add/Drop and Candidate accounting', [
+        ...affectedTestCheck('scripts/relation/polish-cli.test.mjs', 'Test Polish direct Relation Add/Drop, accounting and relation-key replay', [
           'scripts/relation/polish-cli.mjs',
+          'scripts/relation/replay-cli.mjs',
+          'scripts/relation/relation-delta.mjs',
           'scripts/relation/admission.mjs',
           'scripts/relation/candidate-contract.mjs',
           'scripts/relation/persisted-jsonl.mjs',

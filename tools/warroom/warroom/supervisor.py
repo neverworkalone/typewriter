@@ -10785,11 +10785,67 @@ class Supervisor:
                             self._clear_dead_amend_lock(b)
                         self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
                         self._launch(b, self._fix_kind(b), fresh)
+                elif (b["method"] in (STAGE2_METHOD, STAGE3_METHOD) and not live and info.get("mergeable") is False
+                      and not (b["method"] == STAGE2_METHOD and self._stage2_reconcile_task(b))):
+                    self._replay_relation_pr(b, info)
                 return
         except TRANSIENT as e:
             return self._transient_wait(f"b{b['id']}:watch", e, b["id"])
         except Exception as e:
             return self.store.log(b["id"], f"GitHub 폴링 실패(재시도 예정): {e}", "warn")
+
+    def _replay_relation_pr(self, b, info) -> None:
+        """#8784: rebuild an owned Stage 2/3 PR that conflicts with its base by relation-key replay, verify and push it.
+
+        Only a PR whose shared changes are its own shard Relation/Drop files is replayed, once per (PR HEAD, base). Its
+        decisions are re-applied key by key onto the latest base by the official CLI (no AI run, no re-judgment); a key the
+        latest data changed keeps the latest value. Completed work is never re-checked or reopened by this step."""
+        wt, number = Path(b["worktree"]), b["pr_number"]
+        base_ref, base_sha, head = info.get("base_ref"), info.get("base_sha"), info.get("head_sha")
+        if base_ref != self.cfg["base_branch"] or not re.fullmatch(r"[a-f0-9]{40}", base_sha or ""):
+            return self._fail(b, "ERROR", "충돌 PR의 기준 브랜치 또는 SHA가 유효하지 않습니다. 보존합니다.")
+        attempt = f"{head}:{base_sha}"
+        key = f"relation_replay_{b['id']}"
+        if self.store.get(key) == attempt:
+            return
+        try:
+            if (self.git.registered(wt) != b["branch"] or self.git.dirty(wt).strip() or self.git.head(wt) != head
+                    or self.git.remote_head(b["branch"]) != head):
+                self.store.set(f"last_poll_{b['id']}", "0")
+                return self.store.log(b["id"], "relation replay 전 worktree·원격 HEAD가 PR과 달라 다시 감시합니다.", "warn")
+            if self.git.fetch_base(base_ref) != base_sha:
+                self.store.set(f"last_poll_{b['id']}", "0")
+                return self.store.log(b["id"], "relation replay 확인 중 기준 브랜치가 이동해 다시 감시합니다.", "warn")
+            self.store.set(key, attempt)
+            owned = {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"}
+            checkpoint = None
+            if b["method"] == STAGE2_METHOD:
+                bb, pp = stage2.split_key(b["batch"])
+                checkpoint = f".warroom-scratch/relation-admission-{b['shard']}-{bb}-{pp}.json"
+            new_head, report = self.git.replay_relation_merge(wt, b["branch"], base_ref, base_sha, owned, checkpoint)
+            if b["method"] == STAGE2_METHOD:
+                ok, detail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=True)
+            else:
+                ok, detail = self.git.verify_stage2(new_head, "shard", b["shard"], None, None)
+            if not ok:
+                return self._fail(b, "ERROR", f"relation replay 뒤 verify 실패: {detail}. 미푸시 merge commit과 worktree를 보존합니다.")
+            current = self.gh.pull(number)
+            if current.get("head_sha") != head or current.get("state") != "open" or current.get("merged"):
+                return self._fail(b, "ERROR", "relation replay 중 PR이 이동했습니다. 미푸시 merge commit과 worktree를 보존합니다.")
+            self.git.push_owned_fix(wt, b["branch"], head, new_head)
+            if self.git.remote_head(b["branch"]) != new_head:
+                return self._fail(b, "ERROR", "relation replay push 뒤 원격 HEAD가 다릅니다. 보존합니다.")
+            self.store.update(b["id"], head_sha=new_head)
+            conflicts = report.get("conflicts")
+            if conflicts is None:
+                conflicts = [c for file in report.get("files") or [] for c in file.get("conflicts") or []]
+            self.store.log(b["id"], f"PR #{number} 기준 {base_sha[:10]}와의 shard 데이터 충돌을 관계 키 replay로 해소: "
+                           f"{head[:10]} -> {new_head[:10]}" + (f"; 최신 값 유지 {len(conflicts)}건: {', '.join(conflicts[:10])}"
+                                                               if conflicts else ""))
+        except TRANSIENT:
+            raise
+        except (GitError, IntegrationBlocked, FastForwardBlocked, OSError, ValueError, KeyError, TypeError) as error:
+            return self._fail(b, "ERROR", f"PR #{number} relation replay 중단: {error}. worktree와 PR을 보존합니다.")
 
     def _stage2_unanswered_refix(self, b, info, evs) -> list[dict] | None:
         """Stage 2 marks a review event handled when its fix run STARTS. A run that ended with neither a new HEAD (the

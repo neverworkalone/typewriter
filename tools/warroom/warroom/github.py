@@ -40,7 +40,7 @@ class GhClient:
 
     def open_prs(self) -> list[dict]:
         r = self.runner.run(["gh", "pr", "list", "--repo", self.repo, "--state", "open",
-                             "--limit", "300", "--json", "number,headRefName,baseRefName,files,title"],
+                             "--limit", "300", "--json", "number,headRefName,baseRefName,files,title,body"],
                             env=self.env, timeout=60)
         if not r.ok:
             raise self._fail("gh pr list", r)

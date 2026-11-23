@@ -47,8 +47,10 @@ import {
 } from './admission.mjs';
 import { parseCandidateJsonl } from './candidate-contract.mjs';
 import {
-  exclusionKey, parseDropJsonl, parseRelationJsonl, preservedExclusionLines, serializeDropJsonl, serializeRelationJsonl,
+  exclusionKey, parseDropExclusionJsonl, parseDropJsonl, parseRelationJsonl, preservedExclusionLines, serializeDropJsonl,
+  serializeRelationJsonl,
 } from './persisted-jsonl.mjs';
+import { deltaKey, deltaKeyText, mergeJsonl, removeKeys, supersededDrops } from './relation-delta.mjs';
 
 const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 [--batch 01] [--out <file.json>] [--allow-partial]
@@ -68,6 +70,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs merge --checkpoint <file.json>
   node scripts/relation/admission-cli.mjs prepare-merge --checkpoint <file.json> [--diff-from <sha> --diff-to <sha>] --json
   node scripts/relation/admission-cli.mjs amend --checkpoint <file.json> --in <decisions>
+  node scripts/relation/admission-cli.mjs replay --checkpoint <file.json> --theirs <commit>
   node scripts/relation/admission-cli.mjs preflight --checkpoint <file.json> --json [--limit <n>] [--offset <n>]
   node scripts/relation/admission-cli.mjs repair --checkpoint <file.json> --in <repair.json> --json [--check]
   node scripts/relation/admission-cli.mjs reconcile --shard 001 [--batch 01 [--part 01]] --diff-from <sha> --diff-to <sha> [--dry-run] --json
@@ -424,6 +427,14 @@ function validateCheckpoint(checkpoint, identity = {}) {
             || Object.keys(manifest.relation_diff).sort().join(',') !== 'from,to'
             || ![manifest.relation_diff.from, manifest.relation_diff.to].every((sha) => typeof sha === 'string' && /^[a-f0-9]{40}$/u.test(sha))))) {
       throw new Error('checkpoint contains invalid premerge snapshot metadata');
+    }
+    const replay = manifest.replay;
+    if (replay !== undefined && (!checkpoint.merged || manifest.status !== 'ready' || !isPlainObject(replay)
+        || !['drops,relations,theirs', 'drops,relations,superseded,theirs'].includes(keysOf(replay))
+        || !/^[a-f0-9]{40}$/u.test(replay.theirs ?? '') || !fileMeta(replay.relations) || !fileMeta(replay.drops)
+        || (replay.superseded !== undefined && (!Array.isArray(replay.superseded) || !replay.superseded.length
+          || replay.superseded.some((key) => typeof key !== 'string' || !key.startsWith('D\u0000')))))) {
+      throw new Error('checkpoint contains invalid premerge replay metadata');
     }
   }
   if (checkpoint.optional_review_complete === true) assertOptionalComplete(checkpoint);
@@ -944,7 +955,7 @@ function parseArgs(argv) {
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, relationsOnly: false, sourceSenseId: null, candidateText: null,
     selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0,
     diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, check: false, from: null, fromShas: [], to: null,
-    taskPlan: null, planFile: null, taskId: null, target: DEFAULT_CHUNK_CANDIDATES, expectViewSha256: null };
+    taskPlan: null, planFile: null, taskId: null, target: DEFAULT_CHUNK_CANDIDATES, expectViewSha256: null, theirs: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -980,6 +991,7 @@ function parseArgs(argv) {
     else if (flag === '--from') options.from = rest[++index];
     else if (flag === '--from-sha') options.fromShas.push(rest[++index]);
     else if (flag === '--to') options.to = rest[++index];
+    else if (flag === '--theirs') options.theirs = rest[++index];
     else throw new Error(`unknown argument ${flag}\n${USAGE}`);
   }
   if (options.format !== null && !['inspect', 'read-chunk', 'save-chunk'].includes(command)) throw new Error(`--format is only valid for inspect/read-chunk/save-chunk\n${USAGE}`);
@@ -1005,7 +1017,7 @@ function parseArgs(argv) {
       && (command !== 'save-chunk' || options.format !== 'compact')) {
     throw new Error('--supervisor-fallback requires save-chunk --format compact\n' + USAGE);
   }
-  if (!['prepare', 'plan-chunks', 'close-plan', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
+  if (!['prepare', 'plan-chunks', 'close-plan', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'replay', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify', 'reconcile'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
   if (options.part !== null) {
@@ -1015,8 +1027,9 @@ function parseArgs(argv) {
   if (options.part !== null && options.batch === null) throw new Error(`--part requires --batch\n${USAGE}`);
   if (options.part !== null && !['prepare', 'verify', 'reconcile'].includes(command)) throw new Error(`--part is only valid for prepare/verify/reconcile\n${USAGE}`);
   if (!Number.isInteger(options.maxCandidates) || options.maxCandidates < 1) throw new Error(`--max-candidates must be a positive integer\n${USAGE}`);
-  if (['plan-chunks', 'close-plan', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
+  if (['plan-chunks', 'close-plan', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'replay', 'preflight', 'repair'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
   if (['save-chunk', 'save-optional', 'amend', 'repair'].includes(command) && !options.input) throw new Error(`${command} requires --in\n${USAGE}`);
+  if ((command === 'replay') !== (typeof options.theirs === 'string' && options.theirs.length > 0)) throw new Error(`replay requires --theirs <commit>, which is only valid for replay\n${USAGE}`);
   if (command === 'cancel-revision' && !options.chunkId) throw new Error(`cancel-revision requires --chunk-id\n${USAGE}`);
   if (['inspect', 'read-chunk'].includes(command) && (!Number.isInteger(options.page) || options.page < 1)) throw new Error(`--page must be a positive integer\n${USAGE}`);
   if (['inspect', 'read-chunk'].includes(command) && (!Number.isInteger(options.pageSize) || options.pageSize < 1)) throw new Error(`--page-size must be a positive integer\n${USAGE}`);
@@ -1221,6 +1234,7 @@ async function runCommand(options, root, timing) {
     console.log(JSON.stringify(result));
     return result;
   }
+  if (options.command === 'replay') return replayCheckpoint(await readCheckpoint(checkpointPath), checkpointPath, repositoryRoot, options.theirs);
   if (options.command === 'merge') return mergeCheckpoint(await readCheckpoint(checkpointPath), checkpointPath, repositoryRoot);
   if (options.command === 'prepare' && options.part && existsSync(checkpointPath)) {
     const checkpoint = await readCheckpoint(checkpointPath, { shard: options.shard, batch: options.batch, part: options.part });
@@ -1375,19 +1389,22 @@ async function runCommand(options, root, timing) {
   const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows });
   timing?.end();
   if (verifiedCheckpoint) {
-    timing?.start('checkpoint_merged');
-    assertCheckpointMerged(verifiedCheckpoint, [...relationRows, ...others], dropRows);
-    timing?.end();
+    let expected = null;
     if (verifiedCheckpoint.premerge) {
       timing?.start('premerge_read');
       const baseline = await readReadyPremerge(verifiedCheckpoint, checkpointPath);
       timing?.end();
       timing?.start('materialize_part');
-      const expected = verifiedAmendJournal?.version === 2
-        ? await materializeWithForeign(verifiedCheckpoint, repositoryRoot, baseline,
-          Object.fromEntries(Object.entries(verifiedAmendJournal.foreign).map(([name, entry]) => [name, entry.baseline])))
-        : await materializePart(verifiedCheckpoint, repositoryRoot, baseline, null, timing);
+      expected = await materializeOutputs(verifiedCheckpoint, checkpointPath, repositoryRoot, baseline, { timing,
+        foreign: verifiedAmendJournal?.version === 2
+          ? Object.fromEntries(Object.entries(verifiedAmendJournal.foreign).map(([name, entry]) => [name, entry.baseline])) : null });
       timing?.end();
+    }
+    timing?.start('checkpoint_merged');
+    // #8784: a key the latest data kept against this Part's replayed decision is not "missing" from the merge.
+    assertCheckpointMerged(verifiedCheckpoint, [...relationRows, ...others], dropRows, new Set(expected?.replay?.conflicts ?? []));
+    timing?.end();
+    if (expected) {
       timing?.start('output_compare');
       const [actualRelations, actualDrops] = await Promise.all([
         readFileState(shardRelationPath(options.shard, repositoryRoot)),
@@ -3027,6 +3044,133 @@ async function readReadyPremerge(checkpoint, checkpointPath) {
   return { relations, drops, relation_diff: manifest.relation_diff ?? null };
 }
 
+// #8784 PR-2: a merged Part whose PR met newer approved data (for example a merged Polish PR) records that latest data
+// once as its replay snapshot. Its expected outputs are then the relation-key 3-way merge premerge → materialize →
+// replay, so every byte-for-byte check (merge, verify, amend and its recovery journal) stays deterministic.
+const ABSENT_STATE = Object.freeze({ exists: false, bytes: Buffer.alloc(0), sha256: null });
+const stateText = (state) => (state.exists ? state.bytes.toString('utf8') : null);
+const textState = (text) => (text === null ? { ...ABSENT_STATE } : bytesState(Buffer.from(text, 'utf8')));
+
+function replaySnapshotPaths(checkpoint, checkpointPath) {
+  const prefix = `relation-admission-${checkpoint.shard}-${checkpoint.batch}-${checkpoint.part}.replay-`;
+  const directory = path.dirname(checkpointPath);
+  return { relations: path.join(directory, `${prefix}relations.jsonl`), drops: path.join(directory, `${prefix}drops.jsonl`) };
+}
+
+async function readReplay(checkpoint, checkpointPath) {
+  const manifest = checkpoint.premerge?.replay;
+  if (!manifest) return null;
+  const files = replaySnapshotPaths(checkpoint, checkpointPath);
+  const [relations, drops] = await Promise.all([
+    snapshotState(files.relations, manifest.relations, ABSENT_STATE, 'ready', 'replay Relation'),
+    snapshotState(files.drops, manifest.drops, ABSENT_STATE, 'ready', 'replay Drop'),
+  ]);
+  return { relations, drops, theirs: manifest.theirs, superseded: manifest.superseded ?? [] };
+}
+
+/** `materialize` outputs with this Part's replay snapshot applied (unchanged when the Part was never replayed). */
+async function withReplay(result, checkpoint, checkpointPath, baseline, replay = undefined) {
+  const latest = replay === undefined ? await readReplay(checkpoint, checkpointPath) : replay;
+  if (!latest) return result;
+  const merge = (key, family) => mergeJsonl({ base: stateText(baseline[key]), ours: stateText(result[key]),
+    theirs: stateText(latest[key]), family, label: `${checkpoint.shard} ${family}` });
+  const relations = merge('relations', 'Relation');
+  const drops = merge('drops', 'Drop');
+  const superseded = new Set(latest.superseded);
+  const dropText = removeKeys(drops.text, 'Drop', new Set([...superseded].filter((key) => drops.applied.includes(key))));
+  return { ...result, relations: textState(relations.text), drops: textState(dropText),
+    replay: { theirs: latest.theirs, conflicts: [...relations.conflicts, ...drops.conflicts, ...superseded] } };
+}
+
+const materializeOutputs = async (checkpoint, checkpointPath, root, baseline, { foreign = null, timing = null } = {}) => withReplay(
+  foreign ? await materializeWithForeign(checkpoint, root, baseline, foreign) : await materializePart(checkpoint, root, baseline, null, timing),
+  checkpoint, checkpointPath, baseline);
+
+/**
+ * Re-apply a merged Part's decisions onto newer approved data `theirs` (a commit), key by key, after its PR met a
+ * concurrent change of the same shard files. The latest value wins every key both sides changed; a replayed Drop of a
+ * Candidate the latest data already answers is left out. The shared validator and the Part accounting must pass, and
+ * then the replay snapshot, the checkpoint and both shard files are written. Re-running the same `theirs` is a no-op.
+ */
+async function replayCheckpoint(checkpoint, checkpointPath, root, theirs) {
+  if (!checkpoint.merged) throw new Error('replay requires a merged Part checkpoint');
+  assertOptionalComplete(checkpoint);
+  validateCheckpointDecisions(checkpoint);
+  const theirsSha = gitRevisionCommit(root, theirs);
+  const baseline = await readReadyPremerge(checkpoint, checkpointPath);
+  const relationFile = shardRelationPath(checkpoint.shard, root);
+  const dropFile = shardDropPath(checkpoint.shard, root);
+  const relative = (file) => path.relative(root, file).split(path.sep).join('/');
+  const latest = {
+    relations: textState(gitBlob(root, theirsSha, relative(relationFile))),
+    drops: textState(gitBlob(root, theirsSha, relative(dropFile))),
+    theirs: theirsSha,
+    superseded: [],
+  };
+  const journal = await readAmendJournal(checkpointPath.replace(/\.json$/u, '.amend-state.json'));
+  const foreign = journal?.version === 2
+    ? Object.fromEntries(Object.entries(journal.foreign).map(([name, entry]) => [name, entry.baseline])) : null;
+  const ours = foreign ? await materializeWithForeign(checkpoint, root, baseline, foreign) : await materializePart(checkpoint, root, baseline);
+  const loaded = await loadShardForRun(checkpoint.shard, root, checkpoint.batch);
+  const finalShardSenseIds = shardSenseIds(loaded.canonicalRows);
+  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part, checkpoint.shard);
+  let next;
+  for (;;) {
+    next = await withReplay(ours, checkpoint, checkpointPath, baseline, latest);
+    const relationRows = parseJsonlState(next.relations, 'Relation');
+    const dropRows = parseJsonlState(next.drops, 'Drop');
+    const others = await otherRelationsForShard(root, checkpoint.shard, finalShardSenseIds);
+    validateRelationRows({ relationRows, dropRows, exclusionRows: next.drops.exists ? parseDropExclusionJsonl(stateText(next.drops)) : [],
+      index: loaded.index, shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+    try {
+      verifyAccounting({ canonicalRows: loaded.canonicalRows, candidateFiles: scoped.files, relationRows, dropRows,
+        otherRelationRows: others, index: loaded.index, scopeRows: scoped.scopeRows });
+      break;
+    } catch (error) {
+      const applied = new Set(mergeJsonl({ base: stateText(baseline.drops), ours: stateText(ours.drops),
+        theirs: stateText(latest.drops), family: 'Drop' }).applied);
+      const superseded = supersededDrops(error, applied);
+      const fresh = [...superseded].filter((key) => !latest.superseded.includes(key));
+      if (!fresh.length) throw error;
+      latest.superseded = [...latest.superseded, ...fresh].sort();
+    }
+  }
+  const manifest = { theirs: theirsSha, relations: stateManifest(latest.relations), drops: stateManifest(latest.drops),
+    ...(latest.superseded.length ? { superseded: latest.superseded } : {}) };
+  const unchanged = JSON.stringify(checkpoint.premerge.replay ?? null) === JSON.stringify(manifest);
+  if (!unchanged) {
+    const files = replaySnapshotPaths(checkpoint, checkpointPath);
+    const writeSnapshot = async (file, state) => {
+      if (state.exists) await writeTextAtomically(file, state.bytes);
+      else { try { await unlink(file); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
+    };
+    await Promise.all([writeSnapshot(files.relations, latest.relations), writeSnapshot(files.drops, latest.drops)]);
+    checkpoint.premerge = { ...checkpoint.premerge, replay: manifest };
+    validateCheckpoint(checkpoint);
+    await writeJsonAtomically(checkpointPath, checkpoint);
+  }
+  const [actualRelations, actualDrops] = await Promise.all([readFileState(relationFile), readFileState(dropFile)]);
+  if (!sameFileState(actualRelations, next.relations)) await writeFileStateAtomically(relationFile, next.relations);
+  if (!sameFileState(actualDrops, next.drops)) await writeFileStateAtomically(dropFile, next.drops);
+  const result = { version: 1, ok: true, replayed: true, shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part,
+    theirs: theirsSha, conflicts: next.replay.conflicts.map(deltaKeyText),
+    outputs: amendOutputs(root, [{ file: relationFile, state: next.relations }, { file: dropFile, state: next.drops }]) };
+  console.log(JSON.stringify(result));
+  return result;
+}
+
+function gitRevisionCommit(root, revision) {
+  const result = spawnSync('git', ['rev-parse', '--verify', `${revision}^{commit}`], { cwd: root, encoding: 'utf8' });
+  const sha = result.status === 0 ? result.stdout.trim() : '';
+  if (!/^[a-f0-9]{40}$/u.test(sha)) throw new Error(`--theirs ${revision} is not a commit in this repository`);
+  return sha;
+}
+
+function gitBlob(root, revision, relative) {
+  const result = spawnSync('git', ['show', `${revision}:${relative}`], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 30 });
+  return result.status === 0 ? result.stdout : null;
+}
+
 async function materializePart(checkpoint, root, baseline, preparedCandidateMerge = null, timing = null, foreign = null) {
   timing?.start('baseline_parse');
   assertPrimaryComplete(checkpoint);
@@ -3597,7 +3741,7 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
   assertOptionalComplete(checkpoint);
   validateCheckpointDecisions(checkpoint);
   const baseline = await ensurePremerge(checkpoint, checkpointPath, root);
-  const expected = await materializePart(checkpoint, root, baseline);
+  const expected = await materializeOutputs(checkpoint, checkpointPath, root, baseline);
   const actualRelations = await readFileState(baseline.relationFile);
   const actualDrops = await readFileState(baseline.dropFile);
   assertOldOrNew(actualRelations, baseline.relations, expected.relations, 'Relation');
@@ -3877,8 +4021,8 @@ async function applyForeignAmendJournal(journal, checkpointPath, root, { checkOn
   }
   const baseline = await readReadyPremerge(oldCheckpoint, checkpointPath);
   const baselines = Object.fromEntries(Object.entries(journal.foreign).map(([name, entry]) => [name, entry.baseline]));
-  const oldResult = await materializeWithForeign(oldCheckpoint, root, baseline, baselines);
-  const newResult = await materializeWithForeign(newCheckpoint, root, baseline, baselines);
+  const oldResult = await materializeOutputs(oldCheckpoint, checkpointPath, root, baseline, { foreign: baselines });
+  const newResult = await materializeOutputs(newCheckpoint, checkpointPath, root, baseline, { foreign: baselines });
   for (const file of oldResult.files) {
     if (!Object.hasOwn(journal.foreign, file.name) && (!sameFileState(oldResult.foreign[file.name], file.actual)
         || !sameFileState(newResult.foreign[file.name], file.actual))) {
@@ -3919,8 +4063,8 @@ async function applyForeignAmendJournal(journal, checkpointPath, root, { checkOn
 
 async function applyAmendJournalState(checkpoint, checkpointPath, root, oldCheckpoint, newCheckpoint, requestHash, journalPath) {
   const baseline = await readReadyPremerge(checkpoint, checkpointPath);
-  const oldResult = await materializePart(oldCheckpoint, root, baseline);
-  const newResult = await materializePart(newCheckpoint, root, baseline);
+  const oldResult = await materializeOutputs(oldCheckpoint, checkpointPath, root, baseline);
+  const newResult = await materializeOutputs(newCheckpoint, checkpointPath, root, baseline);
   const relationFile = shardRelationPath(checkpoint.shard, root);
   const dropFile = shardDropPath(checkpoint.shard, root);
   const oldStates = { checkpoint: bytesState(checkpointBytes(oldCheckpoint)), relations: oldResult.relations, drops: oldResult.drops };
@@ -3992,8 +4136,8 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
   } else if (journal) {
     const oldCheckpoint = checkpointFromJournal(journal.old_checkpoint_b64);
     const newCheckpoint = checkpointFromJournal(journal.new_checkpoint_b64);
-    const oldResult = await materializePart(oldCheckpoint, root, baseline);
-    const newResult = await materializePart(newCheckpoint, root, baseline);
+    const oldResult = await materializeOutputs(oldCheckpoint, checkpointPath, root, baseline);
+    const newResult = await materializeOutputs(newCheckpoint, checkpointPath, root, baseline);
     const oldStates = { checkpoint: bytesState(checkpointBytes(oldCheckpoint)), relations: oldResult.relations, drops: oldResult.drops };
     const newStates = { checkpoint: bytesState(checkpointBytes(newCheckpoint)), relations: newResult.relations, drops: newResult.drops };
     const state = classifyAmendState(current, oldStates, newStates);
@@ -4017,7 +4161,7 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
   const foreignBaselines = journal?.version === 2
     ? Object.fromEntries(Object.entries(journal.foreign).map(([name, entry]) => [name, entry.baseline])) : {};
   timing?.start('current_materialize');
-  const currentExpected = await materializeWithForeign(checkpoint, root, baseline, foreignBaselines);
+  const currentExpected = await materializeOutputs(checkpoint, checkpointPath, root, baseline, { foreign: foreignBaselines });
   timing?.end();
   if (!sameFileState(current.relations, currentExpected.relations) || !sameFileState(current.drops, currentExpected.drops)) {
     throw new Error('current merged outputs do not match materialize(premerge, checkpoint); refusing to amend drifted files');
@@ -4034,7 +4178,7 @@ async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root
       { file: dropFile, state: currentExpected.drops }]) };
   }
   timing?.start('next_materialize');
-  const next = await amendInputStep(() => materializeWithForeign(applied.checkpoint, root, baseline, foreignBaselines));
+  const next = await amendInputStep(() => materializeOutputs(applied.checkpoint, checkpointPath, root, baseline, { foreign: foreignBaselines }));
   timing?.end();
   timing?.start('apply');
   const foreign = {};
@@ -4153,7 +4297,7 @@ async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root, timi
 
 export { acquireAmendLock, amendLockOwnerAlive };
 
-function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
+function assertCheckpointMerged(checkpoint, relationRows, dropRows, superseded = new Set()) {
   if (!checkpoint.merged) throw new Error('Part checkpoint is not marked merged');
   const dropSet = new Set(dropRows.map(stableRow));
   const expected = decisionRows(checkpoint);
@@ -4170,6 +4314,7 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
     if (bucket) bucket.push(approved); else approvedIdByPair.set(key, [approved]);
   }
   for (const row of coalesced.relations) {
+    if (superseded.has(deltaKey(row, 'Relation'))) continue;
     const pairRows = 'text' in row ? [] : [
       ...(approvedIdByPair.get(idPairKey(row.source_sense_id, row.target_sense_id)) ?? []),
       ...(approvedIdByPair.get(idPairKey(row.target_sense_id, row.source_sense_id)) ?? []),
@@ -4193,7 +4338,9 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
       throw new Error(`merged Part relation is missing: ${stableRow(row)}`);
     }
   }
-  for (const row of expected.drops) if (!dropSet.has(stableRow(row))) throw new Error(`merged Part Drop is missing: ${stableRow(row)}`);
+  for (const row of expected.drops) {
+    if (!superseded.has(deltaKey(row, 'Drop')) && !dropSet.has(stableRow(row))) throw new Error(`merged Part Drop is missing: ${stableRow(row)}`);
+  }
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {

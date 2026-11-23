@@ -58,7 +58,7 @@ export const relationKey = (row) => exclusionKey(row);
 
 // ---- repository state ---------------------------------------------------------------------------------------
 
-async function loadCanonical(root) {
+export async function loadCanonical(root) {
   const directory = path.join(root, 'data/canonical');
   const rows = [];
   const shardOfSense = new Map();
@@ -83,7 +83,7 @@ async function readText(root, relative) {
 const linesOf = (text) => (text ? text.split(/\r?\n/u).filter((line) => line.trim() !== '') : []);
 
 /** Every persisted row of all Relation and Drop files that names one of `senseIds`, with its file and line. */
-async function scanTouching(root, senseIds, overrides = new Map(), { only = null } = {}) {
+export async function scanTouching(root, senseIds, overrides = new Map(), { only = null } = {}) {
   const pattern = senseTokenPattern(senseIds);
   const relations = [];
   const drops = [];
@@ -253,7 +253,7 @@ function parseEdits(input, index) {
 
 const stripPosition = (message) => message.replace(/^(?:relation|drop|exclusion):\d+: /u, '');
 
-function accountingProblems(args) {
+export function accountingProblems(args) {
   try { verifyAccounting(args); return []; } catch (error) {
     if (error instanceof AdmissionVerifyError) return error.errors.map(stripPosition);
     throw error;
