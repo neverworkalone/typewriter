@@ -11,6 +11,8 @@ Stage 2 — Relation Admission: 후보 통합 → 채택/제외 → 타입/Tier/
     → 승인 Relations / Drops JSONL (샤드 단위)
 Stage 3 — Relation Editorial Refinement (#2455, 구현됨): 독립 감사 / Drop / Link Repair
     → 기존 Relation / Drop JSONL을 직접 수정 (추가 edit 파일 없음)
+Polish (#8777, #8784): 단어별 승인 Relation 직접 Add/Drop/Set — Stage 진행과 독립
+    → 같은 Relation / Drop JSONL을 관계 키 단위로 수정
 pnpm run build: Canonical + 최종 Relations → Full / Lite SQLite
 ```
 
@@ -206,6 +208,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 {"id":"w2","sid":"w2-s1","cd":"버릴말","by":"x"}
 ```
 
+- Polish 직접 편집의 `by:"p"` Relation과 Drop 파일 안의 제외 문맥 `p` 행은 §6-A를 따른다.
 - 파일에 저장하는 필드만 축약한다. Relation ID 행은 `id`/`sid`/`tid`/`tsid`/`tp`/`rv`와 선택적 `ver`/`fm`/`rfm`, text-only 행은 `id`/`sid`/`tt`/`tp`/`rv`, Drop 행은 `id`/`sid`/`cd`/`by`를 사용한다. JS 내부 객체와 checkpoint는 기존의 descriptive 필드명을 유지할 수 있다. 저장기는 compact 필드만 쓰고, 저장 파일을 읽는 Stage 2 및 제품 빌드 로더는 이전 verbose 키와 혼합된 키를 거부한다.
 - `tp`와 `rv`는 ID 링크의 유일한 관계 타입과 relevance다. 제품 역방향 링크도 같은 `tp`/`rv`를 사용하며 역방향 필드를 JSONL에 저장하지 않는다. 새 ID 판단에서 source 방향 값을 한 번만 판단하고 양방향에 적용한다. 이전 형식의 checkpoint에 서로 다른 역방향 판단이 남아 있으면 저장 결과가 달라지므로 해당 Part의 `merge`는 거부하며, 최신 스키마로 Part 경계를 다시 시작해야 한다. 이전 형식의 premerge snapshot은 내용과 hash를 보존하고 자동 변환하거나 다시 캡처하지 않는다.
 - `ver`/`fm`/`rfm`은 후보 귀속 근거이며 값과 의미를 보존한다. `ver`가 없는 legacy 행, `ver:0`, `ver:1`은 서로 다르다. 새로 선택한 ID 행은 `ver:1`과 두 배열을 저장한다. 여러 후보형이 같은 source/target sense 쌍으로 병합되면 각 방향에서 처리한 정확한 후보 표기를 합쳐 보존한다. 후보별 relevance가 다를 때는 가장 우선순위가 높은 값(숫자가 가장 작은 relevance)을 저장한다. type 판단이 다르면 임의 선택하지 않고 merge를 거부한다. spacing/hyphen 표기 변형은 별도 규칙으로, 판단이 다를 때 Canonical headword spelling의 판단을 우선한다. 기존 version-less 행에 새 반대 방향 후보 귀속을 합치면 `ver:0`으로 기록한다. 이때 `fm`은 기존 정방향 추론 표기, `rfm`은 새 반대 방향에서 처리된 정확한 후보 표기다. 이 정보는 accounting/restart용이며 제품 링크의 target을 바꾸지 않는다.
@@ -247,7 +250,7 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 `--batch` 없이 실행하면 필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D 12개)이 하나라도 없을 때 실패한다. `--batch BB`는 **해당 배치의 필수 생산자 6개만** 요구하므로 다른 배치 입력이 없어도 착수·검증할 수 있다(다른 배치의 Candidate 파일은 목록 검사·파싱 대상이 아니므로 충돌하거나 미완성이어도 이 실행을 막지 않는다). 다른 배치나 샤드의 ID 관계는 `prepare`와 `verify`에서 실제 target sense별로 계산한다. Stage 2 accounting 단위는 `(source sense, candidate)`다. 후보가 고유 표제어의 한 sense에 이미 ID로 연결됐으면 이 후보는 기존 승인 관계로 처리되어 새 필수 판정을 요구하지 않는다. Part 모드에서는 나머지 target sense의 추가 ID 링크를 `read-chunk --optional`로 검토한다. 링크 후보가 있으면 `save-optional`에서 후보마다 skip 또는 여러 exact target을 한 번에 선택하고, 0개면 `complete-optional`이 AI 실행 없이 완료 증거를 기록한다. 신규 ID 판정에서는 같은 표기의 모든 target sense/gloss를 비교하고 실제로 일치하는 sense를 선택한다. text-only로 남기는 경우에만 모든 sense ID를 확인한다. text-only 승인 관계도 후보 전체를 처리한 것으로 본다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 불완전 Stage 1 입력으로 만든 Part checkpoint는 `merge`가 거부한다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
 
-**Stage 2 다음 작업 선택(#927):** 완료 단위는 `(shard, batch, part)`다. 샤드 001부터 Batch 01→02, 각 Batch 안에서 Part 01→05(legacy 001–005) 또는 01→02(006+)의 Canonical 순서로, 필수 Stage 1 파일 6개가 최신 master에 있고 그 master의 정확한 `verify --shard <SSS> --batch <BB> --part <PP>`가 아직 성공하지 못하는 가장 이른 Part를 고른다. 파일이나 이전 PR의 존재·머지만으로 완료를 판단하지 않는다. 해당 Part의 편집 세션 하나가 PR 하나다. 같은 샤드의 열린 Stage 2 PR이 있으면 누적 `relation-<SSS>.jsonl`/`drop-<SSS>.jsonl`의 충돌을 막기 위해 다음 Part를 시작하지 않는다. PR 머지 후 최신 master를 기준으로 다음 Part를 준비한다. 각 Batch의 **모든 유효 Part**가 성공적으로 검증된 뒤 `verify --shard <SSS> --batch <BB>`를 실행하고, 해당 샤드의 **모든 유효 Part**가 끝난 뒤 `verify --shard <SSS>`를 실행한다(legacy 샤드는 Batch당 5 Part·샤드당 10 Part, 006+ 샤드는 Batch당 2 Part·샤드당 4 Part이며, 샤드 428은 Batch 02의 Part 01만 유효하므로 신규 layout에서 총 3개 Part). 후보가 없거나 전부 다른 승인 관계로 처리된 범위도 `verify` 성공으로 완료될 수 있다. #927은 이 순차 생산·검증 계약을 계속 소유하며, 구현 이슈 #1665만 구현 완료 후 닫는다.
+**Stage 2 다음 작업 선택(#927):** 완료 단위는 `(shard, batch, part)`다. 순서는 샤드 001부터 Batch 01→02, 각 Batch 안에서 Part 01→05(legacy 001–005) 또는 01→02(006+)의 Canonical 순서다. **War Room은 마지막으로 머지된 Stage 2 생산 PR(`[S2/<Model>] SSS_BB Part PP`)의 바로 다음 Part를 고르고**, 그 Part의 필수 Stage 1 파일 6개가 최신 master에 없으면 실행을 멈춘다. 진행 중인 작업만 Store의 완료·진행 기록으로 복구한다. War Room 밖에서 Part를 지정하지 않고 직접 호출할 때만, 같은 순서에서 필수 Stage 1 파일이 최신 master에 있고 그 master의 정확한 `verify --shard <SSS> --batch <BB> --part <PP>`가 아직 성공하지 못한 가장 이른 Part를 고른다. 이 `verify`는 다음 작업을 찾는 수단이지, 이미 머지된 Part의 완료를 다시 판정하는 검사가 아니다. **완료된 Part는 이후 Polish·Stage 3 등으로 파일이 바뀌어도 완료로 남는다**(§6 배치 완료 불변식). 해당 Part의 편집 세션 하나가 PR 하나다. 같은 샤드의 열린 Stage 2 또는 Stage 3 PR이 있으면 누적 `relation-<SSS>.jsonl`/`drop-<SSS>.jsonl`의 충돌을 막기 위해 다음 Part를 시작하지 않는다. 정식 Polish 데이터 PR은 이 점유에서 제외한다(§6). PR 머지 후 최신 master를 기준으로 다음 Part를 준비한다. 각 Batch의 **모든 유효 Part**가 성공적으로 검증된 뒤 `verify --shard <SSS> --batch <BB>`를 실행하고, 해당 샤드의 **모든 유효 Part**가 끝난 뒤 `verify --shard <SSS>`를 실행한다(legacy 샤드는 Batch당 5 Part·샤드당 10 Part, 006+ 샤드는 Batch당 2 Part·샤드당 4 Part이며, 샤드 428은 Batch 02의 Part 01만 유효하므로 신규 layout에서 총 3개 Part). 후보가 없거나 전부 다른 승인 관계로 처리된 범위도 `verify` 성공으로 완료될 수 있다. #927은 이 순차 생산·검증 계약을 계속 소유하며, 구현 이슈 #1665만 구현 완료 후 닫는다.
 
 ## 5. Stage 3 — Relation Editorial Refinement (#2455)
 
@@ -293,7 +296,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 ### 5-B. 실행·토큰·PR 경계
 
-1. **Stage 2 샤드 전체 완료 후 시작.** 최근 master에 머지된 Stage 3 생산 PR의 바로 다음 샤드를 선택하고, 해당 샤드의 Stage 2 완료 기록이 없으면 실행을 종료한다. Stage 2 Part 완료만으로 Stage 3를 시작하지 않는다. 같은 샤드 Relation/Drop을 수정하는 열린 PR이나 활성 작업이 있으면 대기한다.
+1. **Stage 2 샤드 전체 완료 후 시작.** 최근 master에 머지된 Stage 3 생산 PR의 바로 다음 샤드를 선택하고, 해당 샤드의 Stage 2 완료 기록이 없으면 실행을 종료한다. Stage 2 Part 완료만으로 Stage 3를 시작하지 않는다. 같은 샤드 Relation/Drop을 수정하는 열린 Stage 2/3 PR이나 활성 작업이 있으면 대기한다. 정식 Polish 데이터 PR은 대기 사유가 아니다(§6).
 2. **AI 청크: 관계 350~500행 목표**, 출발 Sense의 관계 목록은 **분할하지 않는다**. 한 청크에 여러 Sense를 묶을 수 있다. Source Sense별 전체 gloss를 한 번 제공하고, target 의미 구분에 필요한 경우 ID Sense 뜻풀이를 제공한다. Link Repair 대상은 동일 표기 전체 Sense·전체 gloss를 제공한다.
 3. **최소 출력:** `chunk NN` 뒤에 `D 1 5 9`, `L 4 T1`, 또는 `none`만 출력. Keep은 별도 출력하지 않고 기존 Relation을 유지한다. 청크마다 새 AI 세션을 사용하고 이미 검토한 청크 전체를 반복해서 읽지 않는다. 재개용 로컬 checkpoint는 청크 완료 여부와 결정만 저장한다.
 4. **Shard당 Stage 3 데이터 PR 한 개.** 모든 청크 완료 후 Relation/Drop에 한꺼번에 반영하고 기존 `validateRelationRows`/`verifyAccounting` 및 실제 DB 결과를 확인한다. 생산 PR은 **해당 샤드의 Relation/Drop 두 파일만** 변경한다. Stage 2와 Stage 3의 같은 샤드 작업 경합은 금지한다.
@@ -320,7 +323,90 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 **구현 이력·파일럿:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)은 정책·Stage 2 회계/최신 master/reconcile·Stage 3 CLI·War Room 연계의 구현 계획이었다. 파일럿 및 각 샤드의 실제 완료 여부는 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 실행 결과와 **머지된 Stage 3 데이터 PR·검증 상태**로 판단하며, 계획 이슈의 종료만으로 완료 처리하지 않는다. 삭제율 목표는 없다.
 
-## 6. Build와 검증 경계
+## 6. Polish — 직접 Relation 편집과 동시 변경 (#8784, #8777)
+
+**Polish**는 오너가 지정한 단어의 현재 승인 Relation을 직접 Add/Drop/Set하는 상시 작업이다([#8777](https://github.com/neverworkalone/typewriter/issues/8777), `#8777 <단어> 진행해`). 새 Candidate를 만들거나 Stage 1/2를 다시 실행하지 않는다. 해당 단어·샤드의 Stage/배치가 미시작이든 진행 중이든 완료든 관계없이 실행한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)와 같다. 공식 `direct/antonym`, Canonical, 생성 SQLite는 수정하지 않는다.
+
+### 6-A. 저장 형식
+
+```jsonl
+# data/relations/relation-SSS.jsonl — Polish Relation (ID / text-only)
+{"id":"wA","sid":"wA-s1","tid":"wB","tsid":"wB-s1","tp":"near","rv":3,"by":"p"}
+{"id":"wA","sid":"wA-s1","tt":"짧은 표현","tp":"scene","rv":5,"by":"p"}
+# data/relation-drops/drop-SSS.jsonl — Polish 제외 문맥 p (ID 쌍 / source Sense + text)
+{"id":"wA","sid":"wA-s1","tid":"wB","tsid":"wB-s1","by":"p"}
+{"id":"wA","sid":"wA-s1","tt":"제외한 표현","by":"p"}
+```
+
+- **Polish Relation `by:"p"`**는 출처 표식이다. Candidate 할당 버전 `ver`/`fm`/`rfm`과 함께 쓸 수 없다. Polish가 존재하지 않는 Candidate 귀속을 주장하지 않는다는 뜻이다. 빌드는 미표식 행과 같은 제품 관계로 투영한다. ID 행은 한 행에서 정·역방향에 같은 `tp/rv`를 쓰고, text-only는 역방향이 없다. 기존 legacy·`ver:0`·`ver:1` 행의 해석과 바이트는 바뀌지 않는다.
+- **후보 회계:** `by:"p"` 행은 Stage 1 claim을 만들지 않는다. source Sense의 Stage 1 후보와 대상 표기(정서법·큐레이션 검색형)가 **정확히 같을 때만** 그 후보를 기존 승인 관계처럼 cover한다. 같은 샤드, 다른 샤드, 역방향 모두 같다. cover되지 않은 후보의 `missing`, 이미 cover된 후보에 대한 별도 Drop 같은 이중 처리, 중복·역중복 ID 쌍은 계속 차단한다.
+- **`z`와 `p`는 다르다.** Polish Drop이 실제 Stage 1 후보의 마지막 cover를 지우면, 그 후보의 소유 샤드(다른 샤드 `drop-TTT` 포함)에 기존 형식 `by:"z"`를 추가한다. 다른 Relation·역방향 cover·Drop이 남아 있으면 추가하지 않는다. 이와 별도로 `p`는 "Polish가 이 정확한 Sense 쌍/text 연결을 제외했다"는 편집 이력이다. 후보가 아직 없는 범위에도 기록하고, Candidate 회계에는 들어가지 않는다. Stage 2 `prepare`/compact 뷰는 해당 후보 아래 `X` 행으로 이 문맥을 보여 주지만 승인을 하드 거부하지 않는다. 같은 쌍·text를 다시 승인하면 공통 쓰기 경로가 그 `p`를 지운다. 새 관계가 실제로 cover하는 후보의 기존 Drop(`z` 포함)도 함께 지운다. 영구 블랙리스트는 없다.
+
+### 6-B. 공식 도구 — `pnpm run relation:polish`
+
+```sh
+node scripts/relation/polish-cli.mjs show --word 고요하다 [--json]      # 또는 --record <id> / --sense <id>
+node scripts/relation/polish-cli.mjs apply --input edits.json [--dry-run]
+```
+
+- `show`는 Sense마다 다음을 양방향으로 한 번에 보여 준다.
+  - 승인 관계와 상대 Sense의 POS·뜻풀이
+  - Type/Tier, 저장 파일:줄, relation key, 출처(`p`/`ver:N`/`legacy`)
+  - STDICT `direct/antonym`(정·역), 이전 `p`
+  - 행 번호는 조회 보조 정보이고, 편집은 relation key로 식별한다.
+- `apply` 입력은 `{"edits":[{op, source_sense_id, target_sense_id|text, type, relevance, reason}]}`이다(`drop`은 `type/relevance` 없음).
+  - `add`는 source 소유 샤드에 `by:"p"`로 쓴다.
+  - `set`은 Type/Tier만 바꾸고 기존 출처를 보존한다.
+  - `drop`은 저장된 방향 그대로 `p`를 남긴다.
+  - 저장 전 확인 사항
+    - 영향받는 모든 샤드에 공통 `validateRelationRows`
+    - 편집 전후 Candidate 회계 비교: **새 문제가 하나도 없어야** 한다. 원래 있던 미완성 shard의 `missing`은 막지 않는다.
+    - action 대상 POS
+  - 변경 파일은 한꺼번에 원자적으로 저장한다. 같은 입력의 재실행은 no-op이다.
+- AI는 Drop/Add/Set과 이유만 판단한다. 조회·회계·다른 샤드 영향·저장·검증은 CLI가 맡는다. 원격 파일 반복 다운로드, 다중 모델 탐색, 과거 batch 전체 재검사는 하지 않는다. 정본은 현재 JSONL이다.
+- **지원 없는 JSONL 손편집이나 `verify --relations-only`만 통과한 변경은 정식 성공이 아니다.**
+
+### 6-C. 관계 키 단위 동시 변경
+
+배치(Stage 2 Part, Stage 3/정제 PR)와 Polish는 같은 shard 파일을 동시에 바꿀 수 있다. 반영은 행 번호나 파일 전체가 아니라 **관계 키**로 한다(`scripts/relation/relation-delta.mjs`).
+
+- **키**
+  - Relation: ID 링크는 방향 무관 정확한 Sense 쌍, text-only는 source Sense + 정규화 `tt`
+  - Candidate Drop: source Sense + 정규화 후보
+  - Polish 제외 `p`: 자기 쌍/text
+  - Type/Tier는 키가 아니라 편집 가능한 값이다.
+- **3-way 규칙:** 한 PR의 delta는 자기 기준선(merge base, Stage 2 premerge snapshot)에서 PR 결과까지의 키별 변경이다. 적용 시점의 최신 승인 데이터와 **그 키만** 비교한다.
+  - 최신 값이 기준선과 같으면 PR 변경을 적용한다.
+  - 기준선 이후 최신 쪽이 같은 키를 추가·수정·삭제했으면 **최신 값을 유지**하고, 그 키를 충돌로 간결하게 보고한다.
+  - 무관한 키의 변경은 양쪽 모두 보존한다.
+  - 밀려난 변경에서 파생된 기록도 함께 빠진다. PR이 지운 관계를 최신 쪽이 유지했으면 그 `p`가 빠지고, 최신 데이터가 이미 답한 후보의 PR 측 Candidate Drop(다른 샤드 역방향 `z` 포함)도 빠진다.
+  - 결정적으로 풀 수 없는 경우(관계끼리의 claim 충돌, PR 소유 밖 데이터 파일 충돌)는 그 관계만 보고하고 아무것도 쓰지 않는다.
+- **Git 텍스트 충돌(JSONL append/EOF 등)의 정식 해법은 최신 master 위 replay다.** 과거 기준 파일 전체 교체, 의미 판단 재생산, 광범위 재검증은 하지 않는다.
+  - **배치 PR:** `pnpm run relation:replay -- --base <merge-base> --ours <PR HEAD> --theirs <최신 master>`
+    - PR이 바꾼 모든 shard 데이터 파일을 다시 만든다.
+    - 영향 shard의 공통 검증과 "새 Candidate 회계 문제 없음"을 확인한 뒤에만 쓴다.
+    - Stage 3 PR은 이후 `decisions/amend --base <새 master>`로 같은 행 기반 결정을 계속 다룬다.
+  - **Stage 2 Part:** `node scripts/relation/admission-cli.mjs replay --checkpoint <cp> --theirs <최신 master>`
+    - 최신 데이터를 checkpoint `premerge.replay` 스냅숏으로 한 번 기록한다.
+    - 이후 merge·checkpoint verify·amend의 기대값은 `premerge → materialize(checkpoint) → replay`의 3-way다.
+  - **Polish PR:** Polish 결정은 명시적이므로, 최신 master에서 **같은 Polish 입력으로 `relation:polish apply`를 다시 실행**한다. 이미 반영된 편집은 no-op이다. 최신 데이터와 맞지 않는 편집이 있으면 입력 전체가 쓰기 전에 거부되므로, 그 관계만 다시 판단해 입력을 고친다.
+  - 이 규칙은 동시 실행 중인 낡은 배치 판정이 Polish를 덮어쓰지 않게 하는 것이다. 미래의 새 Stage가 새 근거로 같은 관계를 다시 편집하는 것을 금지하지 않는다.
+- **정식 Polish 데이터 PR**은 제목 `[Polish] <단어> 관계 정제`, 본문 `Refs #8777`이며 shard Relation/Drop 파일만 바꾼다. `Closes/Fixes/Resolves #8777`은 쓰지 않는다.
+  - War Room의 shard 점유 판단(`batches.pr_stage2_shards`)은 이 모양의 PR만 점유에서 제외한다.
+  - 본문·변경 파일 조건을 하나라도 벗어나면 제목만으로 예외가 되지 않는다.
+  - Stage 2↔Stage 2, Stage 2↔Stage 3 점유는 그대로 유지한다.
+- War Room은 리뷰 대기 중인 자기 Stage 2/3 PR이 기준과 텍스트 충돌(`mergeable:false`)하면 다음 순서로 처리한다.
+  - 조건: AI 실행이 없고 처리할 리뷰 이벤트도 없을 것. (PR HEAD, base)당 한 번 실행한다.
+  - 순서: `git merge --no-commit` → 충돌이 PR 소유 shard 데이터뿐인지 확인 → 위 공식 replay → merge commit → verify → 일반 push
+  - 실패하면 merge를 중단하고 worktree·PR을 보존한 채 멈춘다.
+  - Git이 깨끗하게 합친 변경은 PR CI와 리뷰가 확인하고, 문제가 있으면 같은 replay를 쓴다.
+- **배치 완료 불변식:** War Room은 Stage와 배치/샤드의 완료 사실을 완료 기록과 마지막 머지된 생산 PR로 유지한다.
+  - Polish 이후 파일의 SHA·mtime·바이트·snapshot이 바뀌었다는 이유로 완료를 무효화하거나 재실행·차단하지 않는다.
+  - 완료 파일을 감시하거나 원래 내용으로 되돌리지 않는다.
+  - 지금 반영할 변경의 키별 3-way 확인은 필수다. 그러나 이것은 과거 완료의 재검사와 다르다.
+  - 다음 Stage는 Polish가 반영된 **현재 승인 Relations**를 입력으로 읽는다.
+
+## 7. Build와 검증 경계
 
 `pnpm run build`는 **Canonical JSONL + 승인된 Relations JSONL**을 읽어 Full/Lite SQLite를 결정적으로 생성한다. **Candidate 파일을 직접 읽어 DB를 만들지 않는다.** STDICT 원본 및 공식 `direct/antonym`은 보존하고, text-only/양방향 관계/방향별 Tier/UI 그룹·정렬을 공통 검증한다.
 
