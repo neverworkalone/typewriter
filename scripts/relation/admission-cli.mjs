@@ -25,6 +25,8 @@ import {
   loadOptionalRelationJsonl,
   loadShard,
   loadShardTouchingDrops,
+  loadTouchingExclusions,
+  loadOptionalExclusionJsonl,
   loadShardTouchingRelations,
   mergeCandidates,
   normalizeCandidate,
@@ -44,7 +46,9 @@ import {
   AdmissionVerifyError,
 } from './admission.mjs';
 import { parseCandidateJsonl } from './candidate-contract.mjs';
-import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
+import {
+  exclusionKey, parseDropJsonl, parseRelationJsonl, preservedExclusionLines, serializeDropJsonl, serializeRelationJsonl,
+} from './persisted-jsonl.mjs';
 
 const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 [--batch 01] [--out <file.json>] [--allow-partial]
@@ -831,6 +835,8 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
       const otherPair = otherIdPairs.get(key) ?? otherIdPairs.get(reverse);
       if (otherPair) {
         if (mergeOtherReciprocals && isConsistentReciprocalIdRelation(otherPair, row)) {
+          // #8784: a Polish pair already covers both directions' exact Candidates and never carries assignment evidence.
+          if (otherPair.polish === true) continue;
           if ([0, 1].includes(otherPair.candidate_assignment_version)) {
             otherPair.candidate_forms = [...new Set([...(otherPair.candidate_forms ?? []), ...row.reverse_candidate_forms])];
             otherPair.reverse_candidate_forms = [...new Set([...(otherPair.reverse_candidate_forms ?? []), ...row.candidate_forms])];
@@ -858,6 +864,7 @@ function collectMergeConflicts(checkpoint, existingRelations, existingDrops, new
           && existingPair.target_record_id === row.target_record_id
           && existingPair.target_sense_id === row.target_sense_id;
         if (!sameOrientation && isConsistentReciprocalIdRelation(existingPair, row)) {
+          if (existingPair.polish === true) continue;
           if ([0, 1].includes(existingPair.candidate_assignment_version)) {
             existingPair.candidate_forms = [...new Set([
               ...(Array.isArray(existingPair.candidate_forms) ? existingPair.candidate_forms : []),
@@ -1254,13 +1261,14 @@ async function runCommand(options, root, timing) {
   timing?.end();
   const { canonicalRows, index } = loaded;
   if (options.relationsOnly) {
-    const [relationRows, dropRows, otherRelationRows] = await Promise.all([
+    const [relationRows, dropRows, exclusionRows, otherRelationRows] = await Promise.all([
       loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot)),
       loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot)),
+      loadOptionalExclusionJsonl(shardDropPath(options.shard, repositoryRoot)),
       loadApprovedRelations(repositoryRoot, { exceptShard: options.shard }),
     ]);
     const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-    validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows });
+    validateRelationRows({ relationRows, dropRows, exclusionRows, index, shardSenseIds, otherRelationRows });
     const payload = { version: 1, ok: true, scope: 'relation-integrity', shard: options.shard,
       counts: { relations: relationRows.length, drops: dropRows.length } };
     console.log(JSON.stringify(payload));
@@ -1287,11 +1295,13 @@ async function runCommand(options, root, timing) {
     // A re-run must not re-offer what is already decided: this shard's own approved rows and real Drops count too.
     const own = await loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot));
     const ownDrops = await loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot));
+    const exclusionRows = await loadTouchingExclusions(repositoryRoot, { senseIds: shardSenseIds(canonicalRows) });
     const result = prepareShard({
       canonicalRows,
       candidateFiles,
       approvedRelationRows: [...others, ...own],
       dropRows: ownDrops,
+      exclusionRows,
       index,
       scopeRows,
       includePartiallyCovered: Boolean(options.part),
@@ -1320,6 +1330,7 @@ async function runCommand(options, root, timing) {
               text: candidate.text,
               producers: candidate.producers,
               same_spelling_targets: sameSpellingTargets(index, candidate.text),
+              ...(candidate.polish_excluded ? { polish_excluded: candidate.polish_excluded } : {}),
               ...(alreadyAccounted ? {
                 already_accounted: true,
                 existing_target_sense_ids: candidate.existing_target_sense_ids,
@@ -1356,7 +1367,8 @@ async function runCommand(options, root, timing) {
   timing?.start('relation_validation');
   const relationRows = await loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot));
   const dropRows = await loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot));
-  validateRelationRows({ relationRows, dropRows, index, shardSenseIds: shardSenseIds(canonicalRows), otherRelationRows: others,
+  const exclusionRows = await loadOptionalExclusionJsonl(shardDropPath(options.shard, repositoryRoot));
+  validateRelationRows({ relationRows, dropRows, exclusionRows, index, shardSenseIds: shardSenseIds(canonicalRows), otherRelationRows: others,
     actionTargetPosSenseIds: options.part ? new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id))) : null });
   timing?.end();
   timing?.start('accounting');
@@ -1531,6 +1543,7 @@ function renderCompactChunk(checkpoint, pending) {
     '# P\tapproved peer: type\trelevance\ttarget_sense_id lemma pos gloss | text',
     '# Q\tsaved decision of an earlier candidate of the same source sense',
     '# c<n>\tcandidate\tproducers\tsame-spelling target aliases (- = none)',
+    '# X\tc<n> earlier Polish exclusion of exactly these targets / this text: soft context, re-approve only on new evidence',
     ...(usesSourceMirrorTypeTier(checkpoint) ? SOURCE_MIRROR_COMPACT_DECISION_GRAMMAR : COMPACT_DECISION_GRAMMAR)
       .map((rule) => `# decision: ${rule}`),
     '',
@@ -1543,7 +1556,11 @@ function renderCompactChunk(checkpoint, pending) {
       lines.push(compactLine('P', peer.type, peer.relevance, 'text' in peer ? peer.text : `${peer.target_sense_id} ${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`));
     }
     for (const candidate of item.candidates.slice(0, slice.start)) lines.push(compactLine('Q', candidate.text, ...compactSavedDecision(candidate.decision, checkpoint)));
-    for (const row of rows) lines.push(compactLine(row.alias, row.candidate.text, row.candidate.producers.join(','), row.targets.length ? row.targets.join(',') : '-'));
+    for (const row of rows) {
+      lines.push(compactLine(row.alias, row.candidate.text, row.candidate.producers.join(','), row.targets.length ? row.targets.join(',') : '-'));
+      const excluded = row.candidate.polish_excluded;
+      if (excluded) lines.push(compactLine('X', row.alias, [...(excluded.target_sense_ids ?? []), ...(excluded.text ? ['text'] : [])].join(',')));
+    }
   }
   return `${lines.join('\n')}\n`;
 }
@@ -2877,12 +2894,32 @@ function selectedRelationState(state, senseIds) {
   } catch (error) { throw new Error(`cannot parse premerge Relation snapshot: ${error.message}`); }
 }
 
-function serializedJsonlState(rows, baseline, family) {
-  if (rows.length === 0 && !baseline.exists) return { exists: false, bytes: Buffer.alloc(0), sha256: null };
-  const text = family === 'Relation' ? serializeRelationJsonl(rows) : serializeDropJsonl(rows);
+// #8784: Drop rows parse without Polish exclusion `p` lines, so a whole-file Drop write keeps the baseline's `p` lines
+// verbatim after the Candidate Drops, except a `p` whose exact pair/text the written Relations now re-approve.
+function keptExclusionLines(baseline, relations) {
+  if (!baseline.exists) return [];
+  const lines = preservedExclusionLines(baseline.bytes.toString('utf8'));
+  if (!lines.length) return lines;
+  const approved = new Set(relations.map(exclusionKey));
+  return lines.filter((line) => !approved.has(exclusionKey(parseDropExclusionLine(line))));
+}
+
+const parseDropExclusionLine = (line) => {
+  const row = JSON.parse(line);
+  return 'tt' in row ? { source_sense_id: row.sid, text: row.tt } : { source_sense_id: row.sid, target_sense_id: row.tsid };
+};
+
+function serializedJsonlState(rows, baseline, family, { relations = [] } = {}) {
+  const exclusions = family === 'Drop' ? keptExclusionLines(baseline, relations) : [];
+  if (rows.length === 0 && exclusions.length === 0 && !baseline.exists) return { exists: false, bytes: Buffer.alloc(0), sha256: null };
+  const text = (family === 'Relation' ? serializeRelationJsonl(rows) : serializeDropJsonl(rows))
+    + (exclusions.length ? `${exclusions.join('\n')}\n` : '');
   const bytes = Buffer.from(text, 'utf8');
   return { exists: true, bytes, sha256: sha256(bytes) };
 }
+
+const exclusionsReapproved = (baseline, relations) => baseline.exists
+  && preservedExclusionLines(baseline.bytes.toString('utf8')).length !== keptExclusionLines(baseline, relations).length;
 
 async function snapshotState(file, expected, current, status, family) {
   let snapshot;
@@ -3066,8 +3103,8 @@ async function materializePart(checkpoint, root, baseline, preparedCandidateMerg
   timing?.start('serialization');
   const relations = sameRows(merged.relations, existingRelations)
     ? baseline.relations : serializedJsonlState(merged.relations, baseline.relations, 'Relation');
-  const drops = sameRows(merged.drops, existingDrops)
-    ? baseline.drops : serializedJsonlState(merged.drops, baseline.drops, 'Drop');
+  const drops = sameRows(merged.drops, existingDrops) && !exclusionsReapproved(baseline.drops, merged.relations)
+    ? baseline.drops : serializedJsonlState(merged.drops, baseline.drops, 'Drop', { relations: merged.relations });
   timing?.end();
   return { relations, drops, merged, existingRelations, existingDrops };
 }

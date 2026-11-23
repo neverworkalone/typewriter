@@ -7,8 +7,9 @@ import { buildTargetIndex, parseArrowReference, resolveArrowTarget } from '../bu
 import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
 import {
   ADMISSION_TYPES, ASSIGNED_ID_ROW_KEYS, DROP_REASONS, DROP_ROW_KEYS, LEGACY_ID_ROW_KEYS, TEXT_ROW_KEYS, isText,
-  dropRowFieldErrors, dropRowShapeError, parseDropJsonl, parseDropJsonlLinesMatching, parseRelationJsonl, parseRelationJsonlLinesMatching,
-  relationPairKey, relationRowFieldErrors, relationRowShapeError, relationTextKey,
+  dropRowFieldErrors, dropRowShapeError, exclusionKey, exclusionRowFieldErrors, exclusionRowShapeError,
+  parseDropExclusionJsonl, parseDropExclusionJsonlLinesMatching, parseDropJsonl, parseDropJsonlLinesMatching, parseRelationJsonl,
+  parseRelationJsonlLinesMatching, relationPairKey, relationRowFieldErrors, relationRowShapeError, relationTextKey,
 } from './persisted-jsonl.mjs';
 
 export { normalizeCandidate };
@@ -427,7 +428,7 @@ export class AdmissionVerifyError extends Error {
  * `actionTargetPosSenseIds` (#5178): source Senses whose `action` ID rows must target a verb/expression Sense. Only the
  * Stage 2 Part verify passes it; historical approved rows, the build and Stage 3 keep their existing contract.
  */
-export function validateRelationRows({ relationRows, dropRows = [], index, shardSenseIds, otherRelationRows = [], actionTargetPosSenseIds = null }) {
+export function validateRelationRows({ relationRows, dropRows = [], exclusionRows = [], index, shardSenseIds, otherRelationRows = [], actionTargetPosSenseIds = null }) {
   const errors = [];
   const seenPairs = new Map();
   const pairKey = relationPairKey;
@@ -510,8 +511,30 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     dropSeen.add(key);
   });
 
+  // #8784 Polish exclusions: exact Sense pair or source Sense + text, owned by the source Sense's shard. Soft context only.
+  const exclusionSeen = new Set();
+  exclusionRows.forEach((row, position) => {
+    const at = `exclusion:${position + 1}`;
+    const shapeError = exclusionRowShapeError(row, at);
+    if (shapeError) { errors.push(shapeError); return; }
+    const source = checkSource(row, at);
+    const fieldErrors = exclusionRowFieldErrors(row, at);
+    errors.push(...fieldErrors);
+    if (fieldErrors.length) return;
+    if ('text' in row) {
+      if (source && row.text === normalizeCandidate(source.record.lemma)) errors.push(`${at}: text repeats the source lemma`);
+    } else {
+      const target = index.senses.get(row.target_sense_id);
+      if (!target || target.record.id !== row.target_record_id) errors.push(`${at}: target_sense_id ${row.target_sense_id} is not a sense of ${row.target_record_id}`);
+      else if (row.target_record_id === row.source_record_id) errors.push(`${at}: exclusion targets its own record`);
+    }
+    const key = exclusionKey(row);
+    if (exclusionSeen.has(key)) errors.push(`${at}: duplicate Polish exclusion ${row.source_sense_id} -> ${row.text ?? row.target_sense_id}`);
+    exclusionSeen.add(key);
+  });
+
   if (errors.length > 0) throw new AdmissionVerifyError('rows', errors, `Relation Admission rows are invalid:\n${errors.map((error) => `- ${error}`).join('\n')}`);
-  return { relationCount: relationRows.length, dropCount: dropRows.length };
+  return { relationCount: relationRows.length, dropCount: dropRows.length, ...(exclusionRows.length ? { exclusionCount: exclusionRows.length } : {}) };
 }
 
 /**
@@ -532,8 +555,11 @@ export function existingCandidateKeys(relationRows, index) {
  * claims in accounting, so they cannot override a separately decided candidate.
  */
 export function relationCandidateKeys(row, merged, index) {
+  // #8784: a Polish Relation is Candidate-independent. Its forward keys are only covers (`cover: true`), never Stage 1
+  // claims: accounting lets them answer exactly the Candidate spellings of the bound target and nothing else.
+  const polish = row.polish === true;
   if ('text' in row) return {
-    forward: [{ senseId: row.source_sense_id, candidate: normalizeCandidate(row.text), kind: 'text', direction: 'forward' }],
+    forward: [{ senseId: row.source_sense_id, candidate: normalizeCandidate(row.text), kind: 'text', direction: 'forward', ...(polish ? { cover: true } : {}) }],
     reverse: [],
     reverseAliases: [],
     deferredForward: [],
@@ -542,6 +568,19 @@ export function relationCandidateKeys(row, merged, index) {
   const source = index.byId.get(row.source_record_id);
   const target = index.byId.get(row.target_record_id);
   if (!source || !target) return { forward: [], reverse: [], reverseAliases: [], deferredForward: [] };
+  if (polish) {
+    const sourceCandidates = merged?.get(row.source_sense_id)?.candidates;
+    return {
+      forward: legacyCandidateFormsForRecord(target, index).filter((form) => !sourceCandidates || sourceCandidates.has(form)).map((candidate) => ({
+        senseId: row.source_sense_id, candidate, kind: 'id', direction: 'forward', targetSenseId: row.target_sense_id, cover: true,
+      })),
+      reverse: legacyCandidateFormsForRecord(source, index).map((candidate) => ({
+        senseId: row.target_sense_id, candidate, kind: 'id', direction: 'reverse', targetSenseId: row.source_sense_id,
+      })),
+      reverseAliases: [],
+      deferredForward: [],
+    };
+  }
   const sourceCandidates = merged?.get(row.source_sense_id)?.candidates;
   let forward;
   let deferredForward = [];
@@ -580,10 +619,10 @@ export function relationCandidateKeys(row, merged, index) {
 /** Existing approved candidate links, retaining the exact target sense and assigned spellings when present. */
 function existingCandidateLinks(relationRows, index, merged = null) {
   const links = new Map();
-  const add = ({ senseId, candidate, kind, targetSenseId, direction }) => {
+  const add = ({ senseId, candidate, kind, targetSenseId, direction, cover = false }) => {
     const key = `${senseId}\u0000${normalizeCandidate(candidate)}`;
     const link = { kind, ...(targetSenseId ? { targetSenseId } : {}),
-      why: kind === 'text' ? 'text-only' : direction === 'reverse' ? 'id-reverse' : 'id-forward' };
+      why: cover ? 'polish' : kind === 'text' ? 'text-only' : direction === 'reverse' ? 'id-reverse' : 'id-forward' };
     links.set(key, [...(links.get(key) ?? []), link]);
   };
   for (const row of relationRows) {
@@ -600,7 +639,7 @@ function existingCandidateLinks(relationRows, index, merged = null) {
  * the ordinary row and accounting validators before persisting the result.
  */
 export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRows = canonicalRows, removedRelationRows = [],
-  relationRows = [], dropRows = [], index, candidateMerge = null }) {
+  relationRows = [], dropRows = [], index, candidateMerge = null, includeText = false }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
   const candidates = candidateMerge ?? mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
   const { merged } = candidates;
@@ -609,7 +648,17 @@ export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRow
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const orphaned = new Map();
   for (const removed of removedRelationRows) {
-    if ('text' in removed) continue;
+    if ('text' in removed) {
+      // Text rows own one exact key; the Stage 3 refine core keeps its own text path, Polish asks for it here (#8784).
+      if (!includeText) continue;
+      const candidate = normalizeCandidate(removed.text);
+      const mapKey = `${removed.source_sense_id}\u0000${candidate}`;
+      const found = index.senses.get(removed.source_sense_id);
+      if (!found || found.record.id !== removed.source_record_id || !scopeSenses.has(removed.source_sense_id)
+          || !merged.get(removed.source_sense_id)?.candidates.has(candidate) || covered.has(mapKey) || dropped.has(mapKey)) continue;
+      orphaned.set(mapKey, { source_record_id: removed.source_record_id, source_sense_id: removed.source_sense_id, candidate, reason: 'z' });
+      continue;
+    }
     const source = index.senses.get(removed.source_sense_id);
     const target = index.senses.get(removed.target_sense_id);
     if (!source || source.record.id !== removed.source_record_id || !target || target.record.id !== removed.target_record_id) {
@@ -634,12 +683,13 @@ export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRow
  * the Part workflow, partially covered candidates remain visible for optional additional links to unlinked senses.
  * Never an editorial judgement; nothing is dropped here.
  */
-export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index, scopeRows = canonicalRows, includePartiallyCovered = false }) {
+export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], exclusionRows = [], index, scopeRows = canonicalRows, includePartiallyCovered = false }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
   const { merged, rawCandidateCountBySense } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
   const rawCandidateCount = rawCandidateCountForScope(rawCandidateCountBySense, scopeRows);
   const covered = existingCandidateLinks(approvedRelationRows, index, merged);
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
+  const exclusionKeys = new Set(exclusionRows.map(exclusionKey));
   let referenceTargets = null;
   const targetIndex = { get: (lemma) => (referenceTargets ??= buildTargetIndex([...index.byId.values()], () => true)).get(lemma) };
   const items = [];
@@ -676,7 +726,9 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
           continue;
         }
         if (dropped.has(`${sense.id}\u0000${text}`)) { stats.skipped_dropped += 1; continue; }
-        fresh.push({ text, producers, same_spelling_records: targetRecords.map((target) => target.id) });
+        // #8784: a prior Polish exclusion is soft context for the judgment, never a hard rejection.
+        const polishExcluded = exclusionKeys.size ? polishExclusionContext(exclusionKeys, sense.id, text, targetSenseIds) : null;
+        fresh.push({ text, producers, same_spelling_records: targetRecords.map((target) => target.id), ...(polishExcluded ? { polish_excluded: polishExcluded } : {}) });
       }
       if (fresh.length === 0 && partiallyCovered.length === 0) continue;
       const referenceGloss = sourceReferenceGloss(sense.gloss, targetIndex)
@@ -805,10 +857,18 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     const entry = merged.get(senseId);
     if (!entry || !entry.candidates.has(text)) errors.push(`${at}: ${JSON.stringify(text)} is not a Stage 1 candidate of ${senseId}`);
   };
+  // #8784: this shard's Polish rows answer exactly matching Candidates like an already-approved Relation, without a claim.
+  const polishLinks = new Map();
   relationRows.forEach((row, position) => {
     const at = `relation:${position + 1}`;
     const keys = relationCandidateKeys(row, merged, index);
     for (const key of keys.forward) {
+      if (key.cover) {
+        const coverKey = `${key.senseId}\u0000${key.candidate}`;
+        polishLinks.set(coverKey, [...(polishLinks.get(coverKey) ?? []),
+          { kind: key.kind, ...(key.targetSenseId ? { targetSenseId: key.targetSenseId } : {}), why: 'polish' }]);
+        continue;
+      }
       claim(key.senseId, key.candidate, key.kind === 'text' ? 'a text-only relation' : 'an ID relation',
         { kind: key.kind, ...(key.targetSenseId ? { targetSenseId: key.targetSenseId } : {}) }, at);
     }
@@ -838,7 +898,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   // Relation, Drop, or already-approved relation owns that Candidate.
   for (const alias of deferredSearchAliasClaims) {
     const key = `${alias.source_sense_id}\u0000${alias.form}`;
-    if ((claimed.get(key)?.length ?? 0) > 0 || approvedLinks.has(key) || reverseCovered.has(key)) continue;
+    if ((claimed.get(key)?.length ?? 0) > 0 || approvedLinks.has(key) || polishLinks.has(key) || reverseCovered.has(key)) continue;
     claim(alias.source_sense_id, alias.form, 'an ID relation', alias.link, alias.at);
   }
 
@@ -851,7 +911,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
         counts.unique += 1;
         const key = `${sense.id}\u0000${text}`;
         const claims = claimed.get(key) ?? [];
-        const approved = approvedLinks.get(key) ?? [];
+        const approved = [...(approvedLinks.get(key) ?? []), ...(polishLinks.get(key) ?? [])];
         const reverse = reverseCovered.get(key) ?? [];
         if (claims.length > 0) {
           const priorApproval = approved.find((link) => claims.some((claim_) => !canShareCandidate(claim_.link, link)));
@@ -918,7 +978,7 @@ export function shardSenseIds(canonicalRows) {
 
 // One global pattern per Sense set: a line is decoded when it holds one of these Senses as a whole quoted JSON string.
 const senseTokenPatterns = new WeakMap();
-function senseTokenPattern(senseIds) {
+export function senseTokenPattern(senseIds) {
   if (!senseTokenPatterns.has(senseIds)) {
     const ids = [...senseIds].sort((left, right) => right.length - left.length || left.localeCompare(right));
     const escaped = ids.map((id) => JSON.stringify(id).slice(1, -1).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'));
@@ -962,6 +1022,32 @@ export async function loadShardTouchingDrops(root = REPOSITORY_DIRECTORY, { exce
     }
   }
   return rows;
+}
+
+/** Polish exclusion `p` rows of every Drop file that name a Sense of `senseIds` on either side (#8784). */
+export async function loadTouchingExclusions(root = REPOSITORY_DIRECTORY, { senseIds }) {
+  const directory = path.join(root, 'data/relation-drops');
+  const rows = [];
+  for (const name of await shardFiles(directory, /^drop-\d{3}\.jsonl$/u, null)) {
+    const contents = await readFile(path.join(directory, name), 'utf8');
+    if (!contents.includes('"by":"p"')) continue;
+    for (const { row } of parseDropExclusionJsonlLinesMatching(contents, name, senseTokenPattern(senseIds))) {
+      if (senseIds.has(row.source_sense_id) || ('target_sense_id' in row && senseIds.has(row.target_sense_id))) rows.push(row);
+    }
+  }
+  return rows;
+}
+
+export async function loadOptionalExclusionJsonl(file) {
+  return existsSync(file) ? parseDropExclusionJsonl(await readFile(file, 'utf8'), path.basename(file)) : [];
+}
+
+/** Polish exclusion context of one source Sense candidate: excluded exact target Senses and/or the excluded text. */
+export function polishExclusionContext(exclusionRowsOrKeys, senseId, text, targetSenseIds) {
+  const keys = exclusionRowsOrKeys instanceof Set ? exclusionRowsOrKeys : new Set(exclusionRowsOrKeys.map(exclusionKey));
+  const excludedTargets = targetSenseIds.filter((targetSenseId) => keys.has(exclusionKey({ source_sense_id: senseId, target_sense_id: targetSenseId })));
+  const excludedText = keys.has(exclusionKey({ source_sense_id: senseId, text }));
+  return excludedTargets.length || excludedText ? { ...(excludedTargets.length ? { target_sense_ids: excludedTargets } : {}), ...(excludedText ? { text: true } : {}) } : null;
 }
 
 export async function loadOptionalRelationJsonl(file) {

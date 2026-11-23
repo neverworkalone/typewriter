@@ -211,6 +211,24 @@ test('the same approved Relations reproduce the same relation rows', async () =>
   assert.equal(await dump(), await dump());
 });
 
+test('#8784 Polish `by:"p"` Relations load and build exactly like the same unmarked Relations', async () => {
+  const dump = async (rows) => {
+    const built = await build(rows);
+    try {
+      const db = new DatabaseSync(built.lite, { readOnly: true });
+      const value = JSON.stringify([
+        db.prepare('SELECT * FROM meaning_relations ORDER BY source_meaning_id, position').all(),
+        db.prepare('SELECT * FROM meaning_text_relations ORDER BY source_meaning_id, position').all(),
+      ]);
+      db.close();
+      return value;
+    } finally {
+      await rm(built.directory, { recursive: true, force: true });
+    }
+  };
+  assert.equal(await dump([idRow({ polish: true }), textRow({ polish: true })]), await dump([idRow(), textRow()]));
+});
+
 test('a second sense of the same meaning reaching the same pair/type keeps the best tier once', async () => {
   const built = await build([idRow({ relevance: 5 })], { files: { '002': [
     idRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w003', target_sense_id: 'w003-s1', relevance: 2 }),

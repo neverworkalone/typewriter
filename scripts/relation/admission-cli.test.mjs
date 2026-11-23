@@ -3643,3 +3643,30 @@ test('a same-checkpoint text-only relation owns its candidate so a new ID pair a
   const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
   assert.equal(verified.missing, 0);
 });
+
+test('#8784 Stage 2 shows Polish exclusions as soft context and a Part merge keeps them unless it re-approves the same text', async (t) => {
+  const { root } = await sixCandidateRepository(t);
+  const pairExclusion = '{"id":"w1","sid":"w1-s1","tid":"w2","tsid":"w2-s1","by":"p"}';
+  const textExclusion = '{"id":"w1","sid":"w1-s1","tt":"첫 이미지","by":"p"}';
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), `${pairExclusion}\n${textExclusion}\n`);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const excluded = prepared.items[0].candidates.filter((candidate) => candidate.polish_excluded).map((candidate) => [candidate.text, candidate.polish_excluded]);
+  assert.deepEqual(excluded, [['첫 이미지', { text: true }]]);
+  const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
+  const alias = compact.text.split('\n').find((line) => line.includes('\t첫 이미지\t')).split('\t')[0];
+  assert.ok(compact.text.includes(`X\t${alias}\ttext\n`), 'the exclusion is shown under its candidate');
+
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const decisions = chunk.items.flatMap((item) => item.candidates.map((candidate) => (candidate.text === '첫 이미지'
+    ? { source_sense_id: item.sense_id, candidate: candidate.text, disposition: 'relation', type: 'scene', relevance: 3 }
+    : { source_sense_id: item.sense_id, candidate: candidate.text, disposition: 'drop', reason: 'e' })));
+  await writeFile(path.join(root, '.warroom-scratch/decisions.json'), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', '.warroom-scratch/decisions.json'], { root }));
+  await mergeForTest(root, checkpoint);
+  const dropText = await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8');
+  assert.equal(dropText.split('\n').filter((line) => line.includes('"by":"p"')).join('\n'), pairExclusion, 'the re-approved text exclusion is cleared, the pair one kept');
+  assert.equal((await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'))).length, 5);
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.equal(counts.missing, 0);
+});

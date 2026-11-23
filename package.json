@@ -33,6 +33,7 @@
     "relation:admission": "node scripts/relation/admission-cli.mjs",
     "relation:edit": "node scripts/relation/edit-cli.mjs",
     "relation:relink": "node scripts/relation/relink-cli.mjs",
+    "relation:polish": "node scripts/relation/polish-cli.mjs",
     "relation:candidate-workbench": "node scripts/relation/candidate-workbench.mjs",
     "relation:literary": "node scripts/relation/literary-context-cli.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",

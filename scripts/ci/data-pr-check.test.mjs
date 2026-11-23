@@ -63,10 +63,18 @@ test('pure data PR check accepts valid files and rejects storage-contract or sco
     const dropPath = 'data/relation-drops/drop-007.jsonl';
     const valid = await check(repo, { [relationPath]: jsonl([RELATION]), [dropPath]: jsonl([DROP]) });
     assert.deepEqual(valid().results.map((item) => item.rows), [1, 1]);
+    // #8784 Polish rows: `by:"p"` Relations and `p` exclusions share the files and keep their own row contract.
+    const polish = await check(repo, {
+      [relationPath]: jsonl([RELATION, { id: 'w100', sid: 'w100-s1', tid: 'w900', tsid: 'w900-s2', tp: 'near', rv: 2, by: 'p' }]),
+      [dropPath]: jsonl([DROP, { id: 'w100', sid: 'w100-s1', tid: 'w200', tsid: 'w200-s1', by: 'p' }, { id: 'w100', sid: 'w100-s1', tt: '찬 기운', by: 'p' }]),
+    });
+    assert.deepEqual(polish().results.map((item) => [item.path, item.rows]), [[dropPath, 3], [relationPath, 2]]);
 
     const invalid = [
       [{ [relationPath]: jsonl([{ ...RELATION, rv: 10 }]) }, /relevance must be an integer 1\.\.9/u],
       [{ [dropPath]: jsonl([{ ...DROP, by: 'q' }]) }, /reason must be one of x\/e\/z\/f/u],
+      [{ [dropPath]: jsonl([{ id: 'w100', sid: 'w100-s1', tid: 'w100', tsid: 'w100-s1', by: 'p' }]) }, /targets its own record/u],
+      [{ [dropPath]: jsonl([{ id: 'w100', sid: 'w100-s1', tt: '찬 기운', by: 'p' }, { id: 'w100', sid: 'w100-s1', tt: '찬  기운', by: 'p' }]) }, /text must be a non-empty normalized string/u],
       [{ [relationPath]: jsonl([{ ...RELATION, id: 'w300', sid: 'w300-s1' }]) }, /not in Canonical shard 007/u],
       [{ [relationPath]: jsonl([{ ...RELATION, tid: 'w9', tsid: 'w9-s1' }]) }, /is not a Canonical ID/u],
       [{ [relationPath]: jsonl([{ id: 'w100', sid: 'w100-s1', tt: '바람', tp: 'mood', rv: 3 }]) }, /repeats the source lemma/u],
