@@ -2,10 +2,10 @@
 
 Typewriter 관계 제작은 **후보 발굴 → Stage 2 최종 편집·승인 → Stage 3 독립 감사·교정 → DB 빌드**로 분리한다. STDICT Canonical JSONL처럼 생성한 **Candidate JSONL을 영구 보관**하고, 이후 원본 문학·말뭉치 DB를 다시 검색하지 않고 Relations를 편집한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)를 따른다.
 
-**1회성 전체 초기화 (오너 결정, Issue #1154):** 영구 보관·소급 수정 금지 원칙의 유일한 예외로, 오너가 기존 생산 데이터를 `candidate` 브랜치(2af4d21a)에 보관한 뒤 구형 A/B/C/D 정식 Candidate 236개, 승인 authored Relation, Drop 판정을 모두 삭제했다. A/B/C/D 모든 방식의 진행 위치는 `001_01`부터 재시작하며(A/B는 모델별, C/D는 방식별 공유 진행 위치 유지), 구형 Relation/Drop은 새 후보 생산 후 Stage 2에서 다시 판정한다. 초기화 이후 머지된 Candidate에는 영구 보관 원칙이 다시 적용된다.
+**1회성 전체 초기화(#1154):** 영구 보관 원칙의 유일한 예외로 구형 Candidate·승인 Relation·Drop을 `candidate` 브랜치(2af4d21a)에 보관한 뒤 삭제하고 `001_01`부터 다시 생산했다. 그 이후 머지된 Candidate는 영구 보관한다.
 
 ```text
-Stage 1 — Candidate Generation: A / B / C / D 독립 병렬 생산
+Stage 1 — Candidate Generation (완료, 856배치): A / B / C / D 독립 병렬 생산
     → data/relation-candidates/<shard>/<shard>_<batch>_<method>_<model>.jsonl
 Stage 2 — Relation Admission: 후보 통합 → 채택/제외 → 타입/Tier/대상 확정
     → 승인 Relations / Drops JSONL (샤드 단위)
@@ -16,7 +16,7 @@ Polish (#8777, #8784): 단어별 승인 Relation 직접 Add/Drop/Set — Stage �
 pnpm run build: Canonical + 최종 Relations → Full / Lite SQLite
 ```
 
-**A/B/C/D는 생성 방법의 이름이며 Stage 번호가 아니다.** A와 B는 합쳐서 실행하지 않는다. C와 D도 앞 단계 결과를 누적하거나 수정하지 않는다. Stage 1 후보에는 타입·Tier·승인 상태·대상 ID가 없고, Stage 2는 새로운 후보를 탐색하지 않는다.
+**A/B/C/D는 생성 방법의 이름이며 Stage 번호가 아니다.** Stage 1 후보에는 타입·Tier·승인 상태·대상 ID가 없고, Stage 2는 새로운 후보를 탐색하지 않는다.
 
 ## 1. 범위와 파일
 
@@ -35,8 +35,8 @@ data/relation-candidates/
     001_01_b_claude.jsonl
     001_01_c_codex.jsonl
     001_01_d_codex.jsonl
-    001_01_a_deepseek.jsonl  # 선택
-    001_01_b_deepseek.jsonl  # 선택
+    001_01_a_deepseek.jsonl
+    001_01_b_deepseek.jsonl
     001_02_a_codex.jsonl
     ...
   002/
@@ -45,85 +45,26 @@ data/relation-candidates/
     ...
 ```
 
-경로 계약: `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`. 샤드 3자리, 배치 2자리(`01`/`02`), method는 `a|b|c|d`, model은 실행한 모델 이름의 소문자 식별자. **A/B는 500레코드 배치·방식·모델당 하나의 파일**, **C/D는 모델을 가리지 않고 500레코드 배치·방식당 하나의 파일**을 허용한다. 실제 생산 모델은 파일명에 남긴다. 배치별 하위 폴더는 만들지 않는다. **War Room 정식 Stage 1 생산은 지정된 배치·방식·모델의 Candidate 파일 하나를 PR 하나로 제출**하고, Stage 2는 `(shard, batch, part)`마다 PR 하나를 제출한다. Part 안의 primary 판정은 War Room Supervisor가 오너 설정(`stage2_chunk_candidates` 기본 250, `stage2_max_parallel` 기본 16) 범위에서 고정 task로 나누어 병렬 실행할 수 있으며(#3047), checkpoint 저장은 Supervisor의 단일 경로가 `save-chunk --task`로 맡는다. 판정 기준·검증·리뷰 게이트와 Part당 PR 계약은 바뀌지 않는다. 이는 기존 파일 형식이나 별도 수정 PR의 범위를 바꾸지 않는다.
+경로 계약: `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`. 샤드 3자리, 배치 2자리(`01`/`02`), method는 `a|b|c|d`, model은 실행한 모델 이름의 소문자 식별자. **A/B는 500레코드 배치·방식·모델당 하나의 파일**, **C/D는 모델을 가리지 않고 500레코드 배치·방식당 하나의 파일**을 허용한다. 실제 생산 모델은 파일명에 남긴다. 배치별 하위 폴더는 만들지 않는다. Stage 2는 `(shard, batch, part)`마다 PR 하나를 제출한다. Part 안의 primary 판정은 War Room Supervisor가 오너 설정(`stage2_chunk_candidates` 기본 250, `stage2_max_parallel` 기본 16) 범위에서 고정 task로 나누어 병렬 실행할 수 있으며(#3047), checkpoint 저장은 Supervisor의 단일 경로가 `save-chunk --task`로 맡는다. 판정 기준·검증·리뷰 게이트와 Part당 PR 계약은 바뀌지 않는다. 이는 기존 파일 형식이나 별도 수정 PR의 범위를 바꾸지 않는다.
 
-## 2. Stage 1 — Candidate Generation
+## 2. Stage 1 — Candidate Generation (완료)
 
-| 방식 | 후보 발굴 방법 | 생산자 |
-| --- | --- | --- |
-| **A** | 정확한 Canonical sense/뜻풀이에서 직접 생성 | Codex, Claude |
-| **B** | 출발 sense에 맞는 가상 장면을 구성하고 후보 추출 | Codex, Claude |
-| **C** | 기존 문학 SQLite의 실제 문맥 참조 — 상세 절차 [#1155](https://github.com/neverworkalone/typewriter/issues/1155) | 배치별 오너 지정 Codex·Claude·DeepSeek 중 한 모델 |
-| **D** | 기존 문어 말뭉치 SQLite의 실제 문맥 참조 — 상세 절차 [#1156](https://github.com/neverworkalone/typewriter/issues/1156) | 배치별 오너 지정 Codex·Claude·DeepSeek 중 한 모델 |
+856개 배치의 Candidate가 모두 master에 머지되었다. A/B는 모델별(Codex·Claude·DeepSeek) 파일, C/D는 방식당 한 파일이다. 이 파일들은 Stage 2 입력으로 **영구 보관**하며, 오너의 새 결정 없이 생산·재생성·수정하지 않는다. 생산 절차(A/B Workbench, C [#1155](https://github.com/neverworkalone/typewriter/issues/1155), D [#1156](https://github.com/neverworkalone/typewriter/issues/1156), `#860` 다음 배치 선택, 후보 표현 단위 생산 계약)는 이 문서에서 제거했고 해당 이슈와 Git 이력에 남아 있다.
 
-- **A와 B는 같은 모델에서도 서로 다른 작업/턴**으로 수행한다. 생산자는 다른 방식·모델의 후보를 읽거나 참조하지 않는다. C와 D 역시 서로 독립적이며, **각 배치의 실제 생산 모델(Codex/Claude/DeepSeek)은 오너가 지정**한다. C/D 완료 여부는 생산 모델에 관계없이 방식별로 공유한다.
-- **DeepSeek A/B**는 오너가 필요하다고 판단할 때 해당 배치·방식에만 추가한다. 추가하지 않은 파일은 미실행이며 `candidates: []`가 아니다.
-- 출발 sense를 정확하게 결속하고, 문학/말뭉치 검색은 해당 자료 이용 조건에 맞게 읽기 전용으로 수행한다. C/D는 원문·발췌문·SQLite를 Git/PR/제품에 포함하지 않는다.
-- 생성 단계에는 채택 개수 목표가 없다. 적합한 후보가 없으면 빈 목록을 그대로 기록한다. **500레코드는 내부적으로 나눠 처리해도 되지만, 최종 후보 파일은 해당 배치 전체를 포함하는 한 파일**이어야 한다.
-
-### A/B batch workbench
-
-A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Canonical chunk reads, whole-chunk Candidate saves, local correction, and the final Candidate v1 validation. It keeps no exploration/review receipts and does not perform semantic discovery or judgment: A follows #860's one comprehensive meaning exploration with an optional second exploration only for a worthwhile unexplored semantic direction, while B follows #860's single-scene exploration procedure. Use the [A/B Candidate workbench manual](relation-candidate-workbench.md) for the shortest CLI path. C production uses its method-specific literary-context CLI; D follows #1156's read-only 25-record chunk direct-search workflow without a dedicated Workbench CLI.
-
-### A/B/C/D 공통 후보 표현 단위 — Stage 1 필수 생산 계약
-
-**가능한 연상은 넓게 보존하되, 쉽게 식별되는 불필요한 형태 변이·파생·반복과 뜻풀이 복사·위장 서술구는 Stage 1에서 제외한다.** Stage 1은 작가가 연상할 수 있는 **독립 단어·어휘와 출발 의미에서 확장된 짧은 장면·심상·감각 표현**을 수집한다. 출발 sense에 설명 가능한 연결이 있다면 익숙한 단어, 느슨한 간접 연상, 다른 품사, 의외의 사물·감각·행동을 후보로 남겨 Stage 2가 가치를 판단하도록 한다. 반대로 단어 몇 개로 후보 수를 맞추는 할당량도 없고, 후보 수를 줄이는 것이 목표도 아니다.
-
-| 후보의 형태 | 모든 A/B/C/D 생산자의 출력 규칙 |
+| 방식 | 후보 발굴 방법 |
 | --- | --- |
-| **독립 단어·어휘 항목** | 폭넓게 허용. 연상의 강함·Tier·개인적 취향을 이유로 미리 삭제하지 않는다. 단, 출발 sense와 설명 가능한 연결 및 독립된 어휘 항목이어야 한다. |
-| **출발 표제어와 후보의 양방향 부분 문자열 포함** | **Stage 1에서 예외 없이 제외한다.** 공백·하이픈을 제거해 비교했을 때 출발 lemma가 후보에 포함되거나 후보가 lemma에 포함되면 무조건 금지한다. 별도 사전 표제어·서로 다른 개념·동음이의어·독립적인 심상·작가에게 쓸모 있는 표현인지 여부도 예외가 아니다. `개→개집`, `반송→반송파`, `눈→눈빛`, `불→불씨`, `꽃→꽃말`, `마흔→마흔 살`, `반자동→반자동식` 모두 제외한다. |
-| **명백한 불필요 형태·파생·반복** | Stage 1 제외 사례: `깜빡대다 → 깜빡이다`(단순 어미·표현 변이), `건축 → 건축가`(분야→직업인 파생), `조퇴하다 → 조퇴`(동일 개념의 명사화), `팔딱하다 → 팔딱팔딱`(독립 효용 없는 반복). **위 양방향 부분 문자열 포함을 제외하면**, 동일 어근·접미사·형태 유사성만으로 기계적 일괄 삭제는 금지한다. `어정대다 → 낙타`처럼 의미·연상 가치 판단이 필요한 관계는 Stage 1에서 제외하지 않고 Stage 2에 전달한다. |
-| **짧은 구·관용구·여러 어절 또는 붙여 쓴 복합 표현** | **검사 목적은 단순 뜻풀이 재서술·가짜 어휘 방지**다. 출발 sense에서 장면·이미지·감각·행동·정서로 의미가 확장되는 간결한 표현은 **흔하고 평범해도 보존**한다(예: `수괘` [서리] → `겨울 아침`, `산뜩` → `가슴 철렁`). 반면 뜻풀이의 속성+범주를 그대로 옮긴 `가는소금 → 하얀 소금`, `가는솜방망이 → 노란 꽃`, 제시어에 단순 수식어를 붙인 `걸음걸이 → 느린 걸음걸이`와 공백만 제거한 위장 구절은 제외한다. **독창성·문학적 우수성·최종 채택 가치는 Stage 2**에서 판단한다. |
-| **문장·서술형 절·사건·동작·과정 설명** | **절대 금지, 최종 후보 0개.** 완결형 문장뿐 아니라 `~하다/~되다` 서술절, 문장에서 종결어미를 지운 파편, 사건·절차 설명을 `일/장면/상황/기술` 등으로 포장한 명사구도 금지. `격벽 → 격벽을 여는 데 에너지가 필요하다`, `겅중 → 긴 다리로 뜀`, `검지기 → 누전이 되면 경보가 울린다` 같은 문구를 그대로 출력하지 않는다. 독립된 동사 어휘(`떨다`, `뛰다`) 자체는 문장이 아니다. |
-| **출발 lemma 자체·괄호 주석만 붙인 동일 표제어** | **절대 금지**. `공탁 → 공탁(供托)` 같은 표기 반복은 별도 어휘가 아니다. |
-
-**생산 방법별 적용:** A는 Canonical 뜻풀이를 더 짧은 설명 문구로 바꾸지 말고 **실제 다른 어휘**를 발굴한다. B는 상상한 **장면의 서술문 자체를 제출하지 않고**, 거기서 **사람·사물·감각·행동 등을 나타내는 독립 단어와 간결한 장면·심상 표현**을 추출한다. 장면을 여는 짧은 표현은 B 방식의 정당한 결과이며, 표현이 평범하다는 이유로 제거하지 않는다. C/D는 VERIFIED된 정확한 source sense의 실제 원문에서 단어·짧은 비서술적 심상을 발굴하며, 원문 문장이나 사건을 Candidate로 복사하지 않는다. 전 방법에서 출발 표제어와 후보 사이에 **양방향 부분 문자열 포함이 있으면 독립 단어·구 여부나 표현 가치와 관계없이 모두 제외**한다. 포함 관계가 없는 나머지 단어·구는 무익한 형태 변이·뜻풀이 재서술인지 개별 검토한다. **간결한 장면·감각 확장은 Stage 1에서 문학적 가치나 독창성으로 가지치기하지 않는다.**
-
-**부분 문자열·동일 어근 후보의 생산자 검사:** 현재 배치의 각 Canonical 표제어와 해당 Sense 후보 사이에 **어느 한쪽이 다른 쪽에 포함되는 경우를 양방향으로 모두 추출**한다(검출 시 공백·하이픈을 제거한다). **양방향 포함 일치가 한 건이라도 있으면 예외 없이 제외**한다. 별도 사전 표제어, 개별 Sense, 다른 개념, 유의어, 연상 가치, 이미지·감정적 효용은 구제 근거가 아니다. 생산자는 제출 전에 이 결과가 **0건**임을 확인해야 한다. 독립적인 PR 리뷰의 검증 방법은 `docs/review/prompts/candidate.md`가 정의한다. `개→개집`, `반송→반송파`, `눈→눈빛`, `불→불씨`, `꽃→꽃말`, `마련하다→마련`, `박제하다/박제되다→박제`, `발버둥질→발버둥`, `반자동→반자동식`, `마흔→마흔 살`은 모두 제외한다. 포함관계로 잡히지 않는 `발라드→발라더` 등 공유 어근·어미·접사·표기 유사 파생은 별도로 찾아 기계적인 변이인지 판정한다. **포함관계 금지는 하드 조건**이며, 다른 공유 어근·접사에 대해 일괄 삭제 규칙을 추가하는 것은 아니다. 과거 머지 데이터에 자동 소급 적용하지 않으며, 신규 생산물의 최초 리뷰에서 확인한다. 수정본 재리뷰는 REVIEW.md의 지적 범위 제한을 유지한다.
-
-**제출 전 모든 후보 문자열 전수 형태 검사:** 최종 `senses[].candidates[]`의 모든 원소를 단어 / 제시어 포함 어휘 / 독립적 응축 구 / 문장·서술 설명 / 정확 자기 반복으로 판별하고, **문장·사건 설명 0건, 자기 반복 0건 및 명백한 불필요 형태·파생 관계 0건**을 확인한다. 제외한 긴 문맥에서 근거 있는 다른 단어를 추출할 수 있으면 추출하고, 없으면 문구로 개수를 채우지 않는다. **전수 형태 검사 중 후보마다 공백 제거형이 같은 source sense 뜻풀이의 연속 구간과 맞는지도 대조한다.** 맞는 경우 원뜻풀이와 비교해 단순히 서술형 구를 붙여 쓴 것인지 판별한다. 이 일치 자체는 검토 신호일 뿐 자동 차단 조건이 아니다. 단 **A 신규·수정 Candidate에서 2어절 이상 후보의 모든 어절이 같은 source sense 뜻풀이의 어절(활용 어미·조사를 뗀 어간)과 같은 순서로 대응하고(`한평생을 지낼 계획`→`평생 계획`, `앉아서 부르다`→`앉아 부르다`) 후보가 독립 Canonical 표제어가 아니면 뜻풀이 재포장으로 보아 `A save-chunk`/`patch`가 AI 재생성 없이 제거하고 Candidate v1 validator(A 파일)가 차단한다**(과거 머지 데이터·Stage 2 입력에는 소급하지 않는다). 뜻풀이에 없는 말로 바꿔 쓴 재서술은 이 규칙이 잡지 못하므로 생산자가 판단한다. 그 밖에는 자동 차단이 아니며, sense에 결속되는 독립 단어·독립 동사·어휘화된 합성어는 그 자체로 제외하지 않는다. **출발 lemma ↔ 후보의 양방향 부분 문자열 포함은 별도 하드 금지 규칙이다.** 그 밖의 후보를 공백 수, `-다` 어미, 어근·접사 유사성만으로 자동 허용·차단하지 않는다. A/B Workbench `save-chunk`/`patch`, C 제출/내보내기, D 저장/내보내기는 기존 저장 경로에서 이 새 포함 규칙에 해당하는 후보를 AI 재생성 없이 제거하고, 유효한 다른 후보와 빈 sense를 보존한다. 기존의 다른 객관적 Candidate 내용 검사는 계속 적용하며, 표현 가치·무익한 파생·뜻풀이 재서술 중 Stage 1 생산의 형식 적격성 판단은 생산자가 수행한다. 독립 PR 리뷰는 `docs/review/prompts/candidate.md`를 따른다. 공통 Candidate v1 제출 validator는 남은 포함 위반을 차단하는 방어선이고, 포함 이외의 문장·뜻풀이 재서술·공유 어근·파생 의미 판단은 보증하지 않는다. 이 새 포함 규칙은 신규 산출물에 적용하며, 과거 머지 데이터나 Stage 2의 기존 Candidate 입력 검증에는 소급하지 않는다. Stage 2는 기존 검증 계약으로 역사적 파일을 읽고, Candidate 수정·제출 validator는 엄격한 새 규칙을 적용한다. **이 형태 gate는 명백한 서술/뜻풀이 재서술과 자기 반복에 대한 Stage 1 하드 조건이다.** 독립 단어뿐 아니라 **의미가 확장된 짧은 장면·심상·감각 표현**도 보존한다. 표현의 독창성이나 편집적 매력만 논쟁되는 경계 사례는 Stage 1 blocker로 만들지 말고 Stage 2의 채택·Tier 판단에 남긴다. 기존 최종 후보의 형태 확인 의무는 유지하되 별도의 두 번째 전수 의미 심사를 추가로 요구하지 않는다.
-
-- 각 작업자는 **자신의 방식·모델 파일만 작성**한다. 다른 모델·CLI·서브에이전트는 오너가 별도로 실행하며 작업자가 임의 호출하지 않는다.
+| **A** | 정확한 Canonical sense/뜻풀이에서 직접 생성 |
+| **B** | 출발 sense에 맞는 가상 장면을 구성하고 후보 추출 |
+| **C** | 문학 SQLite의 실제 문맥 참조 |
+| **D** | 문어 말뭉치 SQLite의 실제 문맥 참조 |
 
 ### 고유명사 양방향 제외 (#5745)
 
 인물(본명·호·필명)·지명·기관·단체·작품/저작 제목처럼 **특정 대상을 지칭하는 고유명사 Sense**는 Typewriter-authored 말의 결·연상의 출발점에도 후보·대상에도 등장하지 않는다. 관계가 사실이라는 이유로 예외를 두지 않는다. 판정은 AI가 Canonical의 정확한 Sense/gloss로 하며 철자·품사·표면 패턴으로 일괄 제외하지 않는다. 예: `w265063-s1` 인촌¹(김성수의 호)은 고유명사, `w265064-s1` 인촌²(이웃 마을)는 일반 어휘; 사람·도시·학교·소설·영화·작가 같은 분류 개념은 허용한다. STDICT `direct/antonym`과 사전 검색은 바뀌지 않는다.
 
-- **Stage 1 (A/B/C/D):** 고유명사 출발 Sense는 발굴하지 않고 `candidates: []`로 보존하며(record·Sense·순서 불변), 일반 출발 Sense의 고유명사 후보도 넣지 않는다. A/B는 빈 `S<n>` 줄, C는 제출 항목의 `"skip":"proper_noun"`(checkpoint 상태 `PROPER_NOUN_SKIPPED`), D는 판정 `sN P`로 표현한다. C/D의 초기 검색은 `prepare`/chunk view 단계에서 이미 실행되므로 이 Skip은 **그 뒤의 추가 조회·문맥 판독·Sweep/PASS·후보 발굴만 생략**한다. 실제 검색 실패(`SEARCH_FAILED`·색인 검색 오류)는 Skip으로 우회할 수 없고, C에서 이미 저장된 Sense는 다시 Skip할 수 없다(`already_submitted`). `technical-skip`, `ZERO_HITS`, `SAMPLED_NO_VERIFIED`, D `N/Z`로 의미 Skip을 표현하지 않는다.
 - **Stage 2:** 고유명사 출발 Sense의 모든 후보와 고유명사 뜻의 후보는 `D e`로 Drop한다. ID·text-only·역방향·다른 Sense/표기 relink로 승인하지 않는다. 동철 후보는 고유명사 Sense로의 결속만 차단한다. 이미 승인된 관계로 커버되어 신규 판정 대상이 아니면 Stage 3에 맡긴다.
 - **Stage 3:** 출발 Sense나 대상(ID target Sense, text-only 지칭)이 고유명사인 Relation은 Keep·Link Repair 없이 `D`로 삭제한다. 고아 후보 `z`와 cross-shard reconcile은 기존 경로를 따른다. Stage 3 view는 모든 ID 대상의 POS·gloss를 표시한다(단일 Sense 표제어도 `인성론`처럼 작품명일 수 있음).
-- 진행 중 checkpoint·완료 데이터는 소급 변경하지 않고 다음 생산/감사 실행부터 적용한다.
-
-### C/D 생산 프롬프트 — 실제 문맥에서 의미 있는 후보만
-
-C와 D는 출발 `sense_id`와 Canonical 뜻풀이를 먼저 고정하고, **해당 의미의 실제 사용 문맥**을 조회한 후 후보를 찾는다. 출발 sense와 연결되는 이유가 없다면 후보로 기록하지 않는다. 후보 개수 목표는 없다.
-
-**C — 문학의 장면·정서·감각**
-
-C의 정식 생산 실행 계약은 **[#1155](https://github.com/neverworkalone/typewriter/issues/1155)**이다. 실제 source-sense 문맥 VERIFIED, 일곱 관점의 독립 두 차례 탐색, 후보 전수 형태 검사는 필수다. **재개·source-sense 결속에 필요한 최소 Sense/청크 상태만 로컬에 저장**하며, 관점별·회차별 실측 검산 장부나 후보별 영수증은 요구하지 않는다. 아래는 발굴 원칙을 요약한 것이며 #1155의 상세 탐색 절차를 대체하지 않는다.
-
-Issue #1750/#1761의 공통 read-only 조회·checkpoint·집계·Candidate 출력 도구를 C 생산 절차에서 사용한다. 배치마다 검색/증거/집계 스크립트를 다시 작성하지 않는다. 승인 문학 인덱스의 실제 v1 schema와 CLI·재개·실패·국소 수정 절차는 [`docs/relation-literary-context.md`](relation-literary-context.md)에 있으며, 도구는 검색 결과를 VERIFIED로 판정하거나 lens 후보를 발명하지 않는다.
-
-> 정확한 출발 sense가 쓰인 작품 문맥에서 장면, 감정, 감각, 행동, 이미지와 비유를 살핀다. 작가가 출발어를 쓰면서 연상하거나 표현을 확장할 수 있는 연결만 제안한다. **같은 문장·문단에 같이 있었다는 사실은 관계의 근거가 아니다.** 예를 들어 `가끔가다 → 냉면/무지개`, `가계부 → 넥타이/소독약`처럼 문맥에 우연히 함께 나온 사물을 나열하지 않는다. 다만 단 한 작품에서만 발견한 비유라도 **출발 의미와 장면·정서 사이에 설명 가능한 연결**이 있으면 남길 수 있다. 동음이의어 또는 다른 단어의 문맥을 출발 sense에 잘못 연결하지 않는다. 유용한 후보가 없으면 빈 배열을 반환한다.
-
-**D — 말뭉치의 실제 쓰임과 표현적 연결**
-
-D는 전용 Workbench 없이 #1156의 25-record 청크 직접 검색 → AI 판독 → 후보 편집 → Candidate JSONL 조립 → 공통 validator 순서로 생산한다. 전수 선행 scan, 문맥/후보별 영수증은 요구하지 않는다.
-
-**D 청크 병렬 실행 (#3074):** 오너가 승인한 War Room Supervisor는 D 배치 내부의 25-record 청크를 최대 8개까지 동시에 실행할 수 있다. 새 코드로 Supervisor를 재시작하면 이미 `d_mode_<id>`가 있는 병렬 배치도 다음 슬롯 보충부터 8개 상한을 적용하며, 실행 중인 세션은 종료하지 않는다. 작업 단위·모델·판독·검색·후보 형태 규칙, 배치당 Candidate JSONL 하나와 PR 하나, 모델 간 공유 D cursor·claim은 그대로이며 청크 결과는 번호순으로 조립된다. 병렬 실행은 worker에게 다른 AI·CLI·서브에이전트를 추가 실행할 권한을 주지 않는다.
-
-**C 청크 병렬 실행 (#3076):** 오너가 승인한 War Room Supervisor는 C 배치 내부의 12-Sense 청크를 최대 8개까지 동시에 실행할 수 있다. 새 코드로 Supervisor를 재시작하면 이미 `c_mode_<id>`가 있는 병렬 배치도 다음 슬롯 보충부터 8개 상한을 적용하며, 실행 중인 세션은 종료하지 않는다. 판독·발굴·후보 형태 규칙, checkpoint 형식, 배치당 Candidate JSONL 하나와 PR 하나, 모델 간 공유 C cursor·claim은 그대로다. 각 청크는 다른 청크에 예약되지 않은 Sense만 맡고 worker CLI(`--chunk NNN`)는 자기 청크 범위만 다룬다. 병렬 실행은 worker에게 다른 AI·CLI·서브에이전트를 추가 실행할 권한을 주지 않는다.
-
-**C/D 기술적 생산 제외 (#2881):** Supervisor는 먼저 기존 source-bound 증거로 가능한 결정적 정규화(예: C의 문맥 키 양끝 공백 제거)를 일반 CLI 검증 경로에서 시도하고, 이후 기존 same-session Retry 한도를 그대로 사용한다. 한도 소진 뒤에는 정상 결과를 보존하면서 오류가 입증된 source Sense만 기술적으로 제외한다. C와 D 모두 실패 Sense 후보만 `[]`로 저장하고, 같은 Record의 다른 Sense 후보는 보존한다. D의 검색 증거는 Record 단위로 공유되므로 다른 Sense도 의존하는 실제 공유 검색 증거가 손상되었거나 실패 범위를 안전하게 특정할 수 없으면 Record의 정상 Sense까지 비우지 않고 중단한다. 이 제외는 검색 0건·편집적 무가치·Stage 2 Drop을 뜻하지 않는다. **기술적 제외용** skip 명령·표식은 C/D의 생산자 CLI에 추가하지 않는다. C의 `"skip":"proper_noun"`과 D의 `sN P`는 #5745의 **AI 편집적 고유명사 Skip**이며 Supervisor 전용 기술적 제외와 권한·의미가 다르다. Supervisor 전용 CLI 경로만 정확한 최신 진단·청크/HEAD·입력 파일에 결속해 제외를 기록한다. 검색 상태, 원본 검색 증거, 나머지 정상 제출은 그대로 유지한다. 다수·모호·stale 진단, `SEARCH_FAILED`, hit-bearing `Z`, cursor/인덱스 무결성 실패, 전역 증거 손상은 기술적 제외로 바꾸지 않고 중단한다. 로컬 checkpoint/청크 sidecar와 Supervisor Audit Log에 정확한 ID·진단·Retry 수를 남기며, 생산 PR 본문에는 제외 수와 source ID를 표시한다.
-
-> 정확한 출발 sense가 쓰인 문맥에서 자연스러운 연관 표현, 사용 상황, 함께 발생하는 행동, 의미상 가까운 말, 글쓰기에 도움이 되는 연상을 찾는다. 같은 문서의 주제어, 가까이에 나온 명사, 단순 공출현 빈도만으로 후보를 선택하지 않는다. 후보와 출발 sense 사이의 **구체적인 쓰임·의미 연결**이 실제 문맥에 있어야 한다. `가계도 → 가계도`처럼 출발 표제어 자신은 제외하고, 동음이의어·부분 문자열 검색 오탐을 구별한다. 검색 자료가 문학 분야에 치우친 경우 이를 일반 문어 전체의 대표 용례로 간주하지 않는다. 적절한 후보가 없으면 빈 배열을 반환한다.
-
-**실행 기록과 공개 PR 보고:** C/D는 실제 탐색과 source-sense 판독을 수행하고 재개·검증에 필요한 최소 로컬 상태만 남긴다. **C의 7관점 × 독립 2회 실제 탐색은 필수**지만, 관점별·회차별 실측 검산 장부, 빈 관점별 0건 표, 문맥·후보별 영수증 및 상세 통계는 #1155에 따라 필수로 기록·제출하지 않는다. **C의 공개 PR 본문은 #1155 §4의 여섯 표준 항목(Method, Model, Shard, Batch, Coverage, Candidates)을 기록한다.** 기술적 제외가 있으면 여기에만 추가로 `Technical skips: N senses — Record/Sense ID (diagnostic reason)`를 표시한다. 공통 안내의 활성/빈 sense, 문맥 검증 요약, 탐색 수행 여부, 절차 식별·한계 보고를 C PR 본문의 추가 의무로 적용하지 않는다. D의 공개 PR 본문에는 #1156의 최소 실행 요약(실제 모델, shard/batch, 후보 수, 승인 문어 원문 검색·source-sense 확인·Candidate v1 검증 수행 여부, 주요 한계)을 간결히 기록하고, 기술적 제외가 있으면 `Technical skips: N records — Record ID (sense count)`를 추가한다. 활성/빈 sense 수, 별도 절차 식별자, PASS별 세부 통계·영수증·장부를 추가 의무로 요구하지 않는다. 단순 표기·전사 오류는 실제 데이터·필수 실행에 영향을 주지 않는다면 PR 본문만 정정할 수 있다. 반면 검증 문맥 날조, 다른 sense 결속, 탐색 누락, 허위 수행 보고는 기술 차단 사항이다. 보고된 합계만으로 비공개 문맥을 독립 확인했다고 주장하지 않는다.
-
-**공통 출력:** Stage 1은 `candidates: string[]`만 기록한다. 타입·Tier·대상 ID·채택 판정은 Stage 2가 한다. 후보별 인용문·검색 로그·근거 설명은 Candidate JSONL에 싣지 않는다. 문학·말뭉치 원문과 SQLite는 Git에 올리지 않는다.
-
-**모든 A/B/C/D 공통 규칙:** 후보 문자열이 해당 source record의 Canonical `lemma`와 정확히 같으면 후보에서 제외한다. 표제어 자체를 다시 제시해도 탐색이 확장되지 않으므로, sense별로 독립 평가한 뒤에도 자기 표제어는 남기지 않는다.
+- Stage 1 후보는 고유명사 출발 Sense를 `candidates: []`로, 고유명사 후보는 넣지 않는 기준으로 생산되었다. 진행 중 checkpoint·완료 데이터는 소급 변경하지 않는다.
 
 ### Candidate JSONL v1
 
@@ -145,42 +86,9 @@ D는 전용 Workbench 없이 #1156의 25-record 청크 직접 검색 → AI 판�
 
 **Candidate에 포함하지 않음:** `type`, `tier`/`relevance`, 대상 ID, 채택 여부, 평가/확신도, 원본 인용. `lemma`/`gloss`는 Canonical에서 읽고, method/model은 파일명으로 구별한다.
 
-**완료 파일 검증:** 신규 배치를 PR로 제출하기 전에 Candidate v1을 **한 번** 검증한다. **A/B는 Workbench `merge`, C는 literary-context `export`가 이 최종 검증을 이미 실행**하므로 별도로 아래 명령을 반복하지 않는다. **D는 전용 Workbench가 없으므로** 최종 JSONL을 조립한 뒤 아래 공통 validator를 직접 한 번 실행한다(실패를 수정한 경우에만 재검증). 아래는 D 실행 예시다.
+**검증:** 공통 validator는 `scripts/relation/candidate-contract.mjs <canonical> <candidate>`다. JSONL 파싱·허용 필드, Canonical 배치의 record 행 수·순서·ID와 모든 sense의 정확한 일치, 비어 있지 않은 후보 문자열, 같은 source sense 안의 중복, source lemma와 후보의 양방향 정규화 포함을 확인한다. 후보가 없는 sense는 `candidates: []`이며, 행 누락이나 미완료 파일을 빈 후보로 취급하지 않는다. PR의 Normal 검사는 추가·수정된 Candidate 파일에 이 strict 계약을 적용한다. Stage 2가 이미 머지된 Candidate를 읽을 때는 과거 계약을 유지하고 새 포함 규칙을 소급 적용하지 않는다. 역사적 Candidate를 자동으로 수정하거나 재검증하지 않는다.
 
-```sh
-node scripts/relation/candidate-contract.mjs \
-  data/canonical/stdict-0005.jsonl \
-  data/relation-candidates/005/005_02_d_codex.jsonl
-```
-
-신규 Candidate 제출 validator는 JSONL 파싱 및 허용 필드, Canonical 배치와 record 행 수·순서·ID/각 record의 모든 sense 정확히 일치, 후보의 비어 있지 않은 문자열/공백 정리, 같은 파일·source sense 안의 정확한 중복, source lemma와 후보 사이의 양방향 정규화 부분 문자열 포함, source 뜻풀이의 천 단위 쉼표 숫자(`7,460미터`)를 쪼갠 조각 후보(`7`, `460미터`)를 확인한다. 포함 검사는 NFC·공백 정리 후 공백과 하이픈을 제거해 비교하며, 어느 쪽이 다른 쪽에 포함되면 별도 Canonical 표제어·검색형·다른 sense 여부와 관계없이 차단한다. `search_forms`는 검색용 색인이며 포함 금지의 예외가 아니다. 후보가 없는 sense는 `candidates: []`로 기록하며, **행 누락 또는 미완료 파일을 정상적인 빈 후보로 취급하지 않는다**. 모델 간 동일 문자열은 Stage 2에서 비교한다. 이 strict 제출 검사는 신규·수정 Candidate 파일에 적용한다. Stage 2가 이미 머지된 Candidate 파일을 준비 단계에서 읽을 때는 과거 검증 계약을 유지하며 새 양방향 포함 규칙만 적용하지 않는다. 따라서 역사적 Candidate를 자동으로 수정하거나 재검증하지 않는다.
-
-PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마다 strict 제출 계약을 자동 적용하고, 파일명에 지정된 Canonical shard와 대조해 전체 record/sense 커버리지, 허용 필드, 중복 후보와 source lemma 및 동일 표제어 표기형의 재등장을 검사한다. Stage 2의 기존 Candidate 읽기 경로는 새 포함 규칙을 소급 적용하지 않는다. 문서 전용 PR은 Candidate 검사를 실행하지 않는다.
-
-## 3. `#860 A 진행해` — 다음 배치 자동 선택
-
-`#860 A 진행해`, `#860 B 진행해`, `#1155 C 진행해`, `#1156 D 진행해` 등은 **현재 실행 중인 모델이 지정된 방법으로 다음 미완료 배치를 생산하고 PR을 올리라는 명령**이다. 다른 모델/CLI를 대신 실행하지 않는다. 실행 기준은 **A/B: [#860](https://github.com/neverworkalone/typewriter/issues/860), C: [#1155](https://github.com/neverworkalone/typewriter/issues/1155), D: [#1156](https://github.com/neverworkalone/typewriter/issues/1156)**이다.
-
-**진행 위치 키가 방식마다 다르다.**
-
-- **A/B: `(method, model)`별 독립 진행.** Codex-A, Claude-A, Codex-B, Claude-B, 오너가 추가한 DeepSeek A/B 각각 자신의 다음 배치를 진행한다.
-- **C/D: `method`별 공유 진행.** Codex·Claude·DeepSeek는 C의 완료/점유 배치를 함께 확인하고 D도 별도로 함께 확인한다. 한 배치의 C 결과 또는 D 결과는 실제 생산자 모델이 무엇이든 **각 방식당 정확히 하나**만 만든다. 파일명에는 실제 생산 모델을 기록한다.
-- 예를 들어 `001_01_c_codex.jsonl`이 완료된 상황에서 Claude가 `#1155 C 진행해`를 받으면 `001_01_c_claude.jsonl`을 새로 만들지 않고 `001_02_c_claude.jsonl`부터 진행한다. 다음 Codex C 작업은 다시 C의 다음 미완료 배치를 선택한다. D도 동일하다.
-
-**War Room 지정 실행(A/B/C/D):** War Room이 `(method,model,shard,batch)`·worktree·branch·HEAD를 지정한 실행은 아래 선택 절차를 수행하지 않는다. 지정 배치를 그대로 생산하고 재선정·반복 재검증하지 않으며, 점유·중복 충돌이 있으면 다른 배치로 넘어가지 않고 보고한다. 아래 순서는 배치 지정 없는 직접 호출에만 적용한다.
-
-명령을 받은 생산자는 다음 순서로 실행한다.
-
-1. 최신 `master`의 `docs/relation-factory.md`, `AGENTS.md`, Canonical을 확인하고 **실제 자신의 모델**과 지정된 방식/배치를 확인한다. C/D의 배치별 담당 모델은 오너가 지시한 모델이다.
-2. 샤드 `001`/배치 `01`부터 해당 작업 키의 완료/진행 상태를 확인한다. **A/B는 해당 모델 파일만 검사**하고, **C/D는 해당 방식의 모든 모델 파일**(`<SSS>_<BB>_c_*.jsonl`, `<SSS>_<BB>_d_*.jsonl`)을 검사한다. 매번 모든 Candidate JSONL 내용을 전수 재읽기하지 않는다.
-3. `master`에서 찾은 정식 생산 파일은 경로·존재 여부로 완료 처리하며 과거 Canonical·sense·Candidate v1을 매번 재검사하지 않는다. 손상·부분 작성·중복을 실제로 발견했을 때만 해당 파일을 조사하고 건너뛰지 않는다. 새로 생산한 현재 배치의 최종 Candidate v1 검증 의무는 그대로다.
-4. **열린 정식 500레코드 PR이 같은 작업 키/배치를 점유했다면** 본인 PR의 유효한 리뷰 Blocker를 우선 해결하고, 다른 모델이 정상적으로 진행 중인 PR을 중복 생산하지 않는다. 정상적인 리뷰 대기 PR은 점유 상태로 건너뛰고 다음 미할당 배치를 찾는다. 닫혔으나 미머지 PR 또는 폐기된 100레코드 Pilot PR은 완료/점유로 보지 않는다.
-5. `master`와 열린 PR 어디에도 없는 첫 미점유·미완료 배치를 선택해 정확한 Canonical record/sense 전체의 Candidate JSONL **하나**를 생성·검증·커밋하고 PR을 올린다. PR에는 방식·실제 모델·샤드·배치 및 검증 결과를 명시한다.
-6. **같은 C/D 방식·배치의 서로 다른 모델 파일이 중복 발견되면 충돌로 보고**한다. 둘을 합치거나 둘 다 완료로 인정하지 않는다. 기존에 정상적으로 완료된 파일은 이름을 변경하지 않는다.
-
-**동시 실행 한계:** A/B는 같은 `(method, model)` 작업을, C/D는 같은 `method` 작업을 동시에 중복 실행하지 않는다. C와 D는 별개 작업 대기열이다. GitHub 조회와 PR 생성 사이에 원자적 예약은 없으므로 PR 직전 점유 상태를 다시 확인한다. 별도 예약 서비스를 만들지 않는다.
-
-## 4. Stage 2 — Relation Admission
+## 3. Stage 2 — Relation Admission
 
 **입력:** 해당 샤드의 필수 Stage 1 후보 파일 전체(2배치 × 기본 생산자 6개)와 해당 배치에 오너가 지정한 선택적 파일, Canonical, 기존 승인 Relations. **새 후보 생성이나 문학·말뭉치 재검색을 하지 않는다.**
 
@@ -208,7 +116,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 {"id":"w2","sid":"w2-s1","cd":"버릴말","by":"x"}
 ```
 
-- Polish 직접 편집의 `by:"p"` Relation과 Drop 파일 안의 제외 문맥 `p` 행은 §6-A를 따른다.
+- Polish 직접 편집의 `by:"p"` Relation과 Drop 파일 안의 제외 문맥 `p` 행은 §5-A를 따른다.
 - 파일에 저장하는 필드만 축약한다. Relation ID 행은 `id`/`sid`/`tid`/`tsid`/`tp`/`rv`와 선택적 `ver`/`fm`/`rfm`, text-only 행은 `id`/`sid`/`tt`/`tp`/`rv`, Drop 행은 `id`/`sid`/`cd`/`by`를 사용한다. JS 내부 객체와 checkpoint는 기존의 descriptive 필드명을 유지할 수 있다. 저장기는 compact 필드만 쓰고, 저장 파일을 읽는 Stage 2 및 제품 빌드 로더는 이전 verbose 키와 혼합된 키를 거부한다.
 - `tp`와 `rv`는 ID 링크의 유일한 관계 타입과 relevance다. 제품 역방향 링크도 같은 `tp`/`rv`를 사용하며 역방향 필드를 JSONL에 저장하지 않는다. 새 ID 판단에서 source 방향 값을 한 번만 판단하고 양방향에 적용한다. 이전 형식의 checkpoint에 서로 다른 역방향 판단이 남아 있으면 저장 결과가 달라지므로 해당 Part의 `merge`는 거부하며, 최신 스키마로 Part 경계를 다시 시작해야 한다. 이전 형식의 premerge snapshot은 내용과 hash를 보존하고 자동 변환하거나 다시 캡처하지 않는다.
 - `ver`/`fm`/`rfm`은 후보 귀속 근거이며 값과 의미를 보존한다. `ver`가 없는 legacy 행, `ver:0`, `ver:1`은 서로 다르다. 새로 선택한 ID 행은 `ver:1`과 두 배열을 저장한다. 여러 후보형이 같은 source/target sense 쌍으로 병합되면 각 방향에서 처리한 정확한 후보 표기를 합쳐 보존한다. 후보별 relevance가 다를 때는 가장 우선순위가 높은 값(숫자가 가장 작은 relevance)을 저장한다. type 판단이 다르면 임의 선택하지 않고 merge를 거부한다. spacing/hyphen 표기 변형은 별도 규칙으로, 판단이 다를 때 Canonical headword spelling의 판단을 우선한다. 기존 version-less 행에 새 반대 방향 후보 귀속을 합치면 `ver:0`으로 기록한다. 이때 `fm`은 기존 정방향 추론 표기, `rfm`은 새 반대 방향에서 처리된 정확한 후보 표기다. 이 정보는 accounting/restart용이며 제품 링크의 target을 바꾸지 않는다.
@@ -250,9 +158,9 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 `--batch` 없이 실행하면 필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D 12개)이 하나라도 없을 때 실패한다. `--batch BB`는 **해당 배치의 필수 생산자 6개만** 요구하므로 다른 배치 입력이 없어도 착수·검증할 수 있다(다른 배치의 Candidate 파일은 목록 검사·파싱 대상이 아니므로 충돌하거나 미완성이어도 이 실행을 막지 않는다). 다른 배치나 샤드의 ID 관계는 `prepare`와 `verify`에서 실제 target sense별로 계산한다. Stage 2 accounting 단위는 `(source sense, candidate)`다. 후보가 고유 표제어의 한 sense에 이미 ID로 연결됐으면 이 후보는 기존 승인 관계로 처리되어 새 필수 판정을 요구하지 않는다. Part 모드에서는 나머지 target sense의 추가 ID 링크를 `read-chunk --optional`로 검토한다. 링크 후보가 있으면 `save-optional`에서 후보마다 skip 또는 여러 exact target을 한 번에 선택하고, 0개면 `complete-optional`이 AI 실행 없이 완료 증거를 기록한다. 신규 ID 판정에서는 같은 표기의 모든 target sense/gloss를 비교하고 실제로 일치하는 sense를 선택한다. text-only로 남기는 경우에만 모든 sense ID를 확인한다. text-only 승인 관계도 후보 전체를 처리한 것으로 본다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 불완전 Stage 1 입력으로 만든 Part checkpoint는 `merge`가 거부한다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
 
-**Stage 2 다음 작업 선택(#927):** 완료 단위는 `(shard, batch, part)`다. 순서는 샤드 001부터 Batch 01→02, 각 Batch 안에서 Part 01→05(legacy 001–005) 또는 01→02(006+)의 Canonical 순서다. **War Room은 마지막으로 머지된 Stage 2 생산 PR(`[S2/<Model>] SSS_BB Part PP`)의 바로 다음 Part를 고르고**, 그 Part의 필수 Stage 1 파일 6개가 최신 master에 없으면 실행을 멈춘다. 진행 중인 작업만 Store의 완료·진행 기록으로 복구한다. War Room 밖에서 Part를 지정하지 않고 직접 호출할 때만, 같은 순서에서 필수 Stage 1 파일이 최신 master에 있고 그 master의 정확한 `verify --shard <SSS> --batch <BB> --part <PP>`가 아직 성공하지 못한 가장 이른 Part를 고른다. 이 `verify`는 다음 작업을 찾는 수단이지, 이미 머지된 Part의 완료를 다시 판정하는 검사가 아니다. **완료된 Part는 이후 Polish·Stage 3 등으로 파일이 바뀌어도 완료로 남는다**(§6 배치 완료 불변식). 해당 Part의 편집 세션 하나가 PR 하나다. 같은 샤드의 열린 Stage 2 또는 Stage 3 PR이 있으면 누적 `relation-<SSS>.jsonl`/`drop-<SSS>.jsonl`의 충돌을 막기 위해 다음 Part를 시작하지 않는다. 정식 Polish 데이터 PR은 이 점유에서 제외한다(§6). PR 머지 후 최신 master를 기준으로 다음 Part를 준비한다. 각 Batch의 **모든 유효 Part**가 성공적으로 검증된 뒤 `verify --shard <SSS> --batch <BB>`를 실행하고, 해당 샤드의 **모든 유효 Part**가 끝난 뒤 `verify --shard <SSS>`를 실행한다(legacy 샤드는 Batch당 5 Part·샤드당 10 Part, 006+ 샤드는 Batch당 2 Part·샤드당 4 Part이며, 샤드 428은 Batch 02의 Part 01만 유효하므로 신규 layout에서 총 3개 Part). 후보가 없거나 전부 다른 승인 관계로 처리된 범위도 `verify` 성공으로 완료될 수 있다. #927은 이 순차 생산·검증 계약을 계속 소유하며, 구현 이슈 #1665만 구현 완료 후 닫는다.
+**Stage 2 다음 작업 선택(#927):** 완료 단위는 `(shard, batch, part)`다. 순서는 샤드 001부터 Batch 01→02, 각 Batch 안에서 Part 01→05(legacy 001–005) 또는 01→02(006+)의 Canonical 순서다. **War Room은 마지막으로 머지된 Stage 2 생산 PR(`[S2/<Model>] SSS_BB Part PP`)의 바로 다음 Part를 고르고**, 그 Part의 필수 Stage 1 파일 6개가 최신 master에 없으면 실행을 멈춘다. 진행 중인 작업만 Store의 완료·진행 기록으로 복구한다. War Room 밖에서 Part를 지정하지 않고 직접 호출할 때만, 같은 순서에서 필수 Stage 1 파일이 최신 master에 있고 그 master의 정확한 `verify --shard <SSS> --batch <BB> --part <PP>`가 아직 성공하지 못한 가장 이른 Part를 고른다. 이 `verify`는 다음 작업을 찾는 수단이지, 이미 머지된 Part의 완료를 다시 판정하는 검사가 아니다. **완료된 Part는 이후 Polish·Stage 3 등으로 파일이 바뀌어도 완료로 남는다**(§5 배치 완료 불변식). 해당 Part의 편집 세션 하나가 PR 하나다. 같은 샤드의 열린 Stage 2 또는 Stage 3 PR이 있으면 누적 `relation-<SSS>.jsonl`/`drop-<SSS>.jsonl`의 충돌을 막기 위해 다음 Part를 시작하지 않는다. 정식 Polish 데이터 PR은 이 점유에서 제외한다(§5). PR 머지 후 최신 master를 기준으로 다음 Part를 준비한다. 각 Batch의 **모든 유효 Part**가 성공적으로 검증된 뒤 `verify --shard <SSS> --batch <BB>`를 실행하고, 해당 샤드의 **모든 유효 Part**가 끝난 뒤 `verify --shard <SSS>`를 실행한다(legacy 샤드는 Batch당 5 Part·샤드당 10 Part, 006+ 샤드는 Batch당 2 Part·샤드당 4 Part이며, 샤드 428은 Batch 02의 Part 01만 유효하므로 신규 layout에서 총 3개 Part). 후보가 없거나 전부 다른 승인 관계로 처리된 범위도 `verify` 성공으로 완료될 수 있다. #927은 이 순차 생산·검증 계약을 계속 소유하며, 구현 이슈 #1665만 구현 완료 후 닫는다.
 
-## 5. Stage 3 — Relation Editorial Refinement (#2455)
+## 4. Stage 3 — Relation Editorial Refinement (#2455)
 
 > **구현 상태:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)의 구현 작업은 종료되었으며 Stage 3 CLI(`scripts/relation/edit-cli.mjs`), War Room `s3` 실행(`tools/warroom/warroom/stage3.py`) 및 Stage 2 연계 reconcile 경로가 마련되어 있다. 실제 샤드 작업은 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 선행 조건·검증·점유 규칙을 따른다. 구현 완료는 특정 샤드의 파일럿/생산 완료를 의미하지 않는다. 이 Factory 생산 단계는 REVIEW.md의 *PR review Stage 1(기술 검토) / Stage 2(최종 HEAD·CI 확인 및 merge)*와는 별개다.
 
@@ -286,7 +194,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 3. **War Room spec:** 단계의 답변 규칙(`decision_text`, `decision_context`, `validate_prompt_view`, `normalize_decisions`)과 `refine.register(refine.RefineSpec(...))` 항목 하나를 둔다. 항목에는 id/tag/label/PR 제목/이슈/CLI/scratch/프롬프트 이름/앞 단계 게이트/`fixcoord.FixSpec`이 들어간다.
 4. **테스트:** 규칙 전용 테스트를 둔다.
 
-### 5-A. 파일·후보 회계
+### 4-A. 파일·후보 회계
 
 - **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"z"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.
 - **Drop 소유:** `drop-SSS`의 `sid`는 항상 SSS의 Canonical source sense에 속한다. 다른 샤드 sense를 넣는 foreign tombstone이나 별도 `edit-SSS.jsonl` 원장은 금지한다. 다른 샤드의 역방향 고아 후보는 **그 샤드 자체 Stage 2 흐름에서** 원인에 따라 처리한다.
@@ -294,16 +202,16 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 - **Link Repair:** 동일 표기 Canonical의 **모든 target Sense 및 전체 뜻풀이**를 비교해 정확한 하나를 선택한 경우에만 `{id,sid,tid,tsid,tp,rv,ver:1,fm:[tt],rfm:[…]}`로 교체한다. Stage 2 신규 ID 링크와 Stage 3 Link Repair는 **이미 처리된 target Sense 후보형을 `rfm`에서 제외하는 공유 필터**를 사용한다. target 소유 샤드의 기존 Relation/Drop(`by:"z"` 포함)·역방향 커버로 이미 결정된 형태는 `rfm`에서 제외한다. 아직 판정 전인 실제 후보형은 기존 계약대로 유지한다. 불명확하면 text-only 유지. 중복 ID 쌍·역방향 중복은 금지한다.
 - 최종 빌드는 계속 **`pnpm run build`**. 빌더나 persisted JSONL 스키마를 변경하지 않는다. SQLite의 meaning-level 병합/중복 출처가 있을 수 있으므로 관계 삭제의 최종 표시 효과는 실제 provenance를 고려한다.
 
-### 5-B. 실행·토큰·PR 경계
+### 4-B. 실행·토큰·PR 경계
 
-1. **Stage 2 샤드 전체 완료 후 시작.** 최근 master에 머지된 Stage 3 생산 PR의 바로 다음 샤드를 선택하고, 해당 샤드의 Stage 2 완료 기록이 없으면 실행을 종료한다. Stage 2 Part 완료만으로 Stage 3를 시작하지 않는다. 같은 샤드 Relation/Drop을 수정하는 열린 Stage 2/3 PR이나 활성 작업이 있으면 대기한다. 정식 Polish 데이터 PR은 대기 사유가 아니다(§6).
+1. **Stage 2 샤드 전체 완료 후 시작.** 최근 master에 머지된 Stage 3 생산 PR의 바로 다음 샤드를 선택하고, 해당 샤드의 Stage 2 완료 기록이 없으면 실행을 종료한다. Stage 2 Part 완료만으로 Stage 3를 시작하지 않는다. 같은 샤드 Relation/Drop을 수정하는 열린 Stage 2/3 PR이나 활성 작업이 있으면 대기한다. 정식 Polish 데이터 PR은 대기 사유가 아니다(§5).
 2. **AI 청크: 관계 350~500행 목표**, 출발 Sense의 관계 목록은 **분할하지 않는다**. 한 청크에 여러 Sense를 묶을 수 있다. Source Sense별 전체 gloss를 한 번 제공하고, target 의미 구분에 필요한 경우 ID Sense 뜻풀이를 제공한다. Link Repair 대상은 동일 표기 전체 Sense·전체 gloss를 제공한다.
 3. **최소 출력:** `chunk NN` 뒤에 `D 1 5 9`, `L 4 T1`, 또는 `none`만 출력. Keep은 별도 출력하지 않고 기존 Relation을 유지한다. 청크마다 새 AI 세션을 사용하고 이미 검토한 청크 전체를 반복해서 읽지 않는다. 재개용 로컬 checkpoint는 청크 완료 여부와 결정만 저장한다.
 4. **Shard당 Stage 3 데이터 PR 한 개.** 모든 청크 완료 후 Relation/Drop에 한꺼번에 반영하고 기존 `validateRelationRows`/`verifyAccounting` 및 실제 DB 결과를 확인한다. 생산 PR은 **해당 샤드의 Relation/Drop 두 파일만** 변경한다. Stage 2와 Stage 3의 같은 샤드 작업 경합은 금지한다.
    - **청크 병렬 판정(#3149):** War Room Supervisor는 새로 시작하는 샤드의 `edit-cli` 청크를 오너 설정 `stage3_max_parallel`(기본 16) 범위에서 독립 answer-only 세션으로 동시에 판정할 수 있다. checkpoint 저장은 Supervisor의 단일 경로가 `save-chunk --chunk NNN --expect-view-sha256`(view digest 결속, 동일 입력 재저장은 `already_saved`, `decisions[]`는 행 순서 정렬)로 맡으며 완료 순서는 결과에 영향을 주지 않는다. worker는 다른 AI/CLI를 시작할 수 없고, 모델·effort·정책 카드·청크 크기·`apply → verify → PR` 흐름과 샤드당 PR 하나는 그대로다. 진행 중인 직렬 샤드와 `--batch/--part` 국소 Link Repair는 바뀌지 않는다.
 5. **리뷰:** Repair는 전건 정확한 source/target Sense 및 gloss 확인, Drop은 실제 PR diff에서 위험도 기준 표본 검토. 4만여 관계를 리뷰 AI가 다시 전수 편집하지 않는다. 잘못된 ID·고아 후보 회계·유익한 연상의 체계적 부당 삭제는 blocker; 취향 차이는 blocker가 아니다. 문서·지침 변경은 **별도 `no-review` PR**로 분리한다.
 
-### 5-C. Cross-shard와 기존 Stage 2 보호
+### 4-C. Cross-shard와 기존 Stage 2 보호
 
 - 샤드 S의 Stage 3 ID Relation 삭제로 다른 샤드 T의 역방향 후보 커버가 사라질 수 있다. **모든 `missing`을 자동 Drop하는 것은 금지.** 이미 준비되었거나 완료한 T의 실제 Stage 1 후보이고, **실제 머지된 Stage 3 데이터 PR의 변경 파일/삭제 ID 행을 확인하고 삭제 전후 후보 커버리지를 비교해 그 관계로 인해 커버가 사라졌음이 입증**되고, 현재 다른 처리 관계/Drop도 없을 때만 T 자신의 `drop-TTT`에 `by:"z"`를 추가하는 결정적 reconcile을 허용한다.
 - **삭제 근거의 범위:** 실제 머지된 Stage 3 데이터 PR과 그 삭제 행을 기준으로 한 번에 계산한다. 정방향 `by:"z"` Drop이 있으면 보조 근거로 사용할 수 있지만 **필수 조건으로 삼지 않는다**. 정방향 후보가 다른 Relation에 계속 커버되어 Drop이 없더라도 삭제된 행 때문에 **역방향** 후보는 고아가 될 수 있기 때문이다. 일반 Stage 2 `amend`의 삭제는 Stage 3 PR 삭제가 아니므로 자동 reconcile에 포함하지 않는다. 후보마다 반복해 GitHub를 검색하거나 별도 영수증을 쌓지 않는다.
@@ -313,7 +221,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 - 영향 샤드 확인은 실제 변경된 Relation의 **양 끝 Sense 소유 샤드** 중심으로 하고, 자기 Drop/Candidate·공유 검증 코드·Canonical 등 기존 입력 변화는 계속 감지한다. 불명확한 경우 안전하게 verify한다. 재검증을 위한 새 SHA 영수증, 정책 digest, 전체 Sense 감사 원장, 범용 stale 시스템은 만들지 않는다.
 - Stage 3 순차 위치는 최근 머지된 생산 PR을 확인해 정하며, Store에서는 진행 중인 작업만 기존 절차로 복구한다. 실제 머지 후 해당 샤드의 검증과 완료 처리는 유지한다.
 
-### 5-D. 편집 판단
+### 4-D. 편집 판단
 
 - **Drop:** 활용형/같은 어근의 단순 어미 변이 (`깜빡대다→깜빡이다`, `어정대다→어정거리다`), 형식만 바뀐 명사화 (`조퇴하다→조퇴`), 반복 (`팔딱하다→팔딱팔딱`), 가치 없는 같은 뜻 되풀이, 잘못 결속된 Sense 및 **작가가 활용할 수 있는 연상 경로가 없는** 관계. `팔딱하다 s1→심장`, `어정대다→낙타`는 정확한 출발 Sense와 표현 가치를 개별 검토하며, 단지 멀거나 낯설다는 이유로 자동 Drop하지 않는다.
 - **Keep:** 실제 문장/장면/감각의 새로운 선택지를 여는 `깜빡대다→가물가물`(기억 Sense), `→점멸/명멸`(빛 Sense) 등. 낯설거나 Tier가 높다는 이유만으로 일괄 삭제하지 않는다.
@@ -323,11 +231,11 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 **구현 이력·파일럿:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)은 정책·Stage 2 회계/최신 master/reconcile·Stage 3 CLI·War Room 연계의 구현 계획이었다. 파일럿 및 각 샤드의 실제 완료 여부는 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 실행 결과와 **머지된 Stage 3 데이터 PR·검증 상태**로 판단하며, 계획 이슈의 종료만으로 완료 처리하지 않는다. 삭제율 목표는 없다.
 
-## 6. Polish — 직접 Relation 편집과 동시 변경 (#8784, #8777)
+## 5. Polish — 직접 Relation 편집과 동시 변경 (#8784, #8777)
 
 **Polish**는 오너가 지정한 단어의 현재 승인 Relation을 직접 Add/Drop/Set하는 상시 작업이다([#8777](https://github.com/neverworkalone/typewriter/issues/8777), `#8777 <단어> 진행해`). 새 Candidate를 만들거나 Stage 1/2를 다시 실행하지 않는다. 해당 단어·샤드의 Stage/배치가 미시작이든 진행 중이든 완료든 관계없이 실행한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)와 같다. 공식 `direct/antonym`, Canonical, 생성 SQLite는 수정하지 않는다.
 
-### 6-A. 저장 형식
+### 5-A. 저장 형식
 
 ```jsonl
 # data/relations/relation-SSS.jsonl — Polish Relation (ID / text-only)
@@ -342,7 +250,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 - **후보 회계:** `by:"p"` 행은 Stage 1 claim을 만들지 않는다. source Sense의 Stage 1 후보와 대상 표기(정서법·큐레이션 검색형)가 **정확히 같을 때만** 그 후보를 기존 승인 관계처럼 cover한다. 같은 샤드, 다른 샤드, 역방향 모두 같다. cover되지 않은 후보의 `missing`, 이미 cover된 후보에 대한 별도 Drop 같은 이중 처리, 중복·역중복 ID 쌍은 계속 차단한다.
 - **`z`와 `p`는 다르다.** Polish Drop이 실제 Stage 1 후보의 마지막 cover를 지우면, 그 후보의 소유 샤드(다른 샤드 `drop-TTT` 포함)에 기존 형식 `by:"z"`를 추가한다. 다른 Relation·역방향 cover·Drop이 남아 있으면 추가하지 않는다. 이와 별도로 `p`는 "Polish가 이 정확한 Sense 쌍/text 연결을 제외했다"는 편집 이력이다. 후보가 아직 없는 범위에도 기록하고, Candidate 회계에는 들어가지 않는다. Stage 2 `prepare`/compact 뷰는 해당 후보 아래 `X` 행으로 이 문맥을 보여 주지만 승인을 하드 거부하지 않는다. 같은 쌍·text를 다시 승인하면 공통 쓰기 경로가 그 `p`를 지운다. 새 관계가 실제로 cover하는 후보의 기존 Drop(`z` 포함)도 함께 지운다. 영구 블랙리스트는 없다.
 
-### 6-B. 공식 도구 — `pnpm run relation:polish`
+### 5-B. 공식 도구 — `pnpm run relation:polish`
 
 ```sh
 node scripts/relation/polish-cli.mjs show --word 고요하다 [--json]      # 또는 --record <id> / --sense <id>
@@ -366,7 +274,7 @@ node scripts/relation/polish-cli.mjs apply --input edits.json [--dry-run]
 - AI는 Drop/Add/Set과 이유만 판단한다. 조회·회계·다른 샤드 영향·저장·검증은 CLI가 맡는다. 원격 파일 반복 다운로드, 다중 모델 탐색, 과거 batch 전체 재검사는 하지 않는다. 정본은 현재 JSONL이다.
 - **지원 없는 JSONL 손편집이나 `verify --relations-only`만 통과한 변경은 정식 성공이 아니다.**
 
-### 6-C. 관계 키 단위 동시 변경
+### 5-C. 관계 키 단위 동시 변경
 
 배치(Stage 2 Part, Stage 3/정제 PR)와 Polish는 같은 shard 파일을 동시에 바꿀 수 있다. 반영은 행 번호나 파일 전체가 아니라 **관계 키**로 한다(`scripts/relation/relation-delta.mjs`).
 
@@ -406,7 +314,7 @@ node scripts/relation/polish-cli.mjs apply --input edits.json [--dry-run]
   - 지금 반영할 변경의 키별 3-way 확인은 필수다. 그러나 이것은 과거 완료의 재검사와 다르다.
   - 다음 Stage는 Polish가 반영된 **현재 승인 Relations**를 입력으로 읽는다.
 
-## 7. Build와 검증 경계
+## 6. Build와 검증 경계
 
 `pnpm run build`는 **Canonical JSONL + 승인된 Relations JSONL**을 읽어 Full/Lite SQLite를 결정적으로 생성한다. **Candidate 파일을 직접 읽어 DB를 만들지 않는다.** STDICT 원본 및 공식 `direct/antonym`은 보존하고, text-only/양방향 관계/방향별 Tier/UI 그룹·정렬을 공통 검증한다.
 
