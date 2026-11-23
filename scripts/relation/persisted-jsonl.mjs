@@ -3,7 +3,15 @@ import { normalizeCandidate } from './candidate-contract.mjs';
 const RELATION_ID_KEYS = 'id,rv,sid,tid,tp,tsid';
 const ASSIGNED_RELATION_ID_KEYS = 'fm,id,rfm,rv,sid,tid,tp,tsid,ver';
 const RELATION_TEXT_KEYS = 'id,rv,sid,tp,tt';
+// #8784: a Relation authored directly by Polish carries `by:"p"`; it never carries Candidate assignment evidence.
+const POLISH_RELATION_ID_KEYS = 'by,id,rv,sid,tid,tp,tsid';
+const POLISH_RELATION_TEXT_KEYS = 'by,id,rv,sid,tp,tt';
 const DROP_KEYS = 'by,cd,id,sid';
+// #8784: a Polish exclusion `p` names one exact Sense pair or source Sense + text. It is soft editorial context stored
+// in the Drop file, never a Stage 1 Candidate Drop, so it is kept apart from every Candidate accounting row.
+const EXCLUSION_ID_KEYS = 'by,id,sid,tid,tsid';
+const EXCLUSION_TEXT_KEYS = 'by,id,sid,tt';
+export const POLISH_MARKER = 'p';
 
 const LEGACY_RELATION_KEYS = new Set([
   'source_record_id', 'source_sense_id', 'target_record_id', 'target_sense_id', 'type', 'relevance',
@@ -29,7 +37,12 @@ function assertCompactFields(row, expected, family, location) {
 /** Decode one compact persisted Relation into the descriptive in-memory contract. */
 export function deserializeRelationRow(row, location = 'Relation JSONL row') {
   if (!isPlainObject(row)) throw new Error(`${location} must be an object`);
-  const keys = keysOf(row);
+  let keys = keysOf(row);
+  const polish = keys === POLISH_RELATION_ID_KEYS || keys === POLISH_RELATION_TEXT_KEYS;
+  if (polish) {
+    if (row.by !== POLISH_MARKER) throw new Error(`${location} by must be ${JSON.stringify(POLISH_MARKER)} on a Relation`);
+    keys = keys === POLISH_RELATION_ID_KEYS ? RELATION_ID_KEYS : RELATION_TEXT_KEYS;
+  }
   if (keys === RELATION_TEXT_KEYS) {
     return {
       source_record_id: row.id,
@@ -37,6 +50,7 @@ export function deserializeRelationRow(row, location = 'Relation JSONL row') {
       text: row.tt,
       type: row.tp,
       relevance: row.rv,
+      ...(polish ? { polish: true } : {}),
     };
   }
   if (keys === RELATION_ID_KEYS || keys === ASSIGNED_RELATION_ID_KEYS) {
@@ -50,6 +64,7 @@ export function deserializeRelationRow(row, location = 'Relation JSONL row') {
       // Reverse product behavior is derived from the one persisted source judgment.
       reverse_type: row.tp,
       reverse_relevance: row.rv,
+      ...(polish ? { polish: true } : {}),
     };
     if (keys === ASSIGNED_RELATION_ID_KEYS) {
       relation.candidate_assignment_version = row.ver;
@@ -65,16 +80,17 @@ export function deserializeRelationRow(row, location = 'Relation JSONL row') {
 /** Encode one descriptive in-memory Relation with only the compact persisted fields. */
 export function serializeRelationRow(row, location = 'Relation in-memory row') {
   if (!isPlainObject(row)) throw new Error(`${location} must be an object`);
+  const polish = Object.hasOwn(row, 'polish');
+  if (polish && row.polish !== true) throw new Error(`${location} polish must be true when present`);
+  const by = polish ? { by: POLISH_MARKER } : {};
   if (Object.hasOwn(row, 'text')) {
-    const expected = 'relevance,source_record_id,source_sense_id,text,type';
+    const expected = polish ? POLISH_TEXT_ROW_KEYS : TEXT_ROW_KEYS;
     if (keysOf(row) !== expected) throw new Error(`${location} must have exactly ${expected}`);
-    return { id: row.source_record_id, sid: row.source_sense_id, tt: row.text, tp: row.type, rv: row.relevance };
+    return { id: row.source_record_id, sid: row.source_sense_id, tt: row.text, tp: row.type, rv: row.relevance, ...by };
   }
 
   const hasAssignment = Object.hasOwn(row, 'candidate_assignment_version');
-  const expected = hasAssignment
-    ? 'candidate_assignment_version,candidate_forms,relevance,reverse_candidate_forms,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type'
-    : 'relevance,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
+  const expected = polish ? POLISH_ID_ROW_KEYS : hasAssignment ? ASSIGNED_ID_ROW_KEYS : LEGACY_ID_ROW_KEYS;
   if (keysOf(row) !== expected) throw new Error(`${location} must have exactly ${expected}`);
   if (row.reverse_type !== row.type || row.reverse_relevance !== row.relevance) {
     throw new Error(`${location} has legacy reverse judgments; restart or finish this Stage 2 Part at the compact schema boundary`);
@@ -93,20 +109,42 @@ export function serializeRelationRow(row, location = 'Relation in-memory row') {
     compact.fm = row.candidate_forms;
     compact.rfm = row.reverse_candidate_forms;
   }
-  return compact;
+  return { ...compact, ...by };
 }
 
 /** Decode one compact persisted Drop into the descriptive in-memory contract. */
 export function deserializeDropRow(row, location = 'Drop JSONL row') {
+  if (isExclusionShape(row)) return deserializeExclusionRow(row, location);
   assertCompactFields(row, DROP_KEYS, 'Drop', location);
   return { source_record_id: row.id, source_sense_id: row.sid, candidate: row.cd, reason: row.by };
 }
 
-/** Encode one descriptive in-memory Drop with only the compact persisted fields. */
+/** Encode one descriptive in-memory Drop (or Polish exclusion) with only the compact persisted fields. */
 export function serializeDropRow(row, location = 'Drop in-memory row') {
+  if (isExclusionRow(row)) return serializeExclusionRow(row, location);
   const expected = 'candidate,reason,source_record_id,source_sense_id';
   if (!isPlainObject(row) || keysOf(row) !== expected) throw new Error(`${location} must have exactly ${expected}`);
   return { id: row.source_record_id, sid: row.source_sense_id, cd: row.candidate, by: row.reason };
+}
+
+const isExclusionShape = (row) => isPlainObject(row) && !Object.hasOwn(row, 'cd')
+  && [EXCLUSION_ID_KEYS, EXCLUSION_TEXT_KEYS].includes(keysOf(row));
+/** True for an in-memory Polish exclusion `p` row (never a Stage 1 Candidate Drop). */
+export const isExclusionRow = (row) => isPlainObject(row) && row.reason === POLISH_MARKER && !Object.hasOwn(row, 'candidate');
+
+function deserializeExclusionRow(row, location) {
+  if (row.by !== POLISH_MARKER) throw new Error(`${location} Polish exclusion must have by ${JSON.stringify(POLISH_MARKER)}`);
+  return Object.hasOwn(row, 'tt')
+    ? { source_record_id: row.id, source_sense_id: row.sid, text: row.tt, reason: POLISH_MARKER }
+    : { source_record_id: row.id, source_sense_id: row.sid, target_record_id: row.tid, target_sense_id: row.tsid, reason: POLISH_MARKER };
+}
+
+function serializeExclusionRow(row, location) {
+  const expected = Object.hasOwn(row, 'text') ? EXCLUSION_TEXT_ROW_KEYS : EXCLUSION_ID_ROW_KEYS;
+  if (keysOf(row) !== expected) throw new Error(`${location} must have exactly ${expected}`);
+  return Object.hasOwn(row, 'text')
+    ? { id: row.source_record_id, sid: row.source_sense_id, tt: row.text, by: POLISH_MARKER }
+    : { id: row.source_record_id, sid: row.source_sense_id, tid: row.target_record_id, tsid: row.target_sense_id, by: POLISH_MARKER };
 }
 
 function parseJsonl(contents, file, decode) {
@@ -121,7 +159,19 @@ function parseJsonl(contents, file, decode) {
 }
 
 export const parseRelationJsonl = (contents, file = 'Relation JSONL') => parseJsonl(contents, file, deserializeRelationRow);
-export const parseDropJsonl = (contents, file = 'Drop JSONL') => parseJsonl(contents, file, deserializeDropRow);
+/**
+ * Stage 1 Candidate Drops of one Drop file. Polish exclusion `p` rows are skipped here so no Candidate accounting path
+ * can mistake them for a Drop; `parseDropExclusionJsonl` reads them, and whole-file writers keep them
+ * (`preservedExclusionLines`).
+ */
+export const parseDropJsonl = (contents, file = 'Drop JSONL') => parseJsonl(contents, file, deserializeDropRow).filter((row) => !isExclusionRow(row));
+export const parseDropExclusionJsonl = (contents, file = 'Drop JSONL') => parseJsonl(contents, file, deserializeDropRow).filter(isExclusionRow);
+
+/** The raw persisted Polish exclusion lines of one Drop file text, in file order. */
+export function preservedExclusionLines(contents) {
+  if (typeof contents !== 'string' || !contents.includes('"by":"p"')) return [];
+  return contents.split(/\r?\n/u).filter((line) => line.trim() && isExclusionShape(JSON.parse(line)));
+}
 
 // Decode only the lines that contain a match of the global `pattern`, with the same locations and errors as the full
 // parse. `position` is the row's index in the full parse result (blank lines skipped), so a caller can splice a changed
@@ -167,7 +217,10 @@ function parseJsonlLinesMatching(contents, file, decode, pattern) {
 }
 
 export const parseRelationJsonlLinesMatching = (contents, file, pattern) => parseJsonlLinesMatching(contents, file, deserializeRelationRow, pattern);
-export const parseDropJsonlLinesMatching = (contents, file, pattern) => parseJsonlLinesMatching(contents, file, deserializeDropRow, pattern);
+export const parseDropJsonlLinesMatching = (contents, file, pattern) => parseJsonlLinesMatching(contents, file, deserializeDropRow, pattern)
+  .filter(({ row }) => !isExclusionRow(row));
+export const parseDropExclusionJsonlLinesMatching = (contents, file, pattern) => parseJsonlLinesMatching(contents, file, deserializeDropRow, pattern)
+  .filter(({ row }) => isExclusionRow(row));
 
 function serializeJsonl(rows, encode, family) {
   if (!Array.isArray(rows)) throw new Error(`${family} rows must be an array`);
@@ -185,7 +238,11 @@ export const DROP_REASONS = Object.freeze(['x', 'e', 'z', 'f']);
 export const LEGACY_ID_ROW_KEYS = 'relevance,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
 export const ASSIGNED_ID_ROW_KEYS = 'candidate_assignment_version,candidate_forms,relevance,reverse_candidate_forms,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
 export const TEXT_ROW_KEYS = 'relevance,source_record_id,source_sense_id,text,type';
+export const POLISH_ID_ROW_KEYS = 'polish,relevance,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
+export const POLISH_TEXT_ROW_KEYS = 'polish,relevance,source_record_id,source_sense_id,text,type';
 export const DROP_ROW_KEYS = 'candidate,reason,source_record_id,source_sense_id';
+export const EXCLUSION_ID_ROW_KEYS = 'reason,source_record_id,source_sense_id,target_record_id,target_sense_id';
+export const EXCLUSION_TEXT_ROW_KEYS = 'reason,source_record_id,source_sense_id,text';
 export const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
 export const isText = (value) => typeof value === 'string' && value.trim().length > 0;
 const isIdString = (value) => typeof value === 'string' && value.length > 0;
@@ -195,6 +252,10 @@ export function relationRowShapeError(row, at) {
   if (!isPlainObject(row)) return `${at}: must be an object`;
   const isTextRow = 'text' in row;
   const assignedId = !isTextRow && Object.hasOwn(row, 'candidate_assignment_version');
+  if (Object.hasOwn(row, 'polish')) {
+    const polishExpected = isTextRow ? POLISH_TEXT_ROW_KEYS : POLISH_ID_ROW_KEYS;
+    return keysOf(row) === polishExpected && row.polish === true ? undefined : `${at}: Polish Relation must have exactly ${polishExpected} with polish true`;
+  }
   const expected = isTextRow ? TEXT_ROW_KEYS : assignedId ? ASSIGNED_ID_ROW_KEYS : LEGACY_ID_ROW_KEYS;
   if (keysOf(row) === expected) return undefined;
   return `${at}: must have exactly ${expected}${!isTextRow && !assignedId ? ` or ${ASSIGNED_ID_ROW_KEYS}` : ''}`;
@@ -259,6 +320,29 @@ export function dropRowFieldErrors(row, at) {
   if (!DROP_REASONS.includes(row.reason)) errors.push(`${at}: reason must be one of ${DROP_REASONS.join('/')}`);
   return errors;
 }
+
+/** Object/key-set failure of one descriptive Polish exclusion row, or undefined. */
+export function exclusionRowShapeError(row, at) {
+  if (!isExclusionRow(row)) return `${at}: must be a Polish exclusion row`;
+  const expected = Object.hasOwn(row, 'text') ? EXCLUSION_TEXT_ROW_KEYS : EXCLUSION_ID_ROW_KEYS;
+  return keysOf(row) === expected ? undefined : `${at}: must have exactly ${expected}`;
+}
+
+/** Row-local field value failures of a shape-valid Polish exclusion row. */
+export function exclusionRowFieldErrors(row, at) {
+  const errors = [];
+  const idFields = 'text' in row ? ['source_record_id', 'source_sense_id'] : ['source_record_id', 'source_sense_id', 'target_record_id', 'target_sense_id'];
+  for (const field of idFields) if (!isIdString(row[field])) errors.push(`${at}: ${field} must be a non-empty string`);
+  if ('text' in row && (!isText(row.text) || row.text !== normalizeCandidate(row.text))) errors.push(`${at}: text must be a non-empty normalized string`);
+  return errors;
+}
+
+/** Direction-free key of one Polish exclusion: an exact Sense pair (either orientation) or source Sense + text. */
+export const exclusionKey = (row) => ('text' in row
+  ? `t\u0000${relationTextKey(row.source_sense_id, row.text)}`
+  : `i\u0000${[row.source_sense_id, row.target_sense_id].sort().join('\u0000')}`);
+/** The exclusion key a Relation would re-approve. */
+export const relationExclusionKey = (row) => exclusionKey(row);
 
 /** Duplicate keys shared by the official verifier and the data PR check: ID pairs (both directions), text and Drop. */
 export const relationPairKey = (sourceSense, targetRecord, targetSense) => `${sourceSense}\u0000${targetRecord}\u0000${targetSense}`;

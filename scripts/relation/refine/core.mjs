@@ -616,7 +616,8 @@ export function createRefineCli(rule) {
         if (line.startsWith('-')) output.removedRelations.push(row);
         else output.addedRelations.push(row);
       } else if (current === dropRelative && line.startsWith('+')) {
-        output.addedDrops.push(parseDropJsonl(`${raw}\n`, dropRelative)[0]);
+        // A Polish exclusion `p` line (#8784) is not a Candidate Drop and parses to nothing here.
+        output.addedDrops.push(...parseDropJsonl(`${raw}\n`, dropRelative));
       }
     }
     for (const [relative, key] of [[relationRelative, 'addedRelations'], [dropRelative, 'addedDrops']]) {

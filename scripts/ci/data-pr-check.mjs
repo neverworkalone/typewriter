@@ -8,7 +8,8 @@ import { classifyChangedPathDiff } from './changed-files.mjs';
 import { GIT_MAX_BUFFER } from './git-limits.mjs';
 import { normalizeCandidate, parseCandidateJsonl, validateCandidateBatch, validateCandidatePaths } from '../relation/candidate-contract.mjs';
 import {
-  dropRowFieldErrors, parseDropJsonl, parseRelationJsonl, relationPairKey, relationRowFieldErrors, relationTextKey,
+  dropRowFieldErrors, exclusionKey, exclusionRowFieldErrors, isExclusionRow, parseDropExclusionJsonl, parseDropJsonl, parseRelationJsonl,
+  relationPairKey, relationRowFieldErrors, relationTextKey,
 } from '../relation/persisted-jsonl.mjs';
 
 /*
@@ -87,7 +88,9 @@ export function checkDataPr(changeBaseSha, changeHeadSha, validationHeadSha, {
       const shard = match[1];
       const isRelation = RELATION_PATH.test(filePath);
       try {
-        const rows = (isRelation ? parseRelationJsonl : parseDropJsonl)(readText(filePath), filePath);
+        const text = readText(filePath);
+        // Polish exclusion `p` rows (#8784) share the Drop file and are checked with their own row contract.
+        const rows = isRelation ? parseRelationJsonl(text, filePath) : [...parseDropJsonl(text, filePath), ...parseDropExclusionJsonl(text, filePath)];
         const senses = new Map();
         for (const record of canonicalRows(shard)) {
           for (const sense of record.senses ?? []) senses.set(sense.id, record);
@@ -96,9 +99,10 @@ export function checkDataPr(changeBaseSha, changeHeadSha, validationHeadSha, {
         const seen = new Set();
         rows.forEach((row, position) => {
           const at = `${filePath}:${position + 1}`;
-          const rowErrors = isRelation ? relationRowFieldErrors(row, at) : dropRowFieldErrors(row, at);
+          const exclusion = !isRelation && isExclusionRow(row);
+          const rowErrors = isRelation ? relationRowFieldErrors(row, at) : exclusion ? exclusionRowFieldErrors(row, at) : dropRowFieldErrors(row, at);
           const ids = [['source_record_id', recordId], ['source_sense_id', senseId]];
-          if (isRelation && !('text' in row)) ids.push(['target_record_id', recordId], ['target_sense_id', senseId]);
+          if ((isRelation || exclusion) && !('text' in row)) ids.push(['target_record_id', recordId], ['target_sense_id', senseId]);
           for (const [field, pattern] of ids) {
             if (typeof row[field] === 'string' && !pattern.test(row[field])) rowErrors.push(`${at}: ${field} ${JSON.stringify(row[field])} is not a Canonical ID`);
           }
@@ -106,14 +110,15 @@ export function checkDataPr(changeBaseSha, changeHeadSha, validationHeadSha, {
           if (!source) rowErrors.push(`${at}: source sense ${row.source_sense_id} is not in Canonical shard ${shard}`);
           else if (source.id !== row.source_record_id) rowErrors.push(`${at}: source_sense_id ${row.source_sense_id} is not a sense of ${row.source_record_id}`);
           if (rowErrors.length === 0) {
-            const keys = !isRelation
+            const keys = exclusion ? [`exclusion\u0000${exclusionKey(row)}`]
+              : !isRelation
               ? [`drop\u0000${relationTextKey(row.source_sense_id, row.candidate)}`]
               : 'text' in row
                 ? [`text\u0000${relationTextKey(row.source_sense_id, row.text)}`]
                 : [relationPairKey(row.source_sense_id, row.target_record_id, row.target_sense_id)];
             if (isRelation && 'text' in row && row.text === normalizeCandidate(source.lemma)) rowErrors.push(`${at}: text repeats the source lemma`);
-            if (isRelation && !('text' in row) && row.target_record_id === row.source_record_id) rowErrors.push(`${at}: relation targets its own record`);
-            if (seen.has(keys[0])) rowErrors.push(`${at}: duplicate ${isRelation ? ('text' in row ? 'text relation' : 'or reverse-duplicate ID relation') : 'drop'} in this file`);
+            if ((isRelation || exclusion) && !('text' in row) && row.target_record_id === row.source_record_id) rowErrors.push(`${at}: relation targets its own record`);
+            if (seen.has(keys[0])) rowErrors.push(`${at}: duplicate ${isRelation ? ('text' in row ? 'text relation' : 'or reverse-duplicate ID relation') : exclusion ? 'Polish exclusion' : 'drop'} in this file`);
             seen.add(keys[0]);
             if (isRelation && !('text' in row)) seen.add(relationPairKey(row.target_sense_id, row.source_record_id, row.source_sense_id));
           }

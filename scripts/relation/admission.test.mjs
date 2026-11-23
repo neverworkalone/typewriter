@@ -15,7 +15,9 @@ import {
   validateRelationRows,
   verifyAccounting,
 } from './admission.mjs';
-import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
+import {
+  parseDropExclusionJsonl, parseDropJsonl, parseRelationJsonl, preservedExclusionLines, serializeDropJsonl, serializeRelationJsonl,
+} from './persisted-jsonl.mjs';
 import { projectRootReferences } from '../stdict/stage2-root-references.mjs';
 
 test('excluded root context requires exact STDICT sense-code links and current Canonical endpoints', () => {
@@ -663,4 +665,59 @@ test('a stored exact ID pair answers the reverse candidate when its spelling als
   assert.equal(verify({ w1: ['둘'], w2: ['하나'] }, [pair(['w2', 'w2-s1'], ['w1', 'w1-s1'])]).reverse_covered, 1);
   // Exact source ID w3 is one of the records named by 동철, so its stored pair covers w5's reverse candidate.
   assert.equal(verify({ w5: ['동철'], w3: ['다섯'] }, [pair(['w3', 'w3-s1'], ['w5', 'w5-s1'])]).reverse_covered, 1);
+});
+
+test('#8784 Polish Relations and exclusions round-trip, and Drop readers keep `p` apart from Candidate Drops', () => {
+  const idRow = { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w3', target_sense_id: 'w3-s1',
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3, polish: true };
+  const textRow = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '짧은 표현', type: 'scene', relevance: 5, polish: true };
+  const persisted = serializeRelationJsonl([idRow, textRow]);
+  assert.deepEqual(persisted.trim().split('\n').map(JSON.parse), [
+    { id: 'w1', sid: 'w1-s1', tid: 'w3', tsid: 'w3-s1', tp: 'near', rv: 3, by: 'p' },
+    { id: 'w1', sid: 'w1-s1', tt: '짧은 표현', tp: 'scene', rv: 5, by: 'p' },
+  ]);
+  assert.deepEqual(parseRelationJsonl(persisted), [idRow, textRow]);
+  assert.throws(() => parseRelationJsonl('{"id":"w1","sid":"w1-s1","tt":"a","tp":"scene","rv":5,"by":"z"}\n'), /by must be "p"/u);
+
+  const drop = { source_record_id: 'w2', source_sense_id: 'w2-s1', candidate: '버릴말', reason: 'x' };
+  const exclusion = { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w3', target_sense_id: 'w3-s1', reason: 'p' };
+  const dropText = serializeDropJsonl([drop, exclusion]);
+  assert.match(dropText, /\{"id":"w1","sid":"w1-s1","tid":"w3","tsid":"w3-s1","by":"p"\}/u);
+  assert.deepEqual(parseDropJsonl(dropText), [drop]);
+  assert.deepEqual(parseDropExclusionJsonl(dropText), [exclusion]);
+  assert.deepEqual(preservedExclusionLines(dropText), ['{"id":"w1","sid":"w1-s1","tid":"w3","tsid":"w3-s1","by":"p"}']);
+
+  const validate = (exclusionRows) => validateRelationRows({ relationRows: [], exclusionRows, index, shardSenseIds });
+  assert.equal(validate([exclusion, { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '짧은 표현', reason: 'p' }]).exclusionCount, 2);
+  const reversed = { source_record_id: 'w3', source_sense_id: 'w3-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', reason: 'p' };
+  assert.throws(() => validate([exclusion, reversed]), /duplicate Polish exclusion/u);
+  assert.throws(() => validate([{ ...exclusion, target_sense_id: 'w4-s1' }]), /is not a sense of w3/u);
+});
+
+test('#8784 a Polish Relation is Candidate-independent: it claims nothing, covers only exact Candidates, and keeps real omissions', () => {
+  const answer = (relationRows, dropRows, other = []) => verifyAccounting({ canonicalRows: shardRows, candidateFiles: files, relationRows, dropRows, otherRelationRows: other, index });
+  const rest = [
+    { ...base, text: '새 말', type: 'scene', relevance: 4 },
+    { ...base, text: '분홍빛', type: 'scene', relevance: 4 },
+    { ...base, target_record_id: 'w900', target_sense_id: 'w900-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
+  ];
+  const drops = [{ source_record_id: 'w2', source_sense_id: 'w2-s1', candidate: '버릴말', reason: 'x' }];
+  const polish = (row) => ({ ...row, polish: true });
+  // Old contract: a Relation without a Stage 1 Candidate fails accounting. A Polish Add of it is not a claim.
+  const noCandidateId = { ...base, target_record_id: 'w5', target_sense_id: 'w5-s1', type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3 };
+  const noCandidateText = { ...base, text: '없던말', type: 'mood', relevance: 6 };
+  const cover = { ...base, target_record_id: 'w902', target_sense_id: 'w902-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 };
+  assert.throws(() => answer([cover, ...rest, noCandidateId], drops), /not a Stage 1 candidate/u);
+  assert.throws(() => answer([cover, ...rest, noCandidateText], drops), /not a Stage 1 candidate/u);
+  assert.equal(answer([cover, ...rest, polish(noCandidateId), polish(noCandidateText)], drops).missing, 0);
+  // The Polish row answers the exact `유일` Candidate in this shard and from another shard, but never an unrelated one.
+  assert.equal(answer([polish(cover), ...rest], drops).skipped_existing, 1);
+  assert.equal(answer(rest, drops, [polish(cover)]).skipped_existing, 1);
+  assert.throws(() => answer([polish(noCandidateId), ...rest], drops), /"유일" has no relation, drop or existing/u);
+  // A real double disposition is still rejected: a Candidate Drop of a Candidate the Polish row answers.
+  assert.throws(() => answer([polish(cover), ...rest], [...drops, { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'e' }]),
+    /already answered by an approved Relation \(polish\)/u);
+  // Deleting the Polish cover orphans exactly that real Candidate.
+  assert.deepEqual(orphanedCandidateDrops({ canonicalRows: shardRows, candidateFiles: files, removedRelationRows: [polish(cover), polish(noCandidateText)],
+    relationRows: rest, dropRows: drops, index, includeText: true }), [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'z' }]);
 });

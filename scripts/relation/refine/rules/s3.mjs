@@ -387,9 +387,12 @@ export function transform({ context, beforeRelations, relationLines, decisions }
       relevance: original.relevance,
       reverse_type: original.type,
       reverse_relevance: original.relevance,
-      candidate_assignment_version: 1,
-      candidate_forms: [original.text],
-      reverse_candidate_forms: reverseForms,
+      // #8784: a Polish text row stays Candidate-independent when it is linked; it claims no Stage 1 spelling.
+      ...(original.polish === true ? { polish: true } : {
+        candidate_assignment_version: 1,
+        candidate_forms: [original.text],
+        reverse_candidate_forms: reverseForms,
+      }),
     };
     reverseLookup.addRelation(repaired);
     repairedRows.set(rowNumber, repaired);
