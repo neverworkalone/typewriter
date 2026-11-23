@@ -58,11 +58,31 @@ def pr_candidates(pr: dict) -> list[tuple[str, str, str, str]]:
 _STAGE2_FILE = re.compile(r"data/(?:relations/relation|relation-drops/drop)-(\d{3})\.jsonl")
 
 
+_POLISH_TITLE = re.compile(r"\[Polish\](?:\s|$)")
+_POLISH_ISSUE = re.compile(r"\bRefs\s+(?:#|https://github\.com/[\w.-]+/[\w.-]+/issues/)8777(?!\d)")
+
+
+def is_polish_data_pr(pr: dict) -> bool:
+    """A formal Polish data PR (#8784): `[Polish]` title, `Refs #8777` body and only shard Relation/Drop files.
+
+    Polish edits approved data by relation key and is replayed onto newer data, so it never occupies a shard. Any other
+    shape (no body, a code/doc file, an unknown file list) keeps the ordinary occupancy rule.
+    """
+    files = pr.get("files")
+    return (bool(_POLISH_TITLE.match(pr.get("title") or "")) and bool(_POLISH_ISSUE.search(pr.get("body") or ""))
+            and isinstance(files, list) and bool(files)
+            and all(_STAGE2_FILE.fullmatch((f or {}).get("path", "")) for f in files))
+
+
 def pr_stage2_shards(pr: dict) -> set[str]:
-    """Shards whose Stage 2 Relation/Drop files an open PR touches (same unknown-list rule as `pr_candidates`)."""
+    """Shards whose Stage 2 Relation/Drop files an open PR touches (same unknown-list rule as `pr_candidates`).
+
+    A formal Polish data PR occupies none (#8784); Stage 2 and Stage 3 PRs keep their mutual shard occupancy."""
     files = pr.get("files")
     if not isinstance(files, list):
         raise BatchError(f"열린 PR #{pr.get('number')}의 파일 목록을 알 수 없어 중복 점유를 배제할 수 없습니다")
+    if is_polish_data_pr(pr):
+        return set()
     return {m.group(1) for f in files if (m := _STAGE2_FILE.fullmatch((f or {}).get("path", "")))}
 
 

@@ -1106,3 +1106,45 @@ test('#6555 amend recovers a PR\'s decisions from its diff and rebuilds it from 
   git(root, 'commit', '-qam', 'Add a Relation by hand');
   await assert.rejects(cli(['decisions']), /adds or reorders Relation rows/u);
 });
+
+// #8784 PR-2: a Stage 3 PR replayed by relation key onto a newer Polish master keeps its row-based review amend.
+test('#8784 a replayed Stage 3 PR still lists and amends its own decisions from the latest base', async (t) => {
+  const { apply: polish } = await import('./polish-cli.mjs');
+  const { replay } = await import('./replay-cli.mjs');
+  const root = await repository(t);
+  const out = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' }).stdout.trim();
+  const base = out('rev-parse', 'HEAD');
+  git(root, 'switch', '-qc', 's3');
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  await save(root, 'chunk 001\nD 1\nL 2 T2\n');
+  await quiet(() => run(['apply', '--shard', '001'], { root }));
+  git(root, 'commit', '-qam', 'Stage 3 edits');
+  const ours = out('rev-parse', 'HEAD');
+  git(root, 'switch', '-q', 'master');
+  await polish({ edits: [
+    { op: 'set', source_sense_id: 'w1-s1', text: '어렴풋이', type: 'sensory', relevance: 2, reason: 'Polish' },
+    { op: 'add', source_sense_id: 'w1-s1', text: '고요한 호수', type: 'scene', relevance: 3, reason: 'Polish' },
+  ] }, { root });
+  git(root, 'commit', '-qam', 'Polish');
+  const theirs = out('rev-parse', 'HEAD');
+  git(root, 'switch', '-q', 's3');
+  spawnSync('git', ['merge', '-q', '--no-edit', theirs], { cwd: root });
+  const replayed = await replay({ base, ours, theirs }, root);
+  assert.deepEqual(replayed.files.map((file) => [file.path, file.conflicts]),
+    [['data/relation-drops/drop-001.jsonl', []], ['data/relations/relation-001.jsonl', []]]);
+  git(root, 'add', '-A', 'data');
+  git(root, 'commit', '-qm', 'Replay Stage 3 onto Polish');
+  const relations = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
+  assert.deepEqual(relations.map((row) => [row.target_sense_id ?? row.text, row.type]),
+    [['w3-s2', 'scene'], ['어렴풋이', 'sensory'], ['w4-s1', 'association'], ['고요한 호수', 'scene']]);
+
+  const cli = (args) => quiet(() => run([...args, '--shard', '001', '--base', theirs], { root }));
+  assert.deepEqual((await cli(['decisions'])).decisions.map(({ row, action, target_sense_id }) => [row, action, target_sense_id]),
+    [[1, 'drop', undefined], [2, 'repair', 'w3-s2']]);
+  const input = path.join(root, '.warroom-scratch', 'delta.txt');
+  await writeFile(input, 'amend\nK 1\n');
+  assert.equal((await cli(['amend', '--in', input])).status, 'applied');
+  const amended = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
+  assert.deepEqual(amended.map((row) => [row.target_sense_id ?? row.text, row.type]),
+    [['w2-s1', 'sensory'], ['w3-s2', 'scene'], ['어렴풋이', 'sensory'], ['w4-s1', 'association'], ['고요한 호수', 'scene']]);
+});

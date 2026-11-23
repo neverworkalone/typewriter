@@ -101,3 +101,51 @@ test('#8784 Polish Drop/Add keeps both shards\' Candidate accounting, records an
   assert.deepEqual(shown.senses[0].relations.map((link) => [link.counterpart?.lemma ?? link.text, link.type, link.by]),
     [['물결', 'sensory', 'ver:1'], ['별빛', 'sensory', 'p'], ['흐르다', 'action', 'p'], ['잠든 마을', 'scene', 'p']]);
 });
+
+// #8784 PR-2: a PR's approved-data delta is replayed onto newer approved data by relation key, never by line or file.
+test('#8784 replay merges concurrent Polish/batch deltas by relation key; the latest value wins a shared key', async (t) => {
+  const root = await repository(t);
+  const { execFileSync } = await import('node:child_process');
+  const { replay } = await import('./replay-cli.mjs');
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', ...args], { cwd: root, encoding: 'utf8' }).trim();
+  git('init', '-q', '-b', 'master');
+  git('add', '-A');
+  git('commit', '-qm', 'base');
+  const base = git('rev-parse', 'HEAD');
+  const commitEdits = async (edits) => { await mkdir(path.join(root, 'data/relation-drops'), { recursive: true }); await apply({ edits }, { root }); git('add', '-A'); git('commit', '-qm', 'edit'); return git('rev-parse', 'HEAD'); };
+
+  // ours: drop 고요↔물결 and the cross-shard 고요↔별빛; theirs (latest master): the same 고요↔물결 drop, a retype of
+  // 고요↔별빛 and a text Relation that answers the Candidate 물결.
+  git('switch', '-qc', 'batch');
+  const ours = await commitEdits([
+    { op: 'drop', source_sense_id: 'w1-s1', target_sense_id: 'w3-s1', reason: '약함' },
+    { op: 'drop', source_sense_id: 'w1-s1', target_sense_id: 'w2000-s1', reason: '배치' },
+  ]);
+  git('switch', '-q', 'master');
+  const theirs = await commitEdits([
+    { op: 'drop', source_sense_id: 'w1-s1', target_sense_id: 'w3-s1', reason: '약함' },
+    { op: 'set', source_sense_id: 'w1-s1', target_sense_id: 'w2000-s1', type: 'scene', relevance: 2, reason: 'Polish' },
+    { op: 'add', source_sense_id: 'w1-s1', text: '물결', type: 'sensory', relevance: 3, reason: 'Polish' },
+  ]);
+  git('switch', '-q', 'batch');
+  assert.throws(() => git('merge', '-q', '--no-edit', theirs), /conflict|CONFLICT|Command failed/u);
+
+  const result = await replay({ base, ours, theirs }, root);
+  const byPath = Object.fromEntries(result.files.map((file) => [file.path, file]));
+  // The shared key keeps the latest Type/Tier, so the Drop's `p` and both shards' `z` are left out with it; the latest
+  // text Relation now answers 물결, so that replayed `z` is left out too.
+  assert.deepEqual(byPath['data/relations/relation-001.jsonl'].conflicts, ['R|i|w1-s1|w2000-s1']);
+  assert.deepEqual(byPath['data/relation-drops/drop-001.jsonl'].conflicts.sort(),
+    ['D|w1-s1|물결', 'D|w1-s1|별빛', 'P|i|w1-s1|w2000-s1']);
+  assert.deepEqual(byPath['data/relation-drops/drop-002.jsonl'].conflicts, ['D|w2000-s1|고요']);
+  assert.equal(await read(root, 'data/relation-drops/drop-002.jsonl'), '');
+  const relations = parseRelationJsonl(await read(root, 'data/relations/relation-001.jsonl'));
+  assert.deepEqual(relations.map((row) => [row.target_sense_id ?? row.text, row.type, row.relevance]),
+    [['w2000-s1', 'scene', 2], ['물결', 'sensory', 3]]);
+  assert.equal(await read(root, 'data/relation-drops/drop-001.jsonl'), '{"id":"w1","sid":"w1-s1","tid":"w3","tsid":"w3-s1","by":"p"}\n');
+  assert.equal((await accounting(root, '001')).missing, 0);
+  assert.equal((await accounting(root, '002')).missing, 0);
+  git('add', '-A');
+  git('commit', '-qm', 'replay');
+  assert.deepEqual((await replay({ base: theirs, ours: 'HEAD', theirs }, root)).files, []);
+});

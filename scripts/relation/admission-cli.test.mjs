@@ -199,7 +199,7 @@ test('CLI entrypoint prepares a Part without an injected repository root', async
   ]) {
     await mkdir(directory, { recursive: true });
   }
-  for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs', 'persisted-jsonl.mjs']) {
+  for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs', 'persisted-jsonl.mjs', 'relation-delta.mjs']) {
     await copyFile(path.join(REPOSITORY_DIRECTORY, 'scripts/relation', file), path.join(relationScriptDirectory, file));
   }
   await mkdir(path.join(root, 'config'), { recursive: true });
@@ -2510,7 +2510,7 @@ async function spawnedVerifyRepository(t, { candidates = () => [], relations = [
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const [from, to] of [
     ['scripts/relation/admission-cli.mjs'], ['scripts/relation/admission.mjs'], ['scripts/relation/candidate-contract.mjs'], ['scripts/relation/persisted-jsonl.mjs'],
-    ['scripts/build/gloss-arrow-reference.mjs'], ['src/runtime/dictionary-contract.js'], ['config/stage2-part-layout.json'],
+    ['scripts/relation/relation-delta.mjs'], ['scripts/build/gloss-arrow-reference.mjs'], ['src/runtime/dictionary-contract.js'], ['config/stage2-part-layout.json'],
   ]) {
     await mkdir(path.dirname(path.join(root, from)), { recursive: true });
     await copyFile(path.join(REPOSITORY_DIRECTORY, from), path.join(root, to ?? from));
@@ -3669,4 +3669,44 @@ test('#8784 Stage 2 shows Polish exclusions as soft context and a Part merge kee
   assert.equal((await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'))).length, 5);
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.equal(counts.missing, 0);
+});
+
+// #8784 PR-2: a merged Part whose PR meets a concurrent Polish change of its shard files is replayed by relation key.
+test('#8784 replay keeps the latest Polish answer, drops only the superseded Part Drop and keeps verify/amend exact', async (t) => {
+  const root = await spawnedVerifyRepository(t, { candidates: (index) => index === 0 ? ['먼 바다', '푸른 기척'] : [] });
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const git = (...args) => spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', ...args], { cwd: root, encoding: 'utf8' });
+  await writeFile(path.join(root, '.gitignore'), '.warroom-scratch/\n');
+  for (const args of [['init', '-q', '-b', 'master'], ['add', '-A'], ['commit', '-qm', 'base'], ['switch', '-qc', 'part']]) assert.equal(git(...args).status, 0);
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  await mergeForTest(root, checkpoint);
+  for (const args of [['add', '-A'], ['commit', '-qm', 'part'], ['switch', '-q', 'master']]) assert.equal(git(...args).status, 0);
+  const { apply } = await import('./polish-cli.mjs');
+  await apply({ edits: [
+    { op: 'add', source_sense_id: 'w1-s1', text: '먼 바다', type: 'scene', relevance: 3, reason: 'Polish' },
+    { op: 'add', source_sense_id: 'w2-s1', target_sense_id: 'w3-s1', type: 'near', relevance: 4, reason: 'Polish' },
+  ] }, { root });
+  for (const args of [['add', '-A'], ['commit', '-qm', 'polish'], ['switch', '-q', 'part'], ['merge', '-q', '--no-edit', 'master']]) {
+    assert.equal(git(...args).status, 0);
+  }
+  const verify = () => quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  // Textually clean, but the Part's Drop and the Polish Relation now answer 먼 바다 twice: the old path stops here.
+  await assert.rejects(verify, /already answered by an approved Relation \(polish\)/u);
+
+  const replayed = await quiet(() => run(['replay', '--checkpoint', checkpoint, '--theirs', 'master'], { root }));
+  assert.deepEqual(replayed.conflicts, ['D|w1-s1|먼 바다']);
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  assert.equal(await readFile(dropPath, 'utf8'), '{"id":"w1","sid":"w1-s1","cd":"푸른 기척","by":"x"}\n');
+  assert.equal((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).match(/"by":"p"/gu).length, 2);
+  assert.equal((await verify()).missing, 0);
+  assert.deepEqual((await quiet(() => run(['replay', '--checkpoint', checkpoint, '--theirs', 'master'], { root }))).outputs, replayed.outputs);
+
+  // A review amend after the replay changes only its own decision and keeps the latest Polish data.
+  const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+  const { alias } = inspect.items.find((item) => item.candidate === '푸른 기척');
+  await writeFile(path.join(root, '.warroom-scratch/replay-amend.txt'), `amend w1-s1 @${inspect.digest}\n${alias} D e\n`);
+  await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', '.warroom-scratch/replay-amend.txt'], { root }));
+  assert.equal(await readFile(dropPath, 'utf8'), '{"id":"w1","sid":"w1-s1","cd":"푸른 기척","by":"e"}\n');
+  assert.equal((await verify()).missing, 0);
 });

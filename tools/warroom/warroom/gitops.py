@@ -1000,6 +1000,75 @@ class Git:
             raise IntegrationBlocked("merge 후에도 수정 commit이 HEAD에 포함되지 않았습니다")
         return self.head(path)
 
+    _DATA_FILE = re.compile(r"data/(?:relations/relation|relation-drops/drop)-\d{3}\.jsonl")
+
+    def replay_relation_merge(self, path: Path, branch: str, base: str, sha: str, owned: set[str],
+                              checkpoint: str | None = None, timeout: int = 900) -> tuple[str, dict]:
+        """Merge `sha` (on origin/<base>) into an owned PR worktree, rebuilding shared shard data by relation key (#8784).
+
+        Every shard Relation/Drop file both sides changed since their merge base is replayed by the official CLI: a Stage 2
+        Part through `admission-cli replay` (its checkpoint keeps verify/amend exact), any other PR through `replay-cli`.
+        Only `owned` data files may need it, and no other path may conflict; otherwise the merge is aborted, the worktree
+        is left exactly as it was and IntegrationBlocked is raised. Returns the merge commit and the CLI report.
+        """
+        path = self._owned(path)
+        if self.registered(path) != branch:
+            raise IntegrationBlocked(f"worktree가 브랜치 {branch}에 등록되어 있지 않습니다")
+        if (dirty := self.dirty(path)).strip():
+            raise IntegrationBlocked(f"worktree가 clean 상태가 아닙니다: {dirty.strip()[:400]}")
+        with self.repo_lock:
+            self._git("fetch", "origin", base, net=True)
+            if not self._git("merge-base", "--is-ancestor", sha, f"origin/{base}", check=False).ok:
+                raise IntegrationBlocked(f"{sha[:10]}이 origin/{base}에 포함되어 있지 않습니다")
+        if self._git("rev-parse", "-q", "--verify", "MERGE_HEAD", cwd=path, check=False).ok:
+            raise IntegrationBlocked("worktree에 진행 중인 merge가 있습니다")
+        before = self.head(path)
+        if self.contains(path, sha):
+            return before, {"status": "no-op"}
+        common = self.merge_base(path, before, sha)
+
+        def data_changes(old, new):
+            out = self._git("diff", "--name-only", "--no-renames", old, new, "--", "data/relations", "data/relation-drops",
+                            cwd=path).out
+            return {p for p in out.splitlines() if self._DATA_FILE.fullmatch(p)}
+
+        shared = sorted(data_changes(common, before) & data_changes(common, sha))
+        if not shared:
+            raise IntegrationBlocked("PR과 기준 브랜치가 함께 바꾼 shard Relation/Drop 파일이 없어 relation replay 대상이 아닙니다")
+        if set(shared) - owned:
+            raise IntegrationBlocked("PR 소유가 아닌 shard 데이터 파일도 함께 바뀌었습니다: " + ", ".join(sorted(set(shared) - owned)))
+
+        def abort(message):
+            self._git("merge", "--abort", cwd=path, check=False)
+            if self.head(path) != before or self.dirty(path).strip():
+                raise IntegrationBlocked(f"{message}; merge 중단 후 worktree가 원래 상태와 다릅니다")
+            raise IntegrationBlocked(message)
+
+        self._git("merge", "--no-commit", "--no-ff", sha, cwd=path, check=False)
+        if not self._git("rev-parse", "-q", "--verify", "MERGE_HEAD", cwd=path, check=False).ok:
+            abort("merge를 시작하지 못했습니다")
+        conflicted = {p for p in self._git("diff", "--name-only", "--diff-filter=U", cwd=path).out.splitlines() if p}
+        if conflicted - set(shared):
+            abort("relation replay로 풀 수 없는 충돌 파일이 있습니다: " + ", ".join(sorted(conflicted - set(shared))))
+        cli = (["node", "scripts/relation/admission-cli.mjs", "replay", "--checkpoint", checkpoint, "--theirs", sha]
+               if checkpoint else
+               ["node", "scripts/relation/replay-cli.mjs", "--base", common, "--ours", before, "--theirs", sha])
+        res = self.r.run(cli, cwd=path, env=self.env, timeout=timeout)
+        try:
+            report = json.loads((res.out or "").strip().splitlines()[-1]) if res.ok else None
+        except (ValueError, IndexError):
+            report = None
+        if not isinstance(report, dict) or report.get("ok") is not True:
+            abort(f"relation replay 실패(exit {res.code}): {' '.join((res.err or res.out or '').split())[-600:]}")
+        self._git("add", "--", *sorted(data_changes(common, before)), cwd=path)
+        if self._git("diff", "--name-only", "--diff-filter=U", cwd=path).out.strip():
+            abort("relation replay 뒤에도 충돌이 남았습니다")
+        if not self._git("commit", "--no-edit", "-q", cwd=path, check=False).ok:
+            abort("relation replay merge commit에 실패했습니다")
+        if (dirty := self.dirty(path)).strip():
+            raise IntegrationBlocked(f"relation replay commit 뒤 worktree가 clean 상태가 아닙니다: {dirty.strip()[:400]}")
+        return self.head(path), report
+
     def verified_supervisor_integration(self, path: Path, branch: str, base: str,
                                         old_head: str, new_head: str) -> bool:
         """Prove a saved Stage 2 base advanced only through Supervisor-style merges from origin/base.

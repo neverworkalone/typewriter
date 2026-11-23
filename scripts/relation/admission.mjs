@@ -845,6 +845,8 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   // of a polysemous lemma; only a repeated sense pair is a duplicate disposition.
   const approvedLinks = existingCandidateLinks(otherRelationRows, index, merged);
   const errors = [];
+  // #8784: Candidates answered twice (two claims, or a claim and an approved/reverse link), for a relation-key replay.
+  const answeredTwice = [];
   const claimed = new Map();
   const deferredSearchAliasClaims = [];
   const canShareCandidate = (left, right) => left.kind === 'id' && right.kind === 'id' && left.targetSenseId !== right.targetSenseId;
@@ -852,7 +854,10 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     const key = `${senseId}\u0000${text}`;
     const priorClaims = claimed.get(key) ?? [];
     const conflict = priorClaims.find((prior) => !canShareCandidate(prior.link, link));
-    if (conflict) errors.push(`${at}: candidate ${JSON.stringify(text)} of ${senseId} is already ${conflict.how}`);
+    if (conflict) {
+      errors.push(`${at}: candidate ${JSON.stringify(text)} of ${senseId} is already ${conflict.how}`);
+      answeredTwice.push({ source_sense_id: senseId, candidate: text });
+    }
     claimed.set(key, [...priorClaims, { how, link }]);
     const entry = merged.get(senseId);
     if (!entry || !entry.candidates.has(text)) errors.push(`${at}: ${JSON.stringify(text)} is not a Stage 1 candidate of ${senseId}`);
@@ -904,6 +909,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
 
   const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, reverse_covered: 0, missing: 0,
     records: scopeRows.length, senses: scopeSenses.size };
+
   for (const record of scopeRows) {
     for (const sense of record.senses) {
       for (const text of merged.get(sense.id)?.candidates.keys() ?? []) {
@@ -917,6 +923,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
           const priorApproval = approved.find((link) => claims.some((claim_) => !canShareCandidate(claim_.link, link)));
           if (priorApproval) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by an approved Relation (${priorApproval.why}) and must not be re-authored`);
           const priorReverse = reverse.find((link) => claims.some((claim_) => !canShareCandidate(claim_.link, link)));
+          if (priorApproval || priorReverse) answeredTwice.push({ source_sense_id: sense.id, candidate: text });
           if (priorReverse) {
             const conflictingClaim = claims.find((claim_) => !canShareCandidate(claim_.link, priorReverse));
             errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by the reverse of a stored ID pair (${priorReverse.targetSenseId}) and cannot also be ${conflictingClaim.how}`);
@@ -930,7 +937,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
       }
     }
   }
-  if (errors.length > 0) throw new AdmissionVerifyError('accounting', errors, `Relation Admission accounting failed:\n${errors.slice(0, 50).map((error) => `- ${error}`).join('\n')}${errors.length > 50 ? `\n- ... ${errors.length - 50} more` : ''}`);
+  if (errors.length > 0) throw Object.assign(new AdmissionVerifyError('accounting', errors, `Relation Admission accounting failed:\n${errors.slice(0, 50).map((error) => `- ${error}`).join('\n')}${errors.length > 50 ? `\n- ... ${errors.length - 50} more` : ''}`), { answeredTwice });
   return { ...counts, raw: rawCandidateCount, merged_duplicates: rawCandidateCount - counts.unique };
 }
 
