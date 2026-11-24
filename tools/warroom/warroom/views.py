@@ -146,12 +146,12 @@ def _idle_phase(st: dict) -> str:
     return "—  시작 예약 중" if st.get("run") else "—  실행 이력 없음"
 
 
-def _idle_card(st: dict, title: str) -> str:
+def _idle_card(st: dict, title: str, width: int = CARD_W) -> str:
     """Neutral empty card: its title, idle phase, wait reason and any current problem."""
-    wait = _fit("대기: " + st["wait"]) if st.get("wait") else ""
-    problem = (_fit("오류: " + st["error"]) if st.get("error") else
-               _fit("문제: " + st["blocked"]) if st.get("blocked") else "")
-    return "\n".join([_fit(title), _fit(_idle_phase(st)), wait, problem])
+    wait = _fit("대기: " + st["wait"], width) if st.get("wait") else ""
+    problem = (_fit("오류: " + st["error"], width) if st.get("error") else
+               _fit("문제: " + st["blocked"], width) if st.get("blocked") else "")
+    return "\n".join([_fit(title, width), _fit(_idle_phase(st), width), wait, problem])
 
 
 CARD_LINES = 4   # every card has exactly these content lines (empty ones stay blank) so all cards share one height
@@ -191,18 +191,19 @@ def progress_of(st: dict) -> tuple:
     return st.get("records_done"), st.get("records_total"), "records"
 
 
-def card_text(st: dict) -> str:
+def card_text(st: dict, width: int = CARD_W) -> str:
     """Card = Line summary in a fixed 4-line layout (title / records / bar / PR + elapsed).
 
     Only observed values are shown: no records -> `진행량 확인 중` and no bar, never an estimate. DRAIN is
     spelled out (never colour-only); shared Stage 2/3 cards also show their owner and wait/problem cues. Activity stays in Detail.
+    `width` is the card's content cells (the two-column Refinement card is wider than one column).
     """
     m = control.method_label(st["method"])
     is_stage2 = st["method"] == STAGE2_METHOD
     is_stage3 = st["method"] == STAGE3_METHOD
     owner = st.get("display_owner") or st["model"]
     if st["batch"] is None:
-        return _idle_card(st, m)
+        return _idle_card(st, m, width)
     icon = ICON.get(st["state"], "?")
     s2 = st.get("stage2")
     phase = PHASE.get(st["state"], st["state"])
@@ -210,24 +211,24 @@ def card_text(st: dict) -> str:
         phase += "+DRAIN"
     identity = (f"Stage 2 · {s2['shard']}/{s2['batch']}/{s2['part']}" if s2
                 else f"{st.get('stage_label') or m} · {st['batch']}")
-    title = _two_sided(identity, f"{phase}  {icon}")
+    title = _two_sided(identity, f"{phase}  {icon}", width)
     done, total, unit = progress_of(st)
     observed = done is not None and bool(total)
     if observed:
         if is_stage2:
             progress = f"{done} / {total} · {done / total * 100:.1f}%"
-            records = _two_sided(owner, progress)
+            records = _two_sided(owner, progress, width)
         elif is_stage3:
             progress = f"{owner} · {done} / {total} {unit}"
-            records = _two_sided(progress, f"{done / total * 100:.1f}%")
+            records = _two_sided(progress, f"{done / total * 100:.1f}%", width)
         else:
             progress = f"{done} / {total} {unit}"
-            records = _two_sided(progress, f"{done / total * 100:.1f}%")
-        bar = progress_bar(done, total)
+            records = _two_sided(progress, f"{done / total * 100:.1f}%", width)
+        bar = progress_bar(done, total, width)
     else:
         records, bar = (f"{owner} · 진행량 확인 중" if (is_stage2 or is_stage3) else "진행량 확인 중"), ""
     ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
-                     f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
+                     f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "", width)
     lines = [title, records, bar, ops]
     tasks = (s2.get("tasks") if s2 else None) or st.get("tasks")
     if tasks and (is_stage2 or is_stage3):
@@ -235,13 +236,13 @@ def card_text(st: dict) -> str:
         left = f"실행 {tasks['running']} · 대기 {queued}"
         if tasks["failed"]:
             left += f" · 실패 {tasks['failed']}"
-        lines.append(_two_sided(left, f"저장 {tasks['saved']}/{tasks['total']}"))
+        lines.append(_two_sided(left, f"저장 {tasks['saved']}/{tasks['total']}", width))
     if (is_stage2 or is_stage3) and st.get("wait"):
-        lines.append(_fit("대기: " + st["wait"]))
+        lines.append(_fit("대기: " + st["wait"], width))
     if (is_stage2 or is_stage3) and st.get("error"):
-        lines.append(_fit("오류: " + st["error"]))
+        lines.append(_fit("오류: " + st["error"], width))
     elif (is_stage2 or is_stage3) and st.get("blocked"):
-        lines.append(_fit("문제: " + st["blocked"]))
+        lines.append(_fit("문제: " + st["blocked"], width))
     return "\n".join(lines)
 
 
