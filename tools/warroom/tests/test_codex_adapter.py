@@ -210,6 +210,7 @@ class ChunkDisabledFeatures(unittest.TestCase):
             d = Path(d)
             a.start("p", d, env, LAUNCH, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
             self.assertNotIn("--disable", a.cmd, "no preflight: nothing is guessed")
+            self.assertIn("skills.include_instructions=false", a.cmd)
             fake = Preflight.Fake(exec_help=Preflight.EXEC + "--disable ")
             self.assertIsNone(a.preflight(fake, {}, [LAUNCH]))
             for kind in ("start", "resume"):
@@ -222,6 +223,7 @@ class ChunkDisabledFeatures(unittest.TestCase):
                 self.assertEqual(a.cmd[-1], "p")
             a.start("p", d, {}, LAUNCH, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
             self.assertNotIn("--disable", a.cmd, "non-chunk runs keep every feature")
+            self.assertNotIn("skills.include_instructions=false", a.cmd)
 
 
 class FreshTaskFix(unittest.TestCase):
