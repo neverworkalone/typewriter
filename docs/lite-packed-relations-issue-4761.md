@@ -39,12 +39,11 @@ that does not round-trip, authored rows with a non-empty `note`, and `direct`/`a
 
 ## Measuring variants separately
 
-Each variant is a different file; keep them by name or output directory. Reuse one Full database so the input is identical:
+Each variant is a different file; keep them by name or output directory. The product build writes Lite directly
+(Issue #9931) and the flags are part of its build-cache key, so each flag combination builds and caches its own Lite:
 
 ```bash
-pnpm run build:dictionary    # once; use --allow-dirty only for local experiments, never as PR evidence
 # edit the two flags in scripts/build/dictionary-config.mjs, then for each variant:
-TYPEWRITER_SHARED_DICTIONARY_PATH=artifacts/dictionary.sqlite \
 TYPEWRITER_BUILD_OUTPUT_DIRECTORY=dist-id-text pnpm run build
 ```
 

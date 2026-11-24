@@ -2,9 +2,8 @@ import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 
-import { buildDictionary } from './dictionary.mjs';
-import { extractLiteDictionary } from './lite-dictionary.mjs';
-import { createDictionaryProgress, progressStage } from './dictionary-progress.mjs';
+import { buildProductDictionary } from './direct-lite.mjs';
+import { createDictionaryProgress } from './dictionary-progress.mjs';
 
 const PRODUCT_LEGAL_FILES = Object.freeze([
   'Apache-2.0.txt',
@@ -18,8 +17,6 @@ export function createProductRuntimeAssets({
   projectRoot,
   canonicalDirectory,
   outputDirectory,
-  sharedDictionaryPath = null,
-  fullDictionaryPath = path.join(projectRoot, 'artifacts/dictionary.sqlite'),
   allowDirty = process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
   // UI-only development build (`pnpm run build:ui`): never creates, reads, extracts, checks or removes any database
   // or the DB-derived runtime/dictionary-build-info.js. Not a release or packaging path.
@@ -101,45 +98,16 @@ export function createProductRuntimeAssets({
 
     const onProgress = createDictionaryProgress();
     const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
-    // The Extension ships only the Lite product database, always extracted from a verified Full database: either the
-    // CI-shared Full artifact, or a Full database built here from the current sources (never a reused cache).
-    let fullPath;
-    if (sharedDictionaryPath) {
-      const relativeSharedPath = path.relative(
-        outputDirectory,
-        path.resolve(sharedDictionaryPath),
-      );
-      if (
-        relativeSharedPath === ''
-        || (!relativeSharedPath.startsWith('..') && !path.isAbsolute(relativeSharedPath))
-      ) {
-        throw new Error(
-          'TYPEWRITER_SHARED_DICTIONARY_PATH must be outside the Vite output directory',
-        );
-      }
-
-      fullPath = path.resolve(sharedDictionaryPath);
-      console.log(`Full dictionary reused from shared artifact: ${fullPath}`);
-    } else {
-      const summary = await buildDictionary({
-        inputDirectory: canonicalDirectory,
-        outputPath: fullDictionaryPath,
-        repositoryDirectory: projectRoot,
-        allowDirty,
-        onProgress,
-      });
-      fullPath = summary.outputPath;
-
-      console.log(
-        `Full dictionary built: ${summary.recordCount} records, `
-          + `${summary.senseCount} senses, ${summary.relationCount} relations, `
-          + `${summary.meaningProjection.authored_row_count} echoes.`,
-      );
-    }
-    const finishLite = progressStage(onProgress, 'Lite extraction, verification and VACUUM');
-    await extractLiteDictionary({ fullPath, litePath: outputPath });
-    finishLite();
-    console.log(`Product (Lite) dictionary extracted from ${fullPath}.`);
+    // Issue #9931: the Extension's Lite database is built directly from a verified Static Base and the current Approved
+    // Relations; no Full database is created or read. `TYPEWRITER_BUILD_CACHE=off` bypasses the build cache.
+    const summary = await buildProductDictionary({
+      projectRoot,
+      canonicalDirectory,
+      outputPath,
+      allowDirty,
+      onProgress,
+    });
+    console.log(`Product (Lite) dictionary ready (build cache: ${summary.cache}).`);
 
     const database = new DatabaseSync(outputPath, { readOnly: true });
     let sourceRevision;

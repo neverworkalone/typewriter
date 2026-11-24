@@ -170,6 +170,8 @@ async function runCommand({ executable, args }, context = {}, check = {}) {
     // database tests may still build their own small databases.
     delete childEnvironment.TYPEWRITER_SHARED_DICTIONARY_PATH;
     delete childEnvironment.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
+    // Nor a cached product dictionary (Issue #9931): product builds started by CI are always cold.
+    childEnvironment.TYPEWRITER_BUILD_CACHE = 'off';
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
       env: childEnvironment,

@@ -356,6 +356,20 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ]),
       },
       {
+        ...affectedTestCheck('tests/direct-lite.test.mjs', 'Test Static Base, Direct Lite build and build cache', [
+          'scripts/build/authored-relations.mjs',
+          'scripts/build/build-cache.mjs',
+          'scripts/build/build-inputs.mjs',
+          'scripts/build/dictionary.mjs',
+          'scripts/build/direct-lite.mjs',
+          'scripts/build/lite-dictionary.mjs',
+          'scripts/build/static-base.mjs',
+          'scripts/verify/direct-lite-equivalence.mjs',
+          'src/runtime/dictionary-validation.js',
+          'src/runtime/packed-relations.js',
+        ]),
+      },
+      {
         ...affectedTestCheck('tests/build-provenance.test.mjs', 'Test source revision provenance and dirty-build safeguards', [
           'scripts/build/provenance.mjs',
         ]),

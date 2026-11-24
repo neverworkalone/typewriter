@@ -28,7 +28,7 @@ import { LITE_OPTIMIZATION } from './dictionary-config.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION } from './sqlite-schema.mjs';
 
 /** Product tables the Lite database carries, with the primary-key order that keeps the output deterministic. */
-const LITE_TABLE_COPIES = [
+export const LITE_TABLE_COPIES = [
   ['metadata', 'key, value', 'key'],
   ['records', 'id, record_type, role, candidate_id, lemma', 'id'],
   ['search_forms', 'record_id, position, form', 'record_id, position'],
@@ -111,8 +111,12 @@ function packAuthoredRelations(lite) {
 
 /** Deduplicated texts get pool IDs by descending use (small varints for common texts), ties by text: deterministic. */
 function packTextRelations(lite) {
-  const rows = lite.prepare(`SELECT ${TEXT_RELATION_COLUMNS} FROM full_source.meaning_text_relations
-    ORDER BY source_meaning_id, position`).all();
+  writePackedTextRelations(lite, lite.prepare(`SELECT ${TEXT_RELATION_COLUMNS} FROM full_source.meaning_text_relations
+    ORDER BY source_meaning_id, position`).all());
+}
+
+/** Write the text pool and packed text lists from text relation rows ordered by source meaning, then position. */
+export function writePackedTextRelations(lite, rows) {
   const uses = new Map();
   for (const { text } of rows) uses.set(text, (uses.get(text) ?? 0) + 1);
   const poolIds = new Map([...uses].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map(([text], index) => [text, index + 1]));

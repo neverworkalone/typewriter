@@ -280,7 +280,7 @@ function rowsByTier(relevance) {
  */
 export function projectAuthoredRelations({ approved, meanings, existing }) {
   if (!approved || approved.files.length === 0) {
-    return { relationCount: 0, textRelations: [], stats: emptyStats(), forEachRelation() {}, forEachAuthoredSource() {} };
+    return { relationCount: 0, textRelations: [], stats: emptyStats(), forEachSourceGroup() {}, forEachRelation() {}, forEachAuthoredSource() {} };
   }
   const stats = emptyStats(approved.files.length);
   stats.authored_row_count = approved.rowCount;
@@ -417,6 +417,33 @@ export function projectAuthoredRelations({ approved, meanings, existing }) {
     relationCount: kept,
     textRelations,
     stats,
+    /**
+     * `callback(sourceMeaning, relations, contributions)` once per source meaning (meaning index) that has authored ID
+     * entries (#9931): `relations` are its kept relations in ascending position (`target` is a meaning index) and
+     * `contributions` every directed approved-row entry that reached them (`row`, `reverse`, `position`,
+     * `sourcePosition`; source position 0 is the kept row). The Direct Lite build packs and source-checks from this.
+     */
+    forEachSourceGroup(callback) {
+      for (let meaning = 0; meaning < meanings.length; meaning += 1) {
+        const start = groupStarts[meaning];
+        const end = groupStarts[meaning + 1];
+        if (start === end) continue;
+        const relations = [];
+        const contributions = [];
+        for (let index = start; index < end; index += 1) {
+          const entry = grouped[index];
+          const row = entry >> 1;
+          const reverse = (entry & 1) === 1;
+          contributions.push({ row, reverse, position: relationPosition[entry], sourcePosition: sourcePosition[entry] });
+          if (sourcePosition[entry] !== 0) continue;
+          relations.push({
+            position: relationPosition[entry], target: entryTarget(entry), type: types[id.type[row]], relevance: id.relevance[row],
+            origin: reverse ? MEANING_RELATION_ORIGINS.authoredReverse : MEANING_RELATION_ORIGINS.authored,
+          });
+        }
+        callback(meaning, relations, contributions);
+      }
+    },
     /** `callback(source_meaning_id, position, target_meaning_id, type, relevance, origin)` once per kept ID relation. */
     forEachRelation(callback) {
       for (const entry of grouped) {

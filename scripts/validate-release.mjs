@@ -75,6 +75,7 @@ function cleanBuildEnvironment(zipDirectory = undefined) {
     'TYPEWRITER_ALLOW_DIRTY',
     'TYPEWRITER_BUILD_OUTPUT_DIRECTORY',
     'TYPEWRITER_SHARED_DICTIONARY_PATH',
+    'TYPEWRITER_BUILD_CACHE',
     'TYPEWRITER_CANONICAL_DIRECTORY',
     'TYPEWRITER_BUILD_MINIFY',
     'TYPEWRITER_ZIP_DIR',
@@ -140,9 +141,11 @@ function main(args = process.argv.slice(2)) {
       runPnpm(['run', 'ci:normal'], cleanBuildEnvironment());
       requireCleanWorktree();
 
-      console.log('Building and validating the production package twice.');
-      runPnpm(['run', 'package'], cleanBuildEnvironment(candidateDirectory));
-      runPnpm(['run', 'package'], cleanBuildEnvironment(repeatedDirectory));
+      // Both builds bypass the build cache (Issue #9931): determinism is proven by two independent cold builds, never by
+      // reusing one cached dictionary twice.
+      console.log('Building and validating the production package twice, without the build cache.');
+      runPnpm(['run', 'package'], { ...cleanBuildEnvironment(candidateDirectory), TYPEWRITER_BUILD_CACHE: 'off' });
+      runPnpm(['run', 'package'], { ...cleanBuildEnvironment(repeatedDirectory), TYPEWRITER_BUILD_CACHE: 'off' });
       if (sha256File(candidatePackagePath) !== sha256File(repeatedPackagePath)) {
         throw new Error('Two production package builds from the same clean checkout produced different ZIP bytes.');
       }

@@ -30,6 +30,7 @@ async function runPnpm(script) {
   delete childEnvironment.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
   delete childEnvironment.TYPEWRITER_PROCESS_METRICS_PATH;
   delete childEnvironment.TYPEWRITER_CI_PHASE;
+  childEnvironment.TYPEWRITER_BUILD_CACHE = 'off';
   await new Promise((resolve, reject) => {
     const child = spawn('pnpm', ['run', script], {
       cwd: REPOSITORY_DIRECTORY,
@@ -52,6 +53,11 @@ export async function runSchemaBuildGate() {
   const releaseBuildStartedAt = performance.now();
   await runPnpm('build');
   const releaseBuildMs = Math.round((performance.now() - releaseBuildStartedAt) * 100) / 100;
+
+  // Issue #9931: the product build writes Lite directly and creates no Full database; the Full audit build is explicit.
+  const fullBuildStartedAt = performance.now();
+  await runPnpm('build:dictionary');
+  const fullBuildMs = Math.round((performance.now() - fullBuildStartedAt) * 100) / 100;
 
   const fullValidationStartedAt = performance.now();
   const fullValidation = await validateSharedDictionary({
@@ -85,7 +91,8 @@ export async function runSchemaBuildGate() {
       stdio: ['ignore', 'pipe', 'pipe'],
     }).trim(),
     schema_owner_paths: ['scripts/build/sqlite-schema.mjs'],
-    release_full_build_count: 1,
+    release_full_build_count: 0,
+    audit_full_build_count: 1,
     reproducibility_full_build_count: reproducibility.databaseBuilds,
     total_current_canonical_full_build_count: 1 + reproducibility.databaseBuilds,
     lite_extractions: 2,
@@ -98,6 +105,7 @@ export async function runSchemaBuildGate() {
     wall_clock_ms: Math.round((performance.now() - startedAt) * 100) / 100,
     stage_ms: {
       release_build: releaseBuildMs,
+      full_dictionary_build: fullBuildMs,
       full_dictionary_validation: fullValidationMs,
       full_lite_reproducibility: reproducibilityMs,
       product_output_validation: productValidationMs,
