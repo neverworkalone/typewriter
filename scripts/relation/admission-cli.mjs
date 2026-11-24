@@ -1551,13 +1551,32 @@ const SOURCE_MIRROR_COMPACT_DECISION_GRAMMAR = [
   'c<n> D x|e                                         unrelated/wrong Sense | no independent expression value',
 ];
 
+/**
+ * Task-view target table without ID columns: the answer names only `T<k>`, and the CLI maps aliases back to
+ * sense IDs, so one `= <lemma>` line per target entry plus `T<k> pos gloss` rows keeps every gloss and the
+ * homograph-entry boundary at a fraction of the tokens (#7825 analysis: ID columns were ~37% of task input).
+ */
+function compactTargetLines(targets) {
+  const lines = [];
+  let record = null;
+  for (const target of targets.values()) {
+    if (target.record_id !== record) {
+      record = target.record_id;
+      lines.push(compactLine('=', target.lemma));
+    }
+    lines.push(compactLine(target.alias, target.pos, target.gloss));
+  }
+  return lines;
+}
+
 function renderCompactChunk(checkpoint, pending) {
   const model = compactChunkModel(checkpoint, pending);
   const lines = [
     `# Stage 2 chunk ${pending.chunk_id} · shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · ${pending.candidate_count} candidates`,
-    '# T<k>\ttarget_sense_id\ttarget_record_id\tlemma\tpos\tfull gloss',
+    '# = <lemma>\tone target headword entry; its sense rows T<k> follow',
+    '# T<k>\tpos\tfull gloss',
     '# S\tsource_sense_id\tsource_record_id\tlemma\tpos\tfull gloss\tcandidates <start>-<end>/<total>',
-    '# P\tapproved peer: type\trelevance\ttarget_sense_id lemma pos gloss | text',
+    '# P\tapproved peer: type\trelevance\tlemma pos gloss | text',
     '# Q\tsaved decision of an earlier candidate of the same source sense',
     '# c<n>\tcandidate\tproducers\tsame-spelling target aliases (- = none)',
     '# X\tc<n> earlier Polish exclusion of exactly these targets / this text: soft context, re-approve only on new evidence',
@@ -1565,18 +1584,18 @@ function renderCompactChunk(checkpoint, pending) {
       .map((rule) => `# decision: ${rule}`),
     '',
     '## targets',
-    ...[...model.targets.values()].map((target) => compactLine(target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss)),
+    ...compactTargetLines(model.targets),
   ];
   for (const { slice, item, rows } of model.sources) {
     lines.push('', compactLine('S', item.sense_id, item.record_id, item.lemma, item.pos, item.reference_gloss === undefined ? item.gloss : `${item.gloss} ⇒ ${item.reference_gloss}`, `candidates ${slice.start + 1}-${slice.end}/${item.candidates.length}`));
     for (const peer of item.approved_peers ?? []) {
-      lines.push(compactLine('P', peer.type, peer.relevance, 'text' in peer ? peer.text : `${peer.target_sense_id} ${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`));
+      lines.push(compactLine('P', peer.type, peer.relevance, 'text' in peer ? peer.text : `${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`));
     }
     for (const candidate of item.candidates.slice(0, slice.start)) lines.push(compactLine('Q', candidate.text, ...compactSavedDecision(candidate.decision, checkpoint)));
     for (const row of rows) {
       lines.push(compactLine(row.alias, row.candidate.text, row.candidate.producers.join(','), row.targets.length ? row.targets.join(',') : '-'));
       const excluded = row.candidate.polish_excluded;
-      if (excluded) lines.push(compactLine('X', row.alias, [...(excluded.target_sense_ids ?? []), ...(excluded.text ? ['text'] : [])].join(',')));
+      if (excluded) lines.push(compactLine('X', row.alias, [...(excluded.target_sense_ids ?? []).map((senseId) => model.targets.get(senseId)?.alias ?? senseId), ...(excluded.text ? ['text'] : [])].join(',')));
     }
   }
   return `${lines.join('\n')}\n`;

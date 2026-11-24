@@ -432,13 +432,21 @@ class ClaudeCodeAdapter(ProcessAdapter):
             args.append("--bare")
         return args
 
+    @staticmethod
+    def _cache_env(env):
+        """Stage 2/3 chunk sessions are one-shot (a fix resumes within minutes), so their unique view is never
+        re-read an hour later; the CLI's default 1h cache write costs 2x base input vs 1.25x for 5m (#7825 analysis)."""
+        return {**env, "FORCE_PROMPT_CACHING_5M": "1"} if is_stage2_chunk(env) else env
+
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
+        env = self._cache_env(env)
         big = self._prompt_via_stdin(prompt)
         cmd = [self.binary, "-p", *([] if big else [prompt]), *self._pins(_pinned(run)), "--name", title,
                *self._answer_only_args(env)]
         return self._spawn(cmd, cwd, env, log_file, exit_file, **({"stdin_text": prompt} if big else {}))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
+        env = self._cache_env(env)
         big = self._prompt_via_stdin(prompt)
         cmd = [self.binary, "-p", *([] if big else [prompt]), "--resume", session_id, *self._pins(_pinned(run)),
                *self._answer_only_args(env)]

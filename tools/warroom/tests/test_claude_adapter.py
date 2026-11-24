@@ -38,7 +38,7 @@ def result(denials=(), subtype="success", is_error=False):
 
 class Recording(ClaudeCodeAdapter):
     def _spawn(self, cmd, cwd, env, log_file, exit_file):
-        self.cmd = cmd
+        self.cmd, self.env = cmd, env
         return Handle(0, Path(exit_file), Path(log_file))
 
 
@@ -60,6 +60,15 @@ class Argv(unittest.TestCase):
                 self.assertEqual(start[1:3], ["-p", "prompt body"])          # prompt is the -p argument
                 self.assertEqual(resume[resume.index("--resume") + 1], SESSION)
                 self.assertNotIn("--resume", start)
+
+    def test_stage2_chunk_sessions_force_5m_prompt_cache(self):
+        a = Recording("claude")
+        for chunk_env, expected in (({"WARROOM_STAGE2_CHUNK": "1"}, "1"), ({}, None)):
+            with self.subTest(env=chunk_env):
+                a.start("p", ".", dict(chunk_env), PIN, "t", "l.log", "l.exit")
+                self.assertEqual(a.env.get("FORCE_PROMPT_CACHING_5M"), expected)
+                a.resume(SESSION, "again", ".", dict(chunk_env), PIN, "l.log", "l.exit")
+                self.assertEqual(a.env.get("FORCE_PROMPT_CACHING_5M"), expected)
 
     def test_unpinned_run_is_refused_before_any_process(self):
         a = Recording("claude")
