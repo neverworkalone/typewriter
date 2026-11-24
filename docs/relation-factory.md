@@ -191,7 +191,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 1. **JS 규칙:** `scripts/relation/refine/rules/sN.mjs`에 허용 결정, chunk view, 결정 문법, 행 변환, diff 역산, amend delta를 정하고, `createRefineCli`로 그 단계의 CLI 진입점을 만든다.
 2. **프롬프트:** `tools/warroom/prompts/`에 chunk, fix, 정책 카드 프롬프트를 둔다(placeholder는 Stage 3와 같다).
-3. **War Room spec:** 단계의 답변 규칙(`decision_text`, `decision_context`, `validate_prompt_view`, `normalize_decisions`)과 `refine.register(refine.RefineSpec(...))` 항목 하나를 둔다. 항목에는 id/tag/label/PR 제목/이슈/CLI/scratch/프롬프트 이름/앞 단계 게이트/`fixcoord.FixSpec`이 들어간다.
+3. **War Room spec:** 단계의 답변 규칙(`decision_text`, `decision_context`, `validate_prompt_view`, `normalize_decisions`)과 `refine.register(refine.RefineSpec(...))` 항목 하나를 둔다. 항목에는 id/tag/label/PR 제목/이슈/CLI/scratch/프롬프트 이름/앞 단계 게이트/`fixcoord.FixSpec`이 들어간다. 편집 범위는 `RefineSpec.scope()`가 정의하고, 다른 샤드 관계를 편집하는 단계는 `cross_shard`, PR 없는 무변경 완료는 `no_change_complete`로 선언한다(Stage 4 §4-E). 규칙이 키 기반이면 JS 규칙에 `keyed`/`crossShard`를 둔다.
 4. **테스트:** 규칙 전용 테스트를 둔다.
 
 ### 4-A. 파일·후보 회계
@@ -230,6 +230,26 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 **프롬프트 등록(완료):** `tools/warroom/warroom/prompts.py`의 `prompts.ALLOWED`에 `s3_policy_card`와 `s3_chunk`가 등록되어 있으며 War Room은 해당 템플릿을 사용한다.
 
 **구현 이력·파일럿:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)은 정책·Stage 2 회계/최신 master/reconcile·Stage 3 CLI·War Room 연계의 구현 계획이었다. 파일럿 및 각 샤드의 실제 완료 여부는 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 실행 결과와 **머지된 Stage 3 데이터 PR·검증 상태**로 판단하며, 계획 이슈의 종료만으로 완료 처리하지 않는다. 삭제율 목표는 없다.
+
+### 4-E. Stage 4 — 선별적 Polish (#9928, #9929)
+
+**목적:** Stage 3 전체 완료 뒤 샤드마다 작가가 직접 검색할 Sense를 골라 #8777과 같은 기준으로 Add/Drop/Set/재결속을 하고, 나머지 Sense는 Skip한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)의 *Polish and Stage 4* 절, 생산 지시는 [#9929](https://github.com/neverworkalone/typewriter/issues/9929)다.
+
+- **CLI:** `scripts/relation/s4-cli.mjs`(`pnpm run relation:s4`). Refinement 코어(`createRefineCli`)와 keyed 규칙 `scripts/relation/refine/rules/s4.mjs`로 이루어진다. 결정은 base 행 번호가 아니라 **관계 키**에 묶인다. 데이터 변경은 모두 Polish 쓰기 경로(§5, `polish-cli.mjs apply`)를 거친다. 따라서 `by:"p"`, 실제 고아에만 `z`, 제외 문맥 `p`, 재승인 정산과 영향 샤드 공통 검증이 그대로 적용된다.
+- **청크:** 샤드의 모든 Canonical record를 Sense 단위로 보여 준다. 관계 없는 Sense도 포함한다. 각 Sense 아래에는 자기 정방향·text 관계와, 어느 샤드에 저장되었든 그 Sense를 target으로 갖는 역방향 ID 관계를 둔다. record는 나누지 않고, 관계 수(빈 Sense는 1) 350~500 기준으로 청크를 만든다. 같은 샤드 두 Sense 사이 관계는 양쪽에 모두 보인다.
+- **판정 문법:** `skip <j...>`, `D <n...>`, `C <n> <type> <tier>`, `A <j> <sense_id|"text"> <type> <tier>`, `B <n> <sense_id|"text"> [<type> <tier>]`(상대 끝 재결속), `M <n> <j>`(같은 표제어의 다른 Sense로 이동), 또는 `none`. 정확한 Canonical 대상은 청크당 한 번 묶어 실행하는 `lookup --text a,b`로 찾는다. Add가 없는 청크에는 실행하지 않는다.
+- **save-chunk:** 문법은 맞지만 적용할 수 없는 줄은 그 줄만 폐기하고 보고한다. 해당하는 경우는 모르는 번호·Sense ID, 이미 있는 관계, 자기 record 대상, action 대상 POS, Skip한 Sense를 검토하며 낸 편집이다. 유효한 판단이 하나도 남지 않은 응답은 저장을 거부한다(`none`을 대신 만들지 않는다).
+- **apply:** 모든 청크의 결정을 키 단위로 해결한 뒤 HEAD 기준으로 Polish 계획을 한 번 세우고 바뀐 파일을 원자적으로 쓴다.
+  - 같은 편집은 한 번만 적용한다.
+  - 같은 키(기존 키와 재결속·Add가 새로 만드는 키 포함)를 다투는 결정은, 저장 source Sense를 검토한 청크의 결정 → 낮은 청크 번호 → 고정 내용 순으로 하나만 남긴다.
+  - 재결속(Drop+Add)은 통째로 이기거나 진다. 저장·AI 종료 순서는 결과에 영향을 주지 않는다.
+  - 같은 checkpoint로 다시 실행하면 `already-applied`다. 바뀐 것이 없으면 `no-change`다.
+- **편집 범위:** 모든 편집은 생산 샤드의 Sense를 한쪽 끝으로 갖는 관계와 그에 따른 회계 행뿐이다. 이 검사는 apply/amend 공통 함수 하나(`assertScope`)가 맡는다. 역방향만 고쳐 생산 샤드 파일이 바뀌지 않는 PR도 정상이다. Polish 회계 검사는 편집된 Sense를 가진 record로 범위를 좁힌다. 그 밖의 record는 바뀌지 않기 때문이다.
+- **PR·리뷰 수정:** PR 제목 `[S4/<Model>] SSS`, 본문 `Refs #9929`. `decisions --base`는 base..HEAD의 관계 키 차이에서 PR의 Add/Drop/Set을 복원한다(원장 없음). `amend`는 `A|C <source> <target|"text"> <type> <tier>`, `D|K <source> <target|"text">` delta를 적용해 PR base에서 같은 Polish 계산을 다시 한다. 관계·Drop 조회, 계획, 회계, 검증은 모두 같은 Git base에 결속된다. 같은 논리 편집이면 apply와 같은 bytes가 나온다.
+- **검증:** `verify --shard SSS --base <merge-base>`는 PR 편집이 닿는 샤드(편집된 Sense의 소유 샤드와 생산 샤드)를 계산한다. 그 샤드들에 공식 `admission-cli verify --shard A,B,...`를 한 번의 실행으로 돌린다(Canonical 1회 로드). War Room은 최종화·리뷰 수정·replay 뒤 이 명령을 쓴다. 머지 후 완료 표식 `s4_ok_SSS`는 생산 샤드에만 남긴다.
+- **무변경 완료:** 모든 청크가 정상 판정·저장되고 apply가 `no-change`이면, War Room은 그 HEAD를 위 verify로 확인한다. 그다음 `s4_nochange_SSS`를 기록하고 commit·PR 없이 worktree를 정리한다. 다음 샤드 선택은 마지막 머지 PR 뒤의 연속된 무변경 완료를 이어서 건너뛴다.
+- **실패와 Skip은 다르다:** 정책 거부는 Keep-all로 저장하지 않고(`refusal_keep_all=False`) 일반 실패 경로로 보낸다. 판단이 없는 응답은 응답 누락 경로로 보낸다.
+- **실행:** Stage 3 전체 완료 뒤 War Room 정제 라인이 샤드 001부터 차례로 실행한다(운영 설정은 `tools/warroom/README.md`의 *Stage 4 운영 설정*). 완료한 샤드는 이후 단건 Polish나 다른 샤드의 역방향 편집으로 파일이 바뀌어도 다시 열지 않는다. 첫 샤드 파일럿의 Skip/Polish Sense 수, Add/Drop/Set 수, 처리 시간, 토큰은 PR 본문·무변경 완료 로그의 기존 집계로 확인한다.
 
 ## 5. Polish — 직접 Relation 편집과 동시 변경 (#8784, #8777)
 

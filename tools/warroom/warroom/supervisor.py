@@ -1113,7 +1113,9 @@ class Supervisor:
                     raise RecoveryBlocked(f"PR #{number}가 {self._stage(b)} 소유 샤드 {b['shard']}와 다릅니다 ({shard})")
             candidates = batches.pr_claims(b, {"number": number, "files": files})
             expected = batches.expected_claim(b)
-            stage3_empty_diff = b["method"] == STAGE3_METHOD and files == []
+            # A no-op Stage 3 PR has no files; a cross-shard Stage's PR claims every shard it edits (#9928), its
+            # scope already proven by `validate_pr` above.
+            stage3_empty_diff = b["method"] == STAGE3_METHOD and (files == [] or refine.spec_for(b).cross_shard)
             foreign_stage2 = b["method"] == STAGE2_METHOD and candidates.count(expected) == 1 and len(candidates) > 1
             if foreign_stage2:
                 self._stage2_foreign_paths(b, info, files)
@@ -1794,14 +1796,13 @@ class Supervisor:
 
     def _stage3_finalize_verify(self, b, head: str) -> str | None:
         """Verify this exact Stage 3 commit; return an error or reported after a proven shared CLI crash."""
-        args = (head, "shard", b["shard"], None, None)
-        command = f"node scripts/relation/admission-cli.mjs verify --shard {b['shard']} --json"
-        first = self.git.verify_stage2_outcome(*args)
+        verify, command = self._refine_verify_call(b, head)
+        first = verify()
         if first.ok:
             return None
         if first.failure is not None:
             return f"{self._stage(b)} shard verify에서 데이터/편집 검증 오류가 확인됐습니다 (HEAD {head[:10]}): {first.tail}"
-        second = self.git.verify_stage2_outcome(*args)
+        second = verify()
         same_failure = (not second.ok and second.failure is None and first.code == second.code
                         and first.tail == second.tail)
         if not same_failure or not self._stage3_cli_crash(first):
@@ -1829,6 +1830,43 @@ class Supervisor:
             self.store.log(b["id"], f"{self._stage(b)} shard verify의 공통 CLI 예외를 같은 HEAD에서 재현해 기존 Maintainer 경로로 이관했습니다 ({command}).", "warn")
             return "reported"
         return f"{self._stage(b)} verify의 재현된 CLI 오류를 Maintainer 경로에 등록하지 못했습니다. worktree를 보존합니다."
+
+    def _refine_verify_call(self, b, head: str):
+        """The exact-commit verify of a refinement batch's Stage, and its command for reports: the shard's admission
+        verify, or for a cross-shard Stage its CLI verify over every shard the PR (merge base..`head`) affects."""
+        spec = refine.spec_for(b)
+        if not spec.cross_shard:
+            return (lambda: self.git.verify_stage2_outcome(head, "shard", b["shard"], None, None),
+                    f"node scripts/relation/admission-cli.mjs verify --shard {b['shard']} --json")
+        base = self.git.merge_base(Path(b["worktree"]), head, f"origin/{self.cfg['base_branch']}")
+        return (lambda: self.git.verify_refine_outcome(head, spec.cli, b["shard"], base),
+                f"node {spec.cli} verify --shard {b['shard']} --base {base}")
+
+    def _refine_verify(self, b, head: str) -> tuple[bool, str]:
+        """(ok, tail) of the exact-commit verify: Stage 3 keeps its shard `verify_stage2`."""
+        if not refine.spec_for(b).cross_shard:
+            return self.git.verify_stage2(head, "shard", b["shard"], None, None)
+        outcome = self._refine_verify_call(b, head)[0]()
+        return outcome.ok, outcome.tail
+
+    def _refine_no_change(self, b, head: str, result: dict) -> None:
+        """#9928: every chunk is saved and the official apply changed nothing. Verify the unchanged HEAD, record the
+        shard's completion (`<id>_nochange_SSS`, the produced shard only) and clean up without a commit or PR."""
+        spec, wt = refine.spec_for(b), Path(b["worktree"])
+        if self.git.registered(wt) != b["branch"] or self.git.dirty(wt).strip():
+            raise GitError(f"{self._stage(b)} 무변경 완료 전 worktree 소유권·clean 상태를 확인하지 못했습니다")
+        verify = self._stage3_finalize_verify(b, head)
+        if verify == "reported":
+            return
+        if verify:
+            raise GitError(verify)
+        self.store.set(spec.nochange_key(b["shard"]), head)
+        self.store.set(spec.ok_key(b["shard"]), head)
+        senses = result.get("senses") if isinstance(result.get("senses"), dict) else {}
+        self.store.log(b["id"], f"{self._stage(b)} 샤드 {b['shard']} 무변경 완료: Sense {senses.get('total')} "
+                       f"(Polish {senses.get('polished')}, Skip {senses.get('skipped')}), "
+                       f"비용 {prbody.run_cost(self.store.runs(b['id'])) or '미측정'}. commit·PR 없이 정리합니다.")
+        self.store.update(b["id"], state="CLEANUP", run_kind=None, pid=None)
 
     def _stage3_log_repair_conflicts(self, b, result: dict) -> None:
         conflicts = result.get("repair_conflicts", [])
@@ -1859,7 +1897,6 @@ class Supervisor:
         wt = Path(b["worktree"])
         self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="s3_finalize", error=None)
         spec = refine.spec_for(b)
-        allowed = spec.allowed(b["shard"])   # the Stage's edit scope: the single definition (`RefineSpec.allowed`)
         label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
         title = spec.title_for(label, b["shard"])
         legacy_title = spec.legacy_title(b["shard"]) if spec.legacy_title else None   # commits made before #2838
@@ -1910,6 +1947,8 @@ class Supervisor:
             result.setdefault("edit_drops_added", len(report.get("added_drops", [])))
             self.store.set(result_key, json.dumps(result, sort_keys=True))
             changed = self.git.changed_paths(wt)
+            # The Stage's edit scope, given what changed: the single definition (`RefineSpec.scope`).
+            allowed = spec.scope(b["shard"], changed)
             unexpected = changed - allowed
             if unexpected:
                 raise GitError(f"{self._stage(b)} apply가 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
@@ -1920,10 +1959,10 @@ class Supervisor:
             released_head = self.store.get(f"s3_finalize_released_head_{b['id']}")
             if committed is not None:
                 if committed == head:
-                    if changed or set(self.git.changed_files(head)) - allowed:
+                    if changed or set(self.git.changed_files(head)) - spec.scope(b["shard"], self.git.changed_files(head)):
                         raise GitError(f"기록된 {self._stage(b)} commit이 허용 파일 범위를 벗어났습니다 ({committed} / {head})")
                 elif (released_head != head or not self.git.contains(wt, committed)
-                      or set(self.git.changed_files(committed)) - allowed):
+                      or set(self.git.changed_files(committed)) - spec.scope(b["shard"], self.git.changed_files(committed))):
                     raise GitError(f"기록된 {self._stage(b)} commit과 승인된 Maintainer 통합 HEAD가 다릅니다 ({committed} / {head})")
                 else:
                     self.store.log(b["id"], f"승인된 Maintainer 통합 HEAD {head[:10]}에서 기존 {self._stage(b)} 데이터 commit {committed[:10]}을 이어 검증합니다.")
@@ -1931,9 +1970,11 @@ class Supervisor:
                 head = self.git.commit_paths(wt, sorted(changed), title)
                 self.store.set(commit_key, head)
                 self.store.log(b["id"], f"{self._stage(b)} 변경 파일을 commit했습니다 ({head[:10]})")
+            elif spec.no_change_complete:
+                return self._refine_no_change(b, head, result)
             elif self.git.commit_subject(wt) in (title, legacy_title) and self.git.commit_parent(wt) is not None:
                 committed_paths = set(self.git.changed_files(head))
-                unexpected = committed_paths - allowed
+                unexpected = committed_paths - spec.scope(b["shard"], committed_paths)
                 if unexpected:
                     raise GitError(f"기존 {self._stage(b)} commit이 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
                 head = self.git.head(wt)
@@ -1972,8 +2013,10 @@ class Supervisor:
                 return self._to_review(b, info)
             issue = self.gh.issue(spec.issue)
             labels = issue.get("labels", [])
-            body = prbody.stage3_body(label, b["shard"], result=result, apply_pass=True, shard_verify=True,
-                                      cost=prbody.run_cost(self.store.runs(b["id"])), method=spec.short, issue=spec.issue)
+            cost = prbody.run_cost(self.store.runs(b["id"]))
+            body = (spec.body(label, b["shard"], result=result, cost=cost) if spec.body else
+                    prbody.stage3_body(label, b["shard"], result=result, apply_pass=True, shard_verify=True,
+                                       cost=cost, method=spec.short, issue=spec.issue))
             return self._create_pr_once(b, title, body, labels)
         except TRANSIENT:
             raise
@@ -3150,7 +3193,7 @@ class Supervisor:
         if verified == head:
             return None
         try:
-            ok, detail = self.git.verify_stage2(head, "shard", b["shard"], None, None)
+            ok, detail = self._refine_verify(b, head)
         except TRANSIENT:
             raise
         except Exception as error:
@@ -3173,10 +3216,10 @@ class Supervisor:
         """A Stage's coordinator: it applies that Stage's own CLI `amend` and shares Stage 3's completion gate."""
         if spec.id not in self.refine_fix:
             self.refine_fix[spec.id] = fixcoord.ReviewFixCoordinator(self, spec.fix, fixcoord.FixStage(
-                allowed=lambda b: spec.allowed(b["shard"]),
+                allowed=lambda b, paths=(): spec.scope(b["shard"], paths),
                 amend=lambda b, baseline, wt, rel: self.git.refine_amend(wt, spec.cli, b["shard"], baseline["base"], rel),
                 rejected=RefineAmendRejected,
-                verify_exact=lambda b, head: self.git.verify_stage2(head, "shard", b["shard"], None, None),
+                verify_exact=self._refine_verify,
                 completion=self._stage3_fix_completion_problem))
         return self.refine_fix[spec.id]
 
@@ -3202,7 +3245,10 @@ class Supervisor:
             scope = ("every edit of this PR" + (f" (the named Senses {', '.join(named)} have no base row in this shard)"
                                                   if named else ""))
         counts = {action: sum(1 for d in listed["decisions"] if d.get("action") == action) for action in ("drop", "repair")}
-        lines = [f"base {base}; PR HEAD {head}; this PR drops {counts['drop']} and repairs {counts['repair']} base rows.",
+        summary = (f"this PR adds {listed['counts'].get('add')}, drops {listed['counts'].get('drop')} and sets "
+                   f"{listed['counts'].get('set')} relations by key" if isinstance(listed.get("counts"), dict) else
+                   f"this PR drops {counts['drop']} and repairs {counts['repair']} base rows")
+        lines = [f"base {base}; PR HEAD {head}; {summary}.",
                  f"Rows below: {scope}{f' (first {S3_FIX_CONTEXT_ROWS} of {len(rows)})' if len(rows) > S3_FIX_CONTEXT_ROWS else ''}."]
         lines += [json.dumps(row, ensure_ascii=False, separators=(",", ":")) for row in rows[:S3_FIX_CONTEXT_ROWS]]
         return "\n".join(lines)
@@ -7993,7 +8039,9 @@ class Supervisor:
                 self.store.set(f"last_poll_{b['id']}", "0")
                 return self.store.log(b["id"], "relation replay 확인 중 기준 브랜치가 이동해 다시 감시합니다.", "warn")
             self.store.set(key, attempt)
-            owned = (refine.spec_for(b).allowed(b["shard"]) if b["method"] == STAGE3_METHOD else
+            owned = (refine.spec_for(b).scope(b["shard"], {f.get("path") for f in self.gh.pull_files(number)}
+                                              if refine.spec_for(b).cross_shard else ())
+                     if b["method"] == STAGE3_METHOD else
                      {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"})
             checkpoint = None
             if b["method"] == STAGE2_METHOD:
@@ -8003,7 +8051,7 @@ class Supervisor:
             if b["method"] == STAGE2_METHOD:
                 ok, detail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=True)
             else:
-                ok, detail = self.git.verify_stage2(new_head, "shard", b["shard"], None, None)
+                ok, detail = self._refine_verify(b, new_head)
             if not ok:
                 return self._fail(b, "ERROR", f"relation replay 뒤 verify 실패: {detail}. 미푸시 merge commit과 worktree를 보존합니다.")
             current = self.gh.pull(number)
@@ -8113,6 +8161,8 @@ class Supervisor:
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])
             return self.store.log(b["id"], "남은 AI 프로세스 정지 요청, 종료 확인 대기")
+        if b["method"] == STAGE3_METHOD and not b["pr_number"]:
+            return self._cleanup_no_change(b, key)
         try:
             info = self.gh.pull(b["pr_number"])
             if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]):
@@ -8164,6 +8214,26 @@ class Supervisor:
             return self._fail(b, "ERROR", f"정리 차단(보존): {e}")
         except Exception as e:
             return self._fail(b, "ERROR", f"정리 실패(보존): {e}")
+        self._finish_cleanup(b)
+
+    def _cleanup_no_change(self, b, key: str) -> None:
+        """#9928: a refinement shard completed without changes has no PR; its worktree never committed, so the
+        non-force removal of an uncommitted worktree (as for a diagnosis-only Maintainer run) is the whole cleanup."""
+        spec = refine.spec_for(b)
+        base = self.store.get(spec.nochange_key(b["shard"])) if spec.no_change_complete else None
+        if not base:
+            return self._fail(b, "ERROR", f"{self._stage(b)} PR 없는 배치에 무변경 완료 기록이 없어 정리하지 않습니다.")
+        try:
+            self.git.remove_diagnosis_worktree(Path(os.path.abspath(b["worktree"])), b["branch"], base)
+        except TRANSIENT as e:
+            return self._transient_wait(key, e, b["id"])
+        except CleanupBlocked as e:
+            return self._fail(b, "ERROR", f"정리 차단(보존): {e}")
+        except Exception as e:
+            return self._fail(b, "ERROR", f"정리 실패(보존): {e}")
+        self._finish_cleanup(b)
+
+    def _finish_cleanup(self, b) -> None:
         self.store.complete_batch(b["id"])
         self._clear_batch_retry(b["id"])
         self.store.delete(f"pr_create_{b['id']}")

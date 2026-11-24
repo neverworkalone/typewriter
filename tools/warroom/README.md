@@ -41,7 +41,7 @@ Stage 3는 `b.method='s3'`로 바꿔 shard 단위로 조회합니다. 과거 Sta
 
 설정 변경은 `tools/warroom/.local/config.json` 수정 후 TUI의 `r`로 리로드합니다. 기존 AI run의 프로필·세션은 바뀌지 않습니다. 새 모델에 따른 TUI 열 구성은 TUI를 다시 열어야 반영될 수 있습니다.
 
-지원 adapter는 `claude`와 `codex`뿐이며 단계별 프로필은 `assignments.stage2`, 등록된 정제 Stage마다 `assignments.<role>`(현재 `assignments.stage3`) 및 `maintainer`로 지정합니다(`tools/warroom/config.example.json`). 정제 Stage는 **자기 role의 배정만** 사용합니다. 배정이 없으면 다른 Stage 프로필이나 producer 직접 핀으로 대신하지 않고, 그 Stage의 샤드 선정 시점에 정제 라인만 `BLOCKED`(사유 `assignments.<role>`)로 멈춥니다. Stage 2와 Maintainer는 계속 동작합니다. 이전 Stage 1·DeepSeek/OpenCode 설정(`methods`, `assignments.stage1*`, `adapter: "opencode"`인 모델·프로필, `opencode_bin`, `free_model_pattern`, 인덱스 경로 등)이 남아 있으면 기동과 리로드 때 경고만 남기고 무시합니다. 그 밖의 잘못된 값(알 수 없는 adapter, 오타, 없는 프로필 참조)은 이전처럼 거부합니다. **설정 리로드는 Python 코드 재시작이 아닙니다.**
+지원 adapter는 `claude`와 `codex`뿐이며 단계별 프로필은 `assignments.stage2`, 등록된 정제 Stage마다 `assignments.<role>`(현재 `assignments.stage3`, `assignments.stage4`) 및 `maintainer`로 지정합니다(`tools/warroom/config.example.json`). 정제 Stage는 **자기 role의 배정만** 사용합니다. 배정이 없으면 다른 Stage 프로필이나 producer 직접 핀으로 대신하지 않고, 그 Stage의 샤드 선정 시점에 정제 라인만 `BLOCKED`(사유 `assignments.<role>`)로 멈춥니다. Stage 2와 Maintainer는 계속 동작합니다. 이전 Stage 1·DeepSeek/OpenCode 설정(`methods`, `assignments.stage1*`, `adapter: "opencode"`인 모델·프로필, `opencode_bin`, `free_model_pattern`, 인덱스 경로 등)이 남아 있으면 기동과 리로드 때 경고만 남기고 무시합니다. 그 밖의 잘못된 값(알 수 없는 adapter, 오타, 없는 프로필 참조)은 이전처럼 거부합니다. **설정 리로드는 Python 코드 재시작이 아닙니다.**
 
 ### 설정 전환 (#9934)
 
@@ -53,10 +53,27 @@ Stage 3는 `b.method='s3'`로 바꿔 shard 단위로 조회합니다. 과거 Sta
 
 정제 라인(TUI의 **Refinement** 카드, 내부 method `s3`)은 등록된 Stage를 순서대로 실행합니다. 한 Stage의 전체 샤드가 끝나야 다음 Stage로 넘어가며 각 샤드는 이전 Stage 성공에 묶입니다. 마지막 등록 Stage까지 끝나면 정상 종료합니다. 새 Stage는 다음만 추가하며 Supervisor·병렬 엔진·TUI·설정 파서·복구 코드는 고치지 않습니다.
 
-1. Stage 모듈 `tools/warroom/warroom/<name>.py`: `refine.register(refine.RefineSpec(id=..., tag=..., label=..., role=..., short=..., issue=..., cli=..., scratch=..., title=..., ...))`로 spec을 등록하고, 답 규칙(`decision_text`·`decision_context`·`validate_prompt_view`·`normalize_decisions`)과 `fixcoord.FixSpec`을 둡니다(`stage3.py` 참고). `role`은 고유해야 하며 `stage2`·`maintainer`는 예약어입니다. 편집 범위가 다르면 spec의 `allowed()`에서 정의합니다.
+1. Stage 모듈 `tools/warroom/warroom/<name>.py`: `refine.register(refine.RefineSpec(id=..., tag=..., label=..., role=..., short=..., issue=..., cli=..., scratch=..., title=..., ...))`로 spec을 등록하고, 답 규칙(`decision_text`·`decision_context`·`validate_prompt_view`·`normalize_decisions`)과 `fixcoord.FixSpec`을 둡니다(`stage3.py` 참고). `role`은 고유해야 하며 `stage2`·`maintainer`는 예약어입니다. 편집 범위는 spec의 `scope()` 하나가 정의합니다(두 파일 Stage는 `allowed()`, 다른 샤드 관계도 편집하는 Stage는 `cross_shard=True`). 무변경 샤드를 PR 없이 완료하려면 `no_change_complete=True`, 정책 거부를 Keep-all로 저장하지 않으려면 `refusal_keep_all=False`, 자체 PR 본문은 `body`로 지정합니다(`stage4.py` 참고).
 2. 등록 진입점 `tools/warroom/warroom/refine.py`의 `STAGE_MODULES`에 모듈 이름을 실행 순서대로 한 줄 추가합니다(예: `("stage3", "<name>")`). 자동 탐색은 없습니다.
 3. 프롬프트 `tools/warroom/prompts/<chunk_prompt>.md`·`<fix_prompt>.md`·`<policy_card>.md`와, `scripts/relation/refine/core.mjs` 기반 Stage CLI(`prepare`·`read-chunk`·`save-chunk`·`apply`·`report`·`amend`)를 둡니다.
-4. 운영 설정에 `assignments.<role>`을 추가합니다. 예: `"stage4": {"codex": "sol", "claude": "sonnet-medium"}`.
+4. 운영 설정에 `assignments.<role>`을 추가합니다.
+
+### Stage 4 운영 설정 (#9928, #9929)
+
+Stage 4(선별적 Polish)는 Stage 3 다음에 등록된 정제 Stage입니다(`stage4.py`, CLI `scripts/relation/s4-cli.mjs`, 프롬프트 `s4_chunk`·`s4_fix`·`s4_policy_card`). Stage 3의 전체 샤드가 끝나야 시작하고, 각 샤드는 Stage 3 완료(`s3_ok_SSS`)에 묶입니다. 생산 지시는 #9929입니다.
+
+로컬 `tools/warroom/.local/config.json`에는 **기존 값은 그대로 두고** 다음 두 항목만 추가합니다(로컬 설정은 커밋하지 않습니다). 이미 `sol` 프로필이 있으면 첫 항목은 건너뜁니다.
+
+```json
+"model_profiles": { "sol": { "adapter": "codex", "model": "gpt-6.1-sol", "effort": "medium", "permission_profile": "worktree" } },
+"assignments": { "stage4": { "codex": "sol" } }
+```
+
+저장 후 TUI에서 `r`로 리로드합니다. Stage 2/3·Maintainer 배정과 진행 중 작업은 바뀌지 않습니다. `refine_max_parallel`(기본 16)은 Stage 4 샤드에도 같은 의미로 적용됩니다. 다른 provider 배정은 오너가 결정하며, 배정이 없는 provider의 Line은 Stage 4 선정 시점에 `BLOCKED`로 멈춥니다.
+
+- **무변경 샤드:** 모든 청크가 정상 판정·저장되고 공식 apply가 변경 없음을 확인하면, 그 HEAD를 shard verify한 뒤 `s4_nochange_SSS`·`s4_ok_SSS`를 기록하고 commit·PR 없이 worktree를 정리합니다. 다음 샤드 선택은 마지막 머지 PR 뒤의 연속된 무변경 완료를 건너뜁니다.
+- **cross-shard PR:** 역방향 관계 편집으로 다른 샤드의 Relation/Drop 파일이 바뀔 수 있습니다. 허용 범위는 공식 CLI가 정합니다(생산 샤드 Sense를 한쪽 끝으로 갖는 관계와 그 회계 변경). 최종화·리뷰 수정·replay 뒤의 verify는 `s4-cli verify --shard SSS --base <merge-base>`가 영향 샤드 전체를 한 번에 검사합니다.
+- **정책 거부·응답 누락:** Stage 4는 편집적 Skip과 기술 실패를 구분합니다. 정책 거부는 Keep-all로 저장되지 않고 일반 실패 경로로, 판정이 하나도 남지 않은 응답은 응답 누락 경로(새 세션 1회)로 갑니다.
 
 ## Supervisor 재시작과 코드 반영 (#5162)
 

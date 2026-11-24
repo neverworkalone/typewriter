@@ -40,7 +40,7 @@ class FixSpec:
 @dataclass(frozen=True)
 class FixStage:
     """What a Stage plugs into the coordinator."""
-    allowed: Callable[[dict], set]                       # batch -> worktree-relative files an amend may change
+    allowed: Callable[..., set]                          # (batch, changed paths=()) -> files an amend may change
     amend: Callable[[dict, dict, Path, str], dict]       # (batch, baseline, worktree, input) -> receipt with `outputs`
     rejected: type                                       # the amend's "input refused" GitError subclass
     verify_exact: Callable[[dict, str], tuple]           # (batch, head) -> (ok, tail) on that exact commit
@@ -223,7 +223,7 @@ class ReviewFixCoordinator:
                 input_path = wt / spec.amend_input
                 # Changes are resumable only as this submission's own interrupted amend: allowed files, with its exact
                 # input still in place. Anything else is preserved untouched.
-                if dirty and (text is None or not dirty <= allowed or not input_path.is_file()
+                if dirty and (text is None or not dirty <= stage.allowed(b, dirty) or not input_path.is_file()
                               or input_path.read_text("utf-8") != text):
                     return sup._fail(b, "ERROR", f"{label} 리뷰 수정 제출과 연결되지 않은 worktree 변경이 있습니다: "
                                      f"{sorted(dirty)}. 적용하지 않고 보존합니다.")
@@ -252,7 +252,7 @@ class ReviewFixCoordinator:
                                              f"실패했습니다: {again}. 입력·판정·worktree를 보존합니다.")
                     changed = set(sup.git.changed_paths(wt))
                     outputs = receipt["outputs"]
-                    if not changed <= allowed or any(_sha256(wt / rel) != outputs.get(rel) for rel in changed):
+                    if not changed <= stage.allowed(b, changed) or any(_sha256(wt / rel) != outputs.get(rel) for rel in changed):
                         return sup._fail(b, "ERROR", f"공식 amend 결과와 다른 파일 변경이 있습니다: {sorted(changed)}. 보존합니다.")
                     if changed:
                         timed("commit", sup.git.commit_paths, wt, sorted(changed), spec.commit_subject)

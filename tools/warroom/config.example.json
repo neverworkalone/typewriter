@@ -29,6 +29,12 @@
       "permission_profile": "worktree",
       "fast": false
     },
+    "sol": {
+      "adapter": "codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "permission_profile": "worktree"
+    },
     "sonnet-medium": {
       "adapter": "claude",
       "model": "claude-sonnet-5-5",
@@ -43,6 +49,9 @@
     "stage3": {
       "claude": "sonnet-medium",
       "codex": "luna-xhigh"
+    },
+    "stage4": {
+      "codex": "sol"
     }
   },
   "maintainer": "luna-xhigh",

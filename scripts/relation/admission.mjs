@@ -1124,10 +1124,11 @@ export async function loadShardCandidateFiles(shard, root = REPOSITORY_DIRECTORY
   return { files, inventory };
 }
 
-export async function loadShard(shard, root = REPOSITORY_DIRECTORY, { batch = null } = {}) {
+export async function loadShard(shard, root = REPOSITORY_DIRECTORY, { batch = null, allCanonical: loadedCanonical = null } = {}) {
   assertShard(shard);
   const canonicalRows = await readJsonl(shardCanonicalPath(shard, root));
-  const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root, { batch }), loadAllCanonical(root)]);
+  const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root, { batch }),
+    loadedCanonical ?? loadAllCanonical(root)]);
   const index = buildCanonicalIndex(allCanonical);
   const referencesPath = path.join(root, 'data/provenance/stage2-root-references.json');
   const references = existsSync(referencesPath) ? JSON.parse(await readFile(referencesPath, 'utf8')) : [];

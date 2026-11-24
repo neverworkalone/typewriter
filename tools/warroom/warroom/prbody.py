@@ -12,6 +12,9 @@ S3_ISSUE = 2455
 S3_LEGACY_ISSUE = 2450   # the implementation Issue that earlier Stage 3 PRs referenced
 
 S3_TITLE = re.compile(r"^(?:\[Relation Stage 3\]|\[S3/[^\]/\s]+\]) (\d{3})$")
+S4_ISSUE = 9929   # the Stage 4 standing production Issue (#9928 implements it)
+S4_TITLE = re.compile(r"^\[S4/[^\]/\s]+\] (\d{3})$")
+S4_ISSUE_LINK = re.compile(rf"(?:#{S4_ISSUE}|issues/{S4_ISSUE})(?!\d)")
 S3_ISSUE_LINK = re.compile(rf"(?:#(?:{S3_ISSUE}|{S3_LEGACY_ISSUE})|issues/(?:{S3_ISSUE}|{S3_LEGACY_ISSUE}))(?!\d)")
 
 _COUNT_KEYS = ("unique", "skipped_existing", "reverse_covered", "merged_duplicates", "raw", "missing")
@@ -135,3 +138,31 @@ def run_cost(runs) -> str | None:
         seconds += max(0.0, row["ended_at"] - row["started_at"])
     return f"{tokens} tokens / {round(seconds / 60)} min"
 
+
+
+def stage4_body(model: str, shard: str, *, result: dict, cost: str | None = None) -> str:
+    """The Stage 4 PR body from the persisted apply result (#9928); missing members stay unmeasured."""
+    senses = result.get("senses") if isinstance(result.get("senses"), dict) else {}
+    decisions = result.get("decisions") if isinstance(result.get("decisions"), dict) else {}
+    done, total = _count(result.get("chunks_done")), _count(result.get("chunks_total"))
+    shards = result.get("affected_shards") if isinstance(result.get("affected_shards"), list) else None
+    conflicts = result.get("conflicts")
+    lines = [
+        "- Method: S4",
+        f"- Model: {model}",
+        f"- Shard: {shard}",
+        "- Scope: Selective shard Polish (Add / Drop / Set / Skip)",
+        f"- Completed Chunks: {'미측정' if done is None or total is None else f'{done}/{total}'}",
+        f"- Senses: {_n(_count(senses.get('total')))} (Polish {_n(_count(senses.get('polished')))}, "
+        f"Skip {_n(_count(senses.get('skipped')))})",
+        f"- Decisions: Add {_n(_count(decisions.get('add')))}, Drop {_n(_count(decisions.get('drop')))}, "
+        f"Set {_n(_count(decisions.get('set')))}, Rebind {_n(_count(decisions.get('rebind')))}",
+        f"- Key Conflicts Resolved: {_n(len(conflicts) if isinstance(conflicts, list) else None)}",
+        f"- Added Orphan Drops (z): {_n(_count(result.get('z_added')))}",
+        f"- Affected Shards: {', '.join(shards) if shards else '미측정'}",
+        "- Edit Apply: PASS",
+        "- Affected Shard Verify: PASS",
+    ]
+    if cost:
+        lines.append(f"- Token Cost / Duration: {cost}")
+    return "\n".join(lines + ["", f"Refs #{S4_ISSUE}"]) + "\n"

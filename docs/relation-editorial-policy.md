@@ -103,6 +103,29 @@ that group.
 
 This Stage 2-specific gate supersedes **only** earlier Typewriter-authored exploratory guidance below that says to reject *only* blatantly incoherent relations, or to **always** keep a weak but intelligible path at a lower Tier. It does **not** change STDICT `direct`/`antonym` review, Stage 1 Candidate format, historical approved edges, or Type/Tier definitions.
 
+## Polish and Stage 4 — shared editorial principles (#8777, #9928)
+
+Single-word Polish ([#8777](https://github.com/neverworkalone/typewriter/issues/8777)) and Factory Stage 4 (selective whole-shard Polish, [#9929](https://github.com/neverworkalone/typewriter/issues/9929)) apply **one** editing standard. Only how they run and what they cover differ. Their prompts and policy cards point here instead of keeping separate copies.
+
+**Start from the writer.** The editor is a vocabulary editor choosing expressions for a novelist, not an auditor of dictionary data:
+
+> 내가 소설에 이 단어를 썼는데 너무 여러 번 써서 다른 표현으로 바꾸고 싶다. 혹은 이 단어와 유사한 결을 가진 말을 떠올리고 싶다.
+
+For each exact Sense and its full gloss:
+
+- **Add:** first think, independently of the current list, of alternatives, nuances, images, sensations and actions for the exact gloss. Then compare them with the approved forward and reverse Relations. Add only missing, useful core expressions; there is no count target. Bind to the exact Canonical Sense; homonyms are never chosen by spelling. Use text-only only when no Canonical Sense has the meaning. Never add a proper noun (#5745).
+- **Drop:** remove wrong-Sense links, forced associations, overly general words and redundancy without independent expression value. Keep surprising but useful literary associations.
+- **Set / rebind before Drop:** when the expression itself is useful, correcting its Sense, Type or Tier comes before deleting it.
+- **Redundancy over the whole list of one Sense:** compare the expressions actually shown in both directions. Ask whether each gives a choice beyond those already there. When inflections, derivations, nominalizations or adverbial forms repeat practically the same choice in meaning, tone and literary use, keep the most natural and useful representative from the source Sense and Drop the rest. For example, if `쓸쓸하다` already serves a `막막하다` Sense, the plain nominalization `쓸쓸함` and the adverb `쓸쓸히` are Drop first, while `적적하다`, `고독`, `정적` stay because they shift tone, feeling, scene or description. Never Drop on shared POS, root or surface form alone. Weigh the other Sense's independent search value and the two-way effect of a deletion. Valid links of different source Senses are not duplicates. Examples show a direction, not a string rule or an answer list.
+- **Respect good data.** No change is a normal result.
+
+**How the two differ:**
+
+- **Polish (#8777):** one owner-named word, run after its shard's Stage 3 (the latest owner decision in #8777). Default model Opus Medium. It actively strengthens the expressions the owner points to. Every Sense of the word is edited.
+- **Stage 4 (#9929):** one shard per production PR, after every shard's Stage 3. Model Codex Sol Medium. It first selects by **value as a search start**: would a writer search this exact Sense directly to find another expression? Ordinary verbs, adjectives, adverbs and interjections, expressive nouns and descriptive determiners are Polished. Idioms and proverbs as sources, technical terms, classification names, proper nouns, units, purely grammatical Senses and nouns that only identify a specific object are Skipped. A Skip omits only the judgments made while reviewing that Sense. It is a normal completion, not a hidden failure, and it does not stop the same Relation from being edited under another, Polished Sense. A skipped expression may still be an Add target. There is no Skip quota and no separate classification stage, list or ledger. The working card is `tools/warroom/prompts/s4_policy_card.md`.
+
+Both write through the same Polish path (`by:"p"` rows, `z` only for real orphans, `p` exclusions, relation-key concurrency) described in `docs/relation-factory.md` §5.
+
 ## Different goals, different review gates
 
 The table and the `direct`/`antonym` rules below describe how STDICT-provided

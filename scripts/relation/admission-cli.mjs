@@ -17,6 +17,7 @@ import {
   batchScope,
   findGlossNamedDrops,
   loadAllApprovedDrops,
+  loadAllCanonical,
   orphanedCandidateDrops,
   candidateInventory,
   legacyCandidateFormsForRecord,
@@ -156,7 +157,9 @@ function runCached(key, compute) {
 const fullOtherRows = () => runCache.getStore()?.fullOtherRows === true;
 
 function loadShardForRun(shard, root, batch) {
-  return runCached(`shard\u0000${root}\u0000${shard}\u0000${batch}`, () => loadShard(shard, root, { batch }));
+  // One Canonical load per run, so a multi-shard `verify --shard A,B` (Stage 4, #9928) does not repeat it per shard.
+  return runCached(`shard\u0000${root}\u0000${shard}\u0000${batch}`, async () => loadShard(shard, root, { batch,
+    allCanonical: await runCached(`canonical\u0000${root}`, () => loadAllCanonical(root)) }));
 }
 
 // Callers may mutate other-shard rows (a reciprocal merge updates its foreign owner), so each caller gets copies.
@@ -1018,6 +1021,17 @@ function parseArgs(argv) {
     throw new Error('--supervisor-fallback requires save-chunk --format compact\n' + USAGE);
   }
   if (!['prepare', 'plan-chunks', 'close-plan', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'replay', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
+  // `verify --shard A,B,...` verifies several whole shards in one run (a cross-shard refinement PR, #9928).
+  options.shards = command === 'verify' && typeof options.shard === 'string' && options.shard.includes(',')
+    ? options.shard.split(',') : null;
+  if (options.shards) {
+    if (options.batch !== null || options.part !== null || options.relationsOnly || options.checkpoint) {
+      throw new Error(`verify --shard with several shards is only valid for whole-shard verify\n${USAGE}`);
+    }
+    if (new Set(options.shards).size !== options.shards.length) throw new Error(`verify --shard repeats a shard\n${USAGE}`);
+    options.shards.forEach((shard) => assertShard(shard));
+    options.shard = options.shards[0];
+  }
   if (['prepare', 'verify', 'reconcile'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
   if (options.part !== null) {
@@ -1096,8 +1110,17 @@ export async function run(argv, { root, fullOtherRows: referencePath = false } =
   const timing = options.command === 'verify' ? createVerifyTiming(options)
     : options.command === 'amend' ? createCommandTiming('amend_timing', () => ({ checkpoint: options.checkpoint })) : null;
   try {
-    const result = await runCache.run({ values: new Map(), fullOtherRows: referencePath === true },
-      () => runCommand(options, root, timing));
+    const result = await runCache.run({ values: new Map(), fullOtherRows: referencePath === true }, async () => {
+      if (!options.shards) return runCommand(options, root, timing);
+      const results = [];
+      const { values } = runCache.getStore();
+      for (const shard of options.shards) {
+        results.push(await runCommand({ ...options, shard, shards: null }, root, timing));
+        // Only the Canonical load is shared; a finished shard's rows and Candidates are released before the next.
+        for (const key of [...values.keys()]) if (!key.startsWith('canonical\u0000')) values.delete(key);
+      }
+      return results;
+    });
     timing?.finish('success');
     return result;
   } catch (error) {

@@ -399,7 +399,9 @@ class ParallelStage3:
         cls = self.sup._classify_run(b["producer"], run["log_file"])
         self.store.log(b["id"], f"[{task}] AI 종료 코드 {code}, 분류={cls}", "warn")
         hard = cls in HARD
-        if not hard and self._policy_refusal_skip(b, row, data, run):
+        # Only a Stage whose spec allows it turns a prompt refusal into Keep-all; Stage 4 keeps editorial Skip and a
+        # refusal apart (#9928), so its refusal takes the ordinary failure path below.
+        if not hard and refine.spec_for(b).refusal_keep_all and self._policy_refusal_skip(b, row, data, run):
             return
         if not hard:   # a complete current answer with a proven run identity survives an ordinary non-zero exit
             ad, log = self._adapter(b), Path(run["log_file"])
@@ -482,6 +484,8 @@ class ParallelStage3:
             if sha != row["view_sha256"]:
                 return self._task_failed(b, row, data, f"[{task}] 실행 중 청크 view가 바뀌어 응답을 저장하지 않습니다 (응답 보존)", "input_changed")
             normalized, warnings = refine.spec_for(b).rule.normalize_decisions(final, task, refine.spec_for(b).rule.decision_context(view, task))
+        except refine.NoJudgment as error:   # no usable judgment: the missing-answer path, never Keep-all
+            return self._missing_answer(b, row, data, str(error))
         except Stage3Error as error:
             return self._task_failed(b, row, data, f"[{task}] 응답을 정규화하지 못했습니다: {error}", "no_response")
         body = [line.strip() for line in final.strip().splitlines() if line.strip()][1:]

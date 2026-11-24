@@ -23,12 +23,19 @@ from pathlib import Path
 from typing import Callable
 
 SHARDS = 428
-STAGE_MODULES = ("stage3",)   # refinement Stage modules in run order — the single registration entry point
+STAGE_MODULES = ("stage3", "stage4")   # refinement Stage modules in run order — the single registration entry point
 RESERVED_ROLES = ("stage2", "maintainer")   # assignment roles that are not refinement Stages
 
 
 class RefineError(ValueError):
     pass
+
+
+class NoJudgment(RefineError):
+    """A chunk answer with no usable judgment (every line invalid, or no body): never an implicit Keep-all (#9928)."""
+
+
+_SHARD_DATA = re.compile(r"data/(?:relations/relation|relation-drops/drop)-\d{3}\.jsonl")
 
 
 @dataclass(frozen=True)
@@ -62,6 +69,15 @@ class RefineSpec:
                                 # normalize_decisions (see `stage3`)
     fix: object                 # its `fixcoord.FixSpec`
     module: object = None       # an ops module that replaces `RefineOps(spec)` (Stage 3 keeps `stage3`)
+    # #9928: a Stage whose CLI edits relations stored in any shard (both directions). Its CLI bounds which relations;
+    # the War Room scope is then every shard data file, and verify covers the shards its CLI reports as affected.
+    cross_shard: bool = False
+    # A shard whose official apply changes nothing completes without a commit or PR (`<id>_nochange_SSS`).
+    no_change_complete: bool = False
+    # A provider prompt refusal may be saved as an explicit Keep-all `none` (Stage 3, #2292); False sends it to the
+    # ordinary task failure path, since an editorial Skip and a refusal are different results.
+    refusal_keep_all: bool = True
+    body: Callable | None = None   # (model, shard, result=..., cost=...) -> PR body; None = the Stage 3 body
 
     def title_for(self, model: str, shard: str) -> str:
         return f"[{self.short}/{model}] {shard}"
@@ -77,6 +93,16 @@ class RefineSpec:
 
     def allowed(self, shard: str) -> set:
         return {f"data/relations/relation-{shard}.jsonl", f"data/relation-drops/drop-{shard}.jsonl"}
+
+    def scope(self, shard: str, paths=()) -> set:
+        """The files this Stage's shard work may change, given the paths it did change: the single edit-scope definition.
+        A two-file Stage is exactly `allowed`; a cross-shard Stage adds every shard Relation/Drop file among `paths`."""
+        own = self.allowed(shard)
+        return own | {path for path in paths if isinstance(path, str) and _SHARD_DATA.fullmatch(path)} \
+            if self.cross_shard else own
+
+    def nochange_key(self, shard: str) -> str:
+        return f"{self.id}_nochange_{shard}"
 
 
 _REGISTRY: list[RefineSpec] = []
@@ -208,7 +234,7 @@ class RefineOps:
             raise RefineError(f"PR #{pr.get('number')} changed file list is unavailable")
         paths = [item.get("path") if isinstance(item, dict) else None for item in files]
         if (any(not isinstance(path, str) for path in paths)
-                or set(paths) - self.spec.allowed(shard) or len(paths) != len(set(paths))):
+                or set(paths) - self.spec.scope(shard, paths) or len(paths) != len(set(paths))):
             raise RefineError(f"PR #{pr.get('number')} changed files do not match {label} shard {shard}")
         return shard
 
@@ -219,6 +245,9 @@ class RefineOps:
 
         spec, label = self.spec, self.spec.label
         previous = int(spec.title.fullmatch(latest_pr["title"]).group(1)) if latest_pr else 0
+        # A no-change completion has no PR: continue over the contiguous recorded ones after the last merged shard.
+        while spec.no_change_complete and previous < SHARDS and kv.get(spec.nochange_key(f"{previous + 1:03d}")):
+            previous += 1
         if previous >= SHARDS:
             return Choice("done", note=f"{label} 전체 샤드 생산이 완료되었습니다.")
         shard = f"{previous + 1:03d}"

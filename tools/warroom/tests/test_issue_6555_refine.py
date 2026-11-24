@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 
 from tests.fakes import World, assign_profiles
-from warroom import refine, s3parallel, stage3
+from warroom import refine, s3parallel, stage3, stage4
 from warroom.adapters import RunSpec
 from warroom.config import config_problem, role_problem
 from warroom.store import STAGE3_METHOD, LineBusy
@@ -21,6 +21,12 @@ class RefinementStageRegistry(unittest.TestCase):
         self.w.cfg["model_profiles"]["codex-s4"] = {"adapter": "codex", "model": "gpt-s4", "effort": "xhigh"}
         self.w.cfg["assignments"]["stage-test"] = {"codex": "codex-s4"}
         self.assertTrue(self.w.store.start_stage3("codex", "continuous")[0])
+        # The registry mechanics are proven with a test-only Stage right after Stage 3, so the real Stage 4 (#9928) steps
+        # aside for these tests and returns to its place afterwards.
+        refine.stages()
+        position = refine._REGISTRY.index(stage4.SPEC)
+        refine._REGISTRY.remove(stage4.SPEC)
+        self.addCleanup(refine._REGISTRY.insert, position, stage4.SPEC)
         # A later Stage is only a spec: its own CLI, prompts, PR naming and its gate on the Stage before it.
         self.s4 = refine.register(dataclasses.replace(
             stage3.SPEC, id="s4", tag="s4", label="Stage 4", role="stage-test", short="S4", cli="scripts/relation/s4-cli.mjs",

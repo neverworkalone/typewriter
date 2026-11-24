@@ -109,7 +109,7 @@ class Resolution(unittest.TestCase):
             ("profile missing", mut(lambda c: c["assignments"]["stage3"].update(codex="nope"))),
             ("producer missing", mut(lambda c: c["assignments"]["stage3"].update(ghost="luna-high"))),
             ("adapter mismatch", mut(lambda c: c["assignments"]["stage3"].update(codex="sonnet-medium"))),
-            ("unknown stage", mut(lambda c: c["assignments"].update(stage4={"codex": "luna-high"}))),
+            ("unknown stage", mut(lambda c: c["assignments"].update(stage5={"codex": "luna-high"}))),
             ("retired Stage 1 role written directly", mut(lambda c: c["assignments"].update(stage1={"codex": "luna-high"}))),
             ("bad effort", mut(lambda c: c["model_profiles"]["luna-high"].update(effort="turbo"))),
             ("no effort", mut(lambda c: c["model_profiles"]["luna-high"].pop("effort"))),
