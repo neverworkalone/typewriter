@@ -646,7 +646,7 @@ class WarRoom(App):
     #columns { height: 1fr; margin-top: 1; }
     #board { height: auto; width: auto; grid-gutter: 0; grid-rows: auto; }
     #board-footer { height: 1; padding: 0 1; }
-    .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 1; }
+    .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; padding-bottom: 1; }   /* margin would shrink the auto grid row to 0 */
     .card { border: round $primary; height: 7; padding: 0 1; margin: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
