@@ -55,17 +55,41 @@ output path: STDICT source tables, Meaning data and provenance, verified with th
 development, source-lookup and audit database and never builds a Lite file. The generated
 database is ignored build output and is never an editable source.
 
-`pnpm run build` (and therefore `./pack.sh`, which calls it once) builds a fresh Full database at
-`artifacts/dictionary.sqlite` from the current sources (no cache or reuse; `TYPEWRITER_FULL_DICTIONARY_PATH` redirects
-it), verifies it, and then extracts the **Lite** product database `dist/dictionary.sqlite` from it
-(`scripts/build/lite-dictionary.mjs`). In CI, `TYPEWRITER_SHARED_DICTIONARY_PATH` names the once-built **Full**
-artifact of the current canonical revision; the extension build extracts Lite from it instead of building again, and a
-Lite or mislabeled file is rejected. Lite extraction is not a canonical build. Only `dist/` (Lite) is packaged;
-`artifacts/` is ignored and never enters a ZIP.
+`pnpm run build` (and therefore `./pack.sh`, which calls it once) writes the **Lite** product database
+`dist/dictionary.sqlite` directly (Issue #9931, `scripts/build/direct-lite.mjs`); it neither creates nor reads a Full
+database. Only `dist/` (Lite) is packaged; `artifacts/` is ignored and never enters a ZIP.
 
-Both databases carry `metadata.database_kind` (`full` or `lite`) that must agree with their table set. Lite inherits
-every other metadata value (`source_revision`, `canonical_revision`, `worktree_state`, counts) from the Full it was
-extracted from; package and runtime validation reject anything that is not `lite`. The builder
+- **Static Base** (`scripts/build/static-base.mjs`): everything derived from Canonical alone. It is the verified Lite
+  extraction of an STDICT-only Full build (no Approved Relations) plus a serialized static index (normalized records,
+  the complete Canonical index, source-shard Sense ownership, record meanings). The temporary STDICT-only Full database
+  exists only while a Base is generated and is deleted afterwards.
+- **Direct Lite**: a private copy of the Base, the current Approved Relations scanned and validated with the cached
+  index, projected with the unchanged authored projection, source-checked against the Base's `meaning_members` (both
+  directions of every approved ID row, kept contributor/origin/type/tier, deduplication, text rows) and packed with
+  the existing encoders. Then Lite verification (FK/integrity, meaning checks, `validatePackedStorage`, metadata counts)
+  and one `VACUUM`. The result is logically identical to the Full -> Lite extraction of the same inputs except for
+  provenance (`node scripts/verify/direct-lite-equivalence.mjs` audits this).
+- **Build cache** `artifacts/build-cache/` (ignored, never a source; delete it at any time): immutable `base-*` and
+  `lite-*` entries published by atomic rename, each with a manifest of sha256 digests. An entry is keyed by the
+  generator code (the real esbuild import graph, required JSON, `package.json`, `pnpm-lock.yaml`, Node and SQLite
+  versions) and by every data input the generator actually read, recorded while it ran: file contents, directory
+  listings (additions, removals and renames count) and existence probes. A Lite entry is reused only when all of them
+  still match and its artifact digest verifies; nothing is then parsed, validated, projected, packed or vacuumed. A
+  file that changes while one build reads it fails that build. Only a Lite that passed every check is published.
+- **Provenance** is never cached: the cached Lite holds placeholder provenance and every build, fresh or cached, binds
+  the current `source_revision`/`worktree_state` with the same metadata-only update, so a cold build and a cache hit
+  give identical bytes. The clean/dirty rule is checked before any work.
+- `TYPEWRITER_BUILD_CACHE=off` neither reads nor writes the cache. Release determinism (`validate:release`) compares two
+  such independent cold builds; CI child processes use it too.
+
+`pnpm run build:dictionary` remains the explicit Full audit/development build, and `extractLiteDictionary` /
+`verifyLiteExtraction` remain the Full -> Lite reference implementation. In CI, `TYPEWRITER_SHARED_DICTIONARY_PATH`
+names a Full artifact for the shared-artifact and M2 pipeline checks only; the product build no longer takes a Full
+database.
+
+Both databases carry `metadata.database_kind` (`full` or `lite`) that must agree with their table set. An extracted
+Lite inherits every other metadata value (`source_revision`, `canonical_revision`, `worktree_state`, counts) from the
+Full it was extracted from, and a Direct Lite carries the same values; package and runtime validation reject anything that is not `lite`. The builder
 requires Node.js 24.19.0 or newer (Node 24 LTS) for the built-in `node:sqlite` module and the
 product Vite toolchain.
 
@@ -178,8 +202,8 @@ without any SQLite file present and never creates one.
 - The result is **not** an installable or distributable package. To search the dictionary, `dist/` must already hold a
   database from a normal `pnpm run build`. If canonical data changed, `build:ui` does not refresh it (intended).
 - Production commands (`pnpm run build`, `build:dictionary`, `pnpm run package`/`./pack.sh`) never use this mode.
-  Normal PR CI uses it only to check the UI bundle without a dictionary database; the schema-only CI gate and product
-  release flow use the regular Full/Lite build and output checks.
+  Normal PR CI uses it only to check the UI bundle without a dictionary database; the schema-only CI gate runs the
+  regular product build plus the explicit Full audit build, and the release flow uses the regular product build.
 
 ## GitHub Pages build and deployment
 
