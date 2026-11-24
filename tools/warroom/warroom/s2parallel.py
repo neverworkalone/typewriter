@@ -500,6 +500,19 @@ class ParallelStage2:
                     raise prompts.PromptError("task view 파일이 CLI가 보고한 해시와 다릅니다")
                 handle = ad.start(prompt, wt, env, run, f"Stage 2 {stage2.label(b['shard'], b['batch'])} {task}", log, ex, **extra)
                 sid = None
+            elif kind == "fix" and getattr(ad, "fresh_task_fix", False):
+                aliases = (data.get("correction") or {}).get("aliases") or []
+                if not aliases:
+                    raise prompts.PromptError("수정할 후보 별칭이 없습니다")
+                sha = row["view_sha256"]   # the save stays bound to the full view the task was launched with
+                rel = stage2.task_path(task, "fix-view.txt")
+                sup.git.stage2_task_view(wt, b["shard"], bb, pp, stage2.PLAN, task, rel, only=aliases)
+                previous = [r for r in stage2.read_rows(wt, stage2.task_path(task, "decisions.txt"))
+                            if stage2.alias_of(r) in aliases]
+                prompt = prompts.stage2_task_fix_fresh(b, task, (wt / rel).read_text("utf-8"), defect_path,
+                                                       data["fix_problem"], previous, checkpoint)
+                handle = ad.start(prompt, wt, env, run, f"Stage 2 {stage2.label(b['shard'], b['batch'])} {task} fix", log, ex, **extra)
+                sid = None
             else:
                 sid = row["session_id"]
                 if not sid:
