@@ -231,11 +231,6 @@ class Prepare(unittest.TestCase):
         self.assertEqual(w.store.kv_prefix(f"tw_b{b['id']}:"), [])
 
 
-def stage1ab_dir(w):
-    from warroom import stage1ab
-    return stage1ab.names(w.row_()).directory
-
-
 class KvIsolation(unittest.TestCase):
     def test_clear_removes_exactly_its_own_retry_keys(self):
         w = codex_world()
