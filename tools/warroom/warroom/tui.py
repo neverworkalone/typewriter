@@ -24,7 +24,7 @@ from .config import (ROOT_ENV, Paths, RootError, check_runtime_root, adapter_lab
 from .logrender import render_line
 from .views import (CARD_W, _hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
                     model_title, board_footer, detail_meta, scheduled_at, usage_text,
-                    stage2_display_model, refine_display_model, pin_view)
+                    refine_display_model, pin_view)
 from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 
@@ -231,8 +231,8 @@ class Card(Static, can_focus=True):
 
 
 class Stage2Card(Card):
-    """The Stage 2 slot of one Claude/Codex column (board row 1). Only the slot of the real Stage 2 owner's column is
-    visible; the others stay invisible."""
+    """The Stage 2 card of one Claude/Codex column (board row 1): that model's own Stage 2 Line, shown as an empty
+    card while it has no batch."""
     ROW = 0
 
     def __init__(self, column_model: str):
@@ -944,16 +944,12 @@ class WarRoom(App):
                 continue
             card.update(card_text(st))
             card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
-        owner = stage2_display_model(store, self.cfg, {
-            model: statuses[(model, STAGE2_METHOD)] for model in self.stage2_capable
-        })
-        if owner:
-            st = statuses[(owner, STAGE2_METHOD)]
-            owner_label = adapter_label(registry(self.cfg)[owner]["adapter"])
-            for card in root.query(Stage2Card):   # visible only in the owner's (Claude 1st / Codex 2nd) column
-                card.owner_model = owner
-                card.show(Text(card_text({**st, "display_owner": owner_label})),
-                          "card " + (st["state"] if st["batch"] else "empty"), card.column == owner)
+        for card in root.query(Stage2Card):   # every Claude/Codex column shows its own Stage 2 Line (idle: empty card)
+            st = statuses.get((card.column, STAGE2_METHOD)) or control.line_status(store, card.column, STAGE2_METHOD)
+            label = adapter_label(registry(self.cfg).get(card.column, {}).get("adapter", ""))
+            card.owner_model = card.column
+            card.show(Text(card_text({**st, "display_owner": label})),
+                      "card " + (st["state"] if st["batch"] else "empty"), True)
         owner = refine_display_model(store, self.cfg, {
             model: statuses[(model, STAGE3_METHOD)] for model in self.refine_capable
         })
