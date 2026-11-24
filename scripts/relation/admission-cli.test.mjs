@@ -1498,13 +1498,17 @@ test('compact chunks are a lossless view and compact decisions expand into the s
     assert.ok(lines.some((line) => line.startsWith(`S\t${item.sense_id}\t${item.record_id}\t${item.lemma}\t${item.pos}\t${item.gloss}\t`)), `source ${item.sense_id} keeps its full gloss`);
     for (const candidate of item.candidates) {
       for (const target of candidate.same_spelling_targets) for (const sense of target.senses) {
-        assert.equal(lines.filter((line) => line.endsWith(`\t${sense.sense_id}\t${target.record_id}\t${target.lemma}\t${sense.pos}\t${sense.gloss}`)).length, 1, `target ${sense.sense_id} appears exactly once with its full gloss`);
+        const rows = lines.filter((line) => /^T\d+\t/u.test(line) && line.endsWith(`\t${sense.pos}\t${sense.gloss}`));
+        assert.equal(rows.length, 1, `target ${sense.sense_id} appears exactly once with its full gloss`);
+        const entry = lines.slice(0, lines.indexOf(rows[0])).findLast((line) => line.startsWith('=\t'));
+        assert.equal(entry, `=\t${target.lemma}`, `target ${sense.sense_id} sits under its headword entry`);
       }
     }
   }
   assert.ok(lines.includes('c1\t유일표적\ta_codex\tT1,T2'));
   assert.ok(lines.includes('c2\t겹표기\ta_codex\tT3,T4'));
-  assert.ok(lines.includes('P\tscene\t2\tw504-s1 역방향표적 noun 이미 연결된 뜻'), 'approved reverse peers use the stored source type and relevance');
+  assert.ok(lines.includes('P\tscene\t2\t역방향표적 noun 이미 연결된 뜻'), 'approved reverse peers use the stored source type and relevance');
+  assert.ok(!/^T\d+\t.*\bw\d+-s\d+\b/mu.test(text) && !/^P\t.*\bw\d+-s\d+\b/mu.test(text), 'task view target and peer rows carry no sense IDs');
 
   const save = async (body) => {
     await writeFile(path.join(root, input), body);
