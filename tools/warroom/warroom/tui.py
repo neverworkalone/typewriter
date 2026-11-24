@@ -705,7 +705,7 @@ class WarRoom(App):
     def compose(self) -> ComposeResult:
         reg = registry(self.cfg)
         kinds = adapters(self.cfg)
-        first = kinds[0] if kinds else "claude"
+        first = "codex" if "codex" in kinds else kinds[0] if kinds else "claude"   # Codex preselected; Claude stays listed first
         yield Header()
         with Horizontal(id="controls"):
             adapter_options = [(Text("Claude", style="#ffa500") if a == "claude" else adapter_label(a), a)
