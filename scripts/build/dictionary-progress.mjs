@@ -12,9 +12,14 @@ export function createDictionaryProgress(stream = process.stdout) {
   let finalCount;
   return (event) => {
     if (event.type === 'count') {
-      finalCount = `${event.stage}: ${event.count} / ${event.total}`;
+      const value = event.count === undefined
+        ? 'in progress'
+        : event.total === undefined ? `${event.count}` : `${event.count} / ${event.total}`;
+      const line = `${event.stage}: ${value}`;
+      // The completion summary keeps the record count; later phases only update the live line.
+      if (event.stage === 'Full SQLite records') finalCount = line;
       if (stream.isTTY) {
-        stream.write(`\r\u001b[2KDictionary ${finalCount}`);
+        stream.write(`\r\u001b[2KDictionary ${line}`);
         activeLine = true;
       }
       return;
