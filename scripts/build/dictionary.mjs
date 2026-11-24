@@ -21,7 +21,15 @@ import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } fr
 import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage, glossReferenceViolations } from './meaning-source-checks.mjs';
 import { compareMeaningIds } from '../../src/runtime/meaning-order.js';
 import { projectDirectReverses } from './direct-reverse.mjs';
-import { DEFAULT_RELATIONS_DIRECTORY, loadApprovedRelationFiles, loadShardSenseIds, projectAuthoredRelations } from './authored-relations.mjs';
+import {
+  DEFAULT_RELATIONS_DIRECTORY,
+  buildShardSenseIdsFromCanonicalRecords,
+  listApprovedRelationFiles,
+  projectAuthoredRelations,
+  scanApprovedRelationFiles,
+  validateScannedApprovedRelations,
+} from './authored-relations.mjs';
+import { buildCanonicalIndex } from '../relation/admission.mjs';
 import { projectGlossReferences } from './gloss-arrow-reference.mjs';
 import { parseMeaningId, projectMeaningRelations, projectRecordMeanings } from './record-meanings.mjs';
 import {
@@ -63,24 +71,47 @@ function assertRecordMeaningsOption(inputDirectory, recordMeanings) {
   }
 }
 
-function loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles = [], shardSenseIds }) {
+async function loadMeaningLayer({ model, context, inputDirectory, recordMeanings, relationFiles = [], onProgress }) {
   const isDefault = path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
   assertRecordMeaningsOption(inputDirectory, recordMeanings);
-  if (!(recordMeanings ?? isDefault)) {
-    return { projected: false, meanings: [], relations: [], textRelations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
+  const projected = recordMeanings ?? isDefault;
+  let finishStage;
+  let approved;
+  if (relationFiles.length > 0) {
+    // One streamed read of every approved file; only compact columns are kept, never every row object (#9922).
+    finishStage = progressStage(onProgress, 'Approved relation loading');
+    approved = await scanApprovedRelationFiles(relationFiles, { collect: projected });
+    finishStage();
   }
+  if (!projected) {
+    return { projected: false, meanings: [], relations: [], relationCount: 0, textRelations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
+  }
+  if (approved) {
+    finishStage = progressStage(onProgress, 'Approved relation validation');
+    await validateScannedApprovedRelations(approved, {
+      index: buildCanonicalIndex(model.records),
+      shardSenseIds: buildShardSenseIdsFromCanonicalRecords(context.records),
+    });
+    finishStage();
+  }
+  finishStage = progressStage(onProgress, 'STDICT meaning relation projection');
   const meanings = projectRecordMeanings(model.records);
   const projection = projectMeaningRelations({ records: model.records, meanings });
   // Issue #834: STDICT `→` references join the original `direct` relations before every `direct` is mirrored.
   const glossed = projectGlossReferences({ records: model.records, meanings, relations: projection.relations });
   const derived = projectDirectReverses({ relations: glossed.relations });
-  const stdictRelations = [...glossed.relations, ...derived.relations];
-  const authored = projectAuthoredRelations({ files: authoredFiles, records: model.records, meanings, existing: stdictRelations, shardSenseIds });
-  const relations = [...stdictRelations, ...authored.relations];
+  const relations = [...glossed.relations, ...derived.relations];
+  finishStage();
+  finishStage = progressStage(onProgress, 'Authored relation projection');
+  const authored = projectAuthoredRelations({ approved, meanings, existing: relations });
+  finishStage();
   return {
     projected: true,
     meanings,
+    // STDICT-derived relations as rows; authored ID relations are streamed into SQLite from `authored`.
     relations,
+    authored,
+    relationCount: relations.length + authored.relationCount,
     textRelations: authored.textRelations,
     glossHolds: glossed.holds,
     stats: {
@@ -157,7 +188,7 @@ function metadataEntries(model, metadata, surfaceProjection, meaningLayer) {
       (count, meaning) => count + meaning.sense_ids.length,
       0,
     ),
-    meaning_relation_count: meaningLayer.relations.length,
+    meaning_relation_count: meaningLayer.relationCount,
     meaning_text_relation_count: meaningLayer.textRelations.length,
     meaning_relation_source_count: meaningLayer.relations.reduce(
       (count, relation) => count + relation.sources.length,
@@ -377,6 +408,9 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
       );
     });
   }
+  meaningLayer.authored?.forEachRelation((source, position, target, type, relevance, origin) => {
+    insertMeaningRelation.run(source, position, target, type, '', relevance, origin);
+  });
   // `→` gloss evidence follows the relations it supports (Issue #834).
   for (const relation of meaningLayer.relations) {
     (relation.gloss_sources ?? []).forEach((source, position) => {
@@ -391,14 +425,9 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
   for (const relation of meaningLayer.textRelations) {
     insertTextRelation.run(relation.source_meaning_id, relation.position, relation.text, relation.type, relation.relevance);
   }
-  for (const relation of meaningLayer.relations) {
-    (relation.authored_sources ?? []).forEach((source, position) => {
-      insertAuthoredSource.run(
-        relation.source_meaning_id, relation.position, position, source.direction,
-        source.source_sense_id, source.target_sense_id, source.shard, source.line,
-      );
-    });
-  }
+  meaningLayer.authored?.forEachAuthoredSource((source, relationPosition, position, direction, sourceSenseId, targetSenseId, shard, line) => {
+    insertAuthoredSource.run(source, relationPosition, position, direction, sourceSenseId, targetSenseId, shard, line);
+  });
   // Derived reverse provenance follows every meaning relation it references.
   for (const relation of meaningLayer.relations) {
     if (!relation.reverse_of) continue;
@@ -510,13 +539,10 @@ export async function buildDictionary({
     requireCollisionReview,
   });
   finishStage();
-  finishStage = progressStage(onProgress, 'Approved relations and meaning projection');
   // Approved Relations JSONL feeds the official canonical build; fixture inputs opt in with `relationsDirectory`.
-  const authoredFiles = await loadApprovedRelationFiles(relationsDirectory
+  const relationFiles = listApprovedRelationFiles(relationsDirectory
     ?? (requireExceptionTargets ? DEFAULT_RELATIONS_DIRECTORY : undefined));
-  const shardSenseIds = authoredFiles.length > 0 ? await loadShardSenseIds(inputDirectory) : undefined;
-  const meaningLayer = loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles, shardSenseIds });
-  finishStage();
+  const meaningLayer = await loadMeaningLayer({ model, context, inputDirectory, recordMeanings, relationFiles, onProgress });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,
     sourceRevision,
@@ -598,7 +624,7 @@ export async function buildDictionary({
     ),
     relationCount: countRelations(model.records),
     meaningCount: meaningLayer.meanings.length,
-    meaningRelationCount: meaningLayer.relations.length,
+    meaningRelationCount: meaningLayer.relationCount,
     meaningProjection: meaningLayer.stats,
     generatedSurfaceFormCount: surfaceFormProjection.rows.length,
     surfaceFormExclusionCount: surfaceFormProjection.exclusions.length,
