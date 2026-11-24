@@ -8,7 +8,7 @@ import time
 import unittest
 from pathlib import Path
 
-from warroom.adapters import SpawnNotStarted, ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter, RunSpec
+from warroom.adapters import SpawnNotStarted, ClaudeCodeAdapter, CodexCLIAdapter, RunSpec
 
 BIG = "가" * 400_000   # ~1.2 MB UTF-8: above macOS ARG_MAX and Linux MAX_ARG_STRLEN
 
@@ -44,16 +44,11 @@ class OversizedPrompt(unittest.TestCase):
         self.assertIn("ARG:1", out)   # the "-" stdin marker
         self.assertIn(str(len(BIG.encode())), out.splitlines()[-1])
 
-    def test_opencode_points_to_prompt_file(self):
-        out, _ = self._run(OpenCodeAdapter, probe_async=False)
-        self.assertTrue(all(int(l[4:]) < 4096 for l in out.splitlines() if l.startswith("ARG:")))
-
-
 class ClearRemovesPromptFiles(unittest.TestCase):
     def test_clear_removes_prompt_files_of_every_adapter(self):
         from types import SimpleNamespace
         from warroom.supervisor import Supervisor
-        for cls, kw in ((ClaudeCodeAdapter, {}), (CodexCLIAdapter, {}), (OpenCodeAdapter, {"probe_async": False})):
+        for cls, kw in ((ClaudeCodeAdapter, {}), (CodexCLIAdapter, {})):
             with self.subTest(adapter=cls.__name__), tempfile.TemporaryDirectory() as d:
                 d = Path(d).resolve()
                 fake = d / "fakecli"

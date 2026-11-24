@@ -6,7 +6,7 @@ import time
 import unicodedata
 
 from . import control, stage2
-from .config import TIERED_ADAPTERS, adapter_label, ordered_models, registry, stage2_models, stage3_models
+from .config import adapter_label, ordered_models, registry, stage2_models, stage3_models
 from .store import STAGE2_METHOD, STAGE3_METHOD
 from .timing import elapsed_seconds
 
@@ -234,11 +234,6 @@ def card_text(st: dict) -> str:
         if tasks["failed"]:
             left += f" · 실패 {tasks['failed']}"
         lines.append(_two_sided(left, f"저장 {tasks['saved']}/{tasks['total']}"))
-    elif tasks:   # parallel C/D tasks retain their existing summary
-        lines.append(_fit(f"task 실행 {tasks['running']} · 대기 {tasks['queued']}"
-                          + (f" · 응답 {tasks['responded']}" if tasks.get("responded") else "")
-                          + f" · 저장 {tasks['saved']}/{tasks['total']}"
-                          + (f" · 실패 {tasks['failed']}" if tasks["failed"] else "")))
     if (is_stage2 or is_stage3) and st.get("wait"):
         lines.append(_fit("대기: " + st["wait"]))
     if (is_stage2 or is_stage3) and st.get("error"):
@@ -268,21 +263,9 @@ def maintainer_card_text(card: dict) -> str:
     return "\n".join([title] + lines + [""] * (CARD_LINES - 1 - len(lines)))
 
 
-TIER_SWITCH_KEY_STYLE = "b #ffa500"
-TIER_FOOTER = {
-    "free": ("Free", "b green"),
-    "go": ("Go", TIER_SWITCH_KEY_STYLE),
-    "api": ("GOAT", "b red"),   # #6027: the internal tier key stays `api`
-    "mixed": ("혼합", "b yellow"),
-    "none": ("DeepSeek Go 모델 미설정", "dim"),
-}
-
-
-def tier_footer(state: str) -> str:
-    """One-line board footer with the current tier nested under f; values are Rich markup."""
-    label, style = TIER_FOOTER.get(state, TIER_FOOTER["none"])
-    return (f"[b #ffa500]q[/] Quit · [b #ffa500]Shift+S[/] Stop All · [b #ffa500]r[/] 설정 리로드 · "
-            f"[{TIER_SWITCH_KEY_STYLE}]f[/] Free/Go/GOAT 전환 ([{style}]{label}[/])")
+def board_footer() -> str:
+    """One-line board key legend; values are Rich markup."""
+    return "[b #ffa500]q[/] Quit · [b #ffa500]Shift+S[/] Stop All · [b #ffa500]r[/] 설정 리로드"
 
 
 def _maintainer_header(st: dict, who: str) -> str:
@@ -346,21 +329,15 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
                      else "Clear 중단됨 (보존됨) — Clear 버튼으로 이어서 재시도할 수 있습니다")
     if st["error"]:
         lines.append(f"ERROR/PAUSED 사유: {st['error']}")
-    if st.get("retry_blocked_reason"):
-        lines.append(f"Retry 비활성: {st['retry_blocked_reason']}")
     if st["blocked"]:
         lines.append(f"BLOCKED: {st['blocked']}")
     return "\n".join(lines)
 
 
 def _pins(reg: dict, st: dict) -> str:
-    """The Free/Go tier for OpenCode; the fixed model, effort, and optional permission profile for other CLIs."""
+    """The fixed model, effort, and optional permission profile of the Line's stage."""
     if reg.get("unassigned"):   # a stage with no profile: never show another stage's pin
         return "model id: (이 단계 미배정)   effort: (이 단계 미배정)"
-    if reg.get("adapter") in TIERED_ADAPTERS:
-        tier = st["tier"]
-        effort = reg.get("tier_efforts", {}).get(tier, reg.get("effort"))
-        return f"tier: {control.TIER_LABELS.get(tier, tier)}   model id: {reg.get('models', {}).get(tier) or '-'}   effort: {effort or '-'}"
     permission = (f"   permission_profile: {reg.get('permission_profile') or '(기본)'}"
                   if reg.get("adapter") == "codex" else "")
     return f"model id: {reg.get('model') or '-'}   effort: {reg.get('effort') or '-'}{permission}"
@@ -412,7 +389,7 @@ def usage_text(runs, pricing: dict | None = None, now: float | None = None) -> s
     if total["partial"]:
         lines.append(f"※ 일부 run/항목에 사용량 기록이 없어 부분 합계입니다 ({', '.join(total['partial'])})")
     if total["best_effort_runs"]:
-        lines.append("※ OpenCode JSON 로그 집계는 best-effort입니다. 마지막 step_finish가 누락될 수 있어 "
+        lines.append("※ 과거 OpenCode JSON 로그 집계는 best-effort입니다. 마지막 step_finish가 누락될 수 있어 "
                      "관측 토큰은 하한이며 누락량을 추정하지 않습니다. "
                      f"관측상 불완전한 run: {total['incomplete_runs']}/{total['best_effort_runs']}개")
     return "\n".join(lines)

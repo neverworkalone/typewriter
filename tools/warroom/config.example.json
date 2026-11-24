@@ -12,18 +12,6 @@
     "codex": {
       "label": "Luna",
       "adapter": "codex"
-    },
-    "deepseek": {
-      "label": "DeepSeek",
-      "adapter": "opencode",
-      "models": {
-        "free": "opencode/deepseek-v4.1-flash-free",
-        "go": "opencode-go/deepseek-v4.1-flash",
-        "api": "commandcode/deepseek/deepseek-v4-flash"
-      },
-      "effort": "low",
-      "tier_efforts": {"api": "none"},
-      "retired_models": {}
     }
   },
   "model_profiles": {
@@ -48,19 +36,6 @@
     }
   },
   "assignments": {
-    "stage1": {
-      "codex": "luna-high",
-      "claude": "sonnet-medium"
-    },
-    "stage1-ab": {
-      "codex": "luna-high"
-    },
-    "stage1-c": {
-      "codex": "luna-xhigh"
-    },
-    "stage1-d": {
-      "codex": "luna-high"
-    },
     "stage2": {
       "codex": "luna-xhigh",
       "claude": "sonnet-medium"
@@ -70,21 +45,9 @@
       "codex": "luna-xhigh"
     }
   },
-  "methods": [
-    "a",
-    "b",
-    "c",
-    "d"
-  ],
-  "literary_index_path": "",
-  "corpus_index_path": "",
   "maintainer": "luna-xhigh",
   "shared_defect_verify": [],
-  "opencode_bin": "opencode",
-  "quota_patterns": [
-    "FreeUsageLimit",
-    "free (usage|tier|quota).{0,40}(exhaust|exceed|limit)"
-  ],
+  "quota_patterns": [],
   "trusted_reviewers": [
     "genonfire"
   ],
@@ -93,6 +56,5 @@
   "pr_head_lag_timeout_seconds": 1800,
   "rate_limit_retries": 3,
   "rate_limit_backoff_seconds": 120,
-  "free_model_pattern": "-free$",
   "pricing": {}
 }

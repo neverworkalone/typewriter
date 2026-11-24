@@ -14,16 +14,16 @@ from textual.binding import Binding
 from textual.containers import Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.css.scalar import Unit
-from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Rule, Select, Static
+from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select, Static
 
 import time
 
 from . import auth, control
-from .config import (ROOT_ENV, Paths, RootError, check_runtime_root, role_view, adapter_label, adapters, load_config, methods, ordered_models, registry,
+from .config import (ROOT_ENV, Paths, RootError, check_runtime_root, role_view, adapter_label, adapters, load_config, ordered_models, registry, retired_notice,
                      stage2_models, stage3_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
-                    model_title, tier_footer, detail_meta, scheduled_at, usage_text, stage2_column,
+                    model_title, board_footer, detail_meta, scheduled_at, usage_text, stage2_column,
                     stage2_display_model, stage3_column, stage3_display_model)
 from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
@@ -177,38 +177,6 @@ class Confirm(ModalScreen[bool]):
         self.dismiss(e.button.id == "yes")
 
 
-class TierChoice(ModalScreen[str | None]):
-    BINDINGS = [("escape", "cancel", "취소"), ("left", "focus_choice('go')", ""),
-                ("right", "focus_choice('api')", "")]
-
-    def __init__(self, api_available: bool):
-        super().__init__()
-        self.api_available = api_available
-
-    def compose(self) -> ComposeResult:
-        with Vertical(id="tier-choice"):
-            yield Static("DeepSeek 유료 모델 선택 (다음 실행부터 적용)")
-            with Horizontal():
-                yield Button("Go", id="go", variant="primary")
-                yield Button("GOAT" if self.api_available else "GOAT (미설정)", id="api", variant="error",
-                             disabled=not self.api_available)
-
-    def on_mount(self) -> None:
-        self.query_one("#go", Button).focus()
-
-    def action_cancel(self) -> None:
-        self.dismiss(None)
-
-    def action_focus_choice(self, choice: str) -> None:
-        button = self.query_one(f"#{choice}", Button)
-        if not button.disabled:
-            button.focus()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        event.stop()
-        self.dismiss(event.button.id)
-
-
 class Card(Static, can_focus=True):
     """One Line. Clicking (or Enter) only opens its detail; it never starts or changes work."""
     BINDINGS = [("enter", "open", "Open"), ("left", "move(0,-1)", ""), ("right", "move(0,1)", ""),
@@ -276,7 +244,7 @@ class Stage3Card(Card):
 
 
 class MaintainerCard(Card):
-    """Row-5 card of the hidden #1555 Maintainer (always in the DeepSeek column). It is a Card for focus, arrow keys,
+    """Bottom-row card of the hidden #1555 Maintainer (under the Stage 2 card). It is a Card for focus, arrow keys,
     Tab and click; Enter/click opens the same Batch Detail as every Line, over the Maintainer Line (Issue #2022)."""
 
     def __init__(self, model: str):
@@ -292,8 +260,7 @@ class BoardFooter(Footer):
     """Keep Textual's docked Footer layout while rendering the board's stateful key legend."""
 
     def compose(self) -> ComposeResult:
-        yield Static(tier_footer(control.tier_state(self.app.store, self.app.cfg, self.app.methods)),
-                     id="board-footer")
+        yield Static(board_footer(), id="board-footer")
 
     def bindings_changed(self, screen) -> None:
         """The static legend is independent of the active screen's binding set."""
@@ -570,7 +537,7 @@ class LineDetail(Screen):
             self._reload()
         elif e.button.id == "drain":
             on = not self._status()["line_drain"] if self.maint else not bool(store.line(m, me)["drain"])
-            control.set_drain(store, m, me, on)
+            control.set_drain(store, m, me, on, cfg=self.app.cfg)
         elif e.button.id == "schedule-drain":
             st = self._status()
             if self.maint or st["batch_id"] is None:
@@ -593,10 +560,8 @@ class LineDetail(Screen):
                 if not control.retry_maintainer(store, st["issue_number"], st["batch_id"]):
                     self.notify("재시도할 Maintainer 작업이 화면과 달라졌습니다 (화면을 새로 고치세요).", severity="warning")
             else:
-                if not control.retry(store, m, me):
-                    st = self._status()
-                    self.notify(st.get("retry_blocked_reason") or "재시도할 배치가 현재 상태와 다릅니다.",
-                                severity="warning")
+                if not control.retry(store, m, me, cfg=self.app.cfg):
+                    self.notify("재시도할 배치가 현재 상태와 다릅니다.", severity="warning")
         elif e.button.id == "stop":
             what = "Maintainer의 현재 실행(worktree·PR·Issue·세션·로그 보존, 다른 라인/Stage 2는 영향 없음)" if self.maint \
                 else f"{m} / {control.method_label(me)} 라인의 AI 실행"
@@ -633,22 +598,21 @@ class LineDetail(Screen):
             if batch_id is None or not control.stop_maintainer(self.app.store, self.model, batch_id):
                 self.notify("중지할 Maintainer 실행이 화면과 달라졌습니다 (화면을 새로 고치세요).", severity="warning")
             return
-        control.stop_line(self.app.store, self.model, self.method)
+        control.stop_line(self.app.store, self.model, self.method, cfg=self.app.cfg)
 
     def _cleared(self, yes: bool | None, batch_id: int, issue_number: int | None = None) -> None:
         if yes:
-            ok, msg = control.request_clear(self.app.store, self.model, self.method, batch_id, issue_number)
+            ok, msg = control.request_clear(self.app.store, self.model, self.method, batch_id, issue_number,
+                                            cfg=self.app.cfg)
             self.notify("Clear 요청됨 — 정리 진행 중" if ok else msg, severity="information" if ok else "error")
 
 
 class WarRoom(App):
     TITLE = "WAR ROOM / TYPEWRITER"
     CSS = """
-    Confirm, TierChoice { align: center middle; }
+    Confirm { align: center middle; }
     #confirm { width: 60; height: auto; padding: 0 2; border: thick $error; background: $surface; }
     #confirm > Horizontal { height: auto; align-horizontal: center; margin-top: 1; }
-    #tier-choice { width: 60; height: auto; padding: 0 2; border: thick $primary; background: $surface; }
-    #tier-choice > Horizontal { height: auto; align-horizontal: center; margin-top: 1; }
     #banner, #drain-note { height: auto; }
     #banner { color: $error; }
     #drain-note { color: $warning; }
@@ -661,7 +625,6 @@ class WarRoom(App):
     #board-footer { height: 1; padding: 0 1; }
     .col { width: 40; height: auto; margin: 0; }
     .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 0; }
-    .stage-divider { margin: 0; color: #666666; }
     .card { border: round $primary; height: 6; padding: 0 1; margin: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
@@ -676,7 +639,7 @@ class WarRoom(App):
     """
     BINDINGS = [("q", "quit", "Quit"),
                 Binding("S", "stop_all", "Stop All"),
-                ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go/GOAT 전환"),
+                ("r", "reload_config", "설정 리로드"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
                 Binding("shift+tab", "switch_region", "", show=False, priority=True)]
@@ -695,11 +658,10 @@ class WarRoom(App):
         self._reload_token: str | None = None
         self._reload_fail = ""
         self.models = ordered_models(self.cfg)   # board order: adapter label, never config order
-        self.methods = methods(self.cfg)
 
     @property
     def stage2_capable(self) -> set:
-        """Row 5, Claude / Codex columns: Stage 2 (never DeepSeek/OpenCode)."""
+        """Claude / Codex columns that can run Stage 2."""
         return set(stage2_models(self.cfg))
 
     @property
@@ -709,10 +671,8 @@ class WarRoom(App):
 
     @property
     def maintainer_col(self):
-        """Row 5, the first registered column that cannot run Stage 2 (DeepSeek): the Maintainer's status, whichever
-        model actually runs the Maintainer."""
-        capable = self.stage2_capable
-        return next((m for m in self.models if m not in capable), None)
+        """The column of the Maintainer's status card, under the Stage 2 card (whichever model runs the Maintainer)."""
+        return self.stage2_col or next(iter(self.models), None)
 
     @property
     def stage2_col(self):
@@ -727,19 +687,18 @@ class WarRoom(App):
         return control.board_line_keys(self.store, self.cfg)
 
     def _lines(self):
-        """Columns come from the registry (+ models that still own history), never a fixed 3."""
+        """Columns come from the registry (+ live models that still own history); retired Lines (#9933) are not shown."""
         known = set(self.models)
-        extra = sorted({ln["model"] for ln in self.store.lines()} - known)
+        extra = sorted({ln["model"] for ln in self.store.lines() if not control.retired(ln, self.cfg)} - known)
         return self.models + extra
 
     def compose(self) -> ComposeResult:
         reg = registry(self.cfg)
         kinds = adapters(self.cfg)
-        first = kinds[0] if kinds else "opencode"
+        first = kinds[0] if kinds else "claude"
         yield Header()
         with Horizontal(id="controls"):
-            adapter_options = [(Text("Claude", style="#ffa500") if a == "claude"
-                                else "DeepSeek" if a == "opencode" else adapter_label(a), a)
+            adapter_options = [(Text("Claude", style="#ffa500") if a == "claude" else adapter_label(a), a)
                                for a in kinds]
             yield Select(adapter_options,
                          value=first, allow_blank=False, id="adapter")
@@ -747,7 +706,9 @@ class WarRoom(App):
             initial_models = self._model_options(first)
             yield Select(initial_models, allow_blank=False, id="model")
             initial_model_id = initial_models[0][1] if initial_models else None
-            yield Select(self._method_options(first, initial_model_id), value=self.methods[0], allow_blank=False, id="method")
+            method_options = self._method_options(first, initial_model_id)
+            yield Select(method_options, value=method_options[0][1] if method_options else Select.BLANK,
+                         allow_blank=not method_options, id="method")
             yield Select([("Single", "single"), ("Continuous", "continuous")],
                          value="single", allow_blank=False, id="mode")
             yield Button("Start", id="start", variant="success")
@@ -758,32 +719,15 @@ class WarRoom(App):
             for model in self._lines():
                 with Vertical(classes="col", id=f"col-{model}"):
                     yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
-                    for me in self.methods:
-                        yield Card(model, me)
-                    if (model in self.stage2_capable or model == self.maintainer_col or model == self.stage3_col):
-                        yield Rule(classes="stage-divider")   # separates Stage 1 Methods A-D from row 5 (not a Card: arrows skip it)
                     if model == self.stage2_col:
                         yield Stage2Card(model)
                     if model == self.stage3_col:
                         yield Stage3Card(model)
-                    if model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
+                    if model == self.maintainer_col:   # ... and the Maintainer status under the Stage 2 card
                         yield MaintainerCard(model)
         yield Static(id="banner")
         yield Static(id="drain-note")
         yield BoardFooter(show_command_palette=False)
-
-    def action_toggle_tier(self) -> None:
-        """f: Free <-> Go for DeepSeek. Going to the paid tier asks first."""
-        if self.screen is not self.screen_stack[0]:
-            return
-        state = control.tier_state(self.store, self.cfg, self.methods)
-        target = control.next_tier(state)
-        if target is None:
-            return self.notify("DeepSeek의 Go 모델이 설정되어 있지 않습니다 (config의 models.go).", severity="warning")
-        if target == "free":
-            return self._apply_tier(True, "free")
-        available = all(registry(self.cfg)[m]["models"].get("api") for m in control.go_models(self.cfg))
-        self.push_screen(TierChoice(available), lambda tier: self._apply_tier(True, tier) if tier else None)
 
     def action_reload_config(self) -> None:
         """r: ask the Supervisor to re-read config.json; the answer arrives through the shared DB (refresh_view)."""
@@ -821,14 +765,9 @@ class WarRoom(App):
             self.cfg = load_config(self.paths)
         except (OSError, ValueError):
             return
-        if ordered_models(self.cfg) != self.models or methods(self.cfg) != self.methods:
-            msg += " — 새 열/Method는 TUI를 다시 열면 표시됩니다."
+        if ordered_models(self.cfg) != self.models:
+            msg += " — 새 열은 TUI를 다시 열면 표시됩니다."
         self.notify(msg)
-
-    def _apply_tier(self, yes: bool | None, tier: str) -> None:
-        if yes:
-            control.set_tier(self.store, self.cfg, self.methods, tier)
-            self.refresh_view()
 
     def action_switch_region(self) -> None:
         """Tab: top control bar  <->  Line cards. Arrows move inside either one."""
@@ -860,8 +799,8 @@ class WarRoom(App):
                 if reg[pid]["adapter"] == adapter]
 
     def _method_options(self, adapter: str, model: str | None = None):
-        """Stage 1 Methods; Stage 2 and Stage 3 on Claude/Codex models."""
-        opts = [(m.upper(), m) for m in self.methods]
+        """Stage 2 and Stage 3 on Claude/Codex models."""
+        opts = []
         if adapter in STAGE2_ADAPTERS:
             opts.append(("Stage 2", STAGE2_METHOD))
         if model in stage3_models(self.cfg):
@@ -869,13 +808,14 @@ class WarRoom(App):
         return opts
 
     def _sync_method_select(self, adapter: str, model: str | None = None) -> None:
-        """Offer Stage 3 only for its assigned model; stale choices fall back to the first Method."""
+        """Offer Stage 3 only for its assigned model; stale choices fall back to the first offered stage."""
         sel = self.query_one("#method", Select)
         cur = sel.value
         opts = self._method_options(adapter, model)
         with sel.prevent(Select.Changed):
             sel.set_options(opts)
-            sel.value = cur if any(v == cur for _, v in opts) else self.methods[0]
+            if opts:
+                sel.value = cur if any(v == cur for _, v in opts) else opts[0][1]
         labels = [label for label, _ in self._method_options("claude")]
         if stage3_models(self.cfg):
             labels.append("Stage 3")
@@ -1006,7 +946,6 @@ class WarRoom(App):
             mc.update(Text(maintainer_card_text(maint)))   # hold reasons may hold [brackets]: text, never markup
             mc.set_classes("card " + {"IDLE": "empty", "WORKING": "PRODUCING", "COMING": "WAITING_REVIEW", "ERROR": "ERROR",
                                        "WAITING": "WAITING_REVIEW"}[maint["state"]])
-        root.query_one("#board-footer", Static).update(tier_footer(control.tier_state(store, self.cfg, self.methods)))
         drain_schedule = store.drain_schedule("all")
         schedule_select = root.query_one("#drain-all-time", Select)
         schedule_button = root.query_one("#schedule-all", Button)
@@ -1017,7 +956,7 @@ class WarRoom(App):
             with schedule_select.prevent(Select.Changed):
                 schedule_select.value = hour
         # The Maintainer's progress (Issue #1555) lives in its Board card (Issue #1684); only a Board without that card
-        # (no DeepSeek column) keeps the urgent Issue note here.
+        # (no registered model) keeps the urgent Issue note here.
         urgent = control.urgent_line(store, self.cfg) if not has_maint_card else ""
         yellow = [urgent] if urgent else []
         if drain_schedule is not None:
@@ -1034,6 +973,8 @@ class WarRoom(App):
                   for s in statuses.values() if s["blocked"]]
         if self._reload_fail:
             notes.append(f"! {self._reload_fail}")
+        if notice := retired_notice(self.cfg):
+            notes.append(f"! {notice}")
         if self._supervisor_error:
             retry_in = max(self._supervisor_retry_at - now, 0)
             notes.append(f"! Supervisor 자동 재기동 실패: {self._supervisor_error} "

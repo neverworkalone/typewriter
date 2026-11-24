@@ -4,20 +4,19 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.fakes import World
-from tests.test_issue_1555 import make_batch
+from tests.test_issue_1555 import make_batch, world
 from warroom.launch_gate import LaunchDenied
 from warroom.adapters import ProcessAdapter
 
 
 class SingleLaunchPermit(unittest.TestCase):
     def setUp(self):
-        self.w = World()
+        self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
 
     def test_closed_gate_rejects_before_single_run_or_repair_writes(self):
         w = self.w
-        b = make_batch(w, method='a', run_kind='produce', state='PREPARE')
+        b = make_batch(w, run_kind=None, state='PREPARE')
         before = dict(w.store.batch(b['id']))
         w.sup.launch_gate.close()
         with self.assertRaises(LaunchDenied):
@@ -41,17 +40,17 @@ class SingleLaunchPermit(unittest.TestCase):
 
     def test_denied_line_is_not_retried_after_gate_reopens(self):
         w = self.w
-        make_batch(w, method='a', run_kind='produce', state='PREPARE')
+        make_batch(w, run_kind=None, state='PREPARE')
         w.sup.launch_gate.close()
-        w.sup._tick_line('deepseek', 'a')
+        w.sup._tick_line('codex', 's2')
         w.sup.launch_gate.open()
         with patch.object(w.sup, '_tick_line_locked') as tick:
-            w.sup._tick_line('deepseek', 'a')
+            w.sup._tick_line('codex', 's2')
             tick.assert_not_called()
 
     def test_actual_spawn_error_uses_existing_error_handling(self):
         w = self.w
-        b = make_batch(w, method='a', run_kind='produce', state='PREPARE')
+        b = make_batch(w, run_kind=None, state='PREPARE')
         with patch.object(w.adapter, 'start', side_effect=RuntimeError('spawn failed')):
             w.sup._launch(b, 'produce')
         self.assertEqual(w.store.batch(b['id'])['state'], 'ERROR')
@@ -60,7 +59,7 @@ class SingleLaunchPermit(unittest.TestCase):
 
     def test_close_waits_until_started_process_pid_is_persisted(self):
         w = self.w
-        b = make_batch(w, method='a', run_kind='produce', state='PREPARE')
+        b = make_batch(w, run_kind=None, state='PREPARE')
         entering, release, closed = threading.Event(), threading.Event(), threading.Event()
         original = w.adapter.start
         def start(*args, **kwargs):

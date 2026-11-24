@@ -15,11 +15,13 @@ def local_time(year, month, day, hour, minute=0):
 class DrainSchedules(unittest.TestCase):
     def setUp(self):
         self.w = World()
+        self.w.cfg["producers"] = {"claude": {"adapter": "claude", "model": "claude-x", "effort": "high"},
+                                   "codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
 
     def tearDown(self):
         self.w.tmp.cleanup()
 
-    def add_paused_batch(self, model="deepseek", method="a", batch="01"):
+    def add_paused_batch(self, model="codex", method="s2", batch="01-01"):
         bid = self.w.store.create_batch(method=method, producer=model, shard="001", batch=batch,
                                         branch=f"{method}-{model}-001-{batch}", worktree="/tmp/worktree")
         self.w.store.update(bid, state="PAUSED")
@@ -47,35 +49,35 @@ class DrainSchedules(unittest.TestCase):
         scheduled = Store(self.w.paths.db).drain_schedule("all")
         self.assertIsNotNone(scheduled)
         self.assertEqual(scheduled["due_at"], control.next_drain_due("23", now))
-        self.assertEqual(store.peek_line("deepseek", "a")["drain"], 0)
+        self.assertEqual(store.peek_line("codex", "s2")["drain"], 0)
         self.assertTrue(control.cancel_drain_schedule(store, "all"))
         self.assertIsNone(Store(self.w.paths.db).drain_schedule("all"))
-        self.assertEqual(store.peek_line("deepseek", "a")["drain"], 0)
+        self.assertEqual(store.peek_line("codex", "s2")["drain"], 0)
 
     def test_supervisor_fires_board_and_batch_reservations_once(self):
         w = self.w
         batch_id = self.add_paused_batch()
-        ok, msg = control.schedule_batch_drain(w.store, "deepseek", "a", batch_id, "23", w.now)
+        ok, msg = control.schedule_batch_drain(w.store, "codex", "s2", batch_id, "23", w.now)
         self.assertTrue(ok, msg)
         ok, msg = control.schedule_drain_all(w.store, "23", w.now)
         self.assertTrue(ok, msg)
         due = w.store.drain_schedule("all")["due_at"]
         w.store.complete_batch(batch_id)  # target selection happens when Drain All fires
-        next_batch_id = self.add_paused_batch(method="b")
+        next_batch_id = self.add_paused_batch(model="claude", method="s3", batch="all")
         self.assertNotEqual(batch_id, next_batch_id)
-        w.store.set_line("deepseek", "c", run=1)  # an empty pending Start is canceled without a Drain
+        w.store.set_line("codex", "s3", run=1)  # an empty pending Start is canceled without a Drain
         w.now = due
         w.sup = w.make_sup()  # reservations survive a Supervisor restart
         w.tick()
         keys = control.board_line_keys(w.store, w.cfg)
-        self.assertIn(("deepseek", "a"), keys)
-        self.assertEqual(w.store.peek_line("deepseek", "a")["drain"], 0)  # completed before firing
-        self.assertEqual(w.store.peek_line("deepseek", "b")["drain"], 1)  # started after scheduling
-        self.assertEqual((w.store.peek_line("deepseek", "c")["run"],
-                          w.store.peek_line("deepseek", "c")["drain"]), (0, 0))
-        self.assertTrue(all(w.store.peek_line(model, method)["drain"] == (method == "b")
+        self.assertIn(("codex", "s2"), keys)
+        self.assertEqual(w.store.peek_line("codex", "s2")["drain"], 0)  # completed before firing
+        self.assertEqual(w.store.peek_line("claude", "s3")["drain"], 1)  # started after scheduling
+        self.assertEqual((w.store.peek_line("codex", "s3")["run"],
+                          w.store.peek_line("codex", "s3")["drain"]), (0, 0))
+        self.assertTrue(all(w.store.peek_line(model, method)["drain"] == ((model, method) == ("claude", "s3"))
                             for model, method in keys))
-        self.assertEqual(w.store.peek_line("deepseek", "m")["drain"], 0)
+        self.assertEqual(w.store.peek_line("codex", "m")["drain"], 0)
         self.assertIsNone(w.store.drain_schedule("all"))
         self.assertIsNone(w.store.drain_schedule(f"batch:{batch_id}"))
         w.tick()
@@ -92,21 +94,21 @@ class DrainSchedules(unittest.TestCase):
         self.assertTrue(control.cancel_drain_schedule(w.store, "all"))
         w.now = due
         w.tick()
-        self.assertEqual(w.store.peek_line("deepseek", "a")["drain"], 0)
+        self.assertEqual(w.store.peek_line("codex", "s2")["drain"], 0)
 
     def test_detail_schedule_expires_when_its_batch_is_replaced(self):
         w = self.w
         old_id = self.add_paused_batch()
-        ok, msg = control.schedule_batch_drain(w.store, "deepseek", "a", old_id, "23", w.now)
+        ok, msg = control.schedule_batch_drain(w.store, "codex", "s2", old_id, "23", w.now)
         self.assertTrue(ok, msg)
         due = w.store.drain_schedule(f"batch:{old_id}")["due_at"]
         w.store.complete_batch(old_id)
-        new_id = self.add_paused_batch(batch="02")
+        new_id = self.add_paused_batch(batch="01-02")
         self.assertNotEqual(old_id, new_id)
         w.now = due
         w.sup = w.make_sup()
         w.tick()
-        self.assertEqual(w.store.peek_line("deepseek", "a")["drain"], 0)
+        self.assertEqual(w.store.peek_line("codex", "s2")["drain"], 0)
         self.assertIsNone(w.store.drain_schedule(f"batch:{old_id}"))
         messages = [event["msg"] for event in w.store.recent_events(100)]
         self.assertEqual(sum(f"예약 Drain 만료: batch id {old_id}" in msg for msg in messages), 1)
@@ -114,7 +116,7 @@ class DrainSchedules(unittest.TestCase):
     def test_detail_schedule_requires_current_owned_non_maintainer_batch(self):
         w = self.w
         batch_id = self.add_paused_batch()
-        self.assertFalse(control.schedule_batch_drain(w.store, "sonnet", "a", batch_id, "23", w.now)[0])
-        self.assertFalse(control.schedule_batch_drain(w.store, "deepseek", "m", batch_id, "23", w.now)[0])
-        self.assertFalse(control.schedule_batch_drain(w.store, "deepseek", "a", batch_id + 100, "23", w.now)[0])
+        self.assertFalse(control.schedule_batch_drain(w.store, "claude", "s2", batch_id, "23", w.now)[0])
+        self.assertFalse(control.schedule_batch_drain(w.store, "codex", "m", batch_id, "23", w.now)[0])
+        self.assertFalse(control.schedule_batch_drain(w.store, "codex", "s2", batch_id + 100, "23", w.now)[0])
 

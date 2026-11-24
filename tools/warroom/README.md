@@ -1,5 +1,8 @@
 # War Room — 운영 가이드
 
+War Room은 Relation Factory의 Stage 2 Admission과 Stage 3 이후 Refinement, 숨은 Maintainer를 Claude·Codex로 운영합니다.
+Stage 1(A/B/C/D) 후보 생산, DeepSeek/OpenCode와 Web Dashboard는 #9933에서 제거했습니다. 과거 기록은 DB에서 조회만 가능하며 실행 대상이 아닙니다.
+
 오너가 사용하는 실행·설정·로그 조회·장애 대응 명령만 정리합니다. 별도 표시가 없으면 모든 명령은 **Typewriter 저장소 루트**에서 실행합니다.
 
 ## 실행 로그 조회
@@ -15,17 +18,17 @@ sqlite3 -readonly -noheader tools/warroom/.local/warroom.db \
    ORDER BY r.started_at, r.id;" | paste -sd ' ' - | pbcopy
 ```
 
-**방식/배치 기준** (예: Method C, shard `001`, batch `01`, Codex):
+**Stage/배치 기준** (예: Stage 2, shard `001`, Part `02-02`, Codex):
 
 ```sh
 sqlite3 -readonly -noheader tools/warroom/.local/warroom.db \
   "SELECT r.log_file FROM runs r JOIN batches b ON b.id=r.batch_id
-   WHERE b.method='c' AND b.shard='001' AND b.batch='01'
+   WHERE b.method='s2' AND b.shard='001' AND b.batch='02-02'
      AND b.producer='codex' AND r.log_file IS NOT NULL
    ORDER BY r.started_at, r.id;" | paste -sd ' ' - | pbcopy
 ```
 
-S2도 같은 쿼리를 사용합니다. `b.method='s2'`, `b.batch='BB-PP'`(예: `'02-02'`)로 바꾸면 Part 단위로 조회합니다. `SELECT r.kind, r.log_file`로 바꾸면 실행 종류도 확인할 수 있습니다. 로그 내용은 `less <로그경로>` 또는 `tail -f <로그경로>`로 읽습니다.
+Stage 3는 `b.method='s3'`로 바꿔 shard 단위로 조회합니다. 과거 Stage 1 기록은 `b.method`를 `'a'`~`'d'`로 바꿔 같은 방식으로 조회할 수 있습니다. `SELECT r.kind, r.log_file`로 바꾸면 실행 종류도 확인할 수 있습니다. 로그 내용은 `less <로그경로>` 또는 `tail -f <로그경로>`로 읽습니다.
 
 ## 실행 및 설정
 
@@ -34,11 +37,11 @@ S2도 같은 쿼리를 사용합니다. `b.method='s2'`, `b.batch='BB-PP'`(예: 
 ```sh
 ./war                 # TUI 열기/재연결; 대기 중인 재시작 요청 확인 및 미실행 Supervisor 기동
 ./kwar                # Supervisor 인스턴스만 안전하게 교체한 뒤 TUI 열기/재연결
-./dashboard           # 기존 Supervisor를 공유하는 보조 Web View (http://localhost:8000)
-./dashboard --port 8123
 ```
 
-설정 변경은 `tools/warroom/.local/config.json` 수정 후 TUI의 `r`로 리로드합니다. 기존 AI run의 프로필·세션은 바뀌지 않습니다. 새 모델/Method에 따른 TUI 열 구성은 TUI를 다시 열어야 반영될 수 있습니다. **설정 리로드는 Python 코드 재시작이 아닙니다.**
+설정 변경은 `tools/warroom/.local/config.json` 수정 후 TUI의 `r`로 리로드합니다. 기존 AI run의 프로필·세션은 바뀌지 않습니다. 새 모델에 따른 TUI 열 구성은 TUI를 다시 열어야 반영될 수 있습니다.
+
+지원 adapter는 `claude`와 `codex`뿐이며 단계별 프로필은 `assignments.stage2`·`assignments.stage3`와 `maintainer`로 지정합니다(`tools/warroom/config.example.json`). 이전 Stage 1·DeepSeek/OpenCode 설정(`methods`, `assignments.stage1*`, `adapter: "opencode"`인 모델·프로필, `opencode_bin`, `free_model_pattern`, 인덱스 경로 등)이 남아 있으면 기동과 리로드 때 경고만 남기고 무시합니다. 그 밖의 잘못된 값(알 수 없는 adapter, 오타, 없는 프로필 참조)은 이전처럼 거부합니다. **설정 리로드는 Python 코드 재시작이 아닙니다.**
 
 ## Supervisor 재시작과 코드 반영 (#5162)
 
@@ -73,48 +76,6 @@ TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" \
 - **인스턴스 교체 성공과 코드 반영 완료는 서로 다릅니다.** `./kwar`가 `0`이어도 대기 중인 코드 요청은 `waiting`일 수 있습니다. `.git/typewriter-supervisor/supervisor-runtime.json`의 `instance`·`pid`·`loaded_code_sha`를 확인하고, 해당 `restart-*.json`이 `loaded`에 도달했는지 구분하세요. 요청/보류 사유는 TUI의 Supervisor 상태와 Audit Log에도 남습니다.
 - 코드 로드와 PR 머지만으로 Maintainer 복구가 완료되는 것은 아닙니다. 원래 배치의 공식 저장·검증 및 생산 재개 상태까지 확인합니다.
 
-`supervisor_workers`의 기본값은 **16**입니다(`tools/warroom/config.example.json`). 운영 설정에 `1`을 우연히 남기지 마세요. `1`은 직렬 회귀·장애 폴백 전용이며 1→4→16 단계 확대 절차를 다시 진행하지 않습니다. C/D 생산 세션은 운영 checkout의 CLI(`scripts/relation/d-chunk-cli.mjs`, `literary-context-cli.mjs`)를 직접 호출하므로, 코드 갱신 시 이 CLI들의 명령·입출력·checkpoint가 기존 실행과 호환돼야 합니다.
+`supervisor_workers`의 기본값은 **16**입니다(`tools/warroom/config.example.json`). 운영 설정에 `1`을 우연히 남기지 마세요. `1`은 직렬 회귀·장애 폴백 전용이며 1→4→16 단계 확대 절차를 다시 진행하지 않습니다.
 
 프롬프트·설정·Supervisor는 **운영 메인 checkout**에서만 읽으며 임시 worktree를 실행 루트로 바꾸지 않습니다. **`.local/` 삭제, DB 수동 초기화, 수동 `tmux kill-session`·signal 종료, 코드 로드를 위한 배치 Retry는 금지**합니다. 일반 운영자는 `./war`와 `./kwar` 및 위 공식 코드 갱신 요청만 사용합니다.
-
-### DeepSeek GOAT 슬롯 (#6027)
-
-`f` 선택 창의 **GOAT**는 내부 tier `api`입니다(저장값·RunSpec·로그 키는 `api` 유지). OpenCode v2 설정에
-Command Code GOAT provider를 등록합니다. 키는 `COMMANDCODE_API_KEY` 환경 변수로만 주고 repo,
-`.local/config.json`, PR, 로그에 기록하지 않습니다.
-
-```json
-{
-  "providers": {
-    "commandcode": {
-      "name": "Command Code GOAT",
-      "env": ["COMMANDCODE_API_KEY"],
-      "package": "@opencode/ai/providers/openai-compatible",
-      "settings": { "baseURL": "https://api.commandcode.ai/provider/v1" },
-      "models": {
-        "deepseek/deepseek-v4-flash": {
-          "modelID": "deepseek/deepseek-v4-flash",
-          "name": "DeepSeek V4 Flash",
-          "variants": [{ "id": "none", "settings": { "reasoningEffort": "off" } }]
-        }
-      }
-    }
-  }
-}
-```
-
-- War Room 모델 ID는 `commandcode/deepseek/deepseek-v4-flash`(`opencode models` 표기), provider에 보내는 ID는
-  `modelID`입니다. `tier_efforts.api="none"`은 variant `none` → provider `reasoning_effort=off`로 매핑됩니다.
-  정상 응답은 비추론의 증거가 아닙니다. Free/Go는 기존 `effort`를 상속합니다.
-- Start 전 GOAT probe는 정상 종료·`text` 응답·최상위 오류 없음을 모두 요구합니다. 인증 실패·모델 없음·
-  한도·429는 Start를 막습니다.
-- 실행 중 GOAT의 최상위 provider 429는 한도와 일시 오류를 구분할 증거가 없으므로 종료 코드·저장물과 무관하게
-  자동 재실행·다음 청크 없이 PAUSED로 보류합니다. Command Code Studio에서 확인한 뒤 Retry하면 저장 증거를
-  먼저 재검증해 완료분은 AI 없이 수락하고, 미완료분만 기존 세션 계약으로 재개합니다.
-- **Command Code Auto Top-up은 OFF로 둡니다.** 구독 창을 넘기면 남은 on-demand 잔액이 쓰일 수 있습니다.
-  War Room은 자동 GOAT 전환·GOAT→Go/Free 폴백을 하지 않습니다. 단가 미설정 시 비용은 unknown입니다.
-- 이전 `deepseek/deepseek-flash#none` 세션의 retry/fix resume은 기본적으로 보류됩니다. 검증 후에만
-  `"retired_models": {"api": ["deepseek/deepseek-flash"]}`로 같은 effort·권한의 old→GOAT 재개를 허용합니다.
-- 전환 순서: DeepSeek 직접 API 잔액 소진 → 진행 중 run/청크 종료 확인 → OpenCode에 provider 등록 →
-  Supervisor 시작·교체(`opencode models` 목록은 Supervisor 수명 동안 한 번 읽음) → 로컬 `models.api` 변경 →
-  TUI `r` → 50-record 청크 1개 smoke와 Studio 실제 차감 확인 → 점진 확장.

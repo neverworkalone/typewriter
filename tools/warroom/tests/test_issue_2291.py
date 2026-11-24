@@ -1,19 +1,20 @@
 """Issue #2291: durable generic Issue publication, without entering the shared-defect pause path."""
 import unittest
 
-from tests.fakes import World
+from tests.test_reload import stage2_world
 
 
 class IssuePublication(unittest.TestCase):
     def setUp(self):
-        self.w = World()
+        self.w = stage2_world()
+        self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
 
     def tearDown(self):
         self.w.tmp.cleanup()
 
     def test_manual_request_publishes_exact_text_without_pausing_or_queueing(self):
         w = self.w
-        w.start("single", "deepseek", "a")
+        w.start("single", "codex", "s2")
         w.tick()
         before = w.row()
         title, body = "수동 확인 목록", "C000123\nC000456"

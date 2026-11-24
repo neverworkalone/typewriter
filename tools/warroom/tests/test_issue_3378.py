@@ -59,7 +59,7 @@ class OperatingRoot(unittest.TestCase):
 
 
 class LauncherRoot(unittest.TestCase):
-    """`./war` and `./dashboard` refuse a linked worktree (`.git` file) before starting any Python."""
+    """`./war` refuses a linked worktree (`.git` file) before starting any Python."""
 
     def run_launcher(self, name: str, git_is_dir: bool) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as tmp:
@@ -74,7 +74,7 @@ class LauncherRoot(unittest.TestCase):
                                   env={"PATH": "/usr/bin:/bin", "TMUX": ""}, timeout=30)
 
     def test_linked_worktree_is_refused_and_main_checkout_passes_the_check(self):
-        for name in ("war", "dashboard"):
+        for name in ("war",):
             bad = self.run_launcher(name, git_is_dir=False)
             self.assertEqual(bad.returncode, 1)
             self.assertIn("운영 메인 checkout이 아닙니다", bad.stderr)

@@ -233,32 +233,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ]),
       },
       {
-        ...affectedTestCheck('scripts/relation/candidate-workbench.test.mjs', 'Test relation Candidate workbench chunk mapping and checkpoints', [
-          'scripts/relation/candidate-workbench.mjs',
-          'scripts/relation/candidate-contract.mjs',
-        ]),
-      },
-      {
-        ...affectedTestCheck('scripts/relation/literary-context.test.mjs', 'Test C literary search, evidence checkpoints and local Candidate repair', [
-          'scripts/relation/literary-context.mjs',
-          'scripts/relation/literary-context-cli.mjs',
-          'scripts/relation/literary-context-supervisor-cli.mjs',
-          'scripts/relation/candidate-contract.mjs',
-        ]),
-      },
-      {
-        ...affectedTestCheck('scripts/relation/corpus-utility.test.mjs', 'Test D corpus search utility bounds, paging and atomic chunk save', [
-          'scripts/relation/corpus-utility.mjs',
-        ]),
-      },
-      {
-        ...affectedTestCheck('scripts/relation/d-chunk-cli.test.mjs', 'Test D chunk CLI prepare, search evidence and save checks', [
-          'scripts/relation/d-chunk-cli.mjs',
-          'scripts/relation/corpus-utility.mjs',
-          'scripts/relation/candidate-contract.mjs',
-        ]),
-      },
-      {
         ...affectedTestCheck('scripts/relation/admission.test.mjs', 'Test Stage 2 Relation Admission preparation and accounting', [
           'scripts/relation/admission.mjs',
           'scripts/relation/candidate-contract.mjs',

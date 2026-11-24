@@ -8,8 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import HEAD1, World
-from tests.test_issue_1555 import MERGE, report
-from tests.test_lines import multi_world
+from tests.test_issue_1555 import MERGE, report, review_source, world
 from warroom import stage3
 from warroom.gitops import Git, GitTransient, IntegrationBlocked
 from warroom.shell import Runner
@@ -18,8 +17,8 @@ from warroom.store import STAGE3_METHOD
 ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
        "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
-BRANCH = "a-deepseek-001-01"
-OUTPUT = "data/relation-candidates/001/001_01_a_deepseek.jsonl"
+BRANCH = "s2-codex-001-01-01"
+OUTPUT = "data/relations/relation-001.jsonl"
 
 
 def sh(*args, cwd):
@@ -166,14 +165,8 @@ class RealGitSync(unittest.TestCase):
 
 class SupervisorRelease(unittest.TestCase):
     def setUp(self):
-        self.w = multi_world()
-        self.w.start("single", "deepseek", "a")
-        self.w.adapter.plan.append({"code": 0, "session": "producer-session", "effect": lambda: (
-            self.w.pr_info(7, HEAD1, head_ref=BRANCH),
-            self.w.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
-        self.w.tick()
-        self.w.adapter.finish(self.w.adapter.launches[-1]["pid"])
-        self.w.tick()
+        self.w = world(maintainer=None)
+        review_source(self.w)   # a Stage 2 Part whose finalized PR #7 waits for review
         body = ("-1\nHEAD: " + HEAD1 + "\n공통 수정 필요\n```warroom-shared-defect\n" +
                 json.dumps(report()) + "\n```\n")
         self.w.gh.reviews_ = [{"id": 31, "user": {"login": "genonfire"}, "body": body,

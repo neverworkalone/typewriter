@@ -8,19 +8,36 @@ from __future__ import annotations
 import json
 import time
 from datetime import datetime, time as wall_time, timedelta
-from pathlib import Path
 
-from .adapters import final_answer
-from . import cparallel, literary, stage2
-from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
+from . import stage2
+from .config import (maintainer_id, maintainer_problem, ordered_models, stage2_models,
                      stage2_problem, stage3_models, stage3_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 from .timing import elapsed_seconds
-from .usage import submit_attempts
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
                "COMPLETE", "PAUSED", "ERROR", "CLEARING")
 MODES = {"single": "Single", "continuous": "Continuous"}   # Continuous = sequential batches in ONE Line
+
+# #9933: War Room runs only Stage 2, Stage 3 and the Maintainer, on Claude/Codex. Historical Stage 1 (A/B/C/D) and
+# DeepSeek/OpenCode rows stay in the DB for viewing; this one rule keeps them out of every execution path.
+LIVE_METHODS = frozenset({STAGE2_METHOD, STAGE3_METHOD, MAINTENANCE_METHOD})
+RETIRED_REFUSAL = "지원 종료된 Line입니다 (Stage 1·DeepSeek/OpenCode, #9933): 조회만 가능하고 실행 명령은 받지 않습니다."
+
+
+def retired_line(model: str, method: str, cfg: dict | None = None) -> bool:
+    """A Line of a removed method, or (with `cfg`) of a producer whose retired OpenCode entry was dropped from config."""
+    return method not in LIVE_METHODS or model in ((cfg or {}).get("_retired_producers") or ())
+
+
+def retired(row, cfg: dict | None = None) -> bool:
+    """`retired_line` for a Line row (model, method) or a batch row (producer, method)."""
+    return retired_line(row["producer"] if "producer" in row.keys() else row["model"], row["method"], cfg)
+
+
+def retired_rows(store: Store, cfg: dict) -> list:
+    """Retired Lines and unfinished batches still in the DB (startup notice only; they are never dispatched)."""
+    return [r for r in (*store.lines(), *store.incomplete_batches()) if retired(r, cfg)]
 
 
 def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = None) -> tuple[bool, str]:
@@ -38,12 +55,7 @@ def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = N
         if why := stage3_problem(cfg, model):
             return False, why
         return store.start_stage3(model, mode)
-    reason, b = store.request_start(model, method, mode)
-    if reason == "active":
-        return False, f"{model}/{method.upper()} 라인은 이미 미완료 배치 {b['shard']}_{b['batch']}({b['state']})를 소유 중입니다."
-    if reason == "drain":
-        return False, f"{model}/{method.upper()} 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
-    return True, ""
+    return False, RETIRED_REFUSAL
 
 
 def drain_all(store: Store, lines) -> int:
@@ -80,6 +92,8 @@ def schedule_batch_drain(store: Store, model: str, method: str, batch_id: int, h
                          now: float | None = None) -> tuple[bool, str]:
     if method == MAINTENANCE_METHOD:
         return False, "Maintainer는 배치 Drain 예약 대상이 아닙니다."
+    if retired_line(model, method):
+        return False, RETIRED_REFUSAL
     now = time.time() if now is None else now
     return store.create_drain_schedule(f"batch:{batch_id}", next_drain_due(hour, now), model=model,
                                        method=method, batch_id=batch_id, created_at=now)
@@ -94,20 +108,20 @@ def board_line_keys(store: Store, cfg: dict) -> list[tuple[str, str]]:
     models = ordered_models(cfg)
     known = set(models)
     models += sorted({ln["model"] for ln in store.lines()} - known)
-    configured_methods = methods(cfg)
-    keys = [(model, method) for model in models for method in configured_methods]
-    keys += [(model, STAGE2_METHOD) for model in models if model in stage2_models(cfg)]
+    keys = [(model, STAGE2_METHOD) for model in models if model in stage2_models(cfg)]
     keys += [(model, STAGE3_METHOD) for model in stage3_models(cfg)]
-    return [(model, method) for model, method in keys if method != MAINTENANCE_METHOD]
+    return [(model, method) for model, method in keys if not retired_line(model, method, cfg)]
 
 
 def method_label(method: str) -> str:
-    """Board/Detail name of a Line's method: `A`-`D`, `Stage 2` or `Maintainer`."""
+    """Board/Detail name of a Line's method: `Stage 2`, `Stage 3` or `Maintainer` (a retired method: its letter)."""
     return ("Stage 2" if method == STAGE2_METHOD else "Stage 3" if method == STAGE3_METHOD
             else "Maintainer" if method == MAINTENANCE_METHOD else method.upper())
 
 
-def set_drain(store: Store, model: str, method: str, on: bool) -> None:
+def set_drain(store: Store, model: str, method: str, on: bool, cfg: dict | None = None) -> None:
+    if retired_line(model, method, cfg):
+        return
     if method == MAINTENANCE_METHOD:   # one Maintainer queue: the flag is global to it, whichever producer ran an Issue
         for ln in store.lines():
             if ln["method"] == MAINTENANCE_METHOD and ln["drain"] and not on:
@@ -121,14 +135,15 @@ def drained(store: Store, ln) -> bool:
     return bool(ln["drain"])
 
 
-def stop_line(store: Store, model: str, method: str) -> None:
-    store.stop_lines(model, method)
+def stop_line(store: Store, model: str, method: str, cfg: dict | None = None) -> None:
+    if not retired_line(model, method, cfg):
+        store.stop_lines(model, method)
 
 
-def stop_batch(store: Store, model: str, method: str, batch_id: int) -> bool:
+def stop_batch(store: Store, model: str, method: str, batch_id: int, cfg: dict | None = None) -> bool:
     """Stop bound to one producer execution: False (nothing written) unless `batch_id` is still this Line's unfinished
     batch, and the Supervisor drops the request if another batch became current before it consumes it."""
-    return store.request_stop_pinned(model, method, batch_id)
+    return not retired_line(model, method, cfg) and store.request_stop_pinned(model, method, batch_id)
 
 
 def stop_maintainer(store: Store, model: str, batch_id: int) -> bool:
@@ -140,11 +155,14 @@ def stop_all(store: Store) -> None:
     store.stop_lines()
 
 
-def request_clear(store: Store, model: str, method: str, batch_id: int, issue_number: int | None = None) -> tuple[bool, str]:
+def request_clear(store: Store, model: str, method: str, batch_id: int, issue_number: int | None = None,
+                  cfg: dict | None = None) -> tuple[bool, str]:
     """Operator Clear of ONE unfinished batch: only writes the batch-ID-specific request (the Supervisor tears down).
 
     The Maintainer's execution must also name the urgent Issue the operator saw (a stale screen touches nothing else).
     """
+    if retired_line(model, method, cfg):
+        return False, RETIRED_REFUSAL
     return store.request_clear(model, method, batch_id, issue_number)
 
 
@@ -154,94 +172,16 @@ def defect_locked(store: Store, b) -> bool:
     return b["pause_reason"] == "shared_defect" and not store.get(f"defect_hold_{b['id']}")
 
 
-def retry(store: Store, model: str, method: str, batch_id: int | None = None) -> bool:
+def retry(store: Store, model: str, method: str, batch_id: int | None = None, cfg: dict | None = None) -> bool:
+    if retired_line(model, method, cfg):
+        return False
     b = store.batch(batch_id) if batch_id is not None else store.active_batch(model, method)
     if (b is not None and b["producer"] == model and b["method"] == method
             and store.clear_request(model, method) is None and b["state"] in ("PAUSED", "ERROR")
             and b["pid"] is None and not store.open_task_runs(b["id"]) and not defect_locked(store, b)):
-        if method == literary.METHOD and b["state"] == "ERROR":
-            reason = _c_retry_block_reason(store, b)
-            if reason:
-                store.log(b["id"], f"C 운영자 Retry 차단: {reason}", "warn")
-                return False
         store.set_line(model, method, retry_batch=b["id"])
         return True
     return False
-
-
-def _c_retry_block_reason(store: Store, b) -> str | None:
-    if cparallel.is_parallel(store, b) and b["run_kind"] == cparallel.RUN_KIND:   # per-task guards, no whole-checkpoint stat
-        return cparallel.retry_block_reason(store, b)
-    raw = store.get(literary.retry_guard_key(b["id"]))
-    if not raw:
-        return None
-    if not isinstance(b["worktree"], str) or not b["worktree"]:
-        return "[same_failure; checkpoint_or_chunk_mismatch] worktree를 확인할 수 없어 보존했습니다."
-    try:
-        guard = json.loads(raw)
-    except ValueError:
-        guard = None
-    if not isinstance(guard, dict):
-        return "[same_failure; checkpoint_or_chunk_mismatch] evidence를 확인할 수 없습니다. 보존했습니다."
-    unchanged = literary.retry_guard_unchanged_fast(Path(b["worktree"]), b, guard,
-                                                     session_available=bool(b["session_id"]))
-    if not unchanged:
-        return None
-    if _legacy_c_no_submission_retry_available(store, b, guard):
-        return None
-    codes = guard.get("reason_codes")
-    code_text = ",".join(str(code) for code in codes) if isinstance(codes, list) and codes else "unknown_recovery_block"
-    return (f"[same_failure; {code_text}] 체크포인트·제출·진단 evidence가 그대로여서 Retry를 막았습니다. "
-            "증거가 바뀐 뒤 재시도하세요.")
-
-
-def _legacy_c_no_submission_retry_available(store: Store, b, guard: dict) -> bool:
-    """One-time bridge for a pre-policy guard, backed by the exact successful no-submit run."""
-    if not isinstance(b, dict):
-        b = dict(b)
-    if guard.get("recovery_policy_version") is not None:
-        return False
-    codes = guard.get("reason_codes")
-    if not isinstance(codes, list) or not any(code in codes for code in
-                                               ("diagnostic_unavailable_or_invalid", "no_submission",
-                                                "producer_reported_stop")):
-        return False
-    baseline = guard.get("baseline")
-    if (not isinstance(baseline, dict) or baseline.get("report_valid") is not True
-            or baseline.get("repair") is not False
-            or not isinstance(baseline.get("pending_sense_ids"), list)
-            or not baseline["pending_sense_ids"]):
-        return False
-    try:
-        rec = literary.read_active(Path(b["worktree"]), b)
-        if (rec is None or rec.get("chunk_id") != baseline.get("chunk_id")
-                or rec.get("chunk_no") != baseline.get("chunk_no")
-                or rec.get("view_sha256") != baseline.get("view_sha256")):
-            return False
-        if store.get(literary.no_submission_recovery_key(b["id"], rec["chunk_id"])) is not None:
-            return False
-        runs = store.runs(b["id"])
-        run = dict(runs[0]) if runs else None
-        if not run \
-                or run.get("kind") not in ("c_chunk_new", "c_chunk_resume") \
-                or run.get("exit_status") != "0" or run.get("session_id") != b.get("session_id"):
-            return False
-        run_start = json.loads(store.get(literary.run_start_key(b["id"])) or "null")
-        if (not isinstance(run_start, dict) or run_start.get("chunk_no") != rec["chunk_no"]
-                or run_start.get("retry_state", {}).get("pending_sense_ids") != baseline["pending_sense_ids"]):
-            return False
-        log_file = run.get("log_file")
-        answer = final_answer(Path(log_file)) if log_file else None
-        if "producer_reported_stop" in codes and not literary.reported_stop(answer):
-            return False
-        outcome = literary.no_submission_result(
-            Path(b["worktree"]), b, rec, run, run_start, baseline["pending_sense_ids"],
-            final_answer=answer,
-            submit_call_count=submit_attempts(Path(log_file)) if log_file else None,
-        )
-        return outcome.get("status") == "no_submission"
-    except (OSError, ValueError, KeyError, TypeError, literary.LiteraryError):
-        return False
 
 
 def retry_maintainer(store: Store, issue_number: int | None = None, batch_id: int | None = None) -> bool:
@@ -323,7 +263,7 @@ def line_status(store: Store, model: str, method: str) -> dict:
     out = {"model": model, "method": method, "state": "IDLE", "batch": None, "pr": None, "head": None,
            "session": None, "error": None, "progress": None, "worktree": None, "branch": None,
            "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
-           "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
+           "blocked": ln["blocked"] or "",
            "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None,
            "records_done": None, "progress_kind": None, "progress_done": None, "progress_total": None,
            "elapsed": None, "stage2": None, "wait": ""}
@@ -364,12 +304,6 @@ def line_status(store: Store, model: str, method: str) -> dict:
                 # snapshot can lag by one parallel poll when the last responses are saved and finalization begins.
                 out["progress_kind"], out["progress_done"], out["progress_total"] = (
                     "chunks", out["tasks"]["saved"], out["tasks"]["total"])
-        if method in ("c", "d"):   # parallel C/D chunks: the same running / queued / saved task counts
-            tasks = store.task_rows(b["id"])
-            if tasks:
-                count = lambda *states: sum(1 for t in tasks if t["state"] in states)
-                out["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING", "FIXQ"),
-                                "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
         if b["progress_kind"] and b["progress_done"] is not None and b["progress_total"]:
             out["progress"] = f"{b['progress_done']}/{b['progress_total']} {b['progress_kind']}"
         elif b["records_done"] is not None and b["records_total"]:
@@ -386,11 +320,8 @@ def line_status(store: Store, model: str, method: str) -> dict:
     out["can_drain"] = (out["occupied"] and st != "CLEARING") or out["run"]
     out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR", "CLEARING") or out["run"]
     out["stoppable"] = (out["occupied"] and st != "CLEARING") or out["run"]   # what `stop_lines` can actually affect
-    retry_blocked_reason = (_c_retry_block_reason(store, b) if method == literary.METHOD and st == "ERROR" else None)
-    out["retry_blocked_reason"] = retry_blocked_reason
     out["can_retry"] = (st in ("PAUSED", "ERROR") and b["pid"] is None and not store.open_task_runs(b["id"])
-                        and not defect_locked(store, b)
-                        and retry_blocked_reason is None)
+                        and not defect_locked(store, b))
     req = store.clear_request(model, method) if out["occupied"] else None
     out["clear"] = None if req is None else {"status": req["status"], "error": req["error"]}
     # Clear needs a specific unfinished batch; once started it can only be re-armed after a BLOCKED teardown.
@@ -401,54 +332,6 @@ def line_status(store: Store, model: str, method: str) -> dict:
 def can_stop_all(store: Store, lines) -> bool:
     """Stop All has a target while any Line has an unfinished batch (incl. PAUSED/ERROR) or a run flag."""
     return any(line_status(store, m, me)["stoppable"] for m, me in lines)
-
-
-# --- Free/Go model tier (operator switch; the automatic Free->Go switch on quota exhaustion is separate) ---
-TIER_SWITCH_MODELS = ("deepseek",)   # the operator Free/Go switch applies to DeepSeek only
-TIER_LABELS = {"free": "Free", "go": "Go", "api": "GOAT"}   # display only (#6027): stored tier keys stay free/go/api
-
-
-def go_models(cfg: dict) -> list[str]:
-    """Models the tier switch may touch: DeepSeek, run through OpenCode (the only CLI with a free tier),
-    and only when it has a Go model configured."""
-    return [pid for pid, p in registry(cfg).items()
-            if pid in TIER_SWITCH_MODELS and p["adapter"] == "opencode" and p["models"].get("go")]
-
-
-def tier_state(store: Store, cfg: dict, methods) -> str:
-    """'free' | 'go' | 'mixed' over every Line of the models that have a Go model; 'none' if DeepSeek has no Go model."""
-    tiers = {store.peek_line(m, me)["model_tier"] for m in go_models(cfg) for me in methods}
-    if not tiers:
-        return "none"
-    return tiers.pop() if len(tiers) == 1 else "mixed"
-
-
-def next_tier(state: str) -> str | None:
-    """f: Free -> Go; Go or a mixed board -> Free (never silently towards paid when unsure); none -> nothing."""
-    return {"free": "go", "go": "free", "api": "free", "mixed": "free"}.get(state)
-
-
-def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
-    """Apply `tier` to every DeepSeek Line (and its unfinished batch).
-
-    A running AI keeps its model; the next launch (new batch, fix, recovery) uses the new tier.
-    """
-    if tier not in ("free", "go", "api"):
-        raise ValueError(tier)
-    models = go_models(cfg)
-    if tier != "free" and any(not registry(cfg)[m]["models"].get(tier) for m in models):
-        raise ValueError(f"models.{tier}가 설정되지 않았습니다")
-    for m in models:
-        for me in methods:
-            store.set_line(m, me, model_tier=tier)
-    n = 0
-    for b in store.incomplete_batches():
-        if b["producer"] in models and b["model_tier"] != tier:
-            store.update(b["id"], model_tier=tier)
-            store.log(b["id"], f"운영자가 모델 단계를 {TIER_LABELS[tier].upper()}로 전환 (다음 실행부터 적용)")
-            n += 1
-    store.log(None, f"운영자 모델 단계 전환 → {TIER_LABELS[tier].upper()} ({len(models)}개 모델)")
-    return n
 
 
 # --- the single "urgent" status line (Issue #1555) ---------------------------------------------------------------------

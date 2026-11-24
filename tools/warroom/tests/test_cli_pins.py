@@ -6,18 +6,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.fakes import World
-from warroom import control
-from warroom.adapters import Handle, OpenCodeAdapter, RunSpec, classify_failure
-from warroom.config import (DEFAULTS, adapters, config_problem, effort_problem, ordered_models, registry,
-                            registry_problems, run_spec)
+from tests.test_issue_1684 import s2_world
+from warroom.adapters import RunSpec, classify_failure
+from warroom.config import (DEFAULTS, Paths, adapters, config_problem, effort_problem, load_config, ordered_models,
+                            registry_problems, retired_notice, run_spec)
 from warroom.store import SCHEMA, SCHEMA_V2, Store
 
 QUOTA = DEFAULTS["quota_patterns"]
 SONNET = {"label": "Sonnet", "adapter": "claude", "model": "sonnet", "effort": "medium"}
 LUNA = {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}
-DEEPSEEK = {"label": "DeepSeek", "adapter": "opencode", "effort": "high",
-            "models": {"free": "opencode/deepseek-v4.1-flash-free", "go": "opencode-go/deepseek-v4.1-flash"}}
 FORBIDDEN_FLAGS = ("--yolo", "--dangerously-skip-permissions", "--allow-dangerously-skip-permissions",
                    "--dangerously-bypass-approvals-and-sandbox", "--dangerously-bypass-hook-trust", "--variant")
 
@@ -27,15 +24,15 @@ def cfg_with(producers):
 
 
 class BoardOrder(unittest.TestCase):
-    """Claude -> Codex -> OpenCode by adapter label; never by the order `producers` was written in."""
+    """Claude -> Codex by adapter label; never by the order `producers` was written in."""
 
     def test_order_is_independent_of_registration_order(self):
-        items = [("claude", SONNET), ("codex", LUNA), ("deepseek", DEEPSEEK)]
+        items = [("claude", SONNET), ("codex", LUNA), ("claude-2", {**SONNET, "label": "Zeta", "model": "opus"})]
         for perm in itertools.permutations(items):
             with self.subTest(order=[pid for pid, _ in perm]):
                 cfg = cfg_with(dict(perm))
-                self.assertEqual(adapters(cfg), ["claude", "codex", "opencode"])
-                self.assertEqual(ordered_models(cfg), ["claude", "codex", "deepseek"])
+                self.assertEqual(adapters(cfg), ["claude", "codex"])
+                self.assertEqual(ordered_models(cfg), ["claude", "claude-2", "codex"])
 
     def test_models_on_one_cli_sort_by_label_then_id(self):
         cfg = cfg_with({
@@ -47,12 +44,69 @@ class BoardOrder(unittest.TestCase):
         self.assertEqual(ordered_models(cfg), ["claude-c", "claude-a", "claude-b", "codex"])
 
 
-class LegacySingleWorker(unittest.TestCase):
-    """Legacy single-worker registry conversion."""
+class RetiredConfig(unittest.TestCase):
+    """#9933: only the named Stage 1 / DeepSeek-OpenCode settings are dropped (with a notice); every other wrong value
+    still fails the existing validation."""
 
-    def test_legacy_single_worker_is_one_column(self):
-        self.assertEqual(ordered_models(DEFAULTS), ["deepseek"])
-        self.assertEqual(adapters(DEFAULTS), ["opencode"])
+    OWNER_SHAPE = {
+        "producers": {"claude": {"label": "Sonnet", "adapter": "claude"}, "codex": {"label": "Luna", "adapter": "codex"},
+                      "deepseek": {"label": "DeepSeek", "adapter": "opencode", "effort": "low",
+                                   "models": {"free": "opencode/x-free", "go": "opencode-go/x"},
+                                   "tier_efforts": {"api": "none"}, "retired_models": {}}},
+        "model_profiles": {"terra": {"adapter": "codex", "model": "gpt-6-terra", "effort": "high", "permission_profile": "worktree"},
+                           "luna-fast": {"adapter": "codex", "model": "gpt-6-luna", "effort": "low", "fast": True},
+                           "sonnet-medium": {"adapter": "claude", "model": "claude-sonnet", "effort": "medium"}},
+        "assignments": {"stage1": {"codex": "terra", "claude": "sonnet-medium"}, "stage1-ab": {"codex": "terra"},
+                        "stage1-c": {"codex": "terra"}, "stage1-d": {"codex": "terra"},
+                        "stage2": {"codex": "terra", "claude": "sonnet-medium"},
+                        "stage3": {"codex": "luna-fast", "claude": "sonnet-medium"}},
+        "methods": ["a", "b", "c", "d"], "literary_index_path": "/private/index", "corpus_index_path": "/private/corpus",
+        "opencode_bin": "opencode", "free_model_pattern": "-free$", "maintainer": "sonnet-medium",
+        "quota_patterns": ["provider quota"], "poll_seconds": 120, "pricing": {},
+    }
+
+    def load(self, user):
+        with tempfile.TemporaryDirectory() as d:
+            paths = Paths(repo_root=Path(d), local=Path(d) / "local")
+            paths.ensure()
+            paths.config_file.write_text(json.dumps(user), "utf-8")
+            return load_config(paths)
+
+    def test_retired_settings_are_dropped_and_the_rest_is_kept(self):
+        cfg = self.load(self.OWNER_SHAPE)
+        self.assertIsNone(config_problem(cfg))
+        self.assertEqual(sorted(cfg["producers"]), ["claude", "codex"])
+        self.assertEqual(sorted(cfg["assignments"]), ["stage2", "stage3"])
+        self.assertEqual(cfg["model_profiles"], self.OWNER_SHAPE["model_profiles"])
+        self.assertEqual((cfg["maintainer"], cfg["quota_patterns"], cfg["poll_seconds"]),
+                         ("sonnet-medium", ["provider quota"], 120))
+        for key in ("methods", "literary_index_path", "corpus_index_path", "opencode_bin", "free_model_pattern"):
+            self.assertNotIn(key, cfg)
+        self.assertEqual(cfg["_retired_producers"], ["deepseek"])
+        notice = retired_notice(cfg)
+        for path in ("producers.deepseek", "assignments.stage1-ab", "methods", "literary_index_path"):
+            self.assertIn(path, notice)
+        self.assertNotIn("/private/index", notice)          # paths are named, values never
+        self.assertIsNone(retired_notice(self.load({"producers": {"codex": LUNA}})))
+
+    def test_wrong_values_are_still_rejected(self):
+        cases = [
+            ("unknown adapter", {"producers": {"codex": {**LUNA, "adapter": "gemini"}}}, "알 수 없는 adapter"),
+            ("adapter missing", {"producers": {"codex": {k: v for k, v in LUNA.items() if k != "adapter"}}},
+             "알 수 없는 adapter"),
+            ("typo in a stage role", {"producers": {"codex": {"adapter": "codex"}}, "model_profiles": {"luna": LUNA},
+                                      "assignments": {"stage-2": {"codex": "luna"}}}, "알 수 없는 단계"),
+            ("missing profile", {"producers": {"codex": {"adapter": "codex"}}, "model_profiles": {},
+                                 "assignments": {"stage2": {"codex": "luna"}}}, "프로필 'luna'가 없습니다"),
+            ("OpenCode profile on a live stage", {"producers": {"codex": {"adapter": "codex"}},
+                                                  "model_profiles": {"old": {"adapter": "opencode"}},
+                                                  "assignments": {"stage2": {"codex": "old"}}}, "프로필 'old'가 없습니다"),
+        ]
+        for name, user, fragment in cases:
+            with self.subTest(name):
+                cfg = self.load(user)
+                problem = config_problem(cfg) or "; ".join(registry_problems(cfg).values())
+                self.assertIn(fragment, problem)
 
 
 class RegistryValidation(unittest.TestCase):
@@ -72,12 +126,8 @@ class RegistryValidation(unittest.TestCase):
         ("claude effort not in cli", {**SONNET, "effort": "minimal"}, "지원하지 않습니다"),
         ("codex effort minimal rejected by gpt-6-luna", {**LUNA, "effort": "minimal"}, "지원하지 않습니다"),
         ("codex effort max", {**LUNA, "effort": "max"}, ""),
-        ("opencode high", DEEPSEEK, ""),
-        ("opencode effort with hash", {**DEEPSEEK, "effort": "high#low"}, "형식이 올바르지 않습니다"),
-        ("opencode effort with space", {**DEEPSEEK, "effort": "high low"}, "형식이 올바르지 않습니다"),
-        ("opencode effort empty", {**DEEPSEEK, "effort": ""}, "추론 수준(effort)이 설정되지 않았습니다"),
-        ("opencode legacy without effort key", {"adapter": "opencode", "models": DEEPSEEK["models"]}, ""),
         ("unknown adapter", {**SONNET, "adapter": "gemini"}, "알 수 없는 adapter"),
+        ("retired adapter written directly", {**SONNET, "adapter": "opencode"}, "알 수 없는 adapter"),
     ]
 
     def test_table(self):
@@ -95,151 +145,48 @@ class RegistryValidation(unittest.TestCase):
         bad = registry_problems(cfg_with({"claude": SONNET, "claude-2": {**SONNET, "label": "Dup"}}))
         self.assertIn("중복", bad.get("claude-2", "") + bad.get("claude", ""))
 
-    def test_legacy_deepseek_runs_at_owner_fixed_high(self):
-        reg = registry(DEFAULTS)
-        self.assertEqual(reg["deepseek"]["effort"], "high")
-        self.assertEqual(registry_problems(DEFAULTS), {})
-
     def test_permission_profile_table(self):
         cases = [("codex", "worktree", None), ("codex", "", None), ("codex", "a_b-1", None),
                  ("codex", "-c", "형식"), ("codex", "a b", "형식"), ("codex", "a=b", "형식"), ("codex", "a/b", "형식"),
-                 ("claude", "worktree", "Codex"), ("opencode", "worktree", "Codex")]
+                 ("claude", "worktree", "Codex")]
         for adapter, profile, want in cases:
             with self.subTest(adapter=adapter, profile=profile):
-                base = {"claude": SONNET, "codex": LUNA, "opencode": DEEPSEEK}[adapter]
+                base = {"claude": SONNET, "codex": LUNA}[adapter]
                 cfg = cfg_with({"m": {**base, "permission_profile": profile}})
                 problem = registry_problems(cfg).get("m")
                 self.assertTrue(problem is None if want is None else want in problem, problem)
-        self.assertEqual(run_spec(cfg_with({"m": {**LUNA, "permission_profile": "worktree"}}), "m"),
+        self.assertEqual(run_spec(cfg_with({"m": {**LUNA, "permission_profile": "worktree"}}), "m", "stage2"),
                          RunSpec("gpt-6-luna", "xhigh", "worktree"))
-        self.assertEqual(run_spec(cfg_with({"m": LUNA}), "m").permission_profile, "")
-        self.assertIs(run_spec(cfg_with({"m": {**LUNA, "fast": True}}), "m").fast, True)
-        self.assertIsNone(run_spec(cfg_with({"m": {**SONNET, "fast": "ignored"}}), "m").fast)
+        self.assertEqual(run_spec(cfg_with({"m": LUNA}), "m", "stage2").permission_profile, "")
+        self.assertIs(run_spec(cfg_with({"m": {**LUNA, "fast": True}}), "m", "stage2").fast, True)
+        self.assertIsNone(run_spec(cfg_with({"m": {**SONNET, "fast": "ignored"}}), "m", "stage2").fast)
 
     def test_effort_problem_table(self):
         for adapter, effort, ok in [("claude", "medium", True), ("claude", "", False), ("claude", "none", False),
-                                    ("codex", "xhigh", True), ("codex", "minimal", False),
-                                    ("opencode", "high", True), ("opencode", "Hi", False)]:
+                                    ("codex", "xhigh", True), ("codex", "minimal", False)]:
             with self.subTest(adapter=adapter, effort=effort):
                 self.assertEqual(effort_problem(adapter, effort) is None, ok)
 
 
 class RunPins(unittest.TestCase):
-    def test_session_pins_allow_configured_tier_transitions(self):
-        w = World()
-        go = RunSpec("opencode-go/deepseek-v4.1-flash", "low")
-        api = RunSpec("deepseek/deepseek-flash", "none")
-        w.cfg["producers"] = {"deepseek": {"adapter": "opencode", "effort": "low",
-            "models": {"free": "p/free-x-free", "go": go.model, "api": api.model},
-            "tier_efforts": {"api": "none"}}}
-        for method in ("a", "b", "c", "d"):
-            bid = w.store.create_batch(method=method, producer="deepseek", shard="001", batch="01",
-                                       branch=f"branch-{method}", worktree=f"/{method}")
-            w.store.add_run(bid, "chunk", "session", None, "old.log", "old.exit", model=go.model, effort=go.effort)
-            b = w.store.batch(bid)
-            w.sup._check_session_pin(b, "session", go)
-            w.sup._check_session_pin(b, "session", api)
-            w.sup._check_session_pin(b, "session", RunSpec("p/free-x-free", "low"))
-            with self.assertRaises(Exception):
-                w.sup._check_session_pin(b, "session", RunSpec(api.model, "high"))
-            with self.assertRaises(Exception):
-                w.sup._check_session_pin(b, "unknown", api)
-            w.store.add_run(bid, "resume", "session", None, "api.log", "api.exit", model=api.model, effort=api.effort)
-            w.sup._check_session_pin(b, "session", RunSpec("p/free-x-free", "low"))
-        w.tmp.cleanup()
-
-    def test_retired_api_model_moves_to_goat_only_when_explicitly_listed(self):
-        """#6027: an unfinished session on the old DeepSeek API model resumes on GOAT only after an explicit opt-in."""
-        w = World()
-        old, goat = RunSpec("deepseek/deepseek-flash", "none"), RunSpec("commandcode/deepseek/deepseek-v4-flash", "none")
-        entry = {"adapter": "opencode", "effort": "low", "tier_efforts": {"api": "none"},
-                 "models": {"free": "p/free-x-free", "go": "opencode-go/deepseek-v4.1-flash", "api": goat.model}}
-        w.cfg["producers"] = {"deepseek": entry}
-        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch="b", worktree="/a")
-        w.store.add_run(bid, "chunk", "session", None, "old.log", "old.exit", model=old.model, effort=old.effort)
-        b = w.store.batch(bid)
-        with self.assertRaises(Exception):                               # default: the session is held
-            w.sup._check_session_pin(b, "session", goat)
-        entry["retired_models"] = {"api": [old.model]}
-        w.sup._check_session_pin(b, "session", goat)                     # explicit old -> GOAT
-        with self.assertRaises(Exception):                               # only towards that tier's current model
-            w.sup._check_session_pin(b, "session", RunSpec("p/free-x-free", "low"))
-        with self.assertRaises(Exception):                               # and never with another effort
-            w.sup._check_session_pin(b, "session", RunSpec(goat.model, "low"))
-        entry["tier_efforts"] = {"api": "low"}
-        with self.assertRaises(Exception):                               # the pinned effort must still match
-            w.sup._check_session_pin(b, "session", RunSpec(goat.model, "low"))
-        entry["retired_models"] = {"api": "deepseek/deepseek-flash"}
-        self.assertIn("retired_models", config_problem({**w.cfg, "producers": {"deepseek": entry}}) or "")
-        w.tmp.cleanup()
-
-    def test_api_effort_override_is_isolated(self):
-        entry = {**DEEPSEEK, "effort": "low", "models": {**DEEPSEEK["models"], "api": "deepseek/deepseek-flash"},
-                 "tier_efforts": {"api": "none"}}
-        cfg = cfg_with({"deepseek": entry})
-        self.assertEqual(run_spec(cfg, "deepseek", "api"), RunSpec("deepseek/deepseek-flash", "none"))
-        self.assertEqual(run_spec(cfg, "deepseek", "free").effort, "low")
-        self.assertEqual(run_spec(cfg, "deepseek", "go").effort, "low")
-        with self.assertRaises(ValueError):
-            run_spec(cfg_with({"deepseek": DEEPSEEK}), "deepseek", "api")
-
     def test_every_run_carries_its_model_and_effort(self):
-        cfg = cfg_with({"claude": SONNET, "codex": LUNA, "deepseek": DEEPSEEK})
-        self.assertEqual(run_spec(cfg, "claude"), RunSpec("sonnet", "medium"))
-        self.assertEqual(run_spec(cfg, "codex"), RunSpec("gpt-6-luna", "xhigh"))
-        self.assertEqual(run_spec(cfg, "deepseek", "free"), RunSpec("opencode/deepseek-v4.1-flash-free", "high"))
-        self.assertEqual(run_spec(cfg, "deepseek", "go"), RunSpec("opencode-go/deepseek-v4.1-flash", "high"))
-
-    def test_go_switch_changes_model_never_effort(self):
-        cfg = cfg_with({"deepseek": DEEPSEEK})
-        free, go = run_spec(cfg, "deepseek", "free"), run_spec(cfg, "deepseek", "go")
-        self.assertNotEqual(free.model, go.model)
-        self.assertEqual(free.effort, go.effort)
+        cfg = cfg_with({"claude": SONNET, "codex": LUNA})
+        self.assertEqual(run_spec(cfg, "claude", "stage2"), RunSpec("sonnet", "medium"))
+        self.assertEqual(run_spec(cfg, "codex", "stage3"), RunSpec("gpt-6-luna", "xhigh"))
 
     def test_unpinned_run_raises_instead_of_defaulting(self):
-        for entry, tier in [({**SONNET, "model": ""}, "free"), ({**SONNET, "effort": ""}, "free"),
-                            ({"adapter": "opencode", "models": {"free": "", "go": ""}, "effort": "high"}, "free"),
-                            ({"adapter": "opencode", "models": {"free": "x-free", "go": ""}, "effort": "high"}, "go")]:
-            with self.subTest(entry=entry, tier=tier):
+        for entry in ({**SONNET, "model": ""}, {**SONNET, "effort": ""}):
+            with self.subTest(entry=entry):
                 with self.assertRaises(ValueError):
-                    run_spec(cfg_with({"p": entry}), "p", tier)
-
-
-class OpenCodeArgv(unittest.TestCase):
-    class Recording(OpenCodeAdapter):
-        def _spawn(self, cmd, cwd, env, log_file, exit_file):
-            self.cmd = cmd
-            return Handle(0, Path(exit_file), Path(log_file))
-
-    def test_variant_is_model_suffix_and_no_forbidden_flag(self):
-        for model, effort in [("opencode/deepseek-v4.1-flash-free", "high"), ("opencode-go/deepseek-v4.1-flash", "high")]:
-            with self.subTest(model=model):
-                a = self.Recording("opencode")
-                run = RunSpec(model, effort)
-                a.start("p", ".", {}, run, "t", "l.log", "l.exit")
-                start = list(a.cmd)
-                a.resume("ses_1", "again", ".", {}, run, "l.log", "l.exit")
-                resume = list(a.cmd)
-                for argv in (start, resume):
-                    self.assertEqual(argv[argv.index("--model") + 1], f"{model}#high")
-                    for flag in FORBIDDEN_FLAGS:
-                        self.assertNotIn(flag, argv)
-
-    def test_unpinned_run_is_refused_by_the_adapter_itself(self):
-        a = self.Recording("opencode")
-        with self.assertRaises(ValueError):
-            a.start("p", ".", {}, RunSpec("", "high"), "t", "l.log", "l.exit")
-        with self.assertRaises(ValueError):
-            a.resume("ses_1", "p", ".", {}, RunSpec("p/m", ""), "l.log", "l.exit")
+                    run_spec(cfg_with({"p": entry}), "p", "stage2")
 
 
 class EffortRejection(unittest.TestCase):
     def test_classification_table(self):
         cases = [
-            ("Variant unavailable for opencode/deepseek-v4.1-flash-free: bogus", "effort"),
             ("Unsupported value: 'minimal' is not supported with the 'gpt-6-luna' model. Supported values are: 'none'", "effort"),
             ("unsupported effort level", "effort"),
-            ("FreeUsageLimitError reached", "free_quota"),       # quota first, always
+            ("FreeUsageLimitError reached", "unknown"),          # no configured quota pattern: never guessed
             ("HTTP 429 Too Many Requests", "rate_limit"),
             ("401 unauthorized", "auth"),
             ("weird provider blob", "unknown"),
@@ -248,57 +195,52 @@ class EffortRejection(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(classify_failure(text, QUOTA), want)
 
-    def test_rejected_effort_stops_the_batch_without_a_go_switch(self):
-        w = World()
-        w.start("single")
-        w.adapter.plan.append({"code": 1, "text": "Variant unavailable for opencode/p/free-x-free: high"})
+    def test_rejected_effort_stops_the_batch_without_another_run(self):
+        w = s2_world(self)
+        w.adapter.plan.append({"code": 1, "text": "Unsupported value: 'xhigh' is not supported. Supported values are: 'low'"})
+        w.start("single", "codex", "s2")
         w.tick(); w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
         row = w.row()
-        self.assertEqual((row["state"], row["model_tier"], len(w.adapter.launches)), ("ERROR", "free", 1))
-        w.tmp.cleanup()
+        self.assertEqual((row["state"], len(w.adapter.launches)), ("ERROR", 1))
 
 
 class PinnedLaunches(unittest.TestCase):
     def setUp(self):
-        self.w = World()
+        self.w = s2_world(self)
         self.w.cfg["producers"] = {"claude": SONNET, "codex": LUNA}
-        self.w.cfg["models"] = {"free": "p/free-x-free", "go": "p/go"}
-
-    def tearDown(self):
-        self.w.tmp.cleanup()
 
     def test_start_records_model_and_effort_in_run_history_and_audit_log(self):
         w = self.w
-        w.start("single", "claude", "a")
+        w.start("single", "claude", "s2")
         w.tick()
         launch = w.adapter.launches[-1]
         self.assertEqual((launch["model"], launch["effort"]), ("sonnet", "medium"))
-        run = w.store.runs(w.row("claude", "a")["id"])[0]
+        run = w.store.runs(w.row("claude", "s2")["id"])[0]
         self.assertEqual((run["model"], run["effort"]), ("sonnet", "medium"))
         self.assertTrue(any("model=sonnet, effort=medium" in e["msg"] for e in w.store.recent_events(50)))
 
     def test_codex_pin_on_start(self):
         w = self.w
-        w.start("single", "codex", "a")
+        w.start("single", "codex", "s2")
         w.tick()
         self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("gpt-6-luna", "xhigh"))
 
     def test_unbuilt_cli_is_blocked_explicitly_and_never_redirected(self):
         w = self.w
-        w.sup.adapter = {"opencode": w.adapter}           # this build has no Claude adapter
-        w.start("single", "claude", "a")
+        w.sup.adapter = {"codex": w.adapter}              # this build has no Claude adapter
+        w.start("single", "claude", "s2")
         w.tick()
         self.assertEqual(w.adapter.launches, [])
-        self.assertIsNone(w.store.active_batch("claude", "a"))
-        self.assertIn("CLI 어댑터가 이 War Room 빌드에 없습니다", w.store.line("claude", "a")["blocked"])
+        self.assertIsNone(w.store.active_batch("claude", "s2"))
+        self.assertIn("CLI 어댑터가 이 War Room 빌드에 없습니다", w.store.line("claude", "s2")["blocked"])
 
     def test_resume_uses_current_model_effort_and_permission_profile_and_preserves_history(self):
         w = self.w
         w.cfg["producers"] = {"codex": {**LUNA, "permission_profile": "worktree", "fast": True}}
         w.adapter.plan.append({"session": "session-first"})
-        w.start("single", "codex", "a")
+        w.start("single", "codex", "s2")
         w.tick(2)   # capture the first run's session ID
-        bid = w.row("codex", "a")["id"]
+        bid = w.row("codex", "s2")["id"]
         old_run = w.store.runs(bid)[0]
         self.assertEqual((old_run["model"], old_run["effort"], old_run["permission_profile"]),
                          ("gpt-6-luna", "xhigh", "worktree"))
@@ -353,82 +295,6 @@ class StoreV3(unittest.TestCase):
                           fast_mode=True)
             run = store.runs(bid)[0]
             self.assertEqual((run["model"], run["effort"], run["fast_mode"]), ("gpt-6-luna", "xhigh", 1))
-
-
-class RelaunchSettings(unittest.TestCase):
-    """Relaunches use the current valid run settings while retaining previous run evidence."""
-
-    def fresh(self, effort="high", plan=None, tier="free"):
-        w = World()
-        w.cfg["producers"] = {"deepseek": {"adapter": "opencode", "effort": effort,
-                                           "models": {"free": "p/free-x-free", "go": "p/go"}}}
-        w.start("single", "deepseek", "a")
-        w.store.set_line("deepseek", "a", model_tier=tier)
-        if plan:
-            w.adapter.plan.append(plan)                # the outcome of launch #1 must be queued before it runs
-        w.tick()                                       # launch #1 with the current settings
-        return w
-
-    def batch(self, w):
-        return w.store.batch(w.row("deepseek", "a")["id"])
-
-    def test_changed_effort_is_used_for_the_next_run(self):
-        w = self.fresh(plan={"session": "session-for-resume"})
-        w.tick()   # capture the session ID before checking resume settings
-        bid = self.batch(w)["id"]
-        w.cfg["producers"]["deepseek"]["effort"] = "low"
-        w.sup._launch(self.batch(w), "produce_resume", [])
-        self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]),
-                         ("p/free-x-free", "high"))
-        self.assertEqual(w.store.batch(bid)["state"], "ERROR")
-        runs = w.store.runs(bid)
-        self.assertEqual(len(runs), 1)
-        self.assertEqual((runs[0]["model"], runs[0]["effort"]), ("p/free-x-free", "high"))
-        w.tmp.cleanup()
-
-    def test_retry_after_a_lost_session_uses_current_settings_and_preserves_old_run(self):
-        w = self.fresh(plan={"code": 1, "text": "something unrecognised"})   # no session id was ever captured
-        w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
-        self.assertEqual(w.row("deepseek", "a")["state"], "PAUSED")
-        bid = self.batch(w)["id"]
-        w.cfg["producers"]["deepseek"]["effort"] = "low"
-        self.assertTrue(control.retry(w.store, "deepseek", "a"))
-        w.tick(); w.tick()                             # no session ID: operator Retry -> fresh recovery run
-        self.assertEqual(len(w.adapter.launches), 2)
-        self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("p/free-x-free", "low"))
-        runs = w.store.runs(bid)
-        self.assertEqual((runs[0]["model"], runs[0]["effort"]), ("p/free-x-free", "low"))
-        self.assertEqual((runs[1]["model"], runs[1]["effort"]), ("p/free-x-free", "high"))
-        w.tmp.cleanup()
-
-    def test_opencode_tier_changes_relaunch_in_both_directions(self):
-        models = {"free": "p/free-x-free", "go": "p/go"}
-        for before, after in (("free", "go"), ("go", "free")):
-            with self.subTest(before=before, after=after):
-                w = self.fresh(tier=before)
-                bid = self.batch(w)["id"]
-                previous_model = models[before]
-                current_model = models[after]
-                w.store.update(bid, model_tier=after)
-                w.sup._launch(self.batch(w), "produce_recover", [])
-                self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]),
-                                 (current_model, "high"))
-                runs = w.store.runs(bid)
-                self.assertEqual((runs[0]["model"], runs[0]["effort"]), (current_model, "high"))
-                self.assertEqual((runs[1]["model"], runs[1]["effort"]), (previous_model, "high"))
-                w.tmp.cleanup()
-
-    def test_a_restarted_supervisor_re_proves_the_current_run_before_relaunching(self):
-        from warroom.adapters import OpenCodeAdapter
-        w = self.fresh()
-        launched = len(w.adapter.launches)
-        w.adapter._opencode = OpenCodeAdapter("opencode", probe_async=False)   # restart: nothing is proven yet
-        w.runner.variant_rejected = {"p/free-x-free#high"}                       # the CLI now refuses the variant
-        w.sup._launch(self.batch(w), "produce_recover", [])
-        self.assertEqual(len(w.adapter.launches), launched)
-        self.assertEqual(w.row("deepseek", "a")["state"], "ERROR")
-        self.assertIn("지원하지 않습니다", w.row("deepseek", "a")["error"])
-        w.tmp.cleanup()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Mechanical run management shared by the parallel task schedulers (Stage 2 `s2parallel`, Method D `dparallel`).
+"""Mechanical run management shared by the parallel task schedulers (Stage 2 `s2parallel`, Stage 3 `s3parallel`).
 
 Only what is identical for both lives here: which task runs are still open, whether their processes live, how one run
 is observed until it ends, how all of them are stopped, and how many slots they occupy. What a finished run *means*

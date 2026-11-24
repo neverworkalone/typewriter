@@ -26,13 +26,12 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from pathlib import Path
 
-from . import (auth, batches, control, cparallel, dchunk, defects, dparallel, fixcoord, literary, prbody, progress, prompts, refine, reviews, s2parallel, s3parallel, stage1ab,
+from . import (auth, batches, control, defects, fixcoord, prbody, progress, prompts, refine, reviews, s2parallel, s3parallel,
                stage2, stage3)
-from .adapters import (NO_CHILD_ERRNOS, PREFLIGHT_PENDING, SpawnNotStarted, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
-                       classify_codex_failure, classify_goat_failure, final_answer, is_goat_model, opencode_free_quota,
-                       opencode_provider_errors, usage_limit_override_key)
-from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
-                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
+from .adapters import (NO_CHILD_ERRNOS, PREFLIGHT_PENDING, SpawnNotStarted, RunSpec, classify_claude_failure, classify_failure,
+                       classify_codex_failure, usage_limit_override_key)
+from .config import (adapter_label, config_problem, load_config, registry, registry_problems,
+                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_problem)
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, InspectContextFailure, IntegrationBlocked, RefineAmendRejected, ResourceFenced, Stage2AmendRejected
 from .lanes import Lanes
@@ -40,7 +39,6 @@ from .launch_gate import LaunchDenied, LaunchGate
 from . import maintenance as maint_results
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
-from .usage import submit_attempts
 
 
 # A failed *query* asking again can fix. It is never a verdict: callers re-raise it past every broad `except`.
@@ -169,13 +167,10 @@ class Supervisor:
         self.code_sha = self._loaded_code_sha(git)
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
         self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
-        self.dp = dparallel.ParallelD(self)   # parallel D chunk tasks inside a new batch (#3074)
-        self.cp = cparallel.ParallelC(self)   # parallel C chunk tasks inside a new batch (#3076)
         self.s3p = s3parallel.ParallelStage3(self)   # parallel Stage 3 chunk tasks inside a new shard (#3149)
         self.refine_fix = {}   # #6555: one Review FIXING Coordinator per refinement Stage (`_refine_fix`)
         self.s3fix = self._refine_fix_for(stage3.SPEC)
         self.parallel_new_s3 = True   # False only lets a fixture exercise the serial Stage 3 path an already running shard keeps
-        self.parallel_new_c = True   # False only lets a fixture exercise the serial path an already running batch keeps
         self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
 
     @property
@@ -272,7 +267,7 @@ class Supervisor:
         """`adapter` is one AgentAdapter, or a {name: adapter} map resolved via the registry."""
         if not isinstance(self.adapter, dict):
             return self.adapter
-        name = registry(self.cfg).get(producer, {}).get("adapter", "opencode")
+        name = registry(self.cfg).get(producer, {}).get("adapter", "")
         if name not in self.adapter:
             raise RuntimeError(f"adapter {name!r} 미지원")
         return self.adapter[name]
@@ -284,10 +279,11 @@ class Supervisor:
         # Scheduled operator commands are one-shot and must commit before this tick can assign work to any Line.
         self.store.fire_due_drain_schedules(self.clock(), control.board_line_keys(self.store, self.cfg))
         for b in self.store.incomplete_batches():  # a Line row always exists for a live batch
-            self.store.line(b["producer"], b["method"])
+            if not control.retired(b, self.cfg):
+                self.store.line(b["producer"], b["method"])
         for ln in self.store.lines():
-            if ln["method"] == MAINTENANCE_METHOD:
-                continue   # Maintainer has one serialized AI slot but may own several independent PR watches
+            if ln["method"] == MAINTENANCE_METHOD or control.retired(ln, self.cfg):
+                continue   # Maintainer has one serialized AI slot; a retired Line (#9933) is history only
             if self._stop_requested():
                 return   # STOPPING was recorded during this tick: no further Line is dispatched
             try:
@@ -319,7 +315,8 @@ class Supervisor:
         self.store.set("reload_done", token)   # one request is answered once, whatever the outcome
         try:
             new = load_config(self.paths)
-            problem = reload_problem(self.cfg, new, {b["producer"] for b in self.store.incomplete_batches()})
+            problem = reload_problem(self.cfg, new, {b["producer"] for b in self.store.incomplete_batches()
+                                                     if not control.retired(b, self.cfg) and not control.retired(b, new)})
         except (OSError, ValueError) as e:   # unreadable file or invalid JSON (JSONDecodeError is a ValueError)
             new, problem = None, f"config.json을 읽을 수 없습니다: {e}"
         if problem:
@@ -354,6 +351,8 @@ class Supervisor:
         ln = self.store.line(model, method)
         if method == MAINTENANCE_METHOD:
             return self._tick_maintenance()
+        if control.retired_line(model, method, self.cfg):
+            return   # #9933: a retired Line is never dispatched, whichever loop reached it
         if self.store.pin_clear(model, method) is not None:   # a Clear pins its batch before anything else can act
             b = self.store.active_batch(model, method)
             if b is not None and b["state"] == "CLEARING":
@@ -492,18 +491,10 @@ class Supervisor:
             if s3parallel.plan_state(self.store, b) == "closed":
                 return self.s3p.continue_after_close(b)   # a restart after the plan closed re-enters finalize
             return self.s3p.poll(b)
-        if dparallel.is_parallel(self.store, b) and b["run_kind"] == dparallel.RUN_KIND:
-            return self.dp.poll(b)
-        if cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:
-            return self.cp.poll(b)   # run_kind decides: c_finalize and the singleton Candidate repair keep the serial path
         return self._poll_run(b)
 
-    # Templates used by the next AI launch, if one is needed, after a released batch resumes (#3349).
-    # Only the chunk kinds whose resume-vs-new choice is decided by the recorded session are modelled; every other
-    # run_kind returns None = "cannot prove what is delivered" and a prompt-only fix is held, never guessed.
-    _CHUNK_PROMPTS = {dchunk.METHOD: ("d_chunk_resume", ("d_chunk", "contract_d")),
-                      literary.METHOD: ("c_chunk_resume", ("c_chunk", "contract_c"))}
-
+    # Templates used by the next AI launch, if one is needed, after a released batch resumes (#3349). Every run_kind
+    # not modelled here returns None = "cannot prove what is delivered" and a prompt-only fix is held, never guessed.
     def resume_prompt_names(self, b) -> set[str] | None:
         if (b["method"] == STAGE2_METHOD and b["run_kind"] in ("fix_new", "fix_resume")
                 and b["paused_from"] == "FIXING" and b["pr_number"]):
@@ -535,81 +526,7 @@ class Supervisor:
             # Finalization can finish without AI. If it needs AI, its only launch is a new repair page, which
             # renders s2_repair from the operating checkout; checkpoint and ownership guards still apply.
             return {"s2_repair"}
-        if b["method"] == literary.METHOD and b["run_kind"] == cparallel.RUN_KIND:
-            return None if b["pr_number"] else self._c_parallel_resume_prompt_names(b)
-        if b["method"] == dchunk.METHOD and b["run_kind"] == dparallel.RUN_KIND:
-            return None if b["pr_number"] else self._d_parallel_resume_prompt_names(b)
-        spec = self._CHUNK_PROMPTS.get(b["method"])
-        if (spec is None or b["pr_number"] or not isinstance(b["run_kind"], str) or not b["run_kind"].startswith(("d_chunk_", "c_chunk_"))
-                or b["run_kind"] in ("d_chunk_fix", "c_chunk_recovery")):
-            return None
-        return {spec[0]} if b["session_id"] else set(spec[1])
-
-    def _c_parallel_resume_prompt_names(self, b) -> set[str] | None:
-        """Prove the correction prompt only for acknowledged, retryable C submissions."""
-        rows = [r for r in self.store.task_rows(b["id"]) if r["state"] == "FAILED"]
-        if not rows:
-            return None
-        wt = Path(b["worktree"])
-        for row in rows:
-            try:
-                data = json.loads(row["data"] or "{}")
-                if (not isinstance(data, dict) or not data.get("ack") or data.get("pause")
-                        or data.get("search_failed") or not row["session_id"]
-                        or literary.read_active(wt, b, int(row["task"])) is None
-                        or not literary.submit_retryable(wt, b, int(row["task"]))):
-                    return None
-                guard = data.get("guard")
-                if (cparallel._legacy_shown_only_guard(data, guard)
-                        or (isinstance(guard, dict) and guard.get("reason_codes") == ["producer_reported_stop"])):
-                    return None
-                # No new operator grant is created by a Maintainer release.
-                if not self.cp._fix_allowed(data):
-                    return None
-            except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-                return None
-        return {"c_chunk_resume"}
-
-    def _d_parallel_resume_prompt_names(self, b) -> set[str] | None:
-        """Prompt templates re-entered for D parallel tasks acknowledged by the current failure.
-
-        The batch row has one `run_kind`, but each D task owns its own session and active chunk. Predict only the
-        failed tasks' next launch, using the same active-chunk/session rule as ParallelD._reset_acknowledged_failures
-        and `_requeue`. Do not guess through an unacknowledged failure or damaged scratch.
-        """
-        rows = [r for r in self.store.task_rows(b["id"]) if r["state"] == "FAILED"]
-        if not rows:
-            return None
-        names: set[str] = set()
-        wt = Path(b["worktree"])
-        for row in rows:
-            try:
-                data = json.loads(row["data"] or "{}")
-                if not isinstance(data, dict) or not data.get("ack") or data.get("pause"):
-                    return None
-                task = int(row["task"])
-                chunk = dchunk.chunk_names(b, task)
-                folder = wt / chunk.directory
-                if any((folder / f"chunk-{task:03d}.jsonl{suffix}").exists() for suffix in ("", ".tmp")):
-                    return None  # a stored or partial output may be accepted before another prompt is launched
-                rec = dchunk.read_active(wt, b, task)
-                used = int(self.store.get(dchunk.fix_key(b["id"], task)) or 0)
-                diag = dchunk.read_rejection(wt, b, rec) if rec is not None else None
-                if rec is not None and diag is None and row["session_id"] and used:
-                    diag = dchunk.refresh_stale_search_rejection(
-                        self.runner, self._d_env(b), wt, b, rec,
-                        limit_to_previous=used >= dchunk.MAX_FIXES, dry_run=True)
-            except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError):
-                return None
-
-            # Retry decrements the prior correction count before deciding whether an existing rejection needs a fix.
-            if rec is not None and diag is not None and row["session_id"] and used > 0:
-                names.add("d_chunk_fix")
-            elif rec is not None and row["session_id"]:
-                names.add("d_chunk_resume")
-            else:
-                names.update(("d_chunk", "contract_d"))
-        return names or None
+        return None
 
     def prompt_checkout_clean(self, paths: list[str]) -> bool:
         """The main checkout (where prompts are re-read) has these files committed and unmodified."""
@@ -639,17 +556,6 @@ class Supervisor:
         self.store.update(b["id"], state=state, paused_from=prev, error=msg)
         self._clear_batch_retry(b["id"])
         self.store.log(b["id"], msg, "error")
-        if state == "ERROR" and isinstance(msg, defects.BoundaryProblem):
-            # Structured evidence of THIS event for the Maintainer sweep (#3349). The first record of an event is kept.
-            try:
-                seq = self.store.batch(b["id"])["error_seq"]
-                key = f"error_evidence_{b['id']}_{seq}"
-                if seq and self.store.get(key) is None:
-                    r = msg.receipt
-                    self.store.set(key, json.dumps({"kind": "boundary", "site": r["site"], "base": r["base"], "head": r["head"],
-                                                    "defect_id": r["defect_id"], "merge_sha": r["merge_sha"]}, sort_keys=True))
-            except Exception as e:
-                self.store.log(b["id"], f"ERROR 구조화 증거 기록 실패(ERROR는 보존): {e}", "warn")
 
     # ---- transient (retryable query) failures ---------------------------------------------------------------------
     # Invariant: a query that failed in a way asking again can fix never changes the Line (run/mode/drain) or the batch
@@ -702,15 +608,6 @@ class Supervisor:
         """What the next AI start would work on (chunk number / Part cursor), for pending re-entry checks; None: unknown."""
         try:
             wt = Path(b["worktree"])
-            if b["method"] in stage1ab.METHODS:
-                cp = stage1ab.checkpoint(wt, b)
-                repair = self.store.get(f"ab_repair_{b['id']}")
-                chunk = stage1ab.chunk_by_number(cp, int(repair)) if repair else stage1ab.next_chunk(wt, b, cp)
-                return "final" if chunk is None else f"ab:{chunk['number']}"
-            if b["method"] == literary.METHOD:
-                return f"c:{self._c_next_no(b)}"
-            if b["method"] == dchunk.METHOD:
-                return f"d:{1 + sum(1 for r in self.store.runs(b['id']) if r['kind'] == 'd_chunk_new')}"
             if b["method"] == STAGE2_METHOD:
                 cp = stage2.checkpoint(wt, b["shard"], b["batch"])
                 return json.dumps([stage2.next_action(cp), cp], sort_keys=True, default=str)
@@ -722,17 +619,6 @@ class Supervisor:
         """Stable identity of the currently active chunk for the bounded, persisted AI re-entry allowance."""
         try:
             wt = Path(b["worktree"])
-            if b["method"] in stage1ab.METHODS:
-                cp = stage1ab.checkpoint(wt, b)
-                repair = self.store.get(f"ab_repair_{b['id']}")
-                chunk = stage1ab.chunk_by_number(cp, int(repair)) if repair else stage1ab.next_chunk(wt, b, cp)
-                return None if chunk is None else f"ab:{chunk['number']}"
-            if b["method"] == literary.METHOD:
-                rec = literary.read_active(wt, b)
-                return None if rec is None else f"c:{rec['chunk_no']}"
-            if b["method"] == dchunk.METHOD:
-                rec = dchunk.read_active(wt, b)
-                return None if rec is None else f"d:{rec['chunk_no']}"
             if b["method"] == STAGE2_METHOD:
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
                 pending = checkpoint.get("pending_chunk") if checkpoint else None
@@ -748,8 +634,7 @@ class Supervisor:
                 if current != baseline["checkpoint"] or self._stage3_chunk_saved(b):
                     return None
                 return f"s3:{b['shard']}:{baseline['chunk']}"
-        except (OSError, ValueError, KeyError, TypeError, stage1ab.ABChunkError,
-                literary.LiteraryError, dchunk.DChunkError, stage3.Stage3Error):
+        except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):
             return None
         return None
 
@@ -792,10 +677,6 @@ class Supervisor:
             return self._stage3_chunk_saved(b)
         if self._s2_chunk_run(b):
             return self._stage2_chunk_saved(b)
-        if self._c_chunk_run(b):
-            return self._c_chunk_saved(b)
-        if self._d_chunk_run(b):
-            return self._d_chunk_saved(b)
         return False
 
     def _saved_chunk_identity_problem(self, b):
@@ -843,32 +724,6 @@ class Supervisor:
             try:
                 return pending is not None and (not decisions.exists() or not decisions.read_text("utf-8").strip())
             except OSError:
-                return False
-        if self._c_chunk_run(b):
-            try:
-                rec = literary.read_active(wt, b)
-                if rec is None:
-                    return False
-                submit = wt / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json"
-                diag = submit.with_name(submit.name + ".diag.json")
-                if submit.exists() or diag.exists():
-                    return False
-                state = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
-                return not rec.get("repair") and not any(s["done"] for s in state["senses"])
-            except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-                return False
-        if self._d_chunk_run(b) and b["run_kind"] != "d_chunk_fix":
-            try:
-                rec = dchunk.read_active(wt, b)
-                if rec is None or dchunk.has_search_failure(wt, b):
-                    return False
-                n = dchunk.chunk_names(b, rec["chunk_no"])
-                decisions = wt / n.decisions
-                rejected = wt / n.rejected
-                if rejected.exists():
-                    return False
-                return not decisions.exists() or not decisions.read_text("utf-8").strip()
-            except (dchunk.DChunkError, OSError, ValueError):
                 return False
         if self._stage3_chunk_run(b) and b["run_kind"] == "s3_chunk_new":
             raw = self.store.get(stage3.run_start_key(b["id"]))
@@ -940,12 +795,10 @@ class Supervisor:
         elif stage == "exit_failed":
             self._guarded(b, "exit_failed", lambda x: self._run_failed(x, ev["code"]), run_id=ev["run_id"], code=ev["code"])
         elif stage == "finalize":
-            fin = {"ab_finalize": self._ab_finalize, "c_finalize": self._c_finalize, "d_finalize": self._d_finalize,
-                   "s2_deterministic_finalize": self._stage2_finalize, "s3_finalize": self._stage3_finalize}
+            fin = {"s2_deterministic_finalize": self._stage2_finalize, "s3_finalize": self._stage3_finalize}
             fin[ev["run_kind"]](b)
         elif stage == "prelaunch":
-            entry = {"prepare_existing": self._prepare_existing, "launch_ab_next": self._launch_ab_next,
-                     "launch_c_next": self._launch_c_next, "launch_d_next": self._launch_d_next,
+            entry = {"prepare_existing": self._prepare_existing,
                      "launch_stage2_next": self._launch_stage2_next, "relaunch": self._relaunch}[ev["entrypoint"]]
             entry(b)
         return True
@@ -987,10 +840,6 @@ class Supervisor:
             return False   # parallel Stage 2: every task process must be confirmed gone
         if s3parallel.is_parallel(self.store, b) and not self.s3p.stop_workers(b):
             return False   # parallel Stage 3: the same for every chunk task process
-        if dparallel.is_parallel(self.store, b) and not self.dp.stop_workers(b):
-            return False   # parallel D: the same for every chunk task process
-        if cparallel.is_parallel(self.store, b) and not self.cp.stop_workers(b):
-            return False   # parallel C: the same for every chunk task process
         if b["pid"] is None:
             return True
         if self._adapter(b["producer"]).alive(b["pid"]):
@@ -1035,94 +884,22 @@ class Supervisor:
             current = self.store.batch(b["id"])
             if current["state"] != b["state"] or current["error"] != previous_error:
                 return
-        if (ln["retry_batch"] != b["id"] and b["state"] == "ERROR"
-                and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND
-                and self.cp.auto_recover_legacy_scope_error(b)):
-            return
-        if (ln["retry_batch"] != b["id"] and b["state"] == "ERROR"
-                and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND
-                and self.cp.auto_recover_integrated_no_submission(b)):
-            return
         if ln["retry_batch"] == b["id"]:
             # An owner Stop turns the exhausted ERROR into PAUSED, so Stop & Retry arrives here as PAUSED.
-            if b["state"] in ("ERROR", "PAUSED") and self._ab_chunk_run(b) and not b["pr_number"]:
-                if self._ab_operator_recovery(b):
-                    return
-            if b["state"] == "ERROR" and cparallel.is_parallel(self.store, b) and b["run_kind"] == cparallel.RUN_KIND:
-                self.cp.operator_retry(b)   # exactly one epoch per consumed operator Retry (Stop/auto release grant nothing)
             target = self._chunk_retry_target(b)
-            c_evidence_changed = False
-            if b["method"] == literary.METHOD and b["state"] == "ERROR" and target is not None:
-                raw_guard = self.store.get(literary.retry_guard_key(b["id"]))
-                if raw_guard:
-                    try:
-                        guard = json.loads(raw_guard)
-                    except ValueError:
-                        guard = None
-                    if not isinstance(guard, dict):
-                        self.store.set_line(b["producer"], b["method"], retry_batch=None)
-                        code_text = "checkpoint_or_chunk_mismatch"
-                        self.store.log(b["id"], f"C 운영자 Retry 차단 [same_failure; {code_text}]: "
-                                       "active chunk의 Sense·제출·진단 상태가 바뀌지 않아 재실행하지 않았습니다.", "warn")
-                        return
-                    if self._c_retry_guard_unchanged(b, guard):
-                        try:
-                            rec = literary.read_active(Path(b["worktree"]), b)
-                        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-                            rec = None
-                        recovery_key = (literary.no_submission_recovery_key(b["id"], rec["chunk_id"])
-                                        if rec is not None else None)
-                        raw_recovery = self.store.get(recovery_key) if recovery_key else None
-                        try:
-                            recovery = json.loads(raw_recovery or "null")
-                        except ValueError:
-                            recovery = None
-                        owner_recovery = (self._c_legacy_recovery_evidence(b, recovery)
-                                          if isinstance(recovery, dict) else False)
-                        if not owner_recovery and recovery is None:
-                            owner_recovery = self._c_claim_legacy_no_submission_retry(b, guard)
-                        if not owner_recovery:
-                            self.store.set_line(b["producer"], b["method"], retry_batch=None)
-                            codes = guard.get("reason_codes", [])
-                            code_text = ",".join(str(code) for code in codes) if isinstance(codes, list) else ""
-                            code_text = code_text or "checkpoint_or_chunk_mismatch"
-                            self.store.set(literary.retry_guard_key(b["id"]), json.dumps(guard, sort_keys=True))
-                            self.store.log(b["id"], f"C 운영자 Retry 차단 [same_failure; {code_text}]: "
-                                           "active chunk의 Sense·제출·진단 상태가 바뀌지 않아 재실행하지 않았습니다.", "warn")
-                            return
-                        self.store.log(b["id"], "기존 C 무제출 guard에 대한 오너 요청 1회를 새 세션 복구로 전환합니다. "
-                                       "기존 1/1 자동 retry 예산과 checkpoint는 그대로 둡니다.", "warn")
-                    else:
-                        c_evidence_changed = True
-                        self.store.delete(literary.retry_guard_key(b["id"]))
-                        self.store.log(b["id"], "C 운영자 Retry: 현재 active chunk의 체크포인트·제출·진단 evidence 변경을 확인했습니다.", "warn")
-            if target is not None and (b["method"] != literary.METHOD or b["state"] != "ERROR" or c_evidence_changed):
-                # For C errors, an unchanged failure keeps its one persisted budget. Only new evidence grants a new cycle.
+            if target is not None:
                 self.store.delete(self._auto_retry_key(b, target))   # only an explicit operator Retry grants one new chance
-            if self._d_chunk_run(b) and not b["pr_number"]:
-                self.store.delete_prefix(f"d_fix_{b['id']}:")   # only an explicit Retry regrants the automatic correction
             resume_state = b["paused_from"] or "PRODUCING"
             legacy_ff_error = (b["state"] == "ERROR" and b["paused_from"] == "FIXING" and b["pr_number"] is not None
                               and isinstance(b["error"], str)
                               and b["error"].startswith("원격 ref와 로컬 HEAD 불일치:"))
-            stranded_review = (b["state"] == "ERROR" and b["paused_from"] == "WAITING_REVIEW"
-                               and b["pr_number"] is not None and b["method"] in ("a", "b", "c", "d")
-                               and isinstance(b["error"], str)
-                               and b["error"].startswith("미완료 리뷰 이벤트 감지:"))
             if legacy_ff_error:
                 # Older Supervisor releases treated every remote/local SHA difference as divergence. Re-enter the
                 # owned PR watcher; it retries only after the complete safe fast-forward proof below.
                 resume_state = "WAITING_REVIEW"
                 self.store.log(b["id"], "기존 원격/local HEAD 불일치 오류: AI 재실행 없이 소유 PR fast-forward 안전 조건을 재확인합니다", "warn")
-            if stranded_review:
-                # An interrupted fix may have returned to REVIEW via the safe PR fast-forward. Do not let a
-                # historical launch-time marker silently suppress the active -1, or auto-run it indefinitely.
-                resume_state = "FIXING"
-                self.store.log(b["id"], "운영자 Retry: 미완료 리뷰 이벤트의 현재 PR/HEAD 및 답글 증거를 다시 확인합니다", "warn")
             fields = dict(state=resume_state, error=None, retries=0, retry_after=None,
                           pause_reason="", defect_id=None)
-            if stranded_review and not str(b["run_kind"] or "").startswith("fix"):
-                fields["run_kind"] = "fix_new"
             self._drop_usage_limit_holds(b)
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], **fields)
@@ -1239,36 +1016,9 @@ class Supervisor:
                 and last["ended_at"] is not None and str(last["exit_status"]) == "0"
                 and self.store.get(f"verified_completion_run_{b['id']}") == str(last["id"]) and bool(b["pr_number"]))
 
-    def _completed_fix_unpushed(self, b) -> bool:
-        """A completed fix run whose local HEAD strictly descends from the still-current remote/PR HEAD."""
-        if b["pid"] is not None or not self._completed_fix_run(b):
-            return False
-        try:
-            wt = Path(b["worktree"])
-            local, remote = self.git.head(wt), self.git.remote_head(b["branch"])
-            return bool(remote) and local != remote and self.git.is_ancestor(remote, local, path=wt)
-        except Exception:
-            return False
-
     def _verified_fix_exit(self, b) -> bool:
         """The last run is a finished FIX run (exit 0) whose completion evidence the Supervisor recorded."""
-        last = self._last_run(b)
-        if not self._completed_fix_run(b):
-            return False
-        if b["method"] not in ("a", "b", "c", "d"):
-            return True
-        try:
-            claim = json.loads(self.store.get(f"fix_claim_{b['id']}") or "")
-            if claim.get("status") != "HANDLED" or claim.get("run_id") != last["id"]:
-                return False
-            for key in claim["event_keys"]:
-                event = self.store.handled_event(b["id"], claim["pr"], claim["head_sha"], key)
-                if (event is None or event["status"] != "HANDLED" or event["run_id"] != last["id"]
-                        or event["reply_id"] is None or event["completed_at"] is None):
-                    return False
-            return True
-        except (TypeError, ValueError, KeyError):
-            return False
+        return self._completed_fix_run(b)
 
     def _verified_late_producer_exit(self, b) -> bool:
         """Only inspect PRs after a terminal producer result, never after a stop or unverified success."""
@@ -1305,42 +1055,6 @@ class Supervisor:
         return (isinstance(run["kind"], str) and (run["kind"].startswith("produce") or
                                                    run["kind"].startswith("s2_finalize_"))
                 and run["ended_at"] is not None and recorded == code)
-
-    def _eligible_branch_prs(self, b, prs):
-        """Exclude provably older unmerged C PRs without hiding the attached or same-HEAD PR."""
-        if b["method"] != literary.METHOD:
-            return prs
-        attached = b["pr_number"]
-        stale = [pr for pr in prs if (
-            str(pr.get("state", "")).lower() == "closed"
-            and "mergedAt" in pr and pr["mergedAt"] is None
-            and isinstance(pr.get("number"), int) and not isinstance(pr.get("number"), bool)
-            and pr.get("number") != attached
-            and isinstance(pr.get("headRefOid"), str) and re.fullmatch(r"[0-9a-f]{40}", pr["headRefOid"])
-        )]
-        if not stale:
-            return prs
-        try:
-            wt = Path(b["worktree"])
-            if self.git.registered(wt) != b["branch"]:
-                return prs
-            current_head = self.git.head(wt)
-        except ResourceFenced:
-            raise
-        except (GitError, OSError, ValueError):
-            return prs
-        known_heads = {current_head}
-        finalized_head = self.store.get(f"c_commit_head_{b['id']}")
-        if isinstance(finalized_head, str):
-            known_heads.add(finalized_head)
-        return [pr for pr in prs if not (
-            str(pr.get("state", "")).lower() == "closed"
-            and "mergedAt" in pr and pr["mergedAt"] is None
-            and isinstance(pr.get("number"), int) and not isinstance(pr.get("number"), bool)
-            and pr.get("number") != attached
-            and isinstance(pr.get("headRefOid"), str) and re.fullmatch(r"[0-9a-f]{40}", pr["headRefOid"])
-            and pr["headRefOid"] not in known_heads
-        )]
 
     def _stage2_foreign_paths(self, b, info, files) -> set[str]:
         """Prove cross-shard amend output against the saved Part and its original commit."""
@@ -1379,7 +1093,6 @@ class Supervisor:
         prs = self.gh.prs_for_branch(b["branch"])
         if not isinstance(prs, list):
             raise RecoveryBlocked("소유 브랜치 PR 조회 결과 형식이 잘못되었습니다")
-        prs = self._eligible_branch_prs(b, prs)
         if not prs:
             return None
         if len(prs) != 1:
@@ -1456,10 +1169,6 @@ class Supervisor:
             self.s2p.stop_workers(b)   # every task process; exits are confirmed by _reap_stopped
         if s3parallel.is_parallel(self.store, b):
             self.s3p.stop_workers(b, acknowledge=True)   # the operator's Stop
-        if dparallel.is_parallel(self.store, b):
-            self.dp.stop_workers(b, acknowledge=True)   # the operator's Stop
-        if cparallel.is_parallel(self.store, b):
-            self.cp.stop_workers(b, acknowledge=True)   # the operator's Stop
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
         self.store.set_line(b["producer"], b["method"], run=0, retry_batch=None)  # Stop wins over Retry
@@ -1489,10 +1198,6 @@ class Supervisor:
             return self.store.log(b["id"], "Clear: 병렬 Stage 2 task AI 프로세스 종료 요청, 종료 확인 대기")
         if s3parallel.is_parallel(self.store, b) and not self.s3p.stop_workers(b):
             return self.store.log(b["id"], "Clear: 병렬 Stage 3 task AI 프로세스 종료 요청, 종료 확인 대기")
-        if dparallel.is_parallel(self.store, b) and not self.dp.stop_workers(b):
-            return self.store.log(b["id"], "Clear: 병렬 D task AI 프로세스 종료 요청, 종료 확인 대기")
-        if cparallel.is_parallel(self.store, b) and not self.cp.stop_workers(b):
-            return self.store.log(b["id"], "Clear: 병렬 C task AI 프로세스 종료 요청, 종료 확인 대기")
         if b["pid"] is not None:
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
@@ -1621,34 +1326,7 @@ class Supervisor:
             return self._prepare_new_stage2(ln)
         if method == STAGE3_METHOD:
             return self._prepare_new_stage3(ln)
-        try:
-            self.git.fetch_base(self.cfg["base_branch"])
-            nb = batches.next_batch(
-                self.runner, self.paths.repo_root, self.env,
-                ref=f"origin/{self.cfg['base_branch']}", method=method, producer=model,
-                open_prs=self.gh.open_prs(),
-                owned=self.store.claimed_keys(method, None if batches.is_shared_queue(method) else model))
-        except TRANSIENT as e:
-            return self._transient_wait(key, e, line=line)
-        except Exception as e:  # BatchError, GitError, GhError
-            return self._blocked(ln, f"배치 선정 실패: {e}")
-        self._transient_clear(key, line=line)
-        if nb is None:
-            self.store.set_line(model, method, run=0)
-            return self.store.log(None, "더 이상 생산할 미점유 배치가 없습니다.", line=f"{model}/{method}")
-        branch = f"{method}-{model}-{nb.shard}-{nb.batch}"
-        wt = self.paths.worktrees / f"{method}-{model}-{nb.stem}"
-        try:
-            bid = self.store.create_batch(method=method, producer=model, shard=nb.shard,
-                                          batch=nb.batch, branch=branch, worktree=str(wt),
-                                          model_tier=ln["model_tier"], records_total=nb.records, from_run=True)
-        except LineNotRunnable:   # Stop / Drain / Drain All landed after this tick read the Line: nothing is created
-            return
-        except LineBusy as e:
-            return self.store.log(None, str(e), "warn", line=f"{model}/{method}")
-        self.store.set_line(model, method, blocked="")
-        self.store.log(bid, f"배치 {nb.stem} 선정, worktree 준비")
-        self._prepare_existing(self.store.batch(bid))
+        return self._blocked(ln, f"시작 차단: 지원하지 않는 Line {method!r} (#9933)")
 
     def _prepare_new_stage3(self, ln) -> None:
         """Select the strict successor of the latest merged production PR of the first unfinished refinement Stage.
@@ -1775,10 +1453,6 @@ class Supervisor:
         self.store.set(wait_key, note)
         self.store.set(poll_key, str(self.clock()))
 
-    def _tiered(self, producer: str) -> bool:
-        """Free/Go tiers and the automatic quota switch belong to the producer's CLI (OpenCode only)."""
-        return registry(self.cfg)[producer]["adapter"] in TIERED_ADAPTERS
-
     def _adapter_problem(self, producer: str) -> str | None:
         """Start is refused, never redirected, when this build has no adapter for the producer's CLI."""
         name = registry(self.cfg)[producer]["adapter"]
@@ -1786,92 +1460,36 @@ class Supervisor:
             return f"{adapter_label(name)} CLI 어댑터가 이 War Room 빌드에 없습니다 — 다른 CLI로 대신 실행하지 않습니다."
         return None
 
-    def _preflight(self, producer: str, method: str = "a", tier: str | None = None) -> str | None:
+    def _preflight(self, producer: str, method: str) -> str | None:
         """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
         if method == STAGE3_METHOD and (problem := stage3_problem(self.cfg, producer)):
             return problem
         problem = self._adapter_problem(producer)
         if problem:
             return problem
-        if method in ("c", "d") and (problem := self._literary_index_problem(method)):
-            return problem
-        ad = self._adapter(producer)
-        if self._tiered(producer):   # OpenCode/DeepSeek: the free tier must be an explicit, recognisably free model
-            free = registry(self.cfg)[producer]["models"].get("free", "")
-            if not free:
-                return (f"{producer}: models.free 미설정 — OpenCode 기본 모델이 무료라는 보장이 없어 실행하지 않습니다 "
-                        f"({self.paths.config_file}).")
-            if not re.search(self.cfg.get("free_model_pattern", r"-free$"), free):
-                return f"models.free={free!r} 는 무료 모델 ID로 확인되지 않습니다 (패턴 {self.cfg.get('free_model_pattern', '-free$')})."
         try:
-            if self._tiered(producer):
-                selected = tier if tier is not None else self.store.peek_line(producer, method)["model_tier"]
-                runs = self._pinned_runs(producer, role_of(method))
-                if selected == "api":
-                    api_run = run_spec(self.cfg, producer, selected, role_of(method))
-                    runs.append(api_run)
-                    # The API (GOAT) tier must show a real, clean answer: a provider error is no proof (#6027).
-                    return ad.preflight(self.runner, self.env, runs, answer_required=frozenset({api_run.model}))
-            else:
-                runs = self._pinned_runs(producer, role_of(method))
+            runs = [run_spec(self.cfg, producer, role_of(method))]
         except ValueError as e:
             return str(e)
-        return ad.preflight(self.runner, self.env, runs)
-
-    def _literary_index_problem(self, method: str = "c") -> str | None:
-        """Methods C (literary index) and D (paragraph corpus index) each receive one explicitly configured approved
-        index; never search for a substitute."""
-        key = "corpus_index_path" if method == "d" else "literary_index_path"
-        configured = self.cfg.get(key, "")
-        if not isinstance(configured, str) or not configured.strip():
-            return (f"Method {method.upper()} 시작 차단: {key}가 설정되지 않았습니다. "
-                    "tools/warroom/.local/config.json에 승인 SQLite의 절대 경로를 설정하세요.")
-        database = Path(configured.strip()).expanduser()
-        try:
-            readable = database.is_absolute() and database.is_file() and os.access(database, os.R_OK)
-        except (OSError, ValueError):
-            readable = False
-        if not readable:
-            return (f"Method {method.upper()} 시작 차단: {key}가 읽을 수 있는 절대 파일을 가리키지 않습니다. "
-                    "tools/warroom/.local/config.json을 확인하세요.")
-        return None
+        return self._adapter(producer).preflight(self.runner, self.env, runs)
 
     def _launch_env(self, b, kind: str, base_env: dict | None = None) -> dict:
         """Add run-specific worker environment without inheriting Stage 2 chunk restrictions into finalization."""
         env = dict(self.env if base_env is None else base_env)
-        key = "TYPEWRITER_APPROVED_LITERARY_DB"
-        env.pop(key, None)
-        env.pop("TYPEWRITER_APPROVED_CORPUS_DB", None)
         env.pop("WARROOM_SUPERVISOR_STATE_DB", None)
         env.pop("WARROOM_SUPERVISOR_BATCH_ID", None)
-        if b["method"] == "c":
-            env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
-        if b["method"] == "d" and isinstance(kind, str) and kind.startswith(("d_chunk_", "d_cli")):
-            env["TYPEWRITER_APPROVED_CORPUS_DB"] = str(Path(self.cfg["corpus_index_path"].strip()).expanduser())
-        if b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_"):
-            env["TYPEWRITER_D_CHUNK_CLI"] = str(dchunk.cli_path())
-            env["TYPEWRITER_D_SCRATCH"] = str((Path(b["worktree"]).resolve() / dchunk.SCRATCH).resolve())
-            env["TYPEWRITER_D_CANONICAL_ROOT"] = str(Path(b["worktree"]).resolve())
         env.pop("WARROOM_STAGE2_CHUNK", None)
         env.pop("WARROOM_STAGE2_REPAIR", None)
         env.pop("WARROOM_GIT_EXECUTABLES", None)
         env.pop("WARROOM_PROTECTED_PATHS", None)
         env.pop("WARROOM_ANSWER_ONLY", None)
-        env.pop("OPENCODE_CONFIG_CONTENT", None)
-        ab_chunk = b["method"] in stage1ab.METHODS and isinstance(kind, str) and kind.startswith("ab_chunk_")
-        if ab_chunk:   # A/B answer-only is an output contract; adapter-specific tool handling remains unchanged
-            env["WARROOM_ANSWER_ONLY"] = "1"
-            if self._adapter(b["producer"]).name == "opencode":
-                env["OPENCODE_CONFIG_CONTENT"] = json.dumps({"permission": {"edit": "deny", "bash": "deny", "webfetch": "deny"}})
         if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
             env["WARROOM_ANSWER_ONLY"] = "1"
             env["WARROOM_STAGE2_REPAIR"] = "1"
         # Chunk runs suppress auto-loaded AGENTS.md and web lookup. Execution rules stay adapter-specific; Codex keeps
         # the operator's configured permission profile, while answer-only results are judged by their output contract.
         if (b["method"] in (STAGE2_METHOD, STAGE3_METHOD) and isinstance(kind, str) and
-                kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "s3_chunk_"))) or \
-                (b["method"] == literary.METHOD and isinstance(kind, str) and kind.startswith("c_chunk_")) or \
-                (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:
+                kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "s3_chunk_"))):
             env["WARROOM_STAGE2_CHUNK"] = "1"
             git_executables = set()
             for entry in env.get("PATH", os.defpath).split(os.pathsep):
@@ -1883,13 +1501,6 @@ class Supervisor:
                 str(self.paths.git_admin_dir.resolve()), str((Path(b["worktree"]) / ".git").resolve()),
             ])
         return env
-
-    def _pinned_runs(self, producer: str, role: str = "stage1"):
-        """Every model/effort this producer may run with: both tiers of a tiered CLI (a configured Go model too)."""
-        if not self._tiered(producer):
-            return [run_spec(self.cfg, producer, role=role)]
-        models = registry(self.cfg)[producer]["models"]
-        return [run_spec(self.cfg, producer, tier, role) for tier in ("free", "go") if tier == "free" or models.get(tier)]
 
     def _prepare_existing(self, b) -> None:
         if self._pending_gate(b):
@@ -1921,13 +1532,6 @@ class Supervisor:
             return self._launch_stage2_next(b)
         if b["method"] == STAGE3_METHOD:
             return self._launch_stage3_next(b)
-        if b["method"] == literary.METHOD:
-            return self._launch_c_next(b)
-        if b["method"] == dchunk.METHOD:
-            return self._launch_d_next(b)
-        if b["method"] in stage1ab.METHODS and self.cfg.get("ab_chunk_sessions", True) \
-                and not str(b["run_kind"] or "").startswith("produce"):
-            return self._launch_ab_next(b)   # new A/B batches run as answer-only chunks (#2035); an old long session stays as it is
         self._launch(b, "produce")
 
     def _launch_stage2_next(self, b) -> None:
@@ -2356,38 +1960,14 @@ class Supervisor:
 
     # ---- launching runs ------------------------------------------------
     def _run(self, b) -> RunSpec:
-        """The model and effort this batch's next run is pinned to (the current tier for OpenCode)."""
-        return run_spec(self.cfg, b["producer"], b["model_tier"], role_of(b["method"]))
+        """The model and effort this batch's next run is pinned to."""
+        return run_spec(self.cfg, b["producer"], role_of(b["method"]))
 
     def _recorded_run(self, b) -> RunSpec | None:
         """The settings the batch's current run was launched with (the store is the source of truth)."""
         r = next((r for r in self.store.runs(b["id"]) if r["model"]), None)
         return RunSpec(r["model"], r["effort"], r["permission_profile"] or "",
                        fast=None if r["fast_mode"] is None else bool(r["fast_mode"])) if r else None
-
-    def _check_session_pin(self, b, session, run):
-        """Prove the session pin and permit configured tier transitions with unchanged permissions."""
-        if b["method"] not in ("a", "b", "c", "d") or not self._tiered(b["producer"]):
-            return
-        row = next((r for r in self.store.runs(b["id"]) if r["session_id"] == session and r["model"]), None)
-        pinned = (RunSpec(row["model"], row["effort"], row["permission_profile"] or "",
-                          fast=None if row["fast_mode"] is None else bool(row["fast_mode"])) if row else None)
-        configured = {}
-        for tier in ("free", "go", "api"):
-            try:
-                configured[tier] = run_spec(self.cfg, b["producer"], tier, role_of(b["method"]))
-            except ValueError:
-                continue
-        same_rights = pinned is not None and pinned.permission_profile == run.permission_profile and pinned.fast == run.fast
-        compatible = same_rights and pinned in configured.values() and run in configured.values()
-        if not compatible and same_rights:
-            # #6027: a session started on a model the operator explicitly retired for a tier may move to that tier's
-            # current model, with the same effort and rights. Nothing is retired by default (the session is held).
-            retired = registry(self.cfg).get(b["producer"], {}).get("retired_models") or {}
-            compatible = any(pinned.model in (retired.get(t) or []) and run == spec and pinned.effort == spec.effort
-                             for t, spec in configured.items())
-        if pinned != run and not compatible:
-            raise prompts.PromptError("기존 세션의 모델·effort·권한 핀이 현재 설정과 다르거나 확인되지 않아 재개하지 않습니다")
 
     def _agent_env(self) -> dict:
         """Worker CLIs run with the normal environment (and normal Git). The Git binaries on PATH are only recorded so
@@ -2429,10 +2009,10 @@ class Supervisor:
                     f"permission_profile={run.permission_profile or '(기본)'}, fast={run.fast}). "
                     "worktree와 세션을 보존합니다.",
                 )
-        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD, MAINTENANCE_METHOD) and not events:
+        if kind.startswith("fix") and b["method"] in (STAGE3_METHOD, MAINTENANCE_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
-        # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
-        problem = self._preflight(b["producer"], b["method"], b["model_tier"])
+        # Every launch proves the CLI again (cached once proven).
+        problem = self._preflight(b["producer"], b["method"])
         if problem and problem.startswith(PREFLIGHT_PENDING):
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
@@ -2453,17 +2033,13 @@ class Supervisor:
             agent_env = self._agent_env()
         except Exception as e:
             return self._fail(b, "ERROR", f"AI 실행 환경 설정 실패: {e}")
-        fix_context_digests = {}
         extra = {}
-        c_recovery_marker_key = None
-        ab_fresh_key = None
         if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
             try:
                 extra["git_dir"] = self.git.worktree_gitdir(Path(wt))
             except Exception as e:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
         def resume_checked(session, *args, **kwargs):
-            self._check_session_pin(b, session, run)
             if s2_resume_run_id is not None:
                 key = f"s2_unpushed_fix_resume_{b['id']}"
                 if kind != "fix_resume" or b["method"] != STAGE2_METHOD or self.store.get(key):
@@ -2475,7 +2051,7 @@ class Supervisor:
         try:
             run_env = self._launch_env(b, kind, agent_env)
             remote = "?"
-            if isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "s3_chunk_", "c_chunk_", "d_chunk_", "ab_chunk_")):
+            if isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "s3_chunk_")):
                 remote = self.git.remote_head(b["branch"])   # the one remote read, before any view/page/decision write
             if b["method"] == STAGE3_METHOD and kind.startswith("s3_chunk_"):
                 checkpoint = refine.ops(b).checkpoint(wt, b["shard"])
@@ -2645,73 +2221,26 @@ class Supervisor:
                                  f"Stage 2 {stage2.label(b['shard'], b['batch'])} local repair", log, ex, **extra)
                 else:
                     raise prompts.PromptError("Stage 2 finalization은 Supervisor의 deterministic 단계입니다")
-            elif b["method"] == literary.METHOD and kind in ("c_chunk_new", "c_chunk_resume", "c_chunk_recovery"):
-                prompt, baseline = self._c_chunk_prompt(b, kind, remote)
-                self.store.set(literary.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
-                if kind == "c_chunk_recovery":
-                    c_recovery_marker_key = literary.no_submission_recovery_key(b["id"], baseline["chunk_id"])
-                title = f"C {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
-                if kind == "c_chunk_resume":
-                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
-                else:
-                    if kind == "c_chunk_recovery":
-                        self._c_begin_recovery_launch(b, c_recovery_marker_key, log)
-                    h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
-            elif b["method"] == dchunk.METHOD and kind == "d_chunk_fix":
-                # Correction of the unsaved active chunk: same session, same run-start baseline (not rewritten), the CLI's
-                # own rejection reasons for exactly this chunk, and the decision file it left in place.
-                problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
-                if problem:
-                    return self._fail(b, "ERROR", problem)
-                rec = dchunk.read_active(Path(wt), b)
-                diag = dchunk.read_rejection(Path(wt), b, rec) if rec else None
-                if not sid or diag is None:
-                    raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
-                prompt = prompts.d_chunk_fix(b, rec["chunk_no"], dchunk.fix_problem(diag) + "\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\n" + dchunk.fix_bindings(rec, diag))
-                h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
-            elif b["method"] == dchunk.METHOD and kind in ("d_chunk_new", "d_chunk_resume"):
-                prompt, baseline = self._d_chunk_prompt(b, kind, remote)
-                self.store.set(dchunk.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
-                title = f"D {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
-                if kind == "d_chunk_resume":
-                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
-                else:
-                    h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
-            elif b["method"] in stage1ab.METHODS and kind in ("ab_chunk_new", "ab_chunk_retry"):
-                prompt, baseline, resume = self._ab_chunk_prompt(b, kind, remote)
-                self.store.set(stage1ab.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
-                title = f"{b['method'].upper()} {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
-                if resume:
-                    h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
-                else:
-                    if kind == "ab_chunk_retry" and not baseline.get("repair"):
-                        ab_fresh_key = self._ab_begin_fresh_launch(b, baseline["chunk_no"], log)
-                    h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif kind == "produce":
                 h = ad.start(prompts.produce(b), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
-                h = resume_checked(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
+                h = resume_checked(sid, prompts.recovery(b, checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             elif kind == "produce_recover":
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
-                h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run,
+                h = ad.start(prompts.recovery(b, checkpoint=checkpoint), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex, **extra)
             elif kind == "fix_resume":
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
                 if b["method"] == STAGE2_METHOD and checkpoint is None:
                     raise prompts.PromptError("Stage 2 리뷰 수정 재개에 현재 Part checkpoint가 없습니다")
-                source_context = ""
-                if b["method"] in ("a", "b", "c", "d"):
-                    source_context, fix_context_digests = self._producer_fix_context(b, events, session_id=sid)
-                h = resume_checked(sid, prompts.fix(b, events, True, source_context=source_context,
+                h = resume_checked(sid, prompts.fix(b, events, True,
                                                checkpoint=checkpoint, retry_note=s2_fix_note), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
                 context = ""
                 checkpoint = None
-                if b["method"] in ("a", "b", "c", "d"):
-                    context, fix_context_digests = self._producer_fix_context(b, events)
-                elif b["method"] == STAGE3_METHOD:
+                if b["method"] == STAGE3_METHOD:
                     head = self.git.head(Path(wt))
                     base = self.git.merge_base(Path(wt), head, f"origin/{self.cfg['base_branch']}")
                     context = self._s3_fix_context(b, events or [], base, head)
@@ -2754,8 +2283,7 @@ class Supervisor:
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
         fields = dict(state=state, pid=h.pid, exit_file=str(ex), log_file=str(log),
                       run_kind=kind, retry_after=None, error=None)
-        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_links_new", "s2_repair_new", "s2_finalize_new", "s3_chunk_new", "c_chunk_new", "c_chunk_recovery",
-                                         "d_chunk_new", "ab_chunk_new"):
+        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_links_new", "s2_repair_new", "s2_finalize_new", "s3_chunk_new"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
         if preclaimed_run_id is not None:
@@ -2765,10 +2293,6 @@ class Supervisor:
             run_id = self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
                                         model=run.model, effort=run.effort, permission_profile=run.permission_profile,
                                         fast_mode=run.fast)
-        if c_recovery_marker_key is not None:
-            self._c_record_recovery_launch(c_recovery_marker_key, log, run_id)
-        if ab_fresh_key is not None:
-            self._ab_record_fresh_launch(ab_fresh_key, log, run_id)
         if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
             repair_state = self._stage2_repair_state(b, required=True)
             current = repair_state.get("current")
@@ -2781,24 +2305,17 @@ class Supervisor:
             keys = [e["key"] for e in events]
             if preclaimed_run_id is not None:
                 pass  # Maintainer assignment was durably recorded before starting the process.
-            elif b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and kind.startswith("fix"):
+            elif b["method"] == STAGE3_METHOD and kind.startswith("fix"):
                 self.store.claim_events(b["id"], b["pr_number"], b["head_sha"], keys, run_id)
                 self.store.set(f"fix_claim_{b['id']}", json.dumps({
                     "pr": b["pr_number"], "head_sha": b["head_sha"], "event_keys": keys,
                     "run_id": run_id, "status": "CLAIMED",
                 }, sort_keys=True))
-                if fix_context_digests:
-                    self.store.set(f"fix_context_pending_{b['id']}", json.dumps({
-                        "run_id": run_id, "digests": fix_context_digests,
-                    }, sort_keys=True))
-                else:
-                    self.store.delete(f"fix_context_pending_{b['id']}")
             else:  # Stage 2 retains its existing event lifecycle; its behavior is outside #2322.
                 self.store.mark_handled(b["id"], b["pr_number"], b["head_sha"], keys)
-        tier = f", tier={b['model_tier']}" if self._tiered(b["producer"]) else ""
         permission = (f", permission_profile={run.permission_profile or '(기본)'}"
                       if registry(self.cfg)[b["producer"]]["adapter"] == "codex" else "")
-        self.store.log(b["id"], f"{state} 시작 ({kind}, model={run.model}, effort={run.effort}{permission}{tier})")
+        self.store.log(b["id"], f"{state} 시작 ({kind}, model={run.model}, effort={run.effort}{permission})")
 
     def _retry_denied_success(self, b) -> bool:
         """Retry after a denial pause: if the last exited run was a successful one (own session/result evidence) whose only
@@ -2875,18 +2392,6 @@ class Supervisor:
             if isinstance(b["run_kind"], str) and b["run_kind"].startswith("s3_chunk_"):
                 self.maint.adopt_released_baseline(b)
                 return self._relaunch_stage3_chunk(b)
-        if self._c_chunk_run(b) and not b["pr_number"]:
-            return self._relaunch_c(b)
-        if b["method"] == literary.METHOD and not b["pr_number"] and b["run_kind"] == "c_finalize":
-            return self._c_finalize(b)
-        if self._d_chunk_run(b) and not b["pr_number"]:
-            return self._relaunch_d(b)
-        if b["method"] == dchunk.METHOD and not b["pr_number"] and b["run_kind"] == "d_finalize":
-            return self._d_finalize(b)
-        if self._ab_chunk_run(b) and not b["pr_number"]:
-            return self._relaunch_ab(b)
-        if b["method"] in stage1ab.METHODS and not b["pr_number"] and b["run_kind"] == "ab_finalize":
-            return self._ab_finalize(b)
         if b["method"] == STAGE2_METHOD and not b["pr_number"] and b["run_kind"] in ("s2_links_new", "s2_links_fix"):
             if checkpoint := stage2.checkpoint(b["worktree"], b["shard"], b["batch"]):
                 if checkpoint.get("optional_review_complete"):
@@ -3030,11 +2535,7 @@ class Supervisor:
                                                  + self._maintainer_run_facts(b), "fix")
             if b["method"] == STAGE2_METHOD and b["run_kind"] == "fix_resume" and self.store.get(f"s2_unpushed_fix_resume_{b['id']}"):
                 return self._fail(b, "ERROR", "Stage 2 리뷰 수정 재개 결과가 확인되지 않아 새 세션을 시작하지 않습니다. worktree와 PR을 보존합니다.")
-            if b["method"] in ("a", "b", "c", "d") and self._completed_fix_unpushed(b):
-                # Retry after the fix run finished but its owned commit never reached the PR (#5987): resume the
-                # completion path (push, then reply/complete events) instead of relaunching or reading it as divergence.
-                return self._run_ok(b)
-            if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD):
+            if b["method"] == STAGE3_METHOD:
                 return self._retry_producer_fix(b)
             return self._launch(b, self._fix_kind(b), self._events(b)[1])
         if not b["pr_number"]:
@@ -3108,42 +2609,27 @@ class Supervisor:
             self.store.set_run_session(b["id"], sid)
             b = self.store.batch(b["id"])
         self._record_progress(b)
-        policy_chunk = self._ab_policy_skip_chunk(b)
-        policy_refusal = (ad.confirmed_prompt_refusal(Path(b["log_file"])) if policy_chunk is not None else None)
-        tolerant = {"tolerate_denied": True} if (self._ab_chunk_run(b) or self._s2_chunk_run(b)) \
+        tolerant = {"tolerate_denied": True} if self._s2_chunk_run(b) \
             and getattr(ad, "supports_tolerate_denied", False) else {}
         problem = ad.run_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"], **tolerant)
-        if problem and not policy_refusal:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
+        if problem:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
             state, msg = problem
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
             return self._fail(b, state, msg)
         if ad.alive(b["pid"]):
-            if not (self._drain.is_set() and b["method"] == MAINTENANCE_METHOD) and b["state"] == "PRODUCING" and not (b["method"] == STAGE3_METHOD and
-                    str(b["run_kind"] or "").startswith("s3_chunk_")) and not self._c_chunk_run(b) and not self._d_chunk_run(b) \
-                    and not self._ab_chunk_run(b):
-                self._adopt_pr_while_running(b)
-            return
+            return   # Claude/Codex: a PR is taken over only after the run exited and its final result was verified
         code = ad.exit_code(Path(b["exit_file"]))
         # One transaction: pid=None, the run's exit status and the "outcome not yet committed" marker (#3790), for every
         # exit (0, non-zero, missing). Until a state/backoff/new-run write clears it, a new Supervisor re-derives this exact
         # verdict, unless the run's own official save already happened (see `_reapply_exit_verdict`).
         self.store.finish_runs(b["id"], code, clear_pid=True, verdict=True)
         b = self.store.batch(b["id"])
-        self._apply_exit_verdict(b, code, policy_chunk, policy_refusal)
+        self._apply_exit_verdict(b, code)
 
     def _exit_output_saved(self, b) -> bool:
         """The exact output of the run that just ended is already officially saved (bound to its start baseline)."""
         try:
-            if self._ab_chunk_run(b):
-                baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "")
-                wt = Path(b["worktree"])
-                chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(wt, b), baseline["chunk_no"])
-                return bool(stage1ab.chunk_saved(wt, b, chunk))
-            if self._d_chunk_run(b) and dchunk.read_active(Path(b["worktree"]), b) is None:
-                # accepted and its active scratch already cleaned: the run's own baseline chunk is in the verified prefix
-                baseline = json.loads(self.store.get(dchunk.run_start_key(b["id"])) or "")
-                return dchunk.verified_prefix(Path(b["worktree"]), b)[0] >= int(baseline["chunk_no"])
             return bool(self._saved_chunk_for_run(b))
         except Exception:   # unknown is not saved: the verdict is re-derived, never skipped
             return False
@@ -3152,10 +2638,8 @@ class Supervisor:
         """The checks the normal path applies before it accepts stored output: blocking failure class, identity, completion."""
         try:
             ad = self._adapter(b["producer"])
-            if self._goat_429(self._run_of_log(b["log_file"])):
-                return False   # re-entry must reach the GOAT 429 hold, never accept the saved output and move on
             if code not in (None, 0) and self._classify_run(b["producer"], b["log_file"]) in (
-                    "effort", "auth", "usage_limit", "free_quota", "fast_unavailable"):
+                    "effort", "auth", "usage_limit", "fast_unavailable"):
                 return False
             if self._saved_chunk_identity_problem(b):
                 return False
@@ -3193,28 +2677,20 @@ class Supervisor:
             self.store.delete(exit_verdict_key(b["id"]))
             return False
         self.store.log(b["id"], f"run #{run_id}의 종료 판정이 확정되기 전에 중단되어 같은 증거로 판정을 다시 적용합니다 (AI 재실행 없음).", "warn")
-        policy_chunk = self._ab_policy_skip_chunk(b)
-        policy_refusal = (self._adapter(b["producer"]).confirmed_prompt_refusal(Path(b["log_file"]))
-                          if policy_chunk is not None else None)
-        self._apply_exit_verdict(b, code, policy_chunk, policy_refusal)
+        self._apply_exit_verdict(b, code)
         return True
 
-    def _apply_exit_verdict(self, b, code, policy_chunk, policy_refusal) -> None:
+    def _apply_exit_verdict(self, b, code) -> None:
         """Classify the run that just ended. Nothing here may depend on the LaunchGate: only a truly new AI run asks for a
         permit, at its own first launch-specific write.
 
         An outcome write (state / backoff / a new run) clears the marker in its own transaction (Store). A handler that
         completes with no such write (a wait it records itself, e.g. a pending query or a fix-head lag) clears it here. A
         `LaunchDenied` or a crash leaves the marker, so the next Supervisor re-derives this exact verdict."""
-        self._apply_exit_verdict_do(b, code, policy_chunk, policy_refusal)
+        self._apply_exit_verdict_do(b, code)
         self.store.delete(exit_verdict_key(b["id"]))
 
-    def _apply_exit_verdict_do(self, b, code, policy_chunk, policy_refusal) -> None:
-        if self._goat_429(self._run_of_log(b["log_file"])):
-            # Whatever the exit code and whatever was saved: no relaunch, no next chunk. Everything is kept for Retry.
-            return self._fail(b, "PAUSED", self.GOAT_429_HOLD)
-        if policy_refusal:
-            return self._handle_ab_policy_refusal(b, policy_chunk)
+    def _apply_exit_verdict_do(self, b, code) -> None:
         if code is None:
             saved_chunk = self._saved_chunk_for_run(b)
             stage3_answer_only = self._stage3_answer_only(b)
@@ -3248,8 +2724,7 @@ class Supervisor:
         thread id and turn record). Reads the log and GitHub only, so a retryable query failure re-runs just this."""
         ad = self._adapter(b["producer"])
         saved = self._saved_chunk_for_run(b)
-        answer_only = ((self._ab_chunk_run(b) and self._ab_chunk_response(b))
-                       or self._stage3_answer_only(b))
+        answer_only = self._stage3_answer_only(b)
         if saved or answer_only:
             if problem := self._saved_chunk_identity_problem(b):
                 return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
@@ -3277,8 +2752,8 @@ class Supervisor:
         required step leaves the PR missing, unpushed or failing verify, so it stays PAUSED. False: already failed."""
         denied = self._adapter(b["producer"]).denied_actions(log_file)
         if denied is None:
-            if (self._ab_chunk_run(b) or ((self._s2_chunk_run(b) or self._s2_links_run(b) or self._s2_repair_run(b))
-                                          and b["state"] == "PRODUCING")
+            if (((self._s2_chunk_run(b) or self._s2_links_run(b) or self._s2_repair_run(b))
+                 and b["state"] == "PRODUCING")
                     or (self._stage3_chunk_run(b) and b["state"] == "PRODUCING"
                         and (self._stage3_chunk_saved(b) or self._stage3_answer_only(b)))):
                 self.store.log(b["id"], "answer-only 청크 권한 결과가 없어도 출력·저장 및 부작용 경계로 판정합니다.", "warn")
@@ -3287,12 +2762,12 @@ class Supervisor:
             return False
         if not denied:
             return True
-        if (self._ab_chunk_run(b) or ((self._s2_chunk_run(b) or self._s2_links_run(b) or self._s2_repair_run(b))
-                                      and b["state"] == "PRODUCING")
+        if (((self._s2_chunk_run(b) or self._s2_links_run(b) or self._s2_repair_run(b))
+             and b["state"] == "PRODUCING")
                 or (self._stage3_chunk_run(b) and b["state"] == "PRODUCING"
                     and (self._stage3_chunk_saved(b) or self._stage3_answer_only(b)))):
             # Answer-only: a refused tool call is a metric, not a failure. The answer is judged by its block and its save,
-            # and any real side effect (dirty tracked tree, moved HEAD/remote) by `_run_ok_ab_chunk`.
+            # and any real side effect (dirty tracked tree, moved HEAD/remote) by its boundary check.
             if self._stage3_chunk_run(b):
                 problem = self._stage3_chunk_boundary_problem(b)
                 if problem:
@@ -3356,7 +2831,7 @@ class Supervisor:
             if self.git.dirty(wt).strip():
                 return "worktree에 미커밋 변경이 있습니다"
             if b["method"] != STAGE2_METHOD:
-                # A/B/C/D batches have no Part verify: the same proof as a clean run is the owned open PR carrying the
+                # Batches without a Part verify: the same proof as a clean run is the owned open PR carrying the
                 # local HEAD from a clean worktree (the review gates validate the content).
                 return None if self.git.head(wt) == info["head_sha"] else "worktree HEAD가 PR HEAD와 다릅니다(push 안 됨)"
             bb, pp = stage2.split_key(b["batch"])
@@ -3404,22 +2879,14 @@ class Supervisor:
         return True
 
     def _task_report_files(self, b) -> list[str]:
-        """Worktree-relative shared-defect report path of every task of a parallel batch (Stage 2 Part or D)."""
+        """Worktree-relative shared-defect report path of every task of a parallel Stage 2 Part."""
         if b["method"] == STAGE3_METHOD:
             return []   # answer-only chunks: no per-task shared-defect file (#3149)
-        if b["method"] == dchunk.METHOD:
-            return [dparallel.defect_path(b, row["task"]) for row in self.store.task_rows(b["id"])]
-        if b["method"] == literary.METHOD:
-            return [cparallel.defect_path(b, row["task"]) for row in self.store.task_rows(b["id"])]
         return [stage2.task_path(row["task"], "shared-defect.json") for row in self.store.task_rows(b["id"])]
 
     def _task_report_row(self, b, rel: str):
         for row in self.store.task_rows(b["id"]):
-            if b["method"] == dchunk.METHOD:
-                path = dparallel.defect_path(b, row["task"])
-            elif b["method"] == literary.METHOD:
-                path = cparallel.defect_path(b, row["task"])
-            elif b["method"] == STAGE2_METHOD:
+            if b["method"] == STAGE2_METHOD:
                 path = stage2.task_path(row["task"], "shared-defect.json")
             else:
                 continue
@@ -3483,7 +2950,7 @@ class Supervisor:
         return False
 
     def _record_progress(self, b) -> None:
-        """Observed progress of the current worktree only: the final file's records, else saved chunks/senses."""
+        """Observed progress of the current worktree only: Stage 3 checkpoint chunks or Stage 2 saved candidates."""
         if b["method"] == STAGE3_METHOD:
             try:
                 done, total = stage3.progress(refine.ops(b).checkpoint(b["worktree"], b["shard"]))
@@ -3503,28 +2970,9 @@ class Supervisor:
             if changed:
                 self.store.update(b["id"], **changed)
             return
-        f = Path(b["worktree"]) / "data/relation-candidates" / b["shard"] / \
-            f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"
-        try:
-            with open(f, "rb") as fh:
-                n = sum(1 for _ in fh)
-            obs, fields = None, {"records_done": n}
-        except OSError:
-            obs = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
-            fields = {"records_done": None}   # the final file is not there (any more): a past count is not evidence
-        fields.update(progress_kind=obs[0] if obs else None, progress_done=obs[1] if obs else None,
-                      progress_total=obs[2] if obs else None)
-        changed = {k: v for k, v in fields.items() if v != b[k]}
-        if changed:
-            self.store.update(b["id"], **changed)
+        # Maintainer batches have no saved-progress artifact (#9933 removed the Stage 1 Candidate counters).
 
     def _run_ok(self, b) -> None:
-        if self._c_chunk_run(b) and b["state"] == "PRODUCING":
-            return self._run_ok_c_chunk(b)
-        if self._d_chunk_run(b) and b["state"] == "PRODUCING":
-            return self._run_ok_d_chunk(b)
-        if self._ab_chunk_run(b) and b["state"] == "PRODUCING":
-            return self._run_ok_ab_chunk(b)
         if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
             return self._run_ok_stage2_chunk(b)
@@ -3541,11 +2989,9 @@ class Supervisor:
         if b["state"] == "FIXING" and b["method"] == STAGE3_METHOD and \
                 (baseline := self._refine_fix(b).baseline(b)) is not None and self._refine_fix(b).apply(b, baseline):
             return
-        if b["state"] == "FIXING" and b["method"] in ("a", "b", "c", "d"):
-            self._remember_fix_context_delivery(b)
         try:
             if b["state"] == "PRODUCING":
-                info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
+                info = self._find_pr(b)
                 if info is None:
                     if b["method"] == MAINTENANCE_METHOD:
                         return self._maintainer_without_pr(b)
@@ -3573,7 +3019,7 @@ class Supervisor:
         if b["state"] == "FIXING":
             if self._check_fix_head(b, info) != "ok":
                 return
-            if b["method"] in ("a", "b", "c", "d", MAINTENANCE_METHOD):
+            if b["method"] == MAINTENANCE_METHOD:
                 if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
                     return self._fail(b, "ERROR", "리뷰 수정 완료 PR의 번호 또는 소유 브랜치가 다릅니다. worktree·PR을 보존합니다.")
                 if info.get("state") != "open" or info.get("merged"):
@@ -6735,8 +6181,7 @@ class Supervisor:
 
     def _stage2_chunk_boundary_problem(self, b, key: str | None = None, base_override: dict | None = None) -> str | None:
         """Fail closed if a chunk run changed or lost the Part's owned HEAD or remote branch ref."""
-        label = {STAGE2_METHOD: "Stage 2", literary.METHOD: "C", dchunk.METHOD: "D"}.get(
-            b["method"], str(b["method"]).upper())
+        label = "Stage 2" if b["method"] == STAGE2_METHOD else str(b["method"]).upper()
         raw = json.dumps(base_override) if base_override is not None else self.store.get(key or stage2.run_start_key(b["id"]))
         if raw is None:
             return f"{label} 청크의 Git 경계 기준이 없어 Retry를 중단합니다. worktree와 브랜치를 보존합니다."
@@ -7562,743 +7007,7 @@ class Supervisor:
         self.store.log(b["id"], f"Stage 2 청크 저장 거부: {detail[:300]}", "warn")
         return self._stage2_rejected(b, detail)
 
-    # ---- Method C: serial chunks, then deterministic finalization (Issue #2033) ----------------------------------
-    @staticmethod
-    def _c_chunk_run(b) -> bool:
-        return b["method"] == literary.METHOD and isinstance(b["run_kind"], str) and b["run_kind"].startswith("c_chunk_")
-
-    def _c_db(self) -> str:
-        return str(Path(self.cfg["literary_index_path"].strip()).expanduser())
-
-    def _c_env(self, b) -> dict:
-        return self._launch_env(b, "c_cli", self.env)
-
-    def _c_head_problem(self, b, wt: Path, base_override: dict | None = None, pending: dict | None = None) -> str | None:
-        """The checkpoint is bound to the HEAD it was created on; the only later HEAD allowed is our own Candidate commit,
-        or (#3349) the execution baseline's HEAD when it is a proven Maintainer integration of the checkpoint HEAD.
-        With `base_override`/`pending` this is a pure query (nothing is written)."""
-        pure = base_override is not None
-        try:
-            created = literary.checkpoint_head(wt, b)
-            head = self.git.head(wt)
-            run_base = None
-            if cparallel.is_parallel(self.store, b):   # the checkpoint keeps its original identity; the run follows ONE baseline
-                run_base = base_override if pure else cparallel.baseline(self.store, b)
-                created = run_base["head"] if run_base else created
-            elif pure:
-                run_base = base_override
-            else:
-                try:
-                    run_base = json.loads(self.store.get(literary.run_start_key(b["id"])) or "null")
-                except ValueError:
-                    run_base = None
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return f"checkpoint/HEAD 결속을 확인하지 못했습니다: {e}"
-        if head == created or head == self.store.get(f"c_commit_head_{b['id']}"):
-            return None
-        if (not cparallel.is_parallel(self.store, b) and isinstance(run_base, dict) and run_base.get("head") == head):
-            try:   # serial C: the checkpoint HEAD never moves; the run baseline may follow an approved integration only
-                if self.maint._released_integration_proof(b, literary.checkpoint_head(wt, b), head, pending=pending):
-                    return None
-            except TRANSIENT:
-                raise
-            except Exception:
-                pass
-        try:   # a crash between our commit and recording it: accept only that exact commit, then remember it
-            if self.git.is_candidate_child(wt, created, literary.names(b).output):
-                if not pure:
-                    self.store.set(f"c_commit_head_{b['id']}", head)
-                return None
-        except ResourceFenced:
-            raise
-        except GitError:
-            pass
-        return f"worktree HEAD {head[:10]}가 checkpoint 기준 HEAD {created[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
-
-    def _launch_c_next(self, b) -> None:
-        self._guarded(b, "prelaunch", self._launch_c_next_do, entrypoint="launch_c_next")
-
-    def _launch_c_next_do(self, b) -> None:
-        """Advance Method C: init once, then the active chunk (resume or render a new one), or finalize when all done."""
-        wt = Path(b["worktree"])
-        if self.parallel_new_c and self.cp.needs_begin(b):
-            return self.cp.begin(b)   # a new batch runs its chunks as bounded parallel tasks (#3076)
-        try:
-            if not literary.checkpoint_exists(wt, b):
-                literary.init_checkpoint(self.runner, self._c_env(b), wt, b, self._c_db())
-            elif problem := self._c_head_problem(b, wt):
-                return self._fail(b, "ERROR", problem + " worktree를 보존합니다.")
-            rec = literary.read_active(wt, b)
-            if rec is not None:
-                if literary.chunk_finished(self.runner, self._c_env(b), wt, b, rec):
-                    literary.clear_active(wt)
-                    rec = None
-                else:
-                    literary.read_view(wt, rec)   # the view must still be the one this record was written for
-            if rec is None and literary.all_done(literary.summary(self.runner, self._c_env(b), wt, b)):
-                return self._c_finalize(b)
-            for _ in range(60):   # chunks that only advance ZERO_HITS render empty: re-evaluate, bounded
-                if rec is not None:
-                    break
-                view = literary.render_chunk(self.runner, self._c_env(b), wt, b, self._c_db())
-                ids, failed, unsearchable = literary.view_ids(view)
-                done, total, zero, _unread = literary.progress_numbers(view)
-                if failed:
-                    literary.write_active(wt, b, view, ids, self.git.head(wt), self._c_next_no(b))
-                    return self._fail(b, "PAUSED", f"SEARCH_FAILED sense {failed}: 승인 index 진단이 필요합니다 (stop_and_report). "
-                                      "AI를 시작하지 않았습니다.")
-                if not ids:
-                    if literary.all_done(literary.summary(self.runner, self._c_env(b), wt, b)):
-                        return self._c_finalize(b)
-                    if zero == 0:
-                        return self._fail(b, "ERROR", "chunk가 항목도 ZERO_HITS 진전도 없이 비었는데 미완료 sense가 남았습니다. 보존합니다.")
-                    continue
-                literary.sense_report(self.runner, self._c_env(b), wt, b, ids)   # unknown / damaged ids fail closed
-                rec = literary.write_active(wt, b, view, ids, self.git.head(wt), self._c_next_no(b))
-            if rec is None:
-                return self._fail(b, "ERROR", "chunk가 60번 연속 비어 진행하지 않습니다. 보존합니다.")
-        except ResourceFenced:
-            raise
-        except (literary.LiteraryError, OSError, ValueError, GitError) as e:
-            return self._fail(b, "ERROR", f"Method C 상태 확인 실패: {e}. worktree를 보존합니다.")
-        resume = bool(b["session_id"]) and self.store.get(literary.run_start_key(b["id"])) is not None
-        return self._launch(b, "c_chunk_resume" if resume else "c_chunk_new")
-
-    def _c_next_no(self, b) -> int:
-        return 1 + sum(1 for r in self.store.runs(b["id"]) if r["kind"] == "c_chunk_new")
-
-    def _c_chunk_prompt(self, b, kind: str, remote="?") -> tuple[str, dict]:
-        """(prompt, run-start baseline) for the active chunk. A resume sends only the still-open sense ids."""
-        wt = Path(b["worktree"])
-        rec = literary.read_active(wt, b)
-        if rec is None:
-            raise prompts.PromptError("활성 청크 기록이 없습니다")
-        view = literary.read_view(wt, rec)
-        checkpoint = literary.names(b).checkpoint
-        note = rec.get("note", "")
-        if kind == "c_chunk_resume":
-            if rec.get("repair"):   # these senses are already stored: all of them are re-judged
-                remaining = list(rec["sense_ids"])
-            else:
-                state = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
-                remaining = [s["sense_id"] for s in state["senses"] if not s["done"]]
-            if not remaining:
-                raise prompts.PromptError("이어갈 미완료 sense가 없습니다")
-            prompt = prompts.c_chunk_resume(rec["chunk_no"], checkpoint, remaining, note=rec.get("note", ""))
-        elif kind == "c_chunk_recovery":
-            if rec.get("repair"):
-                raise prompts.PromptError("무제출 복구는 Candidate v1 repair 청크에 사용할 수 없습니다")
-            raw_recovery = self.store.get(literary.no_submission_recovery_key(b["id"], rec["chunk_id"]))
-            try:
-                recovery = json.loads(raw_recovery or "null")
-            except ValueError:
-                recovery = None
-            if (not isinstance(recovery, dict)
-                    or recovery.get("policy_version") != literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION
-                    or recovery.get("status") != "used"
-                    or recovery.get("chunk_id") != rec["chunk_id"]):
-                raise prompts.PromptError("새 세션 무제출 복구에 현재 청크의 1회 정책 증거가 없습니다")
-            state = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
-            remaining = [sense["sense_id"] for sense in state["senses"] if not sense["done"]]
-            if not remaining:
-                raise prompts.PromptError("새 세션 무제출 복구에 미완료 Sense가 없습니다")
-            view = literary.view_for_senses(view, remaining)
-            note += ("무제출 복구 정책 v1: 직전 정상 종료 실행은 공식 submit 호출 0회였고 submit/diag 파일도 없었다. "
-                     "새 self-contained 세션에서 기존 active view의 아래 미완료 Sense만 처리한다. 이미 checkpoint에 "
-                     "저장된 Sense는 다시 판독하거나 제출하지 않는다. 제공된 같은 view 증거를 우선 재사용하고, "
-                     "기존 view로 판독할 수 없을 때에만 카드에 정한 공식 추가 조회를 수행한다. 아래 Sense의 source-sense "
-                     "판독과 C의 발굴·형태 검사는 정해진 전체 계약대로 수행하고, "
-                     "완료 Sense를 모두 포함한 단일 제출을 실행한다. 필수 검색·출처 근거가 불충분하거나 정당한 stop 사유가 "
-                     "있으면 추측·technical skip 없이 그 사유를 보고한다: " + ", ".join(remaining) + "\n")
-            card_bytes = len(prompts.c_chunk(b, rec["chunk_no"], checkpoint, view="", note=note).encode("utf-8"))
-            if literary.delivery(card_bytes, view) == "inline":
-                prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, view=view, note=note)
-            else:
-                prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, pages=literary.write_pages(wt, view), note=note)
-        else:
-            remaining = list(rec["sense_ids"])
-            missing_session_resume = self.store.get(literary.run_start_key(b["id"])) is not None
-            if missing_session_resume and not rec.get("repair"):
-                state = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
-                remaining = [sense["sense_id"] for sense in state["senses"] if not sense["done"]]
-                if not remaining:
-                    raise prompts.PromptError("새 세션을 시작할 미완료 Sense가 없습니다")
-                view = literary.view_for_senses(view, remaining)
-                note += ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크의 미완료 Sense만 이어간다. "
-                         "제공된 view와 제출 배열에는 아래 남은 ID만 포함하고, checkpoint에 저장된 Sense는 "
-                         "다시 판독하거나 제출하지 않는다: " + ", ".join(remaining) + "\n")
-            elif missing_session_resume:
-                note += ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. 이미 checkpoint에 완료된 Sense와 "
-                         "Candidate v1 복구 대상 Sense만 처리한다.\n")
-            card_bytes = len(prompts.c_chunk(b, rec["chunk_no"], checkpoint, view="", note=note).encode("utf-8"))
-            if literary.delivery(card_bytes, view) == "inline":
-                prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, view=view, note=note)
-            else:   # only this chunk falls back to pages; a failure here starts no AI
-                prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, pages=literary.write_pages(wt, view),
-                                         note=note)
-        baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
-                    "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote,
-                    "chunk_id": rec["chunk_id"], "chunk_no": rec["chunk_no"],
-                    "retry_state": literary.retry_state(wt, b, rec, remaining,
-                                                         session_available=bool(b["session_id"]))}
-        if kind == "c_chunk_recovery":
-            baseline["recovery_policy_version"] = literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION
-            baseline["recovery_source_run_id"] = recovery.get("source_run_id")
-        return prompt, baseline
-
-    def _c_chunk_saved(self, b) -> bool:
-        """Every sense of the active chunk is done by the CLI's own meaning (asked only when a run ended / on recovery)."""
-        try:
-            rec = literary.read_active(Path(b["worktree"]), b)
-            return rec is not None and literary.chunk_finished(self.runner, self._c_env(b), Path(b["worktree"]), b, rec)
-        except (literary.LiteraryError, OSError, ValueError):
-            return False
-
-    def _c_chunk_progress(self, b):
-        """Return the active C record, exact pending Sense IDs, and the CLI's completion decision."""
-        wt = Path(b["worktree"])
-        rec = literary.read_active(wt, b)
-        if rec is None:
-            return None, [], False
-        if rec.get("repair"):
-            done = literary.chunk_finished(self.runner, self._c_env(b), wt, b, rec)
-            return rec, [] if done else list(rec["sense_ids"]), done
-        report = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
-        pending = [sense["sense_id"] for sense in report["senses"] if not sense["done"]]
-        return rec, pending, not pending
-
-    def _c_no_submission_outcome(self, b, rec, pending):
-        """Classify the latest successful C run from its exact start baseline and adapter evidence."""
-        if rec is None:
-            return {"status": "checkpoint_or_chunk_mismatch"}
-        runs = self.store.runs(b["id"])
-        run = dict(runs[0]) if runs else None
-        try:
-            run_start = json.loads(self.store.get(literary.run_start_key(b["id"])) or "null")
-        except ValueError:
-            run_start = None
-        log_file = run.get("log_file") if isinstance(run, dict) else None
-        return literary.no_submission_result(
-            Path(b["worktree"]), b, rec, run, run_start, pending,
-            final_answer=final_answer(Path(log_file)) if log_file else None,
-            submit_call_count=submit_attempts(Path(log_file)) if log_file else None,
-        )
-
-    def _c_recovery_launch_registered(self, b, marker) -> bool:
-        """Whether a recovery launch intent has a durable run or batch record."""
-        launch_log = marker.get("launch_log_file") if isinstance(marker, dict) else None
-        launch_run_id = marker.get("launch_run_id") if isinstance(marker, dict) else None
-        source_run_id = marker.get("source_run_id") if isinstance(marker, dict) else None
-        for run in self.store.runs(b["id"]):
-            if run["kind"] != "c_chunk_recovery":
-                continue
-            if launch_run_id is not None and run["id"] == launch_run_id:
-                return True
-            if launch_log and run["log_file"] == launch_log:
-                return True
-            # Old markers have no launch identity. A later recovery run is still durable evidence that it started.
-            if not launch_log and type(source_run_id) is int and run["id"] > source_run_id:
-                return True
-        current = self.store.batch(b["id"])
-        return bool(current and current["run_kind"] == "c_chunk_recovery" and current["pid"] is not None
-                    and (not launch_log or current["log_file"] == launch_log))
-
-    def _c_begin_recovery_launch(self, b, marker_key: str, log: Path) -> None:
-        """Persist a unique launch intent before spawning; unresolved intents must never spawn twice."""
-        try:
-            marker = json.loads(self.store.get(marker_key) or "null")
-        except ValueError:
-            marker = None
-        if (not isinstance(marker, dict) or marker.get("status") != "used"
-                or marker.get("launch_state") != "not_started"
-                or self._c_recovery_launch_registered(b, marker)):
-            raise prompts.PromptError("C 무제출 복구의 시작 상태가 불명확해 두 번째 프로세스를 시작하지 않습니다")
-        marker["launch_state"] = "starting"
-        marker["launch_log_file"] = str(log)
-        self.store.set(marker_key, json.dumps(marker, sort_keys=True))
-
-    def _c_record_recovery_launch(self, marker_key: str, log: Path, run_id: int) -> None:
-        """Link the pre-spawn intent to the run row after both durable launch records exist."""
-        try:
-            marker = json.loads(self.store.get(marker_key) or "null")
-        except ValueError:
-            marker = None
-        if (isinstance(marker, dict) and marker.get("launch_state") == "starting"
-                and marker.get("launch_log_file") == str(log)):
-            marker["launch_state"] = "registered"
-            marker["launch_run_id"] = run_id
-            self.store.set(marker_key, json.dumps(marker, sort_keys=True))
-
-    def _c_legacy_recovery_evidence(self, b, marker):
-        """Revalidate the one owner-claimed bridge from a pre-policy no-submit guard."""
-        if (not isinstance(marker, dict)
-                or marker.get("policy_version") != literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION
-                or marker.get("status") != "claimed"):
-            return False
-        try:
-            rec, pending, _done = self._c_chunk_progress(b)
-            if (rec is None or rec.get("repair") is True or rec.get("chunk_id") != marker.get("chunk_id")
-                    or rec.get("view_sha256") != marker.get("view_sha256")
-                    or pending != marker.get("pending_sense_ids")):
-                return False
-            outcome = self._c_no_submission_outcome(b, rec, pending)
-            latest = self._last_run(b)
-            return (outcome.get("status") == "no_submission" and latest is not None
-                    and latest["id"] == marker.get("source_run_id")
-                    and outcome.get("source_run_id") == latest["id"])
-        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-            return False
-
-    def _c_claim_legacy_no_submission_retry(self, b, guard):
-        """Atomically consume the legacy owner's one deliberate retry without resetting its auto budget."""
-        try:
-            rec, pending, _done = self._c_chunk_progress(b)
-            if rec is None or rec.get("repair") is True:
-                return False
-            key = literary.no_submission_recovery_key(b["id"], rec["chunk_id"])
-            if self.store.get(key) is not None:
-                return False
-            if not control._legacy_c_no_submission_retry_available(self.store, b, guard):
-                return False
-            outcome = self._c_no_submission_outcome(b, rec, pending)
-            latest = self._last_run(b)
-            if (outcome.get("status") != "no_submission" or latest is None
-                    or outcome.get("source_run_id") != latest["id"]):
-                return False
-            marker = {"policy_version": literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION,
-                      "status": "claimed", "source_run_id": latest["id"],
-                      "chunk_id": rec["chunk_id"], "chunk_no": rec["chunk_no"],
-                      "view_sha256": rec["view_sha256"], "pending_sense_ids": list(pending)}
-            self.store.set(key, json.dumps(marker, sort_keys=True))
-            return True
-        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-            return False
-
-    def _c_start_no_submission_recovery(self, b, rec, pending, outcome) -> bool:
-        """Persist the one bounded fresh-session recovery before launching it."""
-        if not isinstance(outcome, dict) or outcome.get("status") != "no_submission" or rec is None:
-            return False
-        key = literary.no_submission_recovery_key(b["id"], rec["chunk_id"])
-        if self.store.get(key) is not None:
-            return False
-        latest = self._last_run(b)
-        if latest is None or latest["id"] != outcome.get("source_run_id"):
-            return False
-        marker = {"policy_version": literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION, "status": "used",
-                  "launch_state": "not_started",
-                  "source_run_id": latest["id"], "chunk_id": rec["chunk_id"],
-                  "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"],
-                  "pending_sense_ids": list(pending)}
-        with self.launch_gate.permit():   # the one-shot recovery is claimed only by an admitted launch
-            self.store.set(key, json.dumps(marker, sort_keys=True))
-            self.store.update(b["id"], retries=0, retry_after=None, error=None)
-            self.store.log(b["id"], f"C chunk {rec['chunk_no']:03d}: 정상 종료·submit 호출 없음으로 확인했습니다. "
-                           "기존 view와 checkpoint를 보존하고 미완료 Sense만 새 세션에서 한 번 재개합니다.", "warn")
-            self._launch(self.store.batch(b["id"]), "c_chunk_recovery")
-        return True
-
-    def _c_incomplete_reason_codes(self, b, rec, *, report_valid: bool, producer_outcome=None) -> list[str]:
-        """Classify only the observed C recovery blockers; never expose submission contents."""
-        codes = []
-        if not report_valid or rec is None:
-            codes.append("checkpoint_or_chunk_mismatch")
-        if not b["session_id"]:
-            codes.append("session_unavailable")
-        target = self._chunk_retry_target(b)
-        if target is not None:
-            try:
-                auto_used = int(self.store.get(self._auto_retry_key(b, target)) or 0)
-            except (TypeError, ValueError):
-                auto_used = 1
-            if auto_used >= 1:
-                codes.append("retry_budget_exhausted")
-        if rec is None:
-            return codes
-
-        submit = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json"
-        diagnostic = submit.with_name(submit.name + ".diag.json")
-        parsed = None
-        status = producer_outcome.get("status") if isinstance(producer_outcome, dict) else None
-        if not submit.is_file():
-            reason = {"no_submission": "no_submission", "submission_status_unknown": "submission_status_unknown",
-                      "submit_attempt_without_artifacts": "submit_attempt_without_artifacts",
-                      "search_failed": "search_failed", "unsearchable": "unsearchable",
-                      "producer_reported_stop": "producer_reported_stop",
-                      "producer_output_missing": "producer_output_missing",
-                      "checkpoint_progress": "checkpoint_progress",
-                      "checkpoint_changed_without_pending_progress": "checkpoint_changed_without_pending_progress",
-                      "checkpoint_or_chunk_mismatch": "checkpoint_or_chunk_mismatch",
-                      "session_mismatch": "session_or_run_mismatch",
-                      "run_not_successful": "run_not_successful",
-                      "submission_artifact_unavailable": "submission_artifact_unavailable",
-                      "not_applicable": "not_applicable"}.get(status)
-            if reason is None and isinstance(status, str) and (status.startswith("cli_") or status == "write_failed"):
-                reason = status
-            codes.append(reason or "submission_status_unknown")
-        elif not diagnostic.is_file():
-            submit_calls = (producer_outcome.get("submit_calls")
-                            if isinstance(producer_outcome, dict) else None)
-            if submit_calls is None:
-                runs = self.store.runs(b["id"])
-                log_file = runs[0]["log_file"] if runs else None
-                submit_calls = submit_attempts(Path(log_file)) if log_file else None
-            if submit_calls == 0:
-                codes.append("submission_prepared_not_submitted")
-            elif submit_calls is None:
-                codes.append("submission_status_unknown")
-            else:
-                codes.append("diagnostic_missing_after_submit")
-        else:
-            try:
-                parsed = json.loads(diagnostic.read_text("utf-8"))
-            except (OSError, ValueError):
-                pass
-            if not isinstance(parsed, dict) or parsed.get("status") != "FAILED":
-                codes.append("invalid_diagnostic")
-            elif not literary.submit_retryable(Path(b["worktree"]), b, rec["chunk_no"]):
-                codes.append("submit_validation_blocked")
-
-        recovery_raw = self.store.get(literary.no_submission_recovery_key(b["id"], rec["chunk_id"]))
-        try:
-            recovery = json.loads(recovery_raw or "null")
-        except ValueError:
-            recovery = None
-        if isinstance(recovery, dict) and recovery.get("status") == "used":
-            codes.append("no_submission_recovery_exhausted")
-
-        try:
-            resubmits = int(self.store.get(literary.resubmit_key(b["id"])) or 0)
-        except (TypeError, ValueError):
-            resubmits = literary.MAX_RESUBMITS
-        if resubmits >= literary.MAX_RESUBMITS and b["session_id"]:
-            skip_reason = literary.technical_skip_reason_code(Path(b["worktree"]), b, rec["chunk_no"])
-            if skip_reason:
-                codes.append(f"technical_skip_ineligible:{skip_reason}")
-        return list(dict.fromkeys(codes))
-
-    def _c_incomplete_error(self, b, rec, pending, *, report_valid: bool, producer_outcome=None) -> str:
-        codes = self._c_incomplete_reason_codes(b, rec, report_valid=report_valid,
-                                                producer_outcome=producer_outcome)
-        raw = self.store.get(literary.run_start_key(b["id"]))
-        try:
-            run_start = json.loads(raw or "null")
-        except ValueError:
-            run_start = None
-        baseline = run_start.get("retry_state") if isinstance(run_start, dict) else None
-        if rec is not None:
-            required_state = {"chunk_id", "chunk_no", "view_sha256", "repair", "pending_sense_ids",
-                              "session_available", "checkpoint", "submit", "diagnostic"}
-            baseline_ok = (isinstance(baseline, dict) and required_state <= set(baseline)
-                           and baseline.get("chunk_id") == rec.get("chunk_id")
-                           and baseline.get("chunk_no") == rec["chunk_no"]
-                           and isinstance(baseline.get("pending_sense_ids"), list)
-                           and isinstance(baseline.get("session_available"), bool))
-            if not baseline_ok:
-                # No trustworthy launch baseline: bind the guard to current evidence and require a later change.
-                try:
-                    baseline = literary.retry_state(Path(b["worktree"]), b, rec, pending,
-                                                     session_available=bool(b["session_id"]))
-                except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-                    baseline = None
-                if "checkpoint_or_chunk_mismatch" not in codes:
-                    codes.append("checkpoint_or_chunk_mismatch")
-            if isinstance(baseline, dict):
-                baseline["report_valid"] = bool(report_valid)
-                baseline["session_available"] = bool(b["session_id"])
-                safe_outcome = ({"status": producer_outcome.get("status"),
-                                 "source_run_id": producer_outcome.get("source_run_id"),
-                                 "submit_calls": producer_outcome.get("submit_calls")}
-                                if isinstance(producer_outcome, dict) else None)
-                recovery_policy_version = (literary.NO_SUBMISSION_RECOVERY_POLICY_VERSION
-                                          if (self.store.get(literary.no_submission_recovery_key(
-                                              b["id"], rec["chunk_id"])) is not None
-                                              or (isinstance(producer_outcome, dict)
-                                                  and producer_outcome.get("status") == "no_submission"))
-                                          else None)
-                self.store.set(literary.retry_guard_key(b["id"]), json.dumps(
-                    {"baseline": baseline, "reason_codes": codes, "producer_outcome": safe_outcome,
-                     "recovery_policy_version": recovery_policy_version}, sort_keys=True))
-        code_text = ",".join(codes) if codes else "checkpoint_or_chunk_mismatch"
-        total = len(rec["sense_ids"]) if rec else "?"
-        pending_count = len(pending) if report_valid else "?"
-        return ("C 청크 실행이 종료됐지만 활성 청크의 모든 Sense가 완료되지 않았습니다 "
-                f"(checkpoint 완료 증거 없음; pending={pending_count}/{total}) [{code_text}]. "
-                "동일 증거의 Retry는 차단됩니다. 제출·진단 또는 체크포인트 진행이 바뀐 뒤 재시도하세요; "
-                "기존 완료 Sense와 worktree/checkpoint는 보존했습니다.")
-
-    def _c_retry_guard_unchanged(self, b, guard: dict) -> bool:
-        """Recheck exact pending Sense state before accepting a manual Retry."""
-        baseline = guard.get("baseline")
-        if not isinstance(baseline, dict):
-            return True
-        try:
-            rec, pending, _done = self._c_chunk_progress(b)
-            if rec is None:
-                return True
-            if baseline.get("report_valid") is False:
-                # Recovery from a checkpoint that could not be reported is new evidence even when
-                # the repaired report has the same pending Sense IDs.
-                return False
-            if (rec.get("chunk_id") != baseline.get("chunk_id")
-                    or rec.get("chunk_no") != baseline.get("chunk_no")
-                    or rec.get("view_sha256") != baseline.get("view_sha256")):
-                return True
-            current = literary.retry_state(Path(b["worktree"]), b, rec, pending,
-                                           session_available=bool(b["session_id"]))
-            unchanged = literary.retry_state_same(current, baseline)
-            if unchanged and not baseline.get("repair"):
-                # A checkpoint rewrite with identical completed Sense evidence must not leave the UI
-                # offering the same blocked Retry on every refresh.
-                baseline["checkpoint"] = current["checkpoint"]
-            return unchanged
-        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-            return True
-
-    def _c_boundary_problem(self, b) -> str | None:
-        return self._stage2_chunk_boundary_problem(b, literary.run_start_key(b["id"]))
-
-    def _run_ok_c_chunk(self, b) -> None:
-        """A zero exit is not success: the chunk counts only when its checkpoint says every sense is done."""
-        problem = self._c_boundary_problem(b)
-        if problem:
-            return self._fail(b, "ERROR", problem)
-        try:
-            info = self._find_recovery_pr(b)
-            if info is not None:
-                return self._fail(b, "ERROR", f"청크 실행 중 소유 브랜치에 예상하지 않은 PR #{info['number']}이 있습니다. 보존합니다.")
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return self._fail(b, "ERROR", f"청크 종료 후 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
-        try:
-            rec, pending, chunk_saved = self._c_chunk_progress(b)
-            report_valid = rec is not None
-        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-            try:
-                rec = literary.read_active(Path(b["worktree"]), b)
-            except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-                rec = None
-            pending = list(rec["sense_ids"]) if rec is not None else []
-            chunk_saved, report_valid = False, False
-        if not chunk_saved:
-            diag = None
-            if rec is not None:
-                diag = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json.diag.json"
-            revalidated_saved = False
-            submit_revalidated = False
-            if rec is not None and literary.deterministic_context_trim_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
-                try:
-                    refreshed = literary.revalidate_submit_before_skip(
-                        self.runner, self._c_env(b), Path(b["worktree"]), b, rec["chunk_no"])
-                    submit_revalidated = True
-                    if refreshed is not None:
-                        if not self._c_chunk_saved(b):
-                            return self._fail(b, "ERROR", "C 결정적 CLI 복구 뒤에도 활성 청크 완료를 확인하지 못했습니다 "
-                                              "[checkpoint_or_chunk_mismatch]. 보존합니다.")
-                        revalidated_saved = True
-                        self.store.log(b["id"], f"C 활성 청크 {rec['chunk_no']:03d}의 변경 없는 제출을 일반 CLI로 재검증해 저장했습니다. "
-                                       "문맥 키의 양끝 공백을 정규화했습니다.", "warn")
-                except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError) as e:
-                    return self._fail(b, "ERROR", f"C 결정적 제출 복구를 검증하지 못했습니다 "
-                                      f"[diagnostic_unavailable_or_invalid]: {e}. 원본을 보존합니다.")
-            if not revalidated_saved and self._c_resubmit(b):
-                return
-            used = int(self.store.get(literary.resubmit_key(b["id"])) or 0)
-            skip_result = None
-            if not revalidated_saved and rec is not None and used >= literary.MAX_RESUBMITS and b["session_id"] \
-                    and literary.technical_skip_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
-                try:
-                    refreshed = None
-                    if not submit_revalidated:
-                        refreshed = literary.revalidate_submit_before_skip(
-                            self.runner, self._c_env(b), Path(b["worktree"]), b, rec["chunk_no"])
-                        submit_revalidated = True
-                    if refreshed is not None:
-                        if not self._c_chunk_saved(b):
-                            return self._fail(b, "ERROR", "C 결정적 CLI 복구 뒤에도 활성 청크 완료를 확인하지 못했습니다. 보존합니다.")
-                        revalidated_saved = True
-                        self.store.log(b["id"], f"C 활성 청크 {rec['chunk_no']:03d}의 변경 없는 제출을 일반 CLI로 재검증해 저장했습니다. "
-                                       "결정적 정규화가 성공해 technical skip 없이 진행합니다.", "warn")
-                    else:
-                        if not literary.technical_skip_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
-                            reason_code = literary.technical_skip_reason_code(Path(b["worktree"]), b, rec["chunk_no"])
-                            return self._fail(b, "ERROR", f"C technical skip blocked "
-                                              f"[technical_skip_ineligible:{reason_code or 'diagnostic_not_authorized'}]. "
-                                              "원본을 보존합니다.")
-                        skip_result = literary.supervisor_skip(
-                            self.store, self.runner, self._c_env(b), Path(b["worktree"]), b, rec)
-                except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError) as e:
-                    return self._fail(b, "ERROR", f"C 국소 기술적 제외를 증명하지 못했습니다: {e}. 원본을 보존합니다.")
-                if skip_result is not None:
-                    self.store.log(b["id"], f"C 기술적 생산 제외: chunk={rec['chunk_no']:03d} record={skip_result['record_id']} "
-                                   f"sense={skip_result['sense_id']} diagnostic={skip_result['diagnostic']}/{skip_result['reason']} "
-                                   f"field={skip_result['field']} same-session-resubmits={used}; 나머지 제출은 기존 CLI 경로로 저장했습니다.", "warn")
-                    if not self._c_chunk_saved(b):
-                        return self._fail(b, "ERROR", "C technical skip 이후에도 활성 청크 전체 완료를 확인하지 못했습니다 "
-                                          "[checkpoint_or_chunk_mismatch]. 보존합니다.")
-            if skip_result is None and not revalidated_saved:
-                producer_outcome = self._c_no_submission_outcome(b, rec, pending)
-                if producer_outcome.get("status") == "no_submission" \
-                        and self._c_start_no_submission_recovery(b, rec, pending, producer_outcome):
-                    return
-                has_saved_submit_file = (producer_outcome.get("status") == "submission_artifact_present"
-                                         or (producer_outcome.get("status") == "checkpoint_changed_without_pending_progress"
-                                             and rec is not None and (Path(b["worktree"]) /
-                                             f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json").is_file())
-                                         or (producer_outcome.get("status") == "not_applicable"
-                                             and rec is not None and rec.get("repair") is True
-                                             and (Path(b["worktree"]) /
-                                             f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json").is_file()))
-                if (rec is not None and diag is not None and not diag.exists()
-                        and (producer_outcome.get("status") == "checkpoint_progress" or has_saved_submit_file)
-                        and b["run_kind"] != "c_chunk_fix"
-                        and self._retry_unsaved_chunk(
-                            b, "기존 제출 파일 또는 checkpoint 부분 진행 확인")):
-                    return
-                return self._fail(b, "ERROR", self._c_incomplete_error(b, rec, pending,
-                                                                        report_valid=report_valid,
-                                                                        producer_outcome=producer_outcome))
-        if not cparallel.is_parallel(self.store, b):   # a parallel batch keeps its one runtime baseline
-            self.store.delete(literary.run_start_key(b["id"]))
-        self.store.delete(literary.resubmit_key(b["id"]))
-        if rec is not None:
-            self.store.delete(literary.retry_guard_key(b["id"]))
-            self.store.delete(self._auto_retry_key(b, f"c:{rec['chunk_no']}"))
-            self.store.delete(literary.no_submission_recovery_key(b["id"], rec["chunk_id"]))
-        self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
-        self.store.log(b["id"], "C 청크의 모든 sense 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
-        try:
-            literary.clear_active(Path(b["worktree"]))
-        except OSError as e:
-            return self._fail(b, "ERROR", f"활성 청크 정리 실패: {e}")
-        return self._launch_c_next(self.store.batch(b["id"]))
-
-    def _c_resubmit(self, b) -> bool:
-        """The run ended with nothing saved and the CLI's own diagnostic marking the rejection repairable in place
-        (`stop_and_report`, unknown or missing diagnostics never qualify).
-        Ask the SAME session (candidates and judgments intact) to repair only that file, at most `MAX_RESUBMITS` times per chunk."""
-        try:
-            rec = literary.read_active(Path(b["worktree"]), b)
-            left = rec is not None and literary.submit_retryable(Path(b["worktree"]), b, rec["chunk_no"])
-        except (OSError, ValueError, literary.LiteraryError):
-            return False
-        used = int(self.store.get(literary.resubmit_key(b["id"])) or 0)
-        if not left or not b["session_id"] or used >= literary.MAX_RESUBMITS:
-            return False
-        with self.launch_gate.permit():   # the resubmit budget belongs to a launch that is actually admitted
-            self.store.set(literary.resubmit_key(b["id"]), str(used + 1))
-            self.store.update(b["id"], retries=0, retry_after=None, error=None)
-            self.store.log(b["id"], f"C 청크 제출이 저장되지 않았습니다. 같은 세션에서 제출 파일만 국소 수정해 다시 제출합니다 ({used + 1}/{literary.MAX_RESUBMITS})", "warn")
-            self._launch_c_next(self.store.batch(b["id"]))
-        return True
-
-    @_single_launch_scope
-    def _relaunch_c(self, b) -> None:
-        problem = self._c_boundary_problem(b)
-        if problem:
-            return self._fail(b, "ERROR", problem)
-        try:
-            if self._find_recovery_pr(b) is not None:
-                return self._fail(b, "ERROR", "청크 실행 브랜치에 이미 PR이 있어 자동 재개를 중단합니다. 보존합니다.")
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
-        try:
-            rec = literary.read_active(Path(b["worktree"]), b)
-        except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
-            rec = None
-        if rec is not None:
-            key = literary.no_submission_recovery_key(b["id"], rec["chunk_id"])
-            try:
-                recovery = json.loads(self.store.get(key) or "null")
-            except ValueError:
-                recovery = None
-            if isinstance(recovery, dict) and recovery.get("status") in ("claimed", "used"):
-                launch_recorded = self._c_recovery_launch_registered(b, recovery)
-                if recovery.get("status") == "claimed" and launch_recorded:
-                    return self._fail(b, "ERROR", "C 무제출 복구의 미사용 표식과 실행 기록이 충돌합니다. "
-                                      "중복 실행을 차단하고 worktree/checkpoint를 보존합니다.")
-                if recovery.get("status") == "used" and launch_recorded:
-                    if not self._c_chunk_saved(b):
-                        return self._fail(b, "ERROR", "C 무제출 복구 프로세스는 이미 시작됐지만 청크 완료가 확인되지 않았습니다. "
-                                          "두 번째 복구는 시작하지 않고 worktree/checkpoint를 보존합니다.")
-                    recovery = None
-                elif (recovery.get("status") == "used"
-                      and recovery.get("launch_state") != "not_started"):
-                    return self._fail(b, "ERROR", "C 무제출 복구의 프로세스 시작 여부를 확인할 수 없어 중복 실행을 차단합니다. "
-                                      "실행 기록과 worktree/checkpoint를 보존합니다.")
-                elif not self._c_legacy_recovery_evidence(b, {**recovery, "status": "claimed"}):
-                    return self._fail(b, "ERROR", "기존 C 무제출 재개 증거가 바뀌어 1회 복구를 시작하지 않습니다. "
-                                      "기존 worktree/checkpoint를 보존합니다.")
-                else:
-                    if recovery.get("status") == "claimed":
-                        recovery["status"] = "used"
-                        self.store.log(b["id"], "기존 C 무제출 guard의 오너 요청 1회를 새 self-contained 세션으로 실행합니다.", "warn")
-                    recovery["launch_state"] = "not_started"
-                    self.store.set(key, json.dumps(recovery, sort_keys=True))
-                    self.store.update(b["id"], retries=0, retry_after=None, error=None)
-                    return self._launch(self.store.batch(b["id"]), "c_chunk_recovery")
-        if self._c_chunk_saved(b):
-            try:
-                rec = literary.read_active(Path(b["worktree"]), b)
-            except (literary.LiteraryError, OSError, ValueError):
-                rec = None
-            if rec is not None:
-                self.store.delete(literary.retry_guard_key(b["id"]))
-                self.store.delete(self._auto_retry_key(b, f"c:{rec['chunk_no']}"))
-            if not cparallel.is_parallel(self.store, b):
-                self.store.delete(literary.run_start_key(b["id"]))
-            self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
-            literary.clear_active(Path(b["worktree"]))
-        return self._launch_c_next(self.store.batch(b["id"]))
-
-    def _c_finalize(self, b) -> None:
-        if self._finalization_held(b, "c_finalize"):
-            return
-        self._guarded(b, "finalize", self._c_finalize_do)
-
-    def _c_finalize_do(self, b) -> None:
-        """Export, commit, push and PR from current file / Git / GitHub facts; any step already true is skipped."""
-        wt = Path(b["worktree"])
-        n = literary.names(b)
-        self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="c_finalize")
-        try:
-            if problem := self._c_head_problem(b, wt):
-                return self._fail(b, "ERROR", problem)
-            label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
-            info = self._find_recovery_pr(b)
-            if info is not None:   # a PR from an earlier, interrupted finalization (or a lost response)
-                return self._to_review(b, info)
-            exp = literary.ensure_export(self.runner, self._c_env(b), wt, b)
-            if exp.status == "repair":
-                return self._c_repair(b, exp)
-            self.store.delete(f"c_repair_issue_count_{b['id']}")
-            title = literary.pr_title(label, b)
-            if not self.git.is_committed(wt, n.output):
-                sha = self.git.commit_paths(wt, [n.output], title)
-                self.store.set(f"c_commit_head_{b['id']}", sha)
-                self.store.log(b["id"], f"Candidate 파일을 commit했습니다 ({sha[:10]})")
-            else:
-                self.store.set(f"c_commit_head_{b['id']}", self.git.head(wt))
-            head, remote = self.git.head(wt), self.git.remote_head(b["branch"])
-            if remote is None:
-                self.git.push_branch(wt, b["branch"])
-                remote = self.git.remote_head(b["branch"])
-            if remote != head:
-                return self._fail(b, "ERROR", f"원격 브랜치 {b['branch']}가 로컬 HEAD와 다릅니다 ({remote} / {head}). force push 없이 보존합니다.")
-            if rival := self._shared_occupied(b):
-                return self._fail(b, "ERROR", f"같은 C 배치가 이미 점유됐습니다 ({rival}). 다른 배치로 바꾸지 않고 보존합니다.")
-            return self._create_pr_once(b, title, literary.pr_body(label, b, exp.coverage), [literary.PR_LABEL])
-        except TRANSIENT:
-            raise
-        except (literary.LiteraryError, GitError, RecoveryBlocked, DuplicateClaim, OSError, ValueError) as e:
-            return self._fail(b, "ERROR", f"C 최종화 중단: {e}. worktree를 보존합니다.")
-        except Exception as e:
-            return self._fail(b, "ERROR", f"C 최종화 중 GitHub/Git 오류: {e}. worktree를 보존합니다.")
-
+    # ---- PR creation ----------------------------------------------------------------------------------------------
     def _create_pr_once(self, b, title: str, body: str, labels: list[str], *, stage2_proof=None) -> None:
         """Open the batch PR at most once. Invariant: while it is unknown whether a create request made a PR, the request is
         never repeated; only the owned-branch lookup is (a transient 'unconfirmed' outcome raises GhTransient)."""
@@ -8350,1342 +7059,11 @@ class Supervisor:
             raise GhTransient("PR 생성 여부 확인 시간 초과 — 소유 브랜치에 PR이 없어 생성 요청을 한 번 다시 보냅니다(복구 대기)")
         raise GhTransient("PR 생성 반영 대기(목록 조회만 반복, 재생성 없음)")
 
-    def _shared_occupied(self, b) -> str | None:
-        """Claim at PR-creation time, same key as `_duplicate_claim` and `batches.next_batch`: A/B conflict only with
-        the same producer's completed Candidate on master (#860); C/D (#1155/#1156) with any model's. Open formal PRs likewise."""
-        base = f"origin/{self.cfg['base_branch']}"
-        self.git.fetch_base(self.cfg["base_branch"])
-        shared = batches.is_shared_queue(b["method"])
-        for path in batches._candidate_paths(self.runner, self.paths.repo_root, self.env, base):
-            m = batches._CAND.fullmatch(path)
-            if m and (m.group(1), m.group(2), m.group(3)) == (b["shard"], b["batch"], b["method"]) \
-                    and (shared or m.group(4) == b["producer"]):
-                return f"master에 {path}"
-        rival = self._duplicate_claim(b, 0)
-        return f"열린 PR #{rival}" if rival else None
-
-    def _c_repair(self, b, exp) -> None:
-        """Candidate v1 named senses: re-read exactly those in a session, resubmit, then export again."""
-        wt = Path(b["worktree"])
-        if not exp.candidate_issues or not exp.repair_ids:
-            return self._fail(b, "ERROR", "정확한 source/sense에 결속된 Candidate v1 후보 내용 오류가 없어 자동 복구를 중단합니다.")
-        key = f"c_repair_issue_count_{b['id']}"
-        current_issues = exp.candidate_issue_count
-        if current_issues <= 0:
-            return self._fail(b, "ERROR", "Candidate v1 복구할 후보 오류 수가 확인되지 않아 자동 재호출을 중단합니다.")
-        previous = self.store.get(key)
-        if previous is not None:
-            try:
-                previous_issues = int(previous)
-            except (TypeError, ValueError):
-                return self._fail(b, "ERROR", "Candidate v1 복구 진행 상태가 손상되어 자동 재호출을 중단합니다.")
-            if current_issues >= previous_issues:
-                # Export already removes every exact, source-bound content error itself (v3 and resumable v2, #5245).
-                # One left after the AI correction is a defect of that shared path, not a reason to empty valid
-                # candidates of whole Senses: stop with the evidence so the incident intake hands it to the Maintainer.
-                self.store.delete(key)
-                return self._fail(b, "ERROR", f"Candidate v1 내용 오류 {current_issues}건이 export의 후보 국소 제거와 Sense "
-                                  f"재판정 후에도 남았습니다 (sense {list(exp.repair_ids)}). 정상 후보를 비우지 않고 "
-                                  f"checkpoint·worktree를 보존합니다: {exp.diagnostic[-300:]}")
-        with self.launch_gate.permit():   # the repair round is reserved only by an admitted launch
-            self.store.set(key, str(current_issues))
-            try:
-                view = literary.render_chunk(self.runner, self._c_env(b), wt, b, self._c_db(), sense_ids=list(exp.repair_ids))
-                literary.write_active(wt, b, view, list(exp.repair_ids), self.git.head(wt), self._c_next_no(b),
-                                      repair=True, checkpoint_sha=literary.checkpoint_sha(wt, b),
-                                      note="Candidate v1 검증이 아래 Sense의 후보를 거부했다. 후보 문자열만 고쳐 이 Sense들을 다시 제출한다: "
-                                           + exp.diagnostic + "\n")
-            except (literary.LiteraryError, OSError) as e:
-                return self._fail(b, "ERROR", f"복구 청크 준비 실패: {e}")
-            self.store.log(b["id"], f"Candidate v1 내용 오류 {current_issues}건이 남은 sense {list(exp.repair_ids)}만 재판정합니다", "warn")
-            self.store.update(b["id"], session_id=None)
-            return self._launch(b, "c_chunk_new")
-
-    # ---- Method D: serial 25-record chunks, then deterministic finalization (Issue #2034) ---------------------------
-    @staticmethod
-    def _d_chunk_run(b) -> bool:
-        return b["method"] == dchunk.METHOD and isinstance(b["run_kind"], str) and b["run_kind"].startswith("d_chunk_")
-
-    def _d_env(self, b) -> dict:
-        return self._launch_env(b, "d_cli", self.env)
-
-    def _d_parallel_head_problem(self, b, wt: Path, base_override: dict | None = None, pending: dict | None = None) -> str | None:
-        """Check the parallel run baseline, an exact released integration, and the one owned Candidate commit.
-        `base_override`/`pending` (#3349) make this a pure query about a baseline the Maintainer has not stored yet."""
-        pure = base_override is not None
-        try:
-            if b["run_kind"] == "d_parallel" and not pure:
-                self.maint.adopt_released_baseline(b)
-            raw = json.dumps(base_override) if pure else self.store.get(dchunk.run_start_key(b["id"]))
-            if raw is None:
-                # A crash between recording parallel mode and its first run boundary is recoverable only before any
-                # task or chunk exists, while the original owned HEAD and a clean worktree are still present.
-                base = self.store.get(f"d_base_head_{b['id']}")
-                head = self.git.head(wt)
-                if (not isinstance(base, str) or not re.fullmatch(r"[0-9a-f]{40}", base)
-                        or self.git.registered(wt) != b["branch"] or head != base
-                        or self.git.dirty(wt).strip() or self.store.runs(b["id"]) or self.store.task_rows(b["id"])):
-                    return "D 병렬 배치의 최초 Git 경계를 복구할 수 없습니다. worktree를 보존합니다."
-                saved, _total = dchunk.verified_chunks(wt, b)
-                if saved or dchunk.active_chunks(wt, b):
-                    return "D 병렬 배치의 최초 Git 경계 전에 청크가 생겼습니다. worktree를 보존합니다."
-                return None
-            baseline = json.loads(raw)
-            if (not isinstance(baseline, dict) or baseline.get("branch") != b["branch"]
-                    or baseline.get("worktree") != str(wt) or "remote_head" not in baseline
-                    or not isinstance(baseline.get("head"), str)
-                    or not re.fullmatch(r"[0-9a-f]{40}", baseline["head"])):
-                return "D 병렬 배치의 Git 경계 기준이 손상되거나 다른 실행을 가리킵니다. worktree를 보존합니다."
-            if baseline["remote_head"] is not None and not re.fullmatch(r"[0-9a-f]{40}", baseline["remote_head"]):
-                return "D 병렬 배치의 원격 경계 기준이 잘못되었습니다. worktree를 보존합니다."
-            if self.git.registered(wt) != b["branch"]:
-                return f"D 병렬 worktree가 소유 브랜치 {b['branch']}에 연결되어 있지 않습니다. worktree를 보존합니다."
-
-            head = self.git.head(wt)
-            candidate_child = head != baseline["head"] and self.git.is_candidate_child(
-                wt, baseline["head"], dchunk.names(b).output)
-            if head != baseline["head"] and not candidate_child:
-                text = f"worktree HEAD {head[:10]}가 승인된 D 병렬 기준 HEAD {baseline['head'][:10]}도, Candidate commit도 아닙니다."
-                receipt = self.maint.approved_integration_receipt(b, baseline["head"], head, "d-parallel-head",
-                                                                  baseline["remote_head"])
-                return defects.BoundaryProblem(text, receipt) if receipt else text
-            committed = self.store.get(f"d_commit_head_{b['id']}")
-            if committed is not None and (not re.fullmatch(r"[0-9a-f]{40}", committed) or committed != head):
-                return "기록된 D Candidate commit과 worktree HEAD가 다릅니다. worktree를 보존합니다."
-
-            original = self.store.get(f"d_base_head_{b['id']}")
-            if not isinstance(original, str) or not re.fullmatch(r"[0-9a-f]{40}", original):
-                return "D 병렬 배치의 최초 기준 HEAD를 확인할 수 없습니다. worktree를 보존합니다."
-            if baseline["head"] != original and not self.maint._released_integration_proof(
-                    b, original, baseline["head"], pending=pending):
-                return "D 병렬 기준 HEAD가 같은 배치의 RELEASED Maintainer 통합으로 증명되지 않습니다. worktree를 보존합니다."
-
-            remote = self.git.remote_head(b["branch"])
-            if remote != baseline["remote_head"] and not (candidate_child and remote == head):
-                return f"D 병렬 원격 경계가 변경되었습니다 ({baseline['remote_head']} / {remote}). worktree를 보존합니다."
-            dirty = self.git.dirty(wt).strip()
-            if dirty:
-                paths = {line[3:].strip() for line in dirty.splitlines() if len(line) >= 4}
-                output = dchunk.names(b).output
-                if paths != {output} or not (wt / output).is_file():
-                    return "D 병렬 worktree에 최종 Candidate 출력 외의 변경이 있습니다. worktree를 보존합니다."
-                # assemble() below proves an interrupted pre-commit output is byte-identical to the saved chunks.
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return f"D 병렬 HEAD/소유권 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
-        return None
-
-    def _d_head_problem(self, b, wt: Path, base_override: dict | None = None, pending: dict | None = None) -> str | None:
-        """The batch is bound to the HEAD of its first chunk; the only later HEAD allowed is our own Candidate commit, or
-        (#3349) the serial run baseline's HEAD when it is a proven Maintainer integration of that first HEAD.
-        The first HEAD (`d_base_head`) is never moved. `base_override`/`pending`: a pure query."""
-        if dparallel.is_parallel(self.store, b):
-            return self._d_parallel_head_problem(b, wt, base_override, pending)
-        pure = base_override is not None
-        try:
-            head = self.git.head(wt)
-            base = self.store.get(f"d_base_head_{b['id']}")
-            if base is None:
-                if not pure:
-                    self.store.set(f"d_base_head_{b['id']}", head)
-                return None
-            if head == base or head == self.store.get(f"d_commit_head_{b['id']}"):
-                return None
-            try:
-                run_base = base_override if pure else json.loads(self.store.get(dchunk.run_start_key(b["id"])) or "null")
-            except ValueError:
-                run_base = None
-            if isinstance(run_base, dict) and run_base.get("head") == head and self.maint._released_integration_proof(
-                    b, base, head, pending=pending):
-                return None
-            if self.git.is_candidate_child(wt, base, dchunk.names(b).output):
-                if not pure:
-                    self.store.set(f"d_commit_head_{b['id']}", head)
-                return None
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return f"HEAD 결속을 확인하지 못했습니다: {e}"
-        text = f"worktree HEAD {head[:10]}가 배치 기준 HEAD {base[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
-        receipt = self.maint.approved_integration_receipt(b, base, head, "d-head", None)
-        return defects.BoundaryProblem(text, receipt) if receipt else text
-
-    def _d_chunks_problem(self, b, done) -> str | None:
-        """Every chunk accepted earlier must still be byte-identical (an AI session never edits a saved chunk).
-        `done` is the serial prefix length or, for a parallel batch, the exact accepted chunk numbers."""
-        wt = Path(b["worktree"])
-        try:
-            for k in (range(1, done + 1) if isinstance(done, int) else done):
-                known = self.store.get(f"d_chunk_sha_{b['id']}_{k}")
-                if known is not None and known != dchunk.chunk_sha(wt, b, k):
-                    return f"이미 저장된 청크 {k:03d}이 수정되었습니다. 덮어쓰지 않고 보존합니다."
-                skip_key = f"d_technical_skip_sha_{b['id']}_{k}"
-                known_skip = self.store.get(skip_key)
-                actual_skip = dchunk.technical_skip_sha(wt, b, k) or "none"
-                if known_skip is not None and known_skip != actual_skip:
-                    return f"이미 저장된 청크 {k:03d}의 technical skip 근거가 수정되었습니다. 보존합니다."
-                if known_skip is None:
-                    self.store.set(skip_key, actual_skip)
-        except dchunk.DChunkError as e:
-            return str(e)
-        return None
-
-    def _d_remember(self, b, done: int) -> None:
-        """Record the SHA-256 of the newest accepted chunk the first time it is seen."""
-        key = f"d_chunk_sha_{b['id']}_{done}"
-        if done > 0 and self.store.get(key) is None:
-            self.store.set(key, dchunk.chunk_sha(Path(b["worktree"]), b, done))
-
-    def _d_prepare_handoff(self, b) -> None:
-        """Persist the existing PREPARE state before dropping the completed run's boundary baseline."""
-        self.store.update(b["id"], state="PREPARE", run_kind=None, pid=None, session_id=None,
-                          retries=0, retry_after=None, error=None)
-
-    def _launch_d_next(self, b) -> None:
-        self._guarded(b, "prelaunch", self._launch_d_next_do, entrypoint="launch_d_next")
-
-    def _launch_d_next_do(self, b) -> None:
-        """Advance Method D from the saved files: the active chunk (resume or prepare a new one), or finalize when all saved."""
-        wt = Path(b["worktree"])
-        try:
-            if problem := self._d_head_problem(b, wt):
-                return self._fail(b, "ERROR", problem + " worktree를 보존합니다.")
-            if dparallel.is_parallel(self.store, b) or self.dp.starts_fresh(b):
-                return self.dp.begin(b)   # a new batch runs its chunks as bounded parallel tasks (#3074)
-            done, total = dchunk.verified_prefix(wt, b)
-            if problem := self._d_chunks_problem(b, done):
-                return self._fail(b, "ERROR", problem)
-            rec = dchunk.read_active(wt, b)
-            if rec is not None:
-                if rec["chunk_no"] == done:
-                    if problem := self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"])):
-                        return self._fail(b, "ERROR", problem)
-                    if problem := self._d_accept_saved(b, boundary_checked=True):
-                        return self._fail(b, "ERROR", problem)
-                    self._d_prepare_handoff(b)
-                    self.store.delete(dchunk.run_start_key(b["id"]))
-                    rec = None
-                elif rec["chunk_no"] < done:
-                    return self._fail(b, "ERROR", f"저장 완료 prefix {done} 뒤에 이전 활성 청크 {rec['chunk_no']}가 남아 있습니다. 보존합니다.")
-                elif rec["chunk_no"] != done + 1:
-                    return self._fail(b, "ERROR", f"활성 청크 {rec['chunk_no']}가 연속 prefix {done} 다음이 아닙니다. 보존합니다.")
-                else:
-                    if b["state"] == "PREPARE" and self.store.get(dchunk.run_start_key(b["id"])) is not None:
-                        return self._fail(b, "ERROR", "D 다음 청크 실행 baseline이 PREPARE 상태에 남아 있습니다. 실행 시작 여부가 모호해 AI를 시작하지 않고 보존합니다.")
-                    self._d_remember(b, done)
-                    dchunk.read_view(wt, b, rec)   # the view must still be the one this record was written for
-            else:
-                raw = self.store.get(dchunk.run_start_key(b["id"]))
-                if raw is not None:
-                    try:
-                        baseline = json.loads(raw)
-                        baseline_chunk = baseline.get("chunk_no") if isinstance(baseline, dict) else None
-                    except (TypeError, ValueError):
-                        baseline_chunk = None
-                    if baseline_chunk != done:
-                        return self._fail(b, "ERROR", "D 청크 활성 파일은 없지만 실행 baseline이 저장 완료 prefix와 일치하지 않습니다. 보존합니다.")
-                    if problem := self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"])):
-                        return self._fail(b, "ERROR", problem)
-                    self._d_remember(b, done)
-                    dchunk.clear_active(wt, b, done)  # idempotently finish any chunk-local cleanup interrupted after save verification
-                    self._d_prepare_handoff(b)
-                    self.store.delete(dchunk.run_start_key(b["id"]))
-                else:
-                    self._d_remember(b, done)
-            while rec is None:
-                if done == total:
-                    return self._d_finalize(b)
-                res = dchunk.prepare(self.runner, self._d_env(b), wt, b, done + 1,
-                                       str(Path(self.cfg["corpus_index_path"].strip()).expanduser()), self.git.head(wt))
-                if res["status"] == "SEARCH_FAILED":
-                    return self._fail(b, "PAUSED", f"SEARCH_FAILED record {res.get('failed_records')}: 승인 index 진단이 필요합니다 "
-                                      "(stop_and_report). AI를 시작하지 않았습니다.")
-                if res["status"] == "AUTO_COMPLETE":   # every sense mechanically proven ZERO_HITS: saved without an AI
-                    new_done, _ = dchunk.verified_prefix(wt, b)
-                    if new_done != done + 1:
-                        return self._fail(b, "ERROR", "자동 완료 청크가 정확히 한 청크만 전진시키지 않았습니다. 보존합니다.")
-                    done = new_done
-                    self._d_remember(b, done)
-                    self.store.log(b["id"], f"D 청크 {done:03d}: 모든 sense가 기계적으로 증명된 ZERO_HITS라 AI 없이 저장했습니다.")
-                    continue
-                rec = dchunk.read_active(wt, b)
-                if rec is None or rec["chunk_no"] != done + 1:
-                    return self._fail(b, "ERROR", "prepare가 활성 청크를 만들지 못했습니다. 보존합니다.")
-        except ResourceFenced:
-            raise
-        except (dchunk.DChunkError, OSError, ValueError, GitError) as e:
-            return self._fail(b, "ERROR", f"Method D 상태 확인 실패: {e}. worktree를 보존합니다.")
-        resume = bool(b["session_id"]) and self.store.get(dchunk.run_start_key(b["id"])) is not None
-        return self._launch(b, "d_chunk_resume" if resume else "d_chunk_new")
-
-    def _d_chunk_prompt(self, b, kind: str, remote="?", rec: dict | None = None, continued: bool | None = None,
-                        extra_note: str = "") -> tuple[str, dict]:
-        """(prompt, run-start baseline) for the active chunk. A resume sends only a short continue instruction.
-
-        A parallel task passes its own `rec`, whether it `continued` an earlier session's files, and its report note."""
-        wt = Path(b["worktree"])
-        if rec is None:
-            rec = dchunk.read_active(wt, b)
-        if rec is None:
-            raise prompts.PromptError("활성 청크 기록이 없습니다")
-        view = dchunk.read_view(wt, b, rec)
-        chunk_files = dchunk.chunk_names(b, rec["chunk_no"])
-        note = extra_note
-        if continued is None:
-            continued = bool(kind == "d_chunk_new" and self.store.get(dchunk.run_start_key(b["id"])))
-        if kind == "d_chunk_new" and continued:
-            note = extra_note + ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. "
-                    f"{chunk_files.decisions}가 있으면 기존 판정을 읽고 보존하며, 없으면 정상적인 미작성 상태다. {chunk_files.searches}의 검색 증거를 보존한다. "
-                    "이미 완성된 판정을 다시 만들거나 검색 기록을 삭제하지 말고, 미완료 Sense만 이어서 처리한다.\n")
-        if kind == "d_chunk_resume":
-            try:
-                states = dchunk._json(dchunk.cli(self.runner, self._d_env(b), wt, "states", "--chunk", str(rec["chunk_no"]),
-                                                "--dir", str(wt / ".warroom-scratch"), "--canonical-root", str(wt)),
-                                      "D current search states")
-                if states.get("chunk_no") != rec["chunk_no"] or states.get("view_sha256") != rec["view_sha256"] or not isinstance(states.get("states"), list):
-                    raise dchunk.DChunkError("D current search states do not match the active chunk")
-            except (dchunk.DChunkError, OSError, ValueError) as error:
-                raise prompts.PromptError(f"D 검색 상태를 확인하지 못했습니다: {error}") from error
-            decision_status = "exists" if (wt / chunk_files.decisions).is_file() else "missing"
-            card = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
-                                          searches=chunk_files.searches, decision_status=decision_status)
-            state_text = "\n\n## Supervisor가 확인한 현재 검색 상태\n" + json.dumps(states, ensure_ascii=False) + "\n"
-            if dchunk.delivery(len((card + state_text).encode("utf-8")), view) == "inline":
-                chunk_input = view
-            else:
-                pages = dchunk.write_pages(wt, b, view, rec["chunk_no"])
-                chunk_input = ("검증된 view의 모든 페이지를 순서대로 각각 별도 호출로 읽는다 "
-                               "(Codex max_output_tokens: 10000). 누락 또는 잘림이 있으면 저장하지 않는다.\n" +
-                               "\n".join(f"cat {path}" for path in pages))
-            prompt = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
-                                            searches=chunk_files.searches, chunk_input=chunk_input, decision_status=decision_status)
-            prompt += state_text
-        else:
-            card_bytes = len(prompts.d_chunk(b, rec["chunk_no"], view="", note=note).encode("utf-8"))
-            if dchunk.delivery(card_bytes, view) == "inline":
-                prompt = prompts.d_chunk(b, rec["chunk_no"], view=view, note=note)
-            else:   # only this chunk falls back to pages; a failure here starts no AI
-                prompt = prompts.d_chunk(b, rec["chunk_no"], pages=dchunk.write_pages(wt, b, view, rec["chunk_no"]), note=note)
-        baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
-                    "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote,
-                    "chunk_no": rec["chunk_no"]}
-        return prompt, baseline
-
-    def _d_chunk_saved(self, b) -> bool:
-        """The active chunk is stored: the verified prefix has reached exactly its number (asked when a run ended / on retry)."""
-        try:
-            rec = dchunk.read_active(Path(b["worktree"]), b)
-            return rec is not None and dchunk.verified_prefix(Path(b["worktree"]), b)[0] >= rec["chunk_no"]
-        except (dchunk.DChunkError, OSError, ValueError):
-            return False
-
-    def _d_accept_saved(self, b, *, boundary_checked: bool = False) -> str | None:
-        """After a saved chunk: exactly one chunk advanced, nothing else changed. A problem string, or None."""
-        wt = Path(b["worktree"])
-        try:
-            rec = dchunk.read_active(wt, b)
-            if rec is None:
-                return "저장된 청크의 활성 메타가 없습니다. 보존합니다."
-            if not boundary_checked:
-                if problem := self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"])):
-                    return problem
-            raw = self.store.get(dchunk.run_start_key(b["id"]))
-            try:
-                baseline = json.loads(raw) if raw is not None else None
-            except (TypeError, ValueError):
-                baseline = None
-            if not isinstance(baseline, dict) or baseline.get("chunk_no") != rec["chunk_no"] \
-                    or baseline.get("head") != rec["git_head"]:
-                return "저장된 D 청크 번호와 실행 baseline이 일치하지 않습니다. 보존합니다."
-            done, _total = dchunk.verified_prefix(wt, b)
-            if done != rec["chunk_no"]:
-                return f"저장된 청크 수({done})가 활성 청크({rec['chunk_no']})와 맞지 않습니다. 보존합니다."
-            dchunk.read_view(wt, b, rec)  # the saved metadata must still bind the exact view being cleaned
-            if problem := self._d_chunks_problem(b, done):
-                return problem
-            self._d_remember(b, done)
-            dchunk.clear_active(wt, b, rec["chunk_no"])
-        except (dchunk.DChunkError, OSError, ValueError) as e:
-            return f"저장된 청크를 확인하지 못했습니다: {e}. 보존합니다."
-        return None
-
-    def _run_ok_d_chunk(self, b) -> None:
-        """A zero exit is not success: the chunk counts only when its exact file is stored; then the next chunk starts anew."""
-        problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
-        if problem:
-            return self._fail(b, "ERROR", problem)
-        try:
-            info = self._find_recovery_pr(b)
-            if info is not None:
-                return self._fail(b, "ERROR", f"청크 실행 중 소유 브랜치에 예상하지 않은 PR #{info['number']}이 있습니다. 보존합니다.")
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return self._fail(b, "ERROR", f"청크 종료 후 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
-        if not self._d_chunk_saved(b):
-            if self._d_fix(b):
-                return
-            wt = Path(b["worktree"])
-            skip_result = None
-            try:
-                skip_result = self._d_technical_skip(b)
-            except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError) as e:
-                return self._fail(b, "ERROR", f"D Record 범위 기술적 제외를 증명하지 못했습니다: {e}. 원본을 보존합니다.")
-            if skip_result is not None:
-                skip_details = json.dumps(skip_result["technical_skips"], ensure_ascii=False, separators=(",", ":"))
-                self.store.log(b["id"], f"D 기술적 생산 제외: chunk={skip_result['chunk_no']:03d} "
-                               f"technical_skips={skip_details} "
-                               f"same-session-fixes={self.store.get(dchunk.fix_key(b['id'], skip_result['chunk_no']))}; "
-                               "실패 Sense만 후보 []로 저장했습니다.", "warn")
-                if not self._d_chunk_saved(b):
-                    return self._fail(b, "ERROR", "D technical skip 이후에도 활성 청크 저장을 확인하지 못했습니다. 보존합니다.")
-            else:
-                try:
-                    rec = dchunk.read_active(wt, b)
-                except (dchunk.DChunkError, OSError, ValueError) as e:
-                    return self._fail(b, "ERROR", f"활성 D 청크 상태를 읽지 못했습니다. 임시 파일을 보존합니다: {e}")
-                rejected = wt / dchunk.chunk_names(b, rec["chunk_no"]).rejected if rec else wt / "missing-d-rejection"
-                if b["run_kind"] != "d_chunk_fix" and not rejected.exists() \
-                        and not dchunk.has_search_failure(wt, b) \
-                        and self._retry_unsaved_chunk(b, "활성 청크 저장 누락"):
-                    return
-                return self._fail(b, "ERROR", "D 청크 실행이 종료됐지만 활성 청크가 저장되지 않았습니다 (chunk-NNN.jsonl 증거 없음). "
-                                  "자동 재진입 한도를 소진했거나 저장/검색 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크를 이어갑니다." + self._d_rejection_note(b))
-        if problem := self._d_accept_saved(b, boundary_checked=True):
-            return self._fail(b, "ERROR", problem)
-        self._d_prepare_handoff(b)
-        self.store.delete(dchunk.run_start_key(b["id"]))
-        self.store.log(b["id"], "D 청크 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
-        return self._launch_d_next(self.store.batch(b["id"]))
-
-    def _d_fix(self, b) -> bool:
-        """The run ended with nothing saved and the CLI's own `save` rejection for exactly this active chunk says the
-        decisions can be repaired over intact evidence. This includes a hit-bearing Z, but never `SEARCH_FAILED` or
-        malformed evidence. Ask the SAME session to correct only the reported senses, at most `MAX_FIXES` times per chunk. The count is a persistent KV
-        written before the launch, so a restart or a duplicate tick cannot add a second one; only an operator Retry clears it."""
-        wt = Path(b["worktree"])
-        try:
-            rec = dchunk.read_active(wt, b)
-            diag = dchunk.read_rejection(wt, b, rec) if rec else None
-            if rec is not None and diag is None and b["session_id"]:
-                diag = dchunk.refresh_stale_search_rejection(
-                    self.runner, self._d_env(b), wt, b, rec,
-                    limit_to_previous=int(self.store.get(dchunk.fix_key(b["id"], rec["chunk_no"])) or 0) >= dchunk.MAX_FIXES)
-            has_decisions = (wt / dchunk.chunk_names(b, rec["chunk_no"]).decisions).is_file() if rec else False
-        except (dchunk.DChunkError, OSError, ValueError):
-            return False
-        if rec is None or diag is None or not has_decisions or not b["session_id"]:
-            return False
-        key = dchunk.fix_key(b["id"], rec["chunk_no"])
-        used = int(self.store.get(key) or 0)
-        if used >= dchunk.MAX_FIXES:
-            return False
-        with self.launch_gate.permit():   # the fix budget belongs to a launch that is actually admitted
-            self.store.set(key, str(used + 1))
-            self.store.update(b["id"], retries=0, retry_after=None, error=None)
-            failed_records = ",".join(f"{item['record_id']}:{','.join(item['failed_sense_ids'])}"
-                                       for item in diag["failed_records"])
-            self.store.log(b["id"], f"D 청크 {rec['chunk_no']:03d} 판정 오류 "
-                           f"(failed_records={failed_records}; {diag.get('error_count', len(diag['errors']))}건). "
-                           f"같은 세션에서 지목된 판정만 수정해 다시 저장합니다 ({used + 1}/{dchunk.MAX_FIXES})", "warn")
-            self._launch(self.store.batch(b["id"]), "d_chunk_fix")
-        return True
-
-    def _d_technical_skip(self, b) -> dict | None:
-        """After the existing one same-session correction, save only the exact failed Records through the CLI fallback."""
-        wt = Path(b["worktree"])
-        try:
-            rec = dchunk.read_active(wt, b)
-            diag = dchunk.read_rejection(wt, b, rec) if rec else None
-            has_decisions = (wt / dchunk.chunk_names(b, rec["chunk_no"]).decisions).is_file() if rec else False
-        except (dchunk.DChunkError, OSError, ValueError):
-            return None
-        if rec is None or diag is None or not has_decisions or not b["session_id"]:
-            return None
-        attempts = int(self.store.get(dchunk.fix_key(b["id"], rec["chunk_no"])) or 0)
-        if attempts < dchunk.MAX_FIXES:
-            return None
-        result = dchunk.supervisor_skip(self.store, self.runner, self._d_env(b), wt, b, rec)
-        result["failure_records"] = diag["failed_records"]
-        return result
-
-    def _d_rejection_note(self, b, chunk_no: int | None = None) -> str:
-        """The recorded `save` rejection of the active chunk (reasons only), shown with the ERROR so the operator sees why."""
-        try:
-            rec = dchunk.read_active(Path(b["worktree"]), b, chunk_no)
-            if rec is None:
-                return ""
-            diag = json.loads((Path(b["worktree"]) / dchunk.chunk_names(b, rec["chunk_no"]).rejected).read_text("utf-8"))
-            scope = diag.get("repair_scope")
-            cause = "판정 오류" if scope == "decisions" else "검색 증거/시스템 오류"
-            targets = diag.get("failed_records", [])
-            target_text = ",".join(f"{item['record_id']}:{','.join(item['failed_sense_ids'])}"
-                                   for item in targets if isinstance(item, dict)
-                                   and isinstance(item.get("record_id"), str)
-                                   and isinstance(item.get("failed_sense_ids"), list)
-                                   and all(isinstance(sense_id, str) for sense_id in item["failed_sense_ids"]))[:300]
-            return (f" 마지막 save 거부 [{cause}; failed_records={target_text or 'unknown'}; "
-                    f"same-session-fixes={self.store.get(dchunk.fix_key(b['id'], rec['chunk_no'])) or 0}]: "
-                    + " / ".join(str(e) for e in diag["errors"][:3])[:600])
-        except (OSError, ValueError, KeyError, TypeError, AttributeError):
-            return ""
-
-    @_single_launch_scope
-    def _relaunch_d(self, b) -> None:
-        legacy_handoff = self.store.get(dchunk.run_start_key(b["id"])) is None
-        if legacy_handoff:
-            if problem := self._d_legacy_handoff_problem(b):
-                return self._fail(b, "ERROR", f"D 청크 재시작 복구를 안전하게 확인하지 못했습니다: {problem}. worktree와 브랜치를 보존합니다.")
-        try:
-            if self._find_recovery_pr(b) is not None:
-                return self._fail(b, "ERROR", "청크 실행 브랜치에 이미 PR이 있어 자동 재개를 중단합니다. 보존합니다.")
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
-        if not legacy_handoff:
-            try:
-                active = dchunk.read_active(Path(b["worktree"]), b)
-                rejection_exists = (active is not None and
-                                    (Path(b["worktree"]) / dchunk.chunk_names(b, active["chunk_no"]).rejected).is_file())
-                if rejection_exists and dchunk.reissue_legacy_rejection(
-                        self.store, self.runner, self._d_env(b), self.git, Path(b["worktree"]), b, active):
-                    self.store.log(b["id"], f"D 청크 {active['chunk_no']:03d}의 구형 거부 진단을 최신 CLI로 read-only 재검증하고 판정 오류 범위만 재발급했습니다.", "warn")
-            except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError) as e:
-                return self._fail(b, "ERROR", f"D 구형 거부 진단 재검증 차단 [{e}]. worktree와 증거를 보존합니다.")
-            problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
-            if problem:
-                return self._fail(b, "ERROR", problem)
-        if legacy_handoff:
-            self._d_prepare_handoff(b)
-            self.store.log(b["id"], "D 청크의 완료 기록과 저장 prefix를 확인했습니다. 새 실행 전에 PREPARE로 복구합니다.", "warn")
-            return self._launch_d_next(self.store.batch(b["id"]))
-        if self._d_chunk_saved(b):
-            if problem := self._d_accept_saved(b, boundary_checked=True):
-                return self._fail(b, "ERROR", problem)
-            self._d_prepare_handoff(b)
-            self.store.delete(dchunk.run_start_key(b["id"]))
-        return self._launch_d_next(self.store.batch(b["id"]))
-
-    def _d_legacy_handoff_problem(self, b) -> str | None:
-        """Prove a completed old D chunk handoff before recovering a missing run baseline; never invent one."""
-        if b["state"] != "PRODUCING" or b["pid"] is not None or b["session_id"] is not None or \
-                b["run_kind"] != "d_chunk_new" or b["pr_number"] is not None or b["retry_after"] is not None:
-            return "배치가 완료된 청크와 다음 청크 사이의 예상된 상태가 아닙니다"
-        if self.store.get(f"pending_{b['id']}") is not None:
-            return "재시도 대기 상태가 남아 있습니다"
-        wt = Path(b["worktree"])
-        try:
-            if not wt.is_dir() or self.git.registered(wt) != b["branch"]:
-                return "배치 소유 worktree 또는 브랜치가 일치하지 않습니다"
-            if self.git.dirty(wt).strip():
-                return "worktree에 Git 변경이 남아 있습니다"
-            base = self.store.get(f"d_base_head_{b['id']}")
-            head = self.git.head(wt)
-            if not base or head != base or self.store.get(f"d_commit_head_{b['id']}") is not None:
-                return "현재 HEAD가 기록된 배치 기준 HEAD와 다릅니다"
-            if self.git.remote_head(b["branch"]) is not None:
-                return "원격 브랜치 ref가 비어 있지 않아 기존 경계를 증명할 수 없습니다"
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return f"배치 소유 Git 경계를 확인하지 못했습니다: {e}"
-        try:
-            done, _total = dchunk.verified_prefix(wt, b)
-            if done < 1:
-                return "검증된 완료 청크가 없습니다"
-            for chunk_no in range(1, done + 1):
-                known = self.store.get(f"d_chunk_sha_{b['id']}_{chunk_no}")
-                if known is None or known != dchunk.chunk_sha(wt, b, chunk_no):
-                    return f"완료 청크 {chunk_no:03d}의 기록된 SHA가 없거나 달라졌습니다"
-            if dchunk.read_active(wt, b) is not None:
-                return "활성 D 청크 메타가 남아 있어 다음 실행 여부가 모호합니다"
-            folder = wt / dchunk.names(b).directory
-            allowed = {f"chunk-{n:03d}.jsonl" for n in range(1, done + 1)}
-            if {p.name for p in folder.iterdir()} != allowed:
-                return "D scratch에 저장 청크 외 파일이 있어 실행/임시 상태가 모호합니다"
-        except TRANSIENT:
-            raise
-        except (dchunk.DChunkError, OSError, ValueError) as e:
-            return f"완료 prefix 또는 D scratch를 검증하지 못했습니다: {e}"
-        runs = self.store.runs(b["id"])
-        if len(runs) != done or any(r["kind"] != "d_chunk_new" or r["ended_at"] is None or
-                                      str(r["exit_status"]) != "0" or r["submit_failures"] for r in runs):
-            return "저장 청크 수와 정상 종료한 D 실행 기록이 일치하지 않습니다"
-        last = runs[0]
-        if self.store.get(f"verified_completion_run_{b['id']}") != str(last["id"]):
-            return "마지막 AI 실행의 완료 확인 기록이 없습니다"
-        if b["log_file"] != last["log_file"] or b["exit_file"] != last["exit_file"] or not last["session_id"]:
-            return "배치 실행 파일 또는 세션이 마지막 AI 실행 기록과 다릅니다"
-        try:
-            if Path(last["exit_file"]).read_text("utf-8").strip() != "0":
-                return "마지막 AI 실행의 종료 코드 파일이 성공을 증명하지 않습니다"
-            ad = self._adapter(b["producer"])
-            run = RunSpec(last["model"], last["effort"], last["permission_profile"] or "") if last["model"] else None
-            if run is None:
-                return "마지막 AI 실행의 모델 핀 기록이 없습니다"
-            if ad.output_identity_problem(Path(last["log_file"]), run, last["session_id"], wt, self.env):
-                return "마지막 AI 실행의 소유권 또는 모델 핀 로그를 확인하지 못했습니다"
-            if ad.completion_problem(Path(last["log_file"]), run, last["session_id"], wt, self.env):
-                return "마지막 AI 실행의 정상 완료 증거를 확인하지 못했습니다"
-        except TRANSIENT:
-            raise
-        except (OSError, TypeError, ValueError, KeyError) as e:
-            return f"마지막 AI 실행 증거를 읽지 못했습니다: {e}"
-        return None
-
-    def _d_finalize(self, b) -> None:
-        if self._finalization_held(b, "d_finalize"):
-            return
-        self._guarded(b, "finalize", self._d_finalize_do)
-
-    def _d_finalize_do(self, b) -> None:
-        """Assemble, validate once, commit, push and PR from current file / Git / GitHub facts; any step already true is skipped."""
-        wt = Path(b["worktree"])
-        n = dchunk.names(b)
-        self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="d_finalize")
-        try:
-            if problem := self._d_head_problem(b, wt):
-                return self._fail(b, "ERROR", problem + " worktree를 보존합니다.")
-            label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
-            info = self._find_recovery_pr(b)
-            if info is not None:   # a PR from an earlier, interrupted finalization (or a lost response)
-                return self._to_review(b, info)
-            done, total = dchunk.verified_prefix(wt, b)
-            if done != total:
-                return self._fail(b, "ERROR", f"모든 청크가 저장되지 않았습니다 ({done}/{total}). 보존합니다.")
-            if problem := self._d_chunks_problem(b, done):
-                return self._fail(b, "ERROR", problem)
-            dchunk.assemble(wt, b)
-            coverage = dchunk.validate(self.runner, self._d_env(b), wt, b)   # fails closed: no rewrite session exists
-            coverage["technical_skips"] = dchunk.technical_skip_report(wt, b)["items"]
-            title = dchunk.pr_title(label, b)
-            if not self.git.is_committed(wt, n.output):
-                sha = self.git.commit_paths(wt, [n.output], title)
-                self.store.set(f"d_commit_head_{b['id']}", sha)
-                self.store.log(b["id"], f"Candidate 파일을 commit했습니다 ({sha[:10]})")
-            else:
-                self.store.set(f"d_commit_head_{b['id']}", self.git.head(wt))
-            head, remote = self.git.head(wt), self.git.remote_head(b["branch"])
-            if remote is None:
-                self.git.push_branch(wt, b["branch"])
-                remote = self.git.remote_head(b["branch"])
-            if remote != head:
-                return self._fail(b, "ERROR", f"원격 브랜치 {b['branch']}가 로컬 HEAD와 다릅니다 ({remote} / {head}). force push 없이 보존합니다.")
-            if rival := self._shared_occupied(b):
-                return self._fail(b, "ERROR", f"같은 D 배치가 이미 점유됐습니다 ({rival}). 다른 배치로 바꾸지 않고 보존합니다.")
-            return self._create_pr_once(b, title, dchunk.pr_body(label, b, coverage, parallel=dparallel.is_parallel(self.store, b)),
-                                        [dchunk.PR_LABEL])
-        except TRANSIENT:
-            raise
-        except (dchunk.DChunkError, GitError, RecoveryBlocked, DuplicateClaim, OSError, ValueError) as e:
-            return self._fail(b, "ERROR", f"D 최종화 중단: {e}. worktree를 보존합니다.")
-        except Exception as e:
-            return self._fail(b, "ERROR", f"D 최종화 중 GitHub/Git 오류: {e}. worktree를 보존합니다.")
-
-    # ---- Stage 1 A/B: serial 50-record answer-only chunks, then deterministic finalization (Issue #2035) -------------
-    @staticmethod
-    def _ab_chunk_run(b) -> bool:
-        return b["method"] in stage1ab.METHODS and isinstance(b["run_kind"], str) and b["run_kind"].startswith("ab_chunk_")
-
-    @staticmethod
-    def _ab_policy_skip_event_key(b, chunk: dict) -> str:
-        return f"ab-policy-skip:{b['shard']}:{b['batch']}:{b['method']}:{b['producer']}:{chunk['number']:03d}"
-
-    def _ab_policy_skip_chunk(self, b) -> dict | None:
-        """Only a first, answer-only A/B chunk can be converted after an exact provider refusal."""
-        if b["state"] != "PRODUCING" or b["method"] not in stage1ab.METHODS or b["run_kind"] != "ab_chunk_new":
-            return None
-        try:
-            raw = self.store.get(stage1ab.run_start_key(b["id"]))
-            baseline = json.loads(raw or "")
-            if not isinstance(baseline, dict):
-                return None
-            if baseline.get("repair"):
-                return None
-            chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(b["worktree"], b), int(baseline["chunk_no"]))
-            state = stage1ab.load_state(self.store, b["id"], chunk["number"])
-            return chunk if state["tries"] == 0 and state["requested"] is None else None
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
-            return None
-
-    def _ab_answer(self, b, chunk: dict) -> str | None:
-        final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
-        try:
-            stage1ab.extract_block(final, chunk["number"])
-            return final
-        except stage1ab.ABChunkError:
-            view = (Path(b["worktree"]) / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
-            aliases = [row[0] for row in stage1ab.view_rows(view)]
-            run = self._last_run(b)
-            if (run is None or run["ended_at"] is None or run["log_file"] != b["log_file"]
-                    or run["session_id"] != b["session_id"] or run["kind"] != b["run_kind"]):
-                return final
-            return stage1ab.interrupted_opencode_answer(b["log_file"], chunk["number"], aliases, b["session_id"]) or final
-
-    def _ab_complete_response(self, b, chunk: dict) -> bool:
-        """True only when the current answer block covers every alias in the chunk's exact saved view."""
-        try:
-            body = stage1ab.extract_block(self._ab_answer(b, chunk), chunk["number"])
-            revised = stage1ab.split_rows(body)
-            view = (Path(b["worktree"]) / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
-            aliases = [row[0] for row in stage1ab.view_rows(view)]
-            return len(revised) == len(aliases) and set(revised) == set(aliases)
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
-            return False
-
-    def _ab_save_policy_skip(self, b, chunk: dict) -> None:
-        """Persist the manual ID list, save an all-empty chunk through save-chunk, then use normal acceptance."""
-        key = stage1ab.run_start_key(b["id"])
-        if problem := self._stage2_chunk_boundary_problem(b, key):
-            return self._fail(b, "ERROR", problem)
-        wt = Path(b["worktree"])
-        try:
-            if self.git.dirty(wt).strip():
-                return self._fail(b, "ERROR", "정책 거부 청크 종료 뒤 worktree에 추적 변경이 있습니다. 보존합니다.")
-            if self._find_recovery_pr(b) is not None:
-                return self._fail(b, "ERROR", "정책 거부 청크 실행 중 소유 브랜치에 PR이 생겼습니다. 보존합니다.")
-            baseline = json.loads(self.store.get(key) or "")
-            cp = stage1ab.checkpoint(wt, b)
-            chunk = stage1ab.chunk_by_number(cp, int(baseline["chunk_no"]))
-            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved"):
-                return self._fail(b, "ERROR", "정책 거부 청크 실행 중 저장물이 변경됐습니다. 덮어쓰지 않고 보존합니다.")
-            if stage1ab.chunk_saved(wt, b, chunk):
-                self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d}에 기존 저장 후보가 있어 정책 Skip으로 덮어쓰지 않습니다.", "warn")
-                return self._ab_accept(b, chunk, False)
-            if self._ab_complete_response(b, chunk):
-                self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d}에 완성 응답이 있어 기존 저장 검증 경로로 전달합니다.", "warn")
-                return self._run_ok_ab_chunk(b)
-            record_ids = stage1ab.chunk_record_ids(wt, b, chunk)
-            view = (wt / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
-            lines = [row[0] for row in stage1ab.view_rows(view)]
-            if len(lines) != chunk["sense_count"]:
-                raise stage1ab.ABChunkError("정책 Skip compact view의 sense 수가 checkpoint와 다릅니다")
-        except TRANSIENT:
-            raise
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError, GitError) as e:
-            return self._fail(b, "ERROR", f"정책 거부 청크 확인 실패: {e}. 보존합니다.")
-        title = (f"[Policy Skip][{b['method'].upper()}/{b['producer']}] "
-                 f"{b['shard']}_{b['batch']} Chunk {chunk['number']:03d}")
-        body = "\n".join(record_ids)
-        try:
-            request_id = self.maint.report_issue(title, body, urgent=False,
-                                                 event_key=self._ab_policy_skip_event_key(b, chunk))
-        except Exception as e:
-            return self._fail(b, "ERROR", f"정책 Skip 수동 Issue 요청을 영속화하지 못했습니다. 청크와 실행 기록을 보존합니다: {e}")
-        try:
-            saved, diag = stage1ab.save(self.runner, self.env, wt, b, chunk, lines)
-            if not saved:
-                return self._fail(b, "ERROR", f"수동 Issue 요청은 영속화했지만 빈 후보 청크 저장이 거부됐습니다: {diag}. 보존합니다.")
-            if not stage1ab.chunk_saved(wt, b, chunk):
-                return self._fail(b, "ERROR", "빈 후보 저장은 성공했지만 Canonical ID/sense 검증을 통과하지 못했습니다. 보존합니다.")
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
-            return self._fail(b, "ERROR", f"수동 Issue 요청 #{request_id} 뒤 빈 후보 청크 저장 확인 실패: {e}. 보존합니다.")
-        except Exception as e:
-            return self._fail(b, "ERROR", f"수동 Issue 요청 #{request_id} 뒤 빈 후보 청크 저장 실패: {e}. 보존합니다.")
-        self.store.log(b["id"], f"Codex 정책 거부: A/B 청크 {chunk['number']:03d}의 빈 후보 저장과 수동 Issue 요청 #{request_id}를 확인했습니다.", "warn")
-        return self._ab_accept(b, chunk, False)
-
-    def _handle_ab_policy_refusal(self, b, chunk: dict) -> None:
-        """A confirmed refusal is accepted only after the run identity and the normal chunk boundary are checked."""
-        ad = self._adapter(b["producer"])
-        if problem := ad.output_identity_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
-                                                 b["worktree"], self.env):
-            return self._fail(b, problem[0], f"Codex 정책 거부 실행의 소유권/핀 확인 실패: {problem[1]}")
-        return self._ab_save_policy_skip(b, chunk)
-
     def _fix_kind(self, b) -> str:
-        """Stage 2/3 and chunked A/B review fixes start a bounded fresh session."""
+        """Stage 2/3 review fixes start a bounded fresh session; the Maintainer resumes its own session when it has one."""
         if b["method"] in (STAGE2_METHOD, STAGE3_METHOD):
             return "fix_new"
-        small = b["method"] in stage1ab.METHODS and self.cfg.get("ab_chunk_sessions", True)
-        return "fix_new" if small or not b["session_id"] else "fix_resume"
-
-    def _ab_head_problem(self, b, wt: Path) -> str | None:
-        """The batch is bound to the HEAD of its first chunk; the only later HEAD allowed is our own Candidate commit."""
-        try:
-            head = self.git.head(wt)
-            base = self.store.get(f"ab_base_head_{b['id']}")
-            if base is None:
-                self.store.set(f"ab_base_head_{b['id']}", head)
-                return None
-            if head == base or head == self.store.get(f"ab_commit_head_{b['id']}"):
-                return None
-            if self.git.is_candidate_child(wt, base, stage1ab.names(b).output):
-                self.store.set(f"ab_commit_head_{b['id']}", head)
-                return None
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return f"HEAD 결속을 확인하지 못했습니다: {e}"
-        return f"worktree HEAD {head[:10]}가 배치 기준 HEAD {base[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
-
-    def _ab_sync_worktree(self, b, wt: Path) -> bool:
-        """Fast-forward a Candidate-less A/B worktree to the current base so its workbench carries later fixes.
-        Only while HEAD is still the batch's recorded base, the tree is clean, nothing was committed or pushed, and the
-        base descends from HEAD; the recorded base HEAD moves with it. No rebase, no rewrite."""
-        base = self.store.get(f"ab_base_head_{b['id']}")
-        head = self.git.head(wt)
-        if base is None or head != base or self.git.dirty(wt).strip() or self.git.remote_head(b["branch"]) is not None:
-            return False
-        target = self.git.fetch_base(self.cfg["base_branch"])
-        if target == head or not self.git.is_ancestor(head, target, path=wt):
-            return False
-        new = self.git.fast_forward(wt, target)
-        self.store.set(f"ab_base_head_{b['id']}", new)
-        self.store.log(b["id"], f"Candidate 커밋 전 worktree를 최신 {self.cfg['base_branch']}로 fast-forward했습니다 ({head[:10]} → {new[:10]})", "warn")
-        return True
-
-    def _ab_chunks_problem(self, b, cp: dict, skip: int | None = None) -> str | None:
-        """Every chunk accepted earlier must still be byte-identical (an AI session never edits a saved chunk)."""
-        wt = Path(b["worktree"])
-        try:
-            for chunk in cp["chunks"]:
-                known = self.store.get(f"ab_sha_{b['id']}_{chunk['number']}")
-                if known is not None and chunk["number"] != skip and known != stage1ab.chunk_sha(wt, b, chunk):
-                    return f"이미 저장된 청크 {chunk['number']:03d}이 수정되었습니다. 덮어쓰지 않고 보존합니다."
-        except stage1ab.ABChunkError as e:
-            return str(e)
-        return None
-
-    def _ab_remember(self, b, chunk: dict) -> None:
-        self.store.set(f"ab_sha_{b['id']}_{chunk['number']}", stage1ab.chunk_sha(Path(b["worktree"]), b, chunk))
-
-    def _ab_operator_recovery(self, b) -> bool:
-        """An explicit Retry of an exhausted unsaved chunk starts one fresh, source-bound correction cycle."""
-        try:
-            raw = self.store.get(stage1ab.run_start_key(b["id"]))
-            if raw is None:  # no chunk launched: preserve the ordinary preflight Retry path
-                return False
-            baseline = json.loads(raw)
-            if baseline.get("repair"):
-                return False
-            wt = Path(b["worktree"])
-            cp = stage1ab.checkpoint(wt, b)
-            chunk = stage1ab.chunk_by_number(cp, baseline["chunk_no"])
-            state = stage1ab.load_state(self.store, b["id"], chunk["number"])
-            if state["tries"] <= stage1ab.MAX_SAVE_TRIES:
-                return False
-            if problem := self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"])):
-                raise stage1ab.ABChunkError(problem)
-            if self.git.dirty(wt).strip() or self._find_recovery_pr(b) is not None:
-                raise stage1ab.ABChunkError("worktree 변경 또는 기존 PR이 있어 복구하지 않습니다")
-            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved") or stage1ab.chunk_saved(wt, b, chunk):
-                raise stage1ab.ABChunkError("저장된 청크가 실행 기준과 다릅니다")
-            if problem := self._ab_chunks_problem(b, cp):
-                raise stage1ab.ABChunkError(problem)
-            last = self._last_run(b)
-            if last is None or last["ended_at"] is None or last["log_file"] != b["log_file"]:
-                raise stage1ab.ABChunkError("마지막 종료 run을 확인할 수 없습니다")
-            answer = wt / stage1ab.answer_path(b, chunk["number"])
-            previous = answer.read_text("utf-8") if answer.exists() else ""
-            # Logs and this separate copy preserve the rejected answer even when save-chunk rewrites its input.
-            backup = answer.with_name(f"{answer.name}.recovery-{last['id']}")
-            try:
-                with backup.open("x", encoding="utf-8") as f:
-                    f.write(previous)
-            except FileExistsError:
-                if backup.read_text("utf-8") != previous:
-                    raise stage1ab.ABChunkError("기존 복구 답변 증거가 현재 답변과 다릅니다")
-            state.update(sid=None, tries=0, requested=None, recovery_answer=str(backup.relative_to(wt)),
-                         rejected_run_id=last["id"])
-            if not self.store.begin_ab_operator_recovery(b, stage1ab.state_key(b["id"], chunk["number"]),
-                                                         json.dumps(state, sort_keys=True)):
-                return True
-            self.store.log(b["id"], f"운영자 Retry: 청크 {chunk['number']:03d} 이전 답변을 보존하고 전체 view로 새 복구 세션을 시작합니다.")
-            return True
-        except TRANSIENT:
-            raise
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError, GitError) as e:
-            self.store.set_line(b["producer"], b["method"], retry_batch=None)
-            self.store.log(b["id"], f"A/B 운영자 복구 차단: {e}. 기존 증거를 보존합니다.", "warn")
-            return True
-
-    @_single_launch_scope
-    def _launch_ab_next(self, b) -> None:
-        self._guarded(b, "prelaunch", self._launch_ab_next_do, entrypoint="launch_ab_next")
-
-    def _launch_ab_next_do(self, b) -> None:
-        """Advance A/B from the saved files: prepare once, then the first unsaved chunk (new or correction session), or finalize."""
-        wt = Path(b["worktree"])
-        try:
-            if problem := self._ab_head_problem(b, wt):
-                return self._fail(b, "ERROR", problem + " worktree를 보존합니다.")
-            cp = stage1ab.prepare(self.runner, self.env, wt, b)   # a prepared batch is reused as it is
-            repair = self.store.get(f"ab_repair_{b['id']}")
-            chunk = stage1ab.chunk_by_number(cp, int(repair)) if repair else stage1ab.next_chunk(wt, b, cp)
-            if problem := self._ab_chunks_problem(b, cp, skip=int(repair) if repair else None):
-                return self._fail(b, "ERROR", problem)
-            if chunk is None:
-                return self._ab_finalize(b)
-            st = stage1ab.load_state(self.store, b["id"], chunk["number"])
-            max_tries = stage1ab.MAX_TRIES if repair else stage1ab.MAX_SAVE_TRIES
-            if st["tries"] > max_tries:
-                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 저장 거부가 정정 {max_tries}회 뒤에도 해소되지 않았습니다. "
-                                  f"답변({stage1ab.answer_path(b, chunk['number'])})과 상태를 보존합니다.")
-        except ResourceFenced:
-            raise
-        except (stage1ab.ABChunkError, OSError, ValueError, GitError) as e:
-            return self._fail(b, "ERROR", f"Stage 1 A/B 상태 확인 실패: {e}. worktree를 보존합니다.")
-        fresh = None if repair else stage1ab.fresh_bound(st)
-        if fresh is not None and fresh.get("launch_state") != "not_started" and not st["sid"]:
-            # #5539: the automatic fresh session was (maybe) spawned and ended without a committed outcome. Resume
-            # exactly that session when its run is recorded and its session is known; never spawn a second one.
-            run = self._ab_fresh_launch_run(b, fresh)
-            sid = None
-            if run is not None:
-                sid = run["session_id"] or self._adapter(b["producer"]).session_id(Path(run["log_file"]))
-                if sid and not run["session_id"]:   # bind it to that exact run, so the resume proves this run's pins
-                    self.store.set_run_session_by_id(run["id"], sid)
-            if not sid:
-                why = "실행 기록이 없어 시작 여부가 불명확합니다" if run is None else "세션 ID를 확인할 수 없습니다"
-                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 자동 새 세션 {why}. 두 번째 새 세션을 시작하지 않고 "
-                                  "실행 기록·답변·상태를 보존합니다.")
-            st["sid"] = sid
-            stage1ab.save_state(self.store, b["id"], chunk["number"], st)
-            self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d}: 이미 시작된 자동 새 세션을 재개합니다.", "warn")
-        retry = st["tries"] > 0 or bool(repair) or bool(st["recovery_answer"])
-        self.store.update(b["id"], session_id=st["sid"] if retry and st["sid"] and not repair else None)
-        # A bound fresh intent (new or resumed) launches from the session just written, never the caller's stale row.
-        launch_batch = self.store.batch(b["id"]) if (st["recovery_answer"] and st["tries"] == 0) or fresh is not None else b
-        return self._launch(launch_batch, "ab_chunk_retry" if retry else "ab_chunk_new")
-
-    def _ab_chunk_prompt(self, b, kind: str, remote="?") -> tuple[str, dict, bool]:
-        """(prompt, run-start baseline, resume?) for the active chunk. A correction resumes only that chunk's own session."""
-        wt = Path(b["worktree"])
-        cp = stage1ab.checkpoint(wt, b)
-        repair = self.store.get(f"ab_repair_{b['id']}")
-        chunk = stage1ab.chunk_by_number(cp, int(repair)) if repair else stage1ab.next_chunk(wt, b, cp)
-        if chunk is None:
-            raise prompts.PromptError("저장되지 않은 청크가 없습니다")
-        st = stage1ab.load_state(self.store, b["id"], chunk["number"])
-        view = stage1ab.write_view(self.runner, self.env, wt, b, chunk)
-        requested = ", ".join(st["requested"]) if st["requested"] else "모든 S<n> 줄(전체 청크 답변)"
-        resume = kind == "ab_chunk_retry" and bool(b["session_id"])
-        fresh = None if repair else stage1ab.fresh_bound(st)
-        if resume:
-            # #5539: only a structural failure carries the exact view again; a candidate rejection stays unchanged.
-            chunk_input = prompts.ab_format_resend(chunk["number"], view, st["requested"]) if st["format"] and not repair else ""
-            prompt = prompts.ab_chunk_retry(chunk["number"], requested, st.get("problem") or "사유 없음", chunk_input=chunk_input)
-            if len(prompt.encode("utf-8")) > stage1ab.INLINE_MAX_PROMPT_BYTES:
-                raise prompts.PromptError("형식 정정의 청크 view가 한 argv 요소 한도를 넘어 재전달할 수 없습니다 (청크 보존)")
-        elif kind == "ab_chunk_retry" and fresh is not None and fresh.get("launch_state") == "not_started" and not st["sid"]:
-            prompt = self._ab_fresh_prompt(b, wt, chunk, st, view)
-        else:
-            note = ""
-            if kind == "ab_chunk_retry":
-                if st["requested"] is None:
-                    note = f"이 청크의 이전 세션을 찾지 못해 완전한 답변이 남지 않았다. 전체 청크를 새로 답한다. 사유: {st.get('problem') or '세션 없음'}\n"
-                else:
-                    note = (f"이 청크는 이미 답변·저장이 있으나 검증에서 거부됐다. 거부 사유: {st.get('problem') or '사유 없음'}\n"
-                            f"고칠 줄: {requested}. `C` 줄이 현재 저장된 후보다.\n")
-            if st["recovery_answer"]:
-                previous = (wt / st["recovery_answer"]).read_text("utf-8")
-                note += ("이전 불완전 답변은 미검증 자료다. 전체 view를 기준으로 모든 Sense를 다시 답하고, "
-                         "기존 후보 중 유효한 것은 유지하되 명백히 부적격인 것만 제거한다.\n"
-                         f"이전 답변 시작\n{previous}\n이전 답변 끝\n")
-            card_bytes = len(prompts.ab_chunk(b, chunk["number"], view="", note=note).encode("utf-8"))
-            if stage1ab.delivery(card_bytes, view) != "inline":
-                raise prompts.PromptError("청크 view가 한 argv 요소 한도를 넘어 inline 전달할 수 없습니다 (자동 분할 없음, 청크 보존)")
-            prompt = prompts.ab_chunk(b, chunk["number"], view=view, note=note)
-        baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
-                    "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote, "chunk_no": chunk["number"], "repair": bool(repair),
-                    "saved": stage1ab.saved_snapshot(wt, b, cp)}
-        return prompt, baseline, resume
-
-    def _ab_fresh_prompt(self, b, wt: Path, chunk: dict, st: dict, view: str) -> str:
-        """#5539: the full card for the automatic fresh session. The unparsable answers are never shown again; a partial
-        answer keeps its Supervisor-written rows and only the requested ones are asked (merged by `merge_answer`)."""
-        note = ("이 청크의 직전 답변은 형식 오류로 파싱되지 않은 미검증 출력이므로 사용하지 않는다. 이번은 새 세션이며 "
-                "아래 전체 view만 기준으로 답한다.\n")
-        scope = prompts.AB_FULL_SCOPE
-        if st["requested"]:
-            aliases = [row[0] for row in stage1ab.view_rows(view)]
-            answer = wt / stage1ab.answer_path(b, chunk["number"])
-            try:
-                previous = stage1ab.prune_outside_view(stage1ab.split_rows(answer.read_text("utf-8").split("\n")[1:-1]), aliases)
-            except (OSError, stage1ab.ABChunkError) as e:
-                raise prompts.PromptError(f"부분 정정의 기존 답변을 확인할 수 없어 새 세션을 시작하지 않습니다: {e}") from e
-            if set(previous) != set(aliases) or not set(st["requested"]) <= set(previous):
-                raise prompts.PromptError("부분 정정의 기존 답변 별칭이 현재 view와 맞지 않아 새 세션을 시작하지 않습니다")
-            requested = ", ".join(st["requested"])
-            note += (f"이전 제출 중 {requested}만 저장 검증에서 거부됐다. 거부 사유: {st.get('requested_problem') or '사유 없음'}\n"
-                     "그 줄의 이전 제출(미검증 참고 자료):\n" + "\n".join(previous[a] for a in st["requested"]) + "\n")
-            scope = prompts.ab_partial_scope(requested)
-        prompt = prompts.ab_chunk(b, chunk["number"], view=view, note=note, output_scope=scope)
-        if len(prompt.encode("utf-8")) > stage1ab.INLINE_MAX_PROMPT_BYTES:
-            raise prompts.PromptError("청크 view가 한 argv 요소 한도를 넘어 inline 전달할 수 없습니다 (자동 분할 없음, 청크 보존)")
-        return prompt
-
-    def _ab_fresh_launch_run(self, b, fresh: dict):
-        """The recorded run of the automatic fresh launch (by run id or its exact log), else None."""
-        log, run_id = fresh.get("launch_log_file"), fresh.get("launch_run_id")
-        for run in self.store.runs(b["id"]):
-            if run["kind"] == "ab_chunk_retry" and ((run_id is not None and run["id"] == run_id)
-                                                    or (log and run["log_file"] == log)):
-                return run
-        return None
-
-    def _ab_begin_fresh_launch(self, b, chunk_no: int, log: Path) -> str | None:
-        """Persist the fresh-session intent with its log before spawning (C no-submission pattern); None when this
-        launch is not the automatic fresh session. An intent already past `not_started` never spawns again."""
-        key = stage1ab.state_key(b["id"], chunk_no)
-        st = stage1ab.load_state(self.store, b["id"], chunk_no)
-        fresh = stage1ab.fresh_bound(st)
-        if fresh is None:
-            return None
-        current = self.store.batch(b["id"])
-        if (fresh.get("launch_state") != "not_started" or self._ab_fresh_launch_run(b, fresh) is not None
-                or (current and current["pid"] is not None)):
-            raise prompts.PromptError("A/B 자동 새 세션의 시작 상태가 불명확해 두 번째 프로세스를 시작하지 않습니다")
-        raw = json.loads(self.store.get(key) or "{}")
-        raw["fresh"] = {**fresh, "launch_state": "starting", "launch_log_file": str(log)}
-        self.store.set(key, json.dumps(raw, sort_keys=True))
-        return key
-
-    def _ab_record_fresh_launch(self, key: str, log: Path, run_id: int) -> None:
-        raw = json.loads(self.store.get(key) or "{}")
-        fresh = raw.get("fresh")
-        if isinstance(fresh, dict) and fresh.get("launch_state") == "starting" and fresh.get("launch_log_file") == str(log):
-            raw["fresh"] = {**fresh, "launch_state": "registered", "launch_run_id": run_id}
-            self.store.set(key, json.dumps(raw, sort_keys=True))
-
-    def _ab_accept(self, b, chunk: dict, repair: bool) -> None:
-        """A saved chunk: remember its bytes, clear its run state, and move on with a new session.
-
-        Acceptance of an already saved chunk never depends on the LaunchGate (only the next chunk's launch does). The
-        outcome write comes first and every later step is idempotent: a crash in between re-enters through the run-start
-        baseline, where the exact saved file is accepted again instead of asking the AI."""
-        self._clear_batch_retry(b["id"])
-        self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
-        self._ab_remember(b, chunk)
-        if repair:
-            self.store.delete(f"ab_repair_{b['id']}")
-        self.store.delete(stage1ab.run_start_key(b["id"]))
-        self.store.delete(stage1ab.state_key(b["id"], chunk["number"]))
-        self._record_progress(self.store.batch(b["id"]))
-        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
-        return self._launch_ab_next(self.store.batch(b["id"]))
-
-    def _ab_log_auto_removals(self, b, chunk: dict, save_result: str) -> None:
-        """Record exact compact-save cleanup only when the CLI reports removals."""
-        if '"items":[]' in save_result:
-            return
-        try:
-            result = json.loads(save_result)
-            cleanup = result.get("autoRemoved", {})
-            items = cleanup.get("items", [])
-            count = int(cleanup.get("count", len(items)))
-        except (TypeError, ValueError, AttributeError):
-            return
-        if count <= 0 or not items:
-            return
-        details = "; ".join(f"{item['alias']} {json.dumps(item['candidate'], ensure_ascii=False)} ({item['reason']})"
-                             for item in items if isinstance(item, dict) and {"alias", "candidate", "reason"} <= item.keys())
-        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 자동 정제 {count}개: {details}", "warn")
-
-    def _ab_log_candidate_discards(self, b, chunk: dict, rejected: list[dict]) -> None:
-        details = "; ".join(f"{item['alias']} {json.dumps(item['candidate'], ensure_ascii=False)} ({item['reason']})" for item in rejected)
-        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 정정 3회 뒤 식별된 부적격 후보 {len(rejected)}개를 제거하고 재검증합니다: {details}", "warn")
-
-    def _run_ok_ab_chunk(self, b) -> None:
-        """A zero exit is not success: the chunk counts only when the run's FINAL answer parsed, saved and the exact file exists."""
-        problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
-        if problem:
-            return self._fail(b, "ERROR", problem)
-        wt = Path(b["worktree"])
-        try:
-            if self.git.dirty(wt).strip():
-                return self._fail(b, "ERROR", "answer-only 청크 실행 뒤 worktree에 추적 변경이 있습니다 (격리 위반 가능). 보존합니다.")
-            info = self._find_recovery_pr(b)
-            if info is not None:
-                return self._fail(b, "ERROR", f"청크 실행 중 소유 브랜치에 예상하지 않은 PR #{info['number']}이 있습니다. 보존합니다.")
-            baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "{}")
-            cp = stage1ab.checkpoint(wt, b)
-            chunk = stage1ab.chunk_by_number(cp, baseline["chunk_no"])
-            repair = bool(baseline.get("repair"))
-            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved"):   # the AI only answers: it never writes a chunk file
-                return self._fail(b, "ERROR", "answer-only 청크 실행 중 Supervisor가 만들지 않은 저장물 변경이 있습니다 (AI의 직접 쓰기). "
-                                  "완료로 인정하지 않고 보존합니다.")
-            st = stage1ab.load_state(self.store, b["id"], chunk["number"])
-            st["sid"] = b["session_id"] or st["sid"]
-            rows = stage1ab.view_rows((wt / stage1ab.view_path(b, chunk["number"])).read_text("utf-8"))
-        except TRANSIENT:
-            raise
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, GitError) as e:
-            return self._fail(b, "ERROR", f"A/B 청크 종료 확인 실패: {e}. 보존합니다.")
-        except Exception as e:
-            return self._fail(b, "ERROR", f"청크 종료 후 GitHub/Git 확인 실패: {e}. worktree를 보존합니다.")
-        ok, diag = False, ""
-        submitted_lines = None
-        structural = False   # #5539: the final answer itself did not parse (no exact marker pair / an unusable row)
-        try:
-            try:
-                body = stage1ab.extract_block(self._ab_answer(b, chunk), chunk["number"])
-                revised = stage1ab.split_rows(body)
-            except stage1ab.ABChunkError:
-                structural = not repair
-                raise
-            previous = None
-            answer_file = wt / stage1ab.answer_path(b, chunk["number"])
-            if st["requested"] is not None or repair:
-                if repair and not answer_file.exists():
-                    answer_file.parent.mkdir(parents=True, exist_ok=True)
-                    answer_file.write_text(stage1ab.compact_text(chunk["number"], stage1ab.saved_answer_lines(wt, b, chunk)), "utf-8")
-                previous = stage1ab.prune_outside_view(
-                    stage1ab.split_rows(answer_file.read_text("utf-8").split("\n")[1:-1]), [row[0] for row in rows])
-            lines = stage1ab.merge_answer(previous, st["requested"], revised)
-            if problem := self._saved_chunk_identity_problem(b):
-                return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
-            if not self._denials_cleared(b, Path(b["log_file"])):
-                return
-            submitted_lines = lines
-            ok, diag = stage1ab.save(self.runner, self.env, wt, b, chunk, lines)
-            if ok:
-                self._ab_log_auto_removals(b, chunk, diag)
-                if not stage1ab.chunk_saved(wt, b, chunk):
-                    return self._fail(b, "ERROR", "save-chunk가 성공했지만 저장 파일이 chunk의 Canonical ID와 맞지 않습니다. 보존합니다.")
-                return self._ab_accept(b, chunk, repair)
-            st["requested"] = stage1ab.rejected_aliases(diag, rows)
-            st["requested_problem"] = diag[:1500] if st["requested"] is not None else None
-        except stage1ab.ABChunkError as e:
-            diag = str(e)   # an unusable answer: ask the same rows again
-        except (OSError, ValueError) as e:
-            return self._fail(b, "ERROR", f"답변 처리 중 파일 오류: {e}. 보존합니다.")
-        st["problem"] = diag[:1500]
-        if repair and st["tries"] >= stage1ab.MAX_TRIES:
-            return self._fail(b, "ERROR", f"최종 merge 거부 뒤 청크 {chunk['number']:03d}의 정정 {stage1ab.MAX_TRIES}회가 저장되지 않았습니다. "
-                              f"실제 저장 오류: {diag}. 답변과 상태를 보존합니다.")
-        if not repair and st["tries"] >= stage1ab.MAX_SAVE_TRIES:
-            rejected = stage1ab.rejected_candidates(diag, rows, submitted_lines or [])
-            if not rejected:
-                st["tries"] = stage1ab.MAX_SAVE_TRIES + 1
-                stage1ab.save_state(self.store, b["id"], chunk["number"], st)
-                self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 마지막 정정 저장 거부: {diag[:200]}", "warn")
-                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤에도 저장되지 않았고 제거할 부적격 후보를 정확히 특정하지 못했습니다. 실제 저장 오류: {diag}. 답변과 상태를 보존합니다.")
-            try:
-                cleaned = stage1ab.remove_rejected_candidates(submitted_lines or [], rejected)
-                saved, final_diag = stage1ab.save(self.runner, self.env, wt, b, chunk, cleaned)
-            except (stage1ab.ABChunkError, OSError, ValueError) as e:
-                st["tries"] = stage1ab.MAX_SAVE_TRIES + 1
-                stage1ab.save_state(self.store, b["id"], chunk["number"], st)
-                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤 후보 정리 실패: {e}. 기존 오류: {diag}. 답변과 상태를 보존합니다.")
-            self._ab_log_candidate_discards(b, chunk, rejected)
-            if not saved:
-                st["tries"] = stage1ab.MAX_SAVE_TRIES + 1
-                st["problem"] = final_diag[:1500]
-                stage1ab.save_state(self.store, b["id"], chunk["number"], st)
-                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤 정확히 식별된 후보를 제거했지만 동일 save-chunk 검증이 실패했습니다: {final_diag}. 답변과 상태를 보존합니다.")
-            self._ab_log_auto_removals(b, chunk, final_diag)
-            if not stage1ab.chunk_saved(wt, b, chunk):
-                return self._fail(b, "ERROR", "후보 제거 후 save-chunk가 성공했지만 저장 파일이 chunk의 Canonical ID와 맞지 않습니다. 보존합니다.")
-            return self._ab_accept(b, chunk, repair)
-        st["tries"] += 1
-        last = self._last_run(b)
-        if last is None or last["ended_at"] is None:
-            return self._fail(b, "ERROR", "A/B 정정 대상 종료 run을 확인할 수 없습니다. 보존합니다.")
-        st["rejected_run_id"] = last["id"]
-        # #5539: a first structural failure resends the exact view in the same session; a second consecutive one uses
-        # the chunk's single automatic fresh session (one of the remaining corrections, never an extra one).
-        note = ""
-        if structural and st["format"] and not st["fresh_used"] and st["sid"]:
-            st.update(fresh_used=True, sid=None, fresh={"rejected_run_id": last["id"], "launch_state": "not_started"})
-            note = " (형식 오류: 자동 새 세션 1회)"
-        elif structural and st["sid"]:
-            note = " (형식 오류: 같은 세션 원본 view 재전달)"
-        st["format"] = structural
-        self.store.commit_ab_rejection(b["id"], stage1ab.state_key(b["id"], chunk["number"]), json.dumps(st, sort_keys=True))
-        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장 거부 {st['tries']}회{note}: {diag[:200]}", "warn")
-        return self._launch_ab_next(self.store.batch(b["id"]))
-
-    def _ab_chunk_response(self, b) -> bool:
-        """The last run's FINAL answer holds one complete, well-formed block for the chunk it was started for."""
-        try:
-            baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "")
-            chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(b["worktree"], b), baseline["chunk_no"])
-            body = stage1ab.extract_block(self._ab_answer(b, chunk), baseline["chunk_no"])
-            return bool(stage1ab.split_rows(body))
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
-            return False
-
-    def _ab_chunk_attempted(self, b) -> bool:
-        """Exact current `BEGIN chunk NNN` line in this run's final answer, even when its block is malformed."""
-        try:
-            baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "")
-            marker = f"BEGIN chunk {int(baseline['chunk_no']):03d}"
-            final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
-            return isinstance(final, str) and any(line.strip() == marker for line in final.replace("\r\n", "\n").split("\n"))
-        except (OSError, ValueError, KeyError, TypeError):
-            return False
-
-    @_single_launch_scope
-    def _relaunch_ab(self, b) -> None:
-        problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
-        if problem and self.store.get(stage1ab.run_start_key(b["id"])) is not None:
-            return self._fail(b, "ERROR", problem)
-        try:
-            if self._find_recovery_pr(b) is not None:
-                return self._fail(b, "ERROR", "청크 실행 브랜치에 이미 PR이 있어 자동 재개를 중단합니다. 보존합니다.")
-        except TRANSIENT:
-            raise
-        except Exception as e:
-            return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
-        raw = self.store.get(stage1ab.run_start_key(b["id"]))
-        if raw is not None:
-            wt = Path(b["worktree"])
-            try:
-                baseline = json.loads(raw)
-                chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(wt, b), baseline["chunk_no"])
-                saved = stage1ab.chunk_saved(wt, b, chunk)
-            except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
-                return self._fail(b, "ERROR", f"A/B 청크 재개 전 저장 확인 실패: {e}. 보존합니다.")
-            # A rejection is a committed exit outcome even if the next launch was interrupted. Check its original
-            # boundary and saved prefix before resuming the correction; never apply the same answer a second time.
-            state_raw = self.store.get(stage1ab.state_key(b["id"], chunk["number"]))
-            try:
-                state = json.loads(state_raw or "{}")
-                last = self._last_run(b)
-                rejected = last is not None and state.get("rejected_run_id") == last["id"]
-                if rejected and stage1ab.saved_snapshot(wt, b, stage1ab.checkpoint(wt, b)) != baseline.get("saved"):
-                    return self._fail(b, "ERROR", "A/B 정정 대기 중 저장물이 변경됐습니다. 보존합니다.")
-            except (stage1ab.ABChunkError, OSError, ValueError, TypeError, AttributeError) as e:
-                return self._fail(b, "ERROR", f"A/B 정정 재개 증거 확인 실패: {e}. 보존합니다.")
-            if rejected:
-                return self._launch_ab_next(b)
-            if saved:   # the exact file is already there: accept it, never ask the AI again
-                self.store.log(b["id"], "이전 실행의 A/B 청크 저장을 확인했습니다 — AI 재실행 없이 다음 단계로 진행합니다.")
-                return self._ab_accept(b, chunk, bool(baseline.get("repair")))
-            policy_chunk = self._ab_policy_skip_chunk(b)
-            if policy_chunk is not None:
-                if self._ab_complete_response(b, policy_chunk):
-                    return self._run_ok_ab_chunk(b)
-                refusal = self._adapter(b["producer"]).confirmed_prompt_refusal(Path(b["log_file"]))
-                if refusal:
-                    return self._handle_ab_policy_refusal(b, policy_chunk)
-                if self.store.issue_request(self._ab_policy_skip_event_key(b, policy_chunk)) is not None:
-                    return self._ab_save_policy_skip(b, policy_chunk)
-            if self._ab_chunk_response(b):   # judge the prior response instead of regenerating it
-                return self._run_ok_ab_chunk(b)
-        self.store.update(b["id"], retries=0, retry_after=None, error=None)
-        return self._launch_ab_next(self.store.batch(b["id"]))
-
-    def _ab_finalize(self, b) -> None:
-        if self._finalization_held(b, "ab_finalize"):
-            return
-        self._guarded(b, "finalize", self._ab_finalize_do)
-
-    def _ab_finalize_do(self, b) -> None:
-        """Merge once, commit, push and PR from current file / Git / GitHub facts; any step already true is skipped."""
-        wt = Path(b["worktree"])
-        n = stage1ab.names(b)
-        self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="ab_finalize")
-        try:
-            if problem := self._ab_head_problem(b, wt):
-                return self._fail(b, "ERROR", problem + " worktree를 보존합니다.")
-            label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
-            info = self._find_recovery_pr(b)
-            if info is not None:   # a PR from an earlier, interrupted finalization (or a lost response)
-                return self._to_review(b, info)
-            cp = stage1ab.checkpoint(wt, b)
-            if stage1ab.next_chunk(wt, b, cp) is not None:
-                return self._fail(b, "ERROR", "모든 청크가 저장되지 않았습니다. 보존합니다.")
-            if problem := self._ab_chunks_problem(b, cp):
-                return self._fail(b, "ERROR", problem)
-            try:
-                try:
-                    coverage = stage1ab.merge(self.runner, self.env, wt, b)
-                except stage1ab.MergeRejected as e:
-                    if "only restates the source gloss" not in e.raw:
-                        raise
-                    # Chunks saved before the save-time gloss-restatement cleanup covered this method: re-save them
-                    # once through the current rules (no AI), then merge again.
-                    self._ab_sync_worktree(b, wt)   # the worktree's workbench may predate the save-time cleanup
-                    # One pass per finalize attempt (the second merge is outside this handler); an interrupted or
-                    # no-op pass is simply redone on the next attempt, so no completion marker is kept.
-                    changed = stage1ab.resave_saved_chunks(self.runner, self.env, wt, b, cp, on_saved=lambda c: self._ab_remember(b, c))
-                    self.store.log(b["id"], f"저장된 청크 {changed}개를 현재 save-chunk 규칙으로 재정제한 뒤 merge를 다시 시도합니다", "warn")
-                    coverage = stage1ab.merge(self.runner, self.env, wt, b)
-            except stage1ab.MergeRejected as e:
-                chunk = stage1ab.chunk_of_error(cp, e.raw)
-                if chunk is None:
-                    return self._fail(b, "ERROR", f"{e} — 오류가 한 청크로 특정되지 않아 임의 재생산 없이 보존합니다.")
-                st = stage1ab.load_state(self.store, b["id"], chunk["number"])
-                if st["tries"] >= stage1ab.MAX_TRIES:
-                    return self._fail(b, "ERROR", f"{e} — 청크 {chunk['number']:03d} 정정 {stage1ab.MAX_TRIES}회 뒤에도 해소되지 않았습니다. 보존합니다.")
-                rows = stage1ab.view_rows(stage1ab.write_view(self.runner, self.env, wt, b, chunk))
-                st.update(requested=stage1ab.rejected_aliases(e.raw, rows), problem=str(e)[:1500], sid=None)
-                st["tries"] += 1
-                stage1ab.save_state(self.store, b["id"], chunk["number"], st)
-                self.store.set(f"ab_repair_{b['id']}", str(chunk["number"]))
-                self.store.log(b["id"], f"최종 merge 거부가 청크 {chunk['number']:03d}을 지목해 그 범위만 정정합니다: {str(e)[:200]}", "warn")
-                return self._launch_ab_next(self.store.batch(b["id"]))
-            title = stage1ab.pr_title(label, b)
-            if not self.git.is_committed(wt, n.output):
-                sha = self.git.commit_paths(wt, [n.output], title)
-                self.store.set(f"ab_commit_head_{b['id']}", sha)
-                self.store.log(b["id"], f"Candidate 파일을 commit했습니다 ({sha[:10]})")
-            else:
-                self.store.set(f"ab_commit_head_{b['id']}", self.git.head(wt))
-            head, remote = self.git.head(wt), self.git.remote_head(b["branch"])
-            if remote is None:
-                self.git.push_branch(wt, b["branch"])
-                remote = self.git.remote_head(b["branch"])
-            if remote != head:
-                return self._fail(b, "ERROR", f"원격 브랜치 {b['branch']}가 로컬 HEAD와 다릅니다 ({remote} / {head}). force push 없이 보존합니다.")
-            if rival := self._shared_occupied(b):
-                return self._fail(b, "ERROR", f"같은 {b['method'].upper()} 배치가 이미 점유됐습니다 ({rival}). 다른 배치로 바꾸지 않고 보존합니다.")
-            return self._create_pr_once(b, title, stage1ab.pr_body(label, b, coverage), [stage1ab.PR_LABEL])
-        except TRANSIENT:
-            raise
-        except (stage1ab.ABChunkError, GitError, RecoveryBlocked, DuplicateClaim, OSError, ValueError) as e:
-            return self._fail(b, "ERROR", f"A/B 최종화 중단: {e}. worktree를 보존합니다.")
-        except Exception as e:
-            return self._fail(b, "ERROR", f"A/B 최종화 중 GitHub/Git 오류: {e}. worktree를 보존합니다.")
-
-    def _producer_fix_context(self, b, events, session_id: str | None = None) -> tuple[str, dict[str, str]]:
-        """Provide the exact current Candidate/Canonical evidence and only reuse it after confirmed same-session delivery."""
-        text = "\n".join(str(e.get("body", "")) for e in (events or []))
-        try:
-            if b["method"] in stage1ab.METHODS:
-                names = stage1ab.names(b)
-            elif b["method"] == literary.METHOD:
-                names = literary.names(b)
-            elif b["method"] == dchunk.METHOD:
-                names = dchunk.names(b)
-            else:
-                raise stage1ab.ABChunkError(f"알 수 없는 Candidate 방식: {b['method']}")
-            _allowed, context, digests = stage1ab.fix_scope_data(
-                Path(b["worktree"]), b, text, output_path=names.output, canonical_path=names.canonical)
-            key = f"fix_context_sent_{b['id']}"
-            previous = {}
-            try:
-                previous = json.loads(self.store.get(key) or "{}")
-            except (TypeError, ValueError):
-                pass
-            sent = previous.get("digests") if previous.get("session_id") == session_id and session_id else {}
-            sent = sent if isinstance(sent, dict) else {}
-            repeated = sorted(sid for sid, digest in digests.items() if sent.get(sid) == digest)
-            digests = {sid: digest for sid, digest in digests.items() if sid not in repeated}
-            if repeated:
-                note = f"이 세션에 이미 전달된 동일 근거: {', '.join(repeated)}"
-                if not digests:
-                    return note, {}
-                context_lines = context.splitlines()
-                context_lines = [line for line in context_lines if not (
-                    len(line.split("\t")) == 6 and line.split("\t")[1] in repeated)]
-                context = note + "\n" + "\n".join(context_lines) + "\n"
-            if len(context.encode("utf-8")) > 90_000:
-                pages = stage2.chunk_pages(context)
-                page_paths = stage2.write_pages(Path(b["worktree"]), ".warroom-scratch/producer-fix-context.txt", pages)
-                context = ("source_context가 90 KB를 넘어 손실 없이 분할했다. 아래 page를 각각 별도 도구 호출 한 번씩 읽는다:\n" +
-                           "\n".join(f"- cat {path} ({i}/{len(page_paths)})"
-                                     for i, path in enumerate(page_paths, 1)) + "\n")
-            return context, digests
-        except TRANSIENT:
-            raise
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
-            return f"source_context 없음: {e}\n", {}
+        return "fix_resume" if b["session_id"] else "fix_new"
 
     @_single_launch_scope
     def _retry_producer_fix(self, b) -> None:
@@ -9759,33 +7137,6 @@ class Supervisor:
             self.store.log(b["id"], f"운영자 Retry: legacy 리뷰 이벤트 {event['key']}의 관련 fix 실행은 있으나 "
                            "실행 후 PR 답글 증거가 없어 미완료 이벤트로 복구합니다.", "warn")
         return pending, None
-
-    def _remember_fix_context_delivery(self, b) -> None:
-        """Persist only source rows from a successfully completed fix prompt with its actual session ID."""
-        key = f"fix_context_pending_{b['id']}"
-        try:
-            pending = json.loads(self.store.get(key) or "")
-            run = self._last_run(b)
-            digests = pending.get("digests")
-            if (run is None or pending.get("run_id") != run["id"] or not run["kind"].startswith("fix")
-                    or run["ended_at"] is None or str(run["exit_status"]) != "0"
-                    or self.store.get(f"verified_completion_run_{b['id']}") != str(run["id"])
-                    or not isinstance(run["session_id"], str) or not run["session_id"].strip()
-                    or not isinstance(digests, dict) or not digests):
-                return
-            session_id = run["session_id"]
-            sent_key = f"fix_context_sent_{b['id']}"
-            try:
-                previous = json.loads(self.store.get(sent_key) or "{}")
-            except (TypeError, ValueError):
-                previous = {}
-            old = previous.get("digests") if previous.get("session_id") == session_id else {}
-            merged = dict(old) if isinstance(old, dict) else {}
-            merged.update(digests)
-            self.store.set(sent_key, json.dumps({"session_id": session_id, "digests": merged}, sort_keys=True))
-            self.store.delete(key)
-        except (TypeError, ValueError, KeyError):
-            return
 
     def _run_bound_app_replies(self, run, pr, comments) -> set[int]:
         """Bind a Codex app reply to its actual successful tool call and the unchanged GitHub comment."""
@@ -9958,12 +7309,6 @@ class Supervisor:
         if b["method"] == STAGE2_METHOD:
             self._record_progress(b)   # the verified final checkpoint may be newer than the last producer poll
             self.store.delete(stage2.run_start_key(b["id"]))
-        if b["method"] == literary.METHOD:
-            self.store.delete(literary.run_start_key(b["id"]))
-        if b["method"] == dchunk.METHOD:
-            self.store.delete(dchunk.run_start_key(b["id"]))
-        if b["method"] in stage1ab.METHODS:
-            self.store.delete(stage1ab.run_start_key(b["id"]))
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                           head_sha=info["head_sha"], error=recovery_note, retries=0)
         self._clear_batch_retry(b["id"])
@@ -9979,14 +7324,6 @@ class Supervisor:
                                                   for f in files):
                 raise FastForwardBlocked("PR 파일 목록을 확인할 수 없습니다")
             paths = {f["path"] for f in files}
-            if b["method"] in stage1ab.METHODS or b["method"] in (literary.METHOD, dchunk.METHOD):
-                claim = batches.expected_claim(b)
-                found = batches.pr_claims(b, {"number": info["number"], "files": files})
-                expected_path = (f"data/relation-candidates/{b['shard']}/"
-                                 f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl")
-                if found.count(claim) != 1 or any(item != claim for item in found) or expected_path not in paths:
-                    raise FastForwardBlocked(f"PR #{info['number']}의 Candidate 파일 소유권이 배치와 일치하지 않습니다")
-                return {expected_path}
             if b["method"] == STAGE2_METHOD:
                 claim = batches.expected_claim(b)
                 found = batches.pr_claims(b, {"number": info["number"], "files": files})
@@ -10129,14 +7466,6 @@ class Supervisor:
                     b, key, f"원격에는 local HEAD {local[:10]}이 있지만 PR API HEAD는 {info['head_sha'][:10]}입니다")
             if remote == info["head_sha"] and self._resume_unpushed_stage2_fix(b, info, local):
                 return "stop"
-            if (remote == info["head_sha"] and b["method"] in ("a", "b", "c", "d") and b["pid"] is None
-                    and self._completed_fix_run(b) and self.git.is_ancestor(remote, local, path=wt)):
-                # A completed fix left its owned commit unpushed (the AI's own push was rejected): the Supervisor
-                # pushes that exact commit, never forced, instead of reading it as divergence. Review replies are
-                # posted only after this head check, so the push cannot require them (#5987).
-                self.git.push_owned_fix(wt, b["branch"], remote, local)
-                self.store.log(b["id"], f"검증된 수정 commit {local[:10]}을 Supervisor가 소유 브랜치에 push했습니다")
-                return self._head_lag_wait(b, key, f"push한 local HEAD {local[:10]}의 PR 반영 대기")
             if remote != info["head_sha"]:
                 # A stale PR API can briefly trail an Update branch push. Re-read once before classifying
                 # an unrelated origin SHA as divergence; only a PR now pointing at that exact SHA may sync.
@@ -10234,14 +7563,6 @@ class Supervisor:
                     return self._fail(b, "ERROR", "수정 완료 PR 소유권 또는 상태가 바뀌었습니다. 보존합니다.")
                 if problem := self._complete_producer_fix_events(b, info):
                     return self._maintainer_fix_problem(b, problem)
-            elif b["method"] in ("a", "b", "c", "d") and self._fix_claim_status(b) == "CLAIMED":
-                # The head check was deferred (lagging PR metadata after the Supervisor's own push, #5987): the
-                # replies/events still have to be confirmed before returning to review, as _run_ok would have.
-                if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
-                        or info.get("state") != "open" or info.get("merged")):
-                    return self._fail(b, "ERROR", "리뷰 수정 완료 PR의 소유권 또는 상태가 바뀌었습니다. 보존합니다.")
-                if problem := self._complete_producer_fix_events(b):
-                    return self._fail(b, "ERROR", problem)
             if b["method"] == STAGE2_METHOD:
                 supervised = self._stage2_supervised_fix(b)
                 if problem := self._stage2_fix_result_problem(b, info) or (
@@ -10254,17 +7575,9 @@ class Supervisor:
                     return self._fail(b, "ERROR", problem)
             self._to_review(b, info)
 
-    def _fix_claim_status(self, b):
-        try:
-            return json.loads(self.store.get(f"fix_claim_{b['id']}") or "").get("status")
-        except (TypeError, ValueError, AttributeError):
-            return None
-
     def _find_pr(self, b):
         """The batch's PR (by its owned branch) or None; raises DuplicateClaim on a rival PR."""
         prs = self.gh.prs_for_branch(b["branch"])
-        if b["method"] == literary.METHOD:
-            prs = self._eligible_branch_prs(b, prs)
         if not prs:
             return None
         pr = sorted(prs, key=lambda p: p["number"])[-1]
@@ -10273,77 +7586,10 @@ class Supervisor:
             raise DuplicateClaim(f"같은 배치를 다른 열린 PR #{dup}이 점유 — 중복 방지로 중단")
         return self.gh.pull(pr["number"])
 
-    def _adopt_pr_while_running(self, b) -> None:
-        """Hand a validated PR to Supervisor while the producer is live, then stop that process."""
-        ad = self._adapter(b["producer"])
-        stage1 = b["method"] in {"a", "b", "c", "d"}
-        if not stage1 and ad.requires_final_result_for_pr:
-            return   # Stage 2/maintenance retain their existing final-result and verify gates.
-        if ad.requires_session_for_pr and not b["session_id"]:
-            return
-        last = float(self.store.get(f"last_poll_{b['id']}", "0"))
-        if self.clock() - last < self.cfg["poll_seconds"]:
-            return
-        self.store.set(f"last_poll_{b['id']}", str(self.clock()))
-        try:
-            # Keep the live final-result gate ahead of open-PR adoption. Other Stage 1 paths can validate ownership
-            # immediately; final-result producers validate exact ownership after their completion/denial gates.
-            info = self._find_pr(b) if stage1 and ad.requires_final_result_for_pr else (
-                self._find_recovery_pr(b) if stage1 else self._find_pr(b))
-        except (DuplicateClaim, RecoveryBlocked) as e:
-            ad.stop(b["pid"])
-            return self._fail(b, "ERROR", str(e))
-        except Exception as e:
-            return self.store.log(b["id"], f"PR 조회 실패(재시도 예정): {e}", "warn")
-        if info is None:
-            return
-        if stage1 and info["merged"] and ad.requires_final_result_for_pr:
-            try:
-                info = self._find_recovery_pr(b)  # merged recovery still requires the exact Candidate claim
-            except (DuplicateClaim, RecoveryBlocked) as e:
-                ad.stop(b["pid"])
-                return self._fail(b, "ERROR", str(e))
-        if not stage1:
-            self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
-                              head_sha=info["head_sha"], error=None, retries=0)
-            self.store.set(f"last_poll_{b['id']}", "0")
-            self.store.log(b["id"], f"AI 실행 중 PR #{info['number']} 감지 → 리뷰 감시로 인계")
-            return
-        if info["merged"]:
-            ad.stop(b["pid"])
-            return self._enter_merged(b, info, "생산 실행 중 소유 PR 발견")
-        if info["state"] != "open":
-            ad.stop(b["pid"])
-            self.store.update(b["id"], state="ERROR", paused_from="WAITING_REVIEW", pr_number=info["number"],
-                              head_sha=info["head_sha"], error=f"PR #{info['number']}이 머지 없이 닫혀 있습니다. "
-                              "worktree·브랜치를 보존합니다.")
-            return self.store.log(b["id"], f"생산 실행 중 닫힌 PR #{info['number']} 발견; 안전 정지", "error")
-        if ad.requires_final_result_for_pr:
-            result_problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
-                                                   b["worktree"], self.env)
-            if result_problem:
-                return   # keep the established success/denial gate for an open PR
-            if not self._denials_cleared(b, Path(b["log_file"])):
-                ad.stop(b["pid"])
-                return
-            if stage1:
-                try:
-                    info = self._find_recovery_pr(b)
-                except (DuplicateClaim, RecoveryBlocked) as e:
-                    ad.stop(b["pid"])
-                    return self._fail(b, "ERROR", str(e))
-        self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
-                          head_sha=info["head_sha"], error=None, retries=0)
-        self.store.set(f"last_poll_{b['id']}", "0")
-        self.store.set(f"stop_after_pr_{b['id']}", "1")
-        ad.stop(b["pid"])
-        self.store.log(b["id"], f"AI 실행 중 소유 PR #{info['number']} 감지 → Supervisor로 인계하고 생산 프로세스 종료 요청")
-
     def _duplicate_claim(self, b, my_pr: int, own_claims: set | None = None) -> int | None:
-        """A rival open PR on the same batch file: same model for A/B, any model for the shared C/D queue."""
-        if b["method"] == MAINTENANCE_METHOD:   # an Issue-scoped PR, not a Candidate batch: the Issue claim is the guard
+        """A rival open PR on the same shard: one Stage 2/3 PR per shard, since the Relation/Drop files collide."""
+        if b["method"] == MAINTENANCE_METHOD:   # an Issue-scoped PR, not a shard batch: the Issue claim is the guard
             return None
-        shared = batches.is_shared_queue(b["method"])
         for pr in self.gh.open_prs():
             if pr["number"] == my_pr:
                 continue
@@ -10351,13 +7597,8 @@ class Supervisor:
                 claims = batches.pr_claims(b, pr)
             except batches.BatchError as e:   # unknown file list: a duplicate cannot be ruled out -> stop
                 raise DuplicateClaim(f"{e} — 중복 방지로 중단") from e
-            if b["method"] in (STAGE2_METHOD, STAGE3_METHOD):   # one Stage 2/3 PR per shard: the Relation/Drop files collide
-                if (own_claims or {batches.expected_claim(b)}) & set(claims):
-                    return pr["number"]
-                continue
-            for shard, batch, method, who in claims:
-                if (shard, batch, method) == (b["shard"], b["batch"], b["method"]) and (shared or who == b["producer"]):
-                    return pr["number"]
+            if (own_claims or {batches.expected_claim(b)}) & set(claims):
+                return pr["number"]
         return None
 
     def _handoff_failed_pr(self, b, code: int, cls: str) -> bool:
@@ -10400,34 +7641,8 @@ class Supervisor:
                        "재생산을 막고 수동 확인을 요청합니다.", "error")
         return True
 
-    GOAT_429_HOLD = ("GOAT provider 429 확인: 한도와 일시 오류를 구분할 증거가 없어 자동 재실행·다음 청크 진행을 "
-                     "중단합니다. 저장물·worktree·checkpoint·세션을 보존합니다. Command Code Studio 확인 후 Retry.")
-
-    def _run_of_log(self, log_file):
-        """The run row that wrote `log_file` (a log belongs to exactly one launch), or None."""
-        return self.store.run_by_log(log_file) if log_file else None
-
-    def _goat_429(self, run) -> bool:
-        """#6027: this run ran on GOAT (its PERSISTED model ID) and its log holds a top-level provider 429.
-
-        Shared by the single-run and the parallel C/D task exits. A run an operator Retry already acknowledged (its
-        id <= the batch's usage-limit override, set by Retry) is not held again; a 429 after that Retry is."""
-        if run is None or not is_goat_model(run["model"]) or not run["log_file"]:
-            return False
-        try:
-            override = int(self.store.get(usage_limit_override_key(run["batch_id"])) or 0)
-        except ValueError:
-            override = 0
-        if run["id"] <= override:
-            return False
-        return any(e["status"] == 429 for e in opencode_provider_errors(run["log_file"])[0])
-
     def _classify_run(self, producer: str, log_file) -> str:
-        """Failure class of ONE run's log. For the tiered CLI (OpenCode) only a structured provider Free-quota
-        error event is `free_quota`; Codex Fast rejection needs an explicit CLI diagnostic. A GOAT run (by its
-        persisted model ID) is classified from top-level provider events and CLI diagnostics only (#6027)."""
-        if self._tiered(producer) and is_goat_model((self._run_of_log(log_file) or {"model": None})["model"]):
-            return classify_goat_failure(log_file)
+        """Failure class of ONE run's log. Codex Fast rejection needs an explicit CLI diagnostic."""
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")[-30000:]
         except OSError:
@@ -10436,10 +7651,6 @@ class Supervisor:
             return classify_claude_failure(log_file, text, self.cfg["quota_patterns"])
         if getattr(self._adapter(producer), "name", None) == "codex":
             return classify_codex_failure(text, self.cfg["quota_patterns"])
-        if self._tiered(producer):
-            if opencode_free_quota(log_file):
-                return "free_quota"
-            return classify_failure(text, [])
         return classify_failure(text, self.cfg["quota_patterns"])
 
     @staticmethod
@@ -10516,42 +7727,9 @@ class Supervisor:
             if problem := self._saved_chunk_identity_problem(b):
                 return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
             return self._accept_stored_output(self._run_ok_stage2_chunk, b)
-        if safe_to_accept_stored and self._ab_chunk_run(b) and b["state"] == "PRODUCING" \
-                and (self._ab_chunk_response(b) or self._ab_chunk_attempted(b)):
-            # A nonzero exit may leave a malformed current block. Its exact BEGIN marker is enough to enter the existing
-            # same-session correction path; absent or different chunk markers remain a missing response.
-            self.store.log(b["id"], "AI가 비정상 종료했지만 현재 A/B 청크의 답변 시도 표식이 있어 기존 저장·정정 경로로 전달합니다.", "warn")
-            if problem := self._saved_chunk_identity_problem(b):
-                return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
-            return self._accept_stored_output(self._run_ok_ab_chunk, b)
-        if safe_to_accept_stored and self._c_chunk_run(b) and b["state"] == "PRODUCING" and self._c_chunk_saved(b):
-            # The submit was stored (e.g. the CLI died or its answer was lost afterwards): never produce it again.
-            self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 submit 저장이 확인되어 재생산하지 않습니다.", "warn")
-            if problem := self._saved_chunk_identity_problem(b):
-                return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
-            if not self._denials_cleared(b, Path(b["log_file"])):
-                return
-            return self._accept_stored_output(self._run_ok_c_chunk, b)
-        if safe_to_accept_stored and self._d_chunk_run(b) and b["state"] == "PRODUCING" and self._d_chunk_saved(b):
-            # The save was stored (e.g. the CLI died or its answer was lost afterwards): never produce it again.
-            self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 save 저장이 확인되어 재생산하지 않습니다.", "warn")
-            if problem := self._saved_chunk_identity_problem(b):
-                return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
-            if not self._denials_cleared(b, Path(b["log_file"])):
-                return
-            return self._accept_stored_output(self._run_ok_d_chunk, b)
-        if self._d_chunk_run(b) and b["state"] == "PRODUCING" and cls == "unknown" and not b["pr_number"] \
-                and not self._d_chunk_saved(b):
-            if problem := self._saved_chunk_identity_problem(b):
-                return self._fail(b, problem[0], f"저장 거부를 만든 실행의 소유권/핀 확인 실패: {problem[1]}")
-            if not self._denials_cleared(b, Path(b["log_file"])):
-                return
-            if self._d_fix(b):
-                # The CLI left its own repairable rejection, and permission evidence is explicitly clear.
-                return
         chunk_run = (b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str)
-                     and (b["run_kind"].startswith("s2_chunk_") or b["run_kind"] == "s2_repair_new")) or self._c_chunk_run(b) or self._d_chunk_run(b) \
-            or self._ab_chunk_run(b) or self._stage3_chunk_run(b)
+                     and (b["run_kind"].startswith("s2_chunk_") or b["run_kind"] == "s2_repair_new")) \
+            or self._stage3_chunk_run(b)
         if b["state"] == "PRODUCING" and not b["pr_number"] and not chunk_run:
             if self._handoff_failed_pr(b, code, cls):
                 return
@@ -10561,21 +7739,6 @@ class Supervisor:
         if cls == "fast_unavailable":
             return self._fail(b, "ERROR", self._fast_unavailable_message(b["log_file"]))
         if cls == "session_missing":
-            if self._ab_chunk_run(b) and b["state"] == "PRODUCING":
-                try:
-                    raw = self.store.get(stage1ab.run_start_key(b["id"]))
-                    baseline = json.loads(raw or "")
-                    chunk_no = int(baseline["chunk_no"])
-                    state = stage1ab.load_state(self.store, b["id"], chunk_no)
-                    state["sid"] = None   # the recorded session is gone; the existing bounded save retry starts a new one
-                    if state["requested"] is None:
-                        state["problem"] = "이전 세션을 찾지 못해 완전한 청크 답변이 남지 않았습니다"
-                    stage1ab.save_state(self.store, b["id"], chunk_no, state)
-                except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
-                    return self._fail(b, "ERROR", f"A/B 청크 세션 복구 상태 확인 실패: {e}. 보존합니다.")
-                self.store.update(b["id"], session_id=None)
-                self.store.log(b["id"], "A/B 세션을 찾지 못했습니다. 기존 청크별 저장 정정 한도를 사용해 같은 청크를 새 세션으로 이어갑니다.", "warn")
-                return self._run_ok_ab_chunk(self.store.batch(b["id"]))
             if b["state"] == "PRODUCING" and self._safe_fresh_chunk_after_missing_session(b):
                 self.store.update(b["id"], session_id=None)   # same chunk's local evidence is sufficient for a fresh session
                 b = self.store.batch(b["id"])
@@ -10586,17 +7749,8 @@ class Supervisor:
         if cls == "usage_limit":
             return self._fail(b, "PAUSED", "CLI 사용량 한도에 도달했습니다 — 자동 전환·재시도 없이 중지합니다. 한도 해제 후 Retry.")
         if cls == "free_quota":
-            if not self._tiered(b["producer"]):
-                return self._fail(b, "PAUSED", "사용량 한도 도달로 보입니다. 이 CLI는 자동 모델 전환을 하지 않습니다 "
-                                  "(로그 확인 후 Retry).")
-            go = registry(self.cfg).get(b["producer"], {}).get("models", {}).get("go")
-            if b["model_tier"] == "free" and go:
-                with self.launch_gate.permit():
-                    self.store.set_line(b["producer"], b["method"], model_tier="go")
-                    self.store.update(b["id"], model_tier="go")
-                    self.store.log(b["id"], f"제공자 Free 한도 오류 확인 ({QUOTA_EVIDENCE}) → Go 모델로 전환")
-                    return self._relaunch(self.store.batch(b["id"]))
-            return self._fail(b, "PAUSED", "무료 한도 소진이 확인되었지만 전환할 Go 모델이 없거나 이미 Go입니다.")
+            return self._fail(b, "PAUSED", "사용량 한도 도달로 보입니다. 이 CLI는 자동 모델 전환을 하지 않습니다 "
+                              "(로그 확인 후 Retry).")
         if cls in ("rate_limit", "network"):
             if b["retries"] < self.cfg["rate_limit_retries"]:
                 wait = self.cfg["rate_limit_backoff_seconds"] * (2 ** b["retries"])
@@ -10605,9 +7759,6 @@ class Supervisor:
             return self._fail(b, "PAUSED", f"{cls} 재시도 한도 초과 (무료 한도 소진으로 간주하지 않음)")
         if cls == "auth":
             return self._fail(b, "PAUSED", "인증 실패 — Board 상단의 GitHub 인증 안내를 확인하세요.")
-        if b["run_kind"] == "fix_resume" and is_goat_model((self._run_of_log(b["log_file"]) or {"model": None})["model"]):
-            return self._fail(b, "PAUSED", f"GOAT 실행 실패를 증거로 분류하지 못했습니다(분류={cls}) — 새 세션을 만들지 않고 "
-                              f"worktree·PR·세션을 보존합니다. 로그: {b['log_file']}")
         if b["run_kind"] == "fix_resume":  # session resume impossible -> safe recovery once
             with self.launch_gate.permit():
                 self.store.log(b["id"], "세션 resume 실패 → 새 AI 세션으로 복구", "warn")
@@ -10645,12 +7796,6 @@ class Supervisor:
 
     def _watch(self, b, *, allow_fix: bool = True) -> None:
         b, live = self._reap(b)
-        stop_key = f"stop_after_pr_{b['id']}"
-        if self.store.get(stop_key):
-            if live:
-                self._adapter(b["producer"]).stop(b["pid"])
-                return
-            self.store.delete(stop_key)
         # A Stage 2 PR is only accepted after its complete checkpoint verifies. The last producer poll may have
         # recorded an earlier candidate count, so reconcile that persisted snapshot while the verified PR waits.
         if b["method"] == STAGE2_METHOD and (
@@ -10728,7 +7873,7 @@ class Supervisor:
                     synced = True
                     continue   # re-read PR HEAD and review events after the FF; never act on a stale snapshot
                 self._transient_clear(f"b{b['id']}:branch_sync", b["id"])
-                if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD, MAINTENANCE_METHOD) and not live:
+                if b["method"] in (STAGE3_METHOD, MAINTENANCE_METHOD) and not live:
                     # Older versions marked an event handled when the fix process STARTED, not when the
                     # reply was confirmed. A safe Update branch can return that failed run to REVIEW.
                     # Likewise, a stranded CLAIMED event must not launch again without operator Retry.
@@ -10991,7 +8136,6 @@ class Supervisor:
         self._clear_batch_retry(b["id"])
         self.store.delete(f"pr_create_{b['id']}")
         self.store.delete(f"cleanup_proof_{b['id']}")
-        self.store.delete(f"stop_after_pr_{b['id']}")
         if b["method"] == STAGE2_METHOD:
             self.store.delete(stage2.run_start_key(b["id"]))
             self.store.delete(f"s2_reconcile_commit_{b['id']}")
@@ -11114,7 +8258,8 @@ class Supervisor:
         self._handle_reload()
         self.store.fire_due_drain_schedules(self.clock(), control.board_line_keys(self.store, self.cfg))
         for b in self.store.incomplete_batches():
-            self.store.line(b["producer"], b["method"])
+            if not control.retired(b, self.cfg):
+                self.store.line(b["producer"], b["method"])
         for key, future in list(pending.items()):
             if not future.done():
                 continue
@@ -11136,7 +8281,8 @@ class Supervisor:
                 self.store.log(None, f"Line job이 {2 * self._interval:g}초(2×interval)를 넘어 실행 중입니다: {label}", "warn", line=label)
         if self._stopping():
             return cursor
-        keys = [(ln["model"], ln["method"]) for ln in self.store.lines() if ln["method"] != MAINTENANCE_METHOD]
+        keys = [(ln["model"], ln["method"]) for ln in self.store.lines()
+                if ln["method"] != MAINTENANCE_METHOD and not control.retired(ln, self.cfg)]
         keys.append(None)
         offset = cursor % len(keys)
         for key in keys[offset:] + keys[:offset]:
@@ -11211,8 +8357,8 @@ def build(paths=None, fence=None):
     """Wire the production Supervisor. `fence` (already scanned) protects git/node when several Workers run."""
     import os as _os
 
-    from .adapters import ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter
-    from .config import Paths, load_config
+    from .adapters import ClaudeCodeAdapter, CodexCLIAdapter
+    from .config import Paths, load_config, retired_notice
     from .gitops import Git
     from .github import GhClient
     from .shell import FencedRunner, Runner
@@ -11231,9 +8377,15 @@ def build(paths=None, fence=None):
     plain = runner   # gh and every non-git/node command, and the whole serial (workers=1) path
     if fence is not None and cfg["supervisor_workers"] > 1:
         runner = FencedRunner(plain, fence, paths.worktrees)
-    adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"]),
-                "codex": CodexCLIAdapter(cfg["codex_bin"])}
-    return Supervisor(paths, cfg, Store(paths.db), runner, adapters,
+    adapters = {"claude": ClaudeCodeAdapter(cfg["claude_bin"]), "codex": CodexCLIAdapter(cfg["codex_bin"])}
+    store = Store(paths.db)
+    if notice := retired_notice(cfg):
+        store.log(None, notice, "warn")
+    if retired := control.retired_rows(store, cfg):
+        store.log(None, f"지원 종료된 Line/배치 {len(retired)}건은 조회만 하고 실행하지 않습니다 (#9933): "
+                  + ", ".join(sorted({f"{r['producer'] if 'producer' in r.keys() else r['model']}/{r['method']}" for r in retired})),
+                  "warn")
+    return Supervisor(paths, cfg, store, runner, adapters,
                       GhClient(runner, env, cfg["repo"]),
                       Git(runner, paths.repo_root, env, paths.worktrees, fence=fence), env, fence=fence)
 

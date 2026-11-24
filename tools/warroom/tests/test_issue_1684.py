@@ -7,18 +7,17 @@ import base64
 import json
 import sqlite3
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from unittest import mock
 
 from tests.fakes import HEAD1, World
 from warroom import batches, control, prompts, stage2
-from warroom.config import config_problem, stage2_models, stage2_problem
+from warroom.config import stage2_models, stage2_problem
 from warroom.store import SCHEMA_VERSION, LineBusy, Store
 
 PRODUCERS = {
     "claude": {"adapter": "claude", "model": "claude-x", "effort": "high"},
     "codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"},
-    "deepseek": {"adapter": "opencode", "models": {"free": "p/free-x-free", "go": "p/go"}},
 }
 S2 = "s2"
 
@@ -30,14 +29,10 @@ def ready(batch, n, shard="001"):
 
 
 def s2_world(test, canon=None, done=None):
-    """A World with Claude/Codex/DeepSeek, `canon` shards (the factory's shard count follows it) and ready Stage 1 inputs."""
+    """A World with Claude/Codex, `canon` shards and ready (preserved) Stage 1 Candidate inputs."""
     w = World()
-    patcher = mock.patch.object(batches, "SHARDS", max(canon or {1: 0}))
-    patcher.start()
-    test.addCleanup(patcher.stop)
     test.addCleanup(w.tmp.cleanup)
     w.cfg["producers"] = PRODUCERS
-    w.runner.models += []
     canon = canon or {1: 1000}
     if done is None:
         done = {}
@@ -142,18 +137,18 @@ class StageTwoExclusivity(unittest.TestCase):
             self.assertEqual(stage2_problem(w.cfg, model) is None, allowed, model)
         ok, msg = control.start(w.store, "deepseek", S2, "single", cfg=w.cfg)
         self.assertFalse(ok)
-        self.assertIn("Claude 또는 Codex", msg)
+        self.assertIn("등록되지 않은 모델", msg)
         self.assertFalse(control.start(w.store, "claude", S2, "single")[0])   # no config proof: fail closed
         self.assertEqual(w.store.lines(), [])
 
-    def test_supervisor_blocks_a_direct_deepseek_stage_two_reservation(self):
+    def test_supervisor_blocks_a_direct_unregistered_stage_two_reservation(self):
         w = self.w
         w.store.set_line("deepseek", S2, run=1, mode="single")   # bypasses control.start entirely
         w.tick()
         self.assertEqual(w.store.incomplete_batches(), [])
         ln = w.store.peek_line("deepseek", S2)
         self.assertEqual(ln["run"], 0)
-        self.assertIn("Claude 또는 Codex", ln["blocked"])
+        self.assertIn("등록되지 않은 모델", ln["blocked"])
 
     def test_second_stage_two_start_is_refused_atomically_whatever_the_model(self):
         w = self.w
@@ -171,15 +166,6 @@ class StageTwoExclusivity(unittest.TestCase):
             w.store.create_batch(method=S2, producer="codex", shard="001", batch="01-02", branch="b",
                                  worktree="w", from_run=False)
 
-    def test_stage_one_lines_run_beside_stage_two(self):
-        w = self.w
-        w.runner.models += ["p/free-x-free"]
-        self.assertTrue(control.start(w.store, "claude", S2, "single", cfg=w.cfg)[0])
-        self.assertTrue(control.start(w.store, "deepseek", "a", "single", cfg=w.cfg)[0])
-        w.tick()
-        self.assertEqual(w.store.active_batch("claude", S2)["batch"], "01-01")
-        self.assertIsNotNone(w.store.active_batch("deepseek", "a"))
-
     def test_other_model_restart_does_not_steal_an_unfinished_part(self):
         w = self.w
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
@@ -193,13 +179,67 @@ class StageTwoExclusivity(unittest.TestCase):
         self.assertIn("Retry", msg)
         self.assertEqual((b["worktree"], b["branch"]), (w.store.active_batch("claude", S2)["worktree"], "s2-claude-001-01-01"))
 
-    def test_reserved_names_cannot_be_stage_one_methods(self):
+class RetiredRows(unittest.TestCase):
+    """#9933: historical Stage 1 and DeepSeek rows stay readable, are never run, and never block Stage 2."""
+
+    def setUp(self):
+        w = self.w = s2_world(self)
+        w.cfg["_retired_producers"] = ["deepseek"]
+        self.old = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch="a-deepseek-001-01",
+                                        worktree=str(w.paths.worktrees / "a-deepseek-001_01"))
+        w.store.update(self.old, state="PAUSED", paused_from="PRODUCING", error="historical")
+        w.store.set_line("deepseek", "a", run=1, retry_batch=self.old)
+        with w.store._conn() as c:   # a held historical incident of the retired batch
+            c.execute("INSERT INTO defects(event_key,batch_id,source,defect_class,state,report,hold_reason,created_at,updated_at)"
+                      " VALUES('old-incident',?,'incident','x','HELD','{}','재개 증명 불가: old',1,1)", (self.old,))
+        self.assertTrue(control.start(w.store, "claude", S2, "single", cfg=w.cfg)[0])
+
+    def assert_untouched_and_stage_two_running(self):
         w = self.w
-        for bad in ("s2", "S2", "m"):
-            w.cfg["methods"] = ["a", bad]
-            self.assertIn("예약", config_problem(w.cfg) or "", bad)
-        w.cfg["methods"] = ["a", "b", "c", "d"]
-        self.assertIsNone(config_problem(w.cfg))
+        self.assertEqual(w.store.active_batch("claude", S2)["state"], "PRODUCING")
+        old = w.store.batch(self.old)
+        self.assertEqual((old["state"], old["error"], old["pid"]), ("PAUSED", "historical", None))
+        self.assertEqual((w.store.peek_line("deepseek", "a")["run"], w.store.peek_line("deepseek", "a")["retry_batch"]),
+                         (1, self.old))
+        self.assertTrue(all(launch["cwd"] != old["worktree"] for launch in w.adapter.launches))
+        self.assertEqual(w.store.defect(1)["state"], "HELD")
+
+    def test_serial_tick_runs_only_stage_two(self):
+        self.w.tick(2)
+        self.assert_untouched_and_stage_two_running()
+
+    def test_parallel_cycle_runs_only_stage_two(self):
+        w = self.w
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            for cursor in range(3):
+                pending = {}
+                w.sup._parallel_cycle(pool, pending, cursor, 4)
+                self.assertNotIn(("deepseek", "a"), pending)
+                for future in pending.values():
+                    future.result(timeout=30)
+        self.assert_untouched_and_stage_two_running()
+
+    def test_commands_maintainer_and_reload_skip_retired_rows(self):
+        w = self.w
+        w.tick()
+        self.assertFalse(control.retry(w.store, "deepseek", "a", cfg=w.cfg))
+        self.assertEqual(control.request_clear(w.store, "deepseek", "a", self.old)[1], control.RETIRED_REFUSAL)
+        self.assertFalse(control.start(w.store, "deepseek", "a", "single", cfg=w.cfg)[0])
+        self.assertFalse(control.stop_batch(w.store, "deepseek", "a", self.old))
+        self.assertNotIn(("deepseek", "a"), control.board_line_keys(w.store, w.cfg))
+        with w.sup.maint._source_lane(self.old) as source:
+            self.assertIsNone(source)
+        w.sup.maint._release()
+        self.assertEqual(w.store.defect(1)["state"], "HELD")
+        # A config that still names the retired DeepSeek producer reloads: its unfinished row is not "in use".
+        live = {k: v for k, v in w.cfg.items() if not k.startswith("_")}
+        w.paths.config_file.write_text(json.dumps({**live, "producers": {
+            **PRODUCERS, "deepseek": {"adapter": "opencode", "models": {"free": "p/x-free"}}}, "methods": ["a"]}), "utf-8")
+        w.store.set("reload_req", "t1")
+        w.tick()
+        self.assertEqual(w.store.get("reload_result").split("\t")[1], "ok")
+        self.assertEqual(w.sup.cfg["_retired_producers"], ["deepseek"])
+        self.assert_untouched_and_stage_two_running()
 
 
 class StageTwoSelection(unittest.TestCase):

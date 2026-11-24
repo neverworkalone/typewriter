@@ -6,11 +6,11 @@ from pathlib import Path
 
 from warroom.config import DEFAULTS, config_problem
 from warroom.store import Store
-from warroom.usage import (estimate_cost, official_c_stop_diagnostics, parse_usage, pricing_problems,
-                           submit_attempts, sum_usage)
+from warroom.usage import estimate_cost, parse_usage, pricing_problems, sum_usage
 
-SUBMIT = "node scripts/relation/literary-context-cli.mjs submit --file x.json"
-OFFICIAL_C_CLI = Path(__file__).resolve().parents[3] / "scripts" / "relation" / "literary-context-cli.mjs"
+# A failed command in the log is never a submit failure by itself: since #9933 (Stage 1 C/D CLIs removed) a parsed log
+# reports 0 and the Supervisor records its own Stage 2/3 save rejections (`Store.add_submit_failure`).
+SUBMIT = "node scripts/relation/admission-cli.mjs save-chunk --file x.json"
 
 
 def jl(*events) -> str:
@@ -59,7 +59,7 @@ class UsageParsing(unittest.TestCase):
              jl({"type": "thread.started", "thread_id": "t"}, cmd(1, "ls"), cmd(2, SUBMIT, 1), cmd(3, SUBMIT, 0),
                 codex_usage()),
              dict(input_tokens=1000, cached_input_tokens=600, cache_write_tokens=0, output_tokens=200,
-                  reasoning_output_tokens=50, tool_calls=3, submit_failures=1)),
+                  reasoning_output_tokens=50, tool_calls=3, submit_failures=0)),
             ("codex non-error output with non-zero exit of other command is not a submit failure",
              jl({"type": "turn.started"}, cmd(1, "rg foo", 1), codex_usage()),
              dict(input_tokens=1000, cached_input_tokens=600, cache_write_tokens=0, output_tokens=200,
@@ -67,7 +67,7 @@ class UsageParsing(unittest.TestCase):
             ("codex duplicate item event counted once",
              jl({"type": "turn.started"}, cmd(1, SUBMIT, 1), cmd(1, SUBMIT, 1), codex_usage()),
              dict(input_tokens=1000, cached_input_tokens=600, cache_write_tokens=0, output_tokens=200,
-                  reasoning_output_tokens=50, tool_calls=1, submit_failures=1)),
+                  reasoning_output_tokens=50, tool_calls=1, submit_failures=0)),
             ("codex killed before turn.completed: tokens unknown, calls still counted",
              jl({"type": "turn.started"}, cmd(1, "ls")),
              dict(none5, tool_calls=1, submit_failures=0)),
@@ -86,7 +86,7 @@ class UsageParsing(unittest.TestCase):
                 claude_res("a", False), claude_bash("b", SUBMIT), claude_res("b", True), claude_bash("c", SUBMIT),
                 claude_res("c", False), claude_result()),
              dict(input_tokens=930, cached_input_tokens=800, cache_write_tokens=100, output_tokens=500,
-                  reasoning_output_tokens=40, tool_calls=3, submit_failures=1)),
+                  reasoning_output_tokens=40, tool_calls=3, submit_failures=0)),
             ("claude error result of a non-submit command is not a submit failure",
              jl({"type": "system", "subtype": "init", "session_id": "s"}, claude_bash("a", "rg x"),
                 claude_res("a", True), claude_result()),
@@ -115,7 +115,8 @@ class UsageParsing(unittest.TestCase):
                                                                   "cache_creation_input_tokens": 3, "output_tokens": 4}}),
              dict(input_tokens=6, cached_input_tokens=2, cache_write_tokens=3, output_tokens=4,
                   reasoning_output_tokens=None, tool_calls=0, submit_failures=0)),
-            ("opencode / unrecognised stream: everything unknown", jl({"type": "step_finish", "part": {}}), None),
+            ("unrecognised stream (e.g. a historical OpenCode log): everything unknown",
+             jl({"type": "step_finish", "part": {}}), None),
             ("garbage lines are skipped", "not json\n{broken\n" + jl(codex_usage()),
              dict(input_tokens=1000, cached_input_tokens=600, cache_write_tokens=0, output_tokens=200,
                   reasoning_output_tokens=50, tool_calls=0, submit_failures=0)),
@@ -144,7 +145,7 @@ class StoreRecordsUsage(unittest.TestCase):
             ids.append(store.add_run(9, "c", None, 1, d / "missing.log", d / "x.exit"))
             store.finish_runs(9, None)
             r1, r2 = (store.runs(b)[1], store.runs(b)[0])
-            self.assertEqual((r1["input_tokens"], r1["submit_failures"], r1["tool_calls"]), (100, 1, 1))
+            self.assertEqual((r1["input_tokens"], r1["submit_failures"], r1["tool_calls"]), (100, 0, 1))
             self.assertEqual((r2["input_tokens"], r2["submit_failures"], r2["tool_calls"]), (300, 0, 1))
             total = sum_usage(store.runs(b))
             self.assertEqual((total["input_tokens"], total["output_tokens"], total["reasoning_output_tokens"]),
@@ -157,101 +158,6 @@ class StoreRecordsUsage(unittest.TestCase):
             first.write_text("")
             store.finish_runs(b, 0)
             self.assertEqual(store.runs(b)[1]["input_tokens"], 100)
-
-class SubmitAttemptParsing(unittest.TestCase):
-    def count(self, *events):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "run.log"
-            path.write_text(jl(*events), encoding="utf-8")
-            return submit_attempts(path)
-
-    def test_codex_counts_only_official_submit_invocations_and_deduplicates_events(self):
-        chunk = cmd(1, "node scripts/relation/literary-context-cli.mjs chunk --sense-ids s1")
-        submit = cmd(2, SUBMIT)
-        self.assertEqual(self.count({"type": "thread.started", "thread_id": "t"}, chunk), 0)
-        self.assertEqual(self.count({"type": "thread.started", "thread_id": "t"}, submit,
-                                    {"type": "item.started", "item": submit["item"]}, submit), 1)
-
-    def test_claude_and_opencode_recognized_logs_count_submit_tools(self):
-        claude = claude_bash("tool-1", SUBMIT)
-        opencode = {"type": "tool_use", "part": {"callID": "call-1", "state": {"input": {
-            "command": SUBMIT}}}}
-        self.assertEqual(self.count(claude, claude, claude_result()), 1)
-        self.assertEqual(self.count(opencode, opencode, {"type": "step_finish"}), 1)
-
-    def test_unknown_or_non_json_logs_are_not_assumed_to_prove_zero(self):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "run.log"
-            path.write_text("ordinary output\nnot json\n", encoding="utf-8")
-            self.assertIsNone(submit_attempts(path))
-
-
-class OfficialCStopParsing(unittest.TestCase):
-    def parse(self, *events):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "run.log"
-            path.write_text(jl(*events), encoding="utf-8")
-            return official_c_stop_diagnostics(path, expected_cli_path=OFFICIAL_C_CLI, command_cwd=Path(d))
-
-    def test_codex_stop_requires_a_structured_result_from_the_official_cli(self):
-        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope", "code": "LITERARY_CHUNK_SCOPE",
-                                 "repair_scope": "stop_and_report"})
-        command = f"zsh -lc 'node {OFFICIAL_C_CLI} chunk --checkpoint .warroom-scratch/checkpoint.json --chunk 005 --sense-ids s1,s2'"
-        event = {"type": "item.completed", "item": {"id": "call-1", "type": "command_execution",
-                 "command": command, "exit_code": 1, "aggregated_output": diagnostic}}
-        self.assertEqual(self.parse({"type": "thread.started", "thread_id": "t"}, event),
-                         [{"operation": "chunk", "diagnostic": "chunk_scope", "error_code": "LITERARY_CHUNK_SCOPE",
-                           "occurrences": 1, "chunk_no": 5, "sense_ids": ["s1", "s2"]}])
-        prose = {"type": "item.completed", "item": {"id": "answer", "type": "agent_message",
-                 "text": "The phrase stop_and_report is only being discussed."}}
-        self.assertEqual(self.parse(prose), [])
-
-    def test_claude_and_opencode_results_keep_the_official_cli_binding(self):
-        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "index_search",
-                                 "repair_scope": "stop_and_report"})
-        command = f"node {OFFICIAL_C_CLI} chunk --chunk 001"
-        claude = self.parse(claude_bash("tool-1", command),
-                            {"type": "user", "message": {"content": [
-                                {"type": "tool_result", "tool_use_id": "tool-1", "is_error": True,
-                                 "content": diagnostic}]}})
-        self.assertEqual(claude, [{"operation": "chunk", "diagnostic": "index_search"}])
-
-        opencode = {"type": "tool_use", "part": {"callID": "call-2", "state": {
-            "input": {"command": command}, "status": "completed", "metadata": {"exit": 1},
-            "output": diagnostic}}}
-        self.assertEqual(self.parse(opencode), [{"operation": "chunk", "diagnostic": "index_search"}])
-
-    def test_a_similar_message_from_another_command_is_not_an_official_stop(self):
-        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
-                                 "repair_scope": "stop_and_report"})
-        command = {"type": "item.completed", "item": {"id": "echo", "type": "command_execution",
-                   "command": f"printf 'node {OFFICIAL_C_CLI} chunk'",
-                   "exit_code": 1, "aggregated_output": diagnostic}}
-        self.assertEqual(self.parse(command), [])
-
-    def test_same_basename_from_another_directory_is_not_an_official_cli(self):
-        diagnostic = json.dumps({"status": "FAILED", "diagnostic": "chunk_scope",
-                                 "repair_scope": "stop_and_report"})
-        with tempfile.TemporaryDirectory() as d:
-            counterfeit = Path(d) / "literary-context-cli.mjs"
-            counterfeit.write_text("process.stderr.write('fake diagnostic')", encoding="utf-8")
-            event = {"type": "item.completed", "item": {"id": "counterfeit", "type": "command_execution",
-                     "command": f"node {counterfeit} chunk --chunk 001", "exit_code": 1,
-                     "aggregated_output": diagnostic}}
-            self.assertEqual(self.parse(event), [])
-
-    def test_output_limit_and_failed_submit_file_write_are_execution_stops(self):
-        output_limit = json.dumps({"status": "OUTPUT_LIMIT", "max_chars": 28000, "actual_chars": 29000})
-        chunk = {"type": "item.completed", "item": {"id": "chunk", "type": "command_execution",
-                 "command": f"node {OFFICIAL_C_CLI} chunk --chunk 001",
-                 "exit_code": 1, "aggregated_output": output_limit}}
-        self.assertEqual(self.parse(chunk), [{"operation": "chunk", "diagnostic": "output_limit"}])
-
-        write = {"type": "item.completed", "item": {"id": "write", "type": "command_execution",
-                 "command": "zsh -lc 'cat > .warroom-scratch/c-chunk-001.submit.json <<JSON || { echo WRITE_FAILED >&2; exit 90; }'",
-                 "exit_code": 90, "aggregated_output": "WRITE_FAILED\n"}}
-        self.assertEqual(self.parse(write), [{"operation": "submit_write", "diagnostic": "write_failed"}])
-
 
 class Totals(unittest.TestCase):
     def row(self, **kw):

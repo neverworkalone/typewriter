@@ -12,7 +12,7 @@ from .usage import pricing_problems
 
 WARROOM_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = WARROOM_DIR.parents[1]   # the checkout this module was imported from (#3378: not an authority when a launcher set one)
-ROOT_ENV = "TYPEWRITER_WARROOM_ROOT"   # the verified operating checkout, passed explicitly by `./war`, `./dashboard` and the TUI
+ROOT_ENV = "TYPEWRITER_WARROOM_ROOT"   # the verified operating checkout, passed explicitly by `./war` and the TUI
 
 
 class RootError(Exception):
@@ -51,36 +51,19 @@ DEFAULTS = {
     "expected_account": "neverworkalone-agent",
     "git_name": "",
     "git_email": "",
-    # Legacy single-worker config; used to synthesise the registry when `producers` is empty.
-    "worker": {"adapter": "opencode", "method": "a", "producer": "deepseek"},
-    # Model registry: logical model id (= Candidate filename producer suffix) ->
-    # {"label", "adapter", "models": {"free", "go"}}. No count limit.
+    # Model registry: logical model id (= Candidate filename producer suffix) -> {"label", "adapter", ...}.
     "producers": {},
     # Issues #1867/#2538/#3583/#3607: reusable run settings and each role's profile.
-    # `assignments.stage1|stage1-ab|stage1-c|stage1-d|stage2|stage3` map a logical producer ID to a profile ID;
-    # `maintainer` may also be a profile ID.
+    # `assignments.stage2|stage3` map a logical producer ID to a profile ID; `maintainer` may also be a profile ID.
     "model_profiles": {},
     "assignments": {},
-    "methods": ["a", "b", "c", "d"],
-    # Local, approved literary index for Method C. The Supervisor passes this only to C production runs.
-    "literary_index_path": "",
-    # Local, approved paragraph-corpus index for Method D (written-corpus). Passed only to D chunk runs.
-    "corpus_index_path": "",
-    # Issue #2035: new A/B batches run as serial 50-record answer-only chunk sessions; false keeps the old long session.
-    "ab_chunk_sessions": True,
     # Issue #1555: the logical producer ID (a key of `producers`) that runs the hidden Maintainer; None = disabled.
     "maintainer": None,
     # Extra argv lists run in a paused batch worktree after a shared fix was merged into it (all must pass).
     "shared_defect_verify": [],
-    "opencode_bin": "opencode",
     "claude_bin": "claude",
     "codex_bin": "codex",
-    "models": {"free": "", "go": ""},
-    "free_model_pattern": "-free$",
-    "quota_patterns": [
-        "FreeUsageLimit",
-        "free (usage|tier|quota).{0,40}(exhaust|exceed|limit)",
-    ],
+    "quota_patterns": [],
     "trusted_reviewers": ["genonfire"],
     "poll_seconds": 300,
     "pr_head_lag_timeout_seconds": 1800,   # warning / "PR 생성 여부 미확정" threshold (#2092); never an ERROR by itself
@@ -184,55 +167,79 @@ def load_config(paths: Paths) -> dict:
                 cfg[key].update(value)
             else:
                 cfg[key] = value
+    return _drop_retired(cfg)
+
+
+# #9933: settings of the removed Stage 1 (A/B/C/D) and DeepSeek/OpenCode lines. Only these exact keys, and only
+# producers/profiles that explicitly name the retired adapter, are dropped with a warning; every other value, including
+# an unknown adapter or a typo, still goes through config_problem unchanged.
+RETIRED_TOP_KEYS = ("methods", "literary_index_path", "corpus_index_path", "ab_chunk_sessions", "opencode_bin",
+                    "free_model_pattern", "worker", "models")
+RETIRED_ROLES = ("stage1", "stage1-ab", "stage1-c", "stage1-d")
+RETIRED_ADAPTER = "opencode"
+
+
+def _drop_retired(cfg: dict) -> dict:
+    """Remove retired settings; their paths (never values) go to `_retired`, dropped producer IDs to `_retired_producers`."""
+    gone = [k for k in RETIRED_TOP_KEYS if cfg.pop(k, None) is not None]
+    producers: list[str] = []
+    for section in ("producers", "model_profiles"):
+        entries = cfg.get(section)
+        if not isinstance(entries, dict):
+            continue
+        for pid in [pid for pid, p in entries.items() if isinstance(p, dict) and p.get("adapter") == RETIRED_ADAPTER]:
+            del entries[pid]
+            gone.append(f"{section}.{pid}")
+            if section == "producers":
+                producers.append(pid)
+    assign = cfg.get("assignments")
+    if isinstance(assign, dict):
+        for role in RETIRED_ROLES:
+            if role in assign:
+                del assign[role]
+                gone.append(f"assignments.{role}")
+    cfg["_retired"], cfg["_retired_producers"] = gone, producers
     return cfg
+
+
+def retired_notice(cfg: dict) -> str | None:
+    """One warning line naming the ignored retired settings (None when the config holds none)."""
+    gone = cfg.get("_retired") or []
+    return (f"지원 종료된 설정을 무시했습니다 (Stage 1·DeepSeek/OpenCode, #9933): {', '.join(gone)}" if gone else None)
 
 
 _PRODUCER_ID = re.compile(r"^[a-z0-9-]+$")
 
 
-KNOWN_LABELS = {"deepseek": "DeepSeek"}   # display names for producer ids that have no configured `label`
-
-
 def registry(cfg: dict) -> dict[str, dict]:
-    """Logical model id -> {label, adapter, model, effort, models}. Legacy `worker`/`models` is one entry.
+    """Logical model id -> {label, adapter, model, effort, permission_profile, fast, governed}.
 
-    `model` is the single pinned model of a CLI without free/go tiers (Claude, Codex); `models` holds the
-    OpenCode tiers. `effort` is the reasoning level passed explicitly on every run.
+    `model` and `effort` are the single pinned model and reasoning level passed explicitly on every run.
     """
     prods = cfg.get("producers") or {}
-    if not prods:
-        w = cfg["worker"]
-        prods = {w["producer"]: {"adapter": w.get("adapter", "opencode"), "models": cfg.get("models", {})}}
     out = {}
     profs = _profiles(cfg)
     for pid, p in prods.items():
-        adapter = p.get("adapter", "opencode")
+        adapter = p.get("adapter", "")
         assigned = _assigned_profiles(cfg, pid)
         prof = profs.get(assigned[0]) if assigned else None
         governed = bool(_assigned_profiles(cfg, pid))
         if prof:   # a governed producer has no pin of its own (config_problem): board/settings show its first assigned profile
             p = {**p, "model": prof["model"], "effort": prof["effort"], "permission_profile": prof["permission_profile"],
                  "fast": prof["fast"]}
-        out[pid] = {"label": p.get("label") or KNOWN_LABELS.get(pid, pid), "adapter": adapter,
-                    "model": p.get("model") or "",
-                    "effort": p["effort"] if "effort" in p else LEGACY_EFFORT.get(adapter, ""),
-                    "permission_profile": p.get("permission_profile") or "", "fast": p.get("fast"), "governed": governed,
-                    "models": {"free": "", "go": "", **(p.get("models") or {})},
-                    "tier_efforts": p.get("tier_efforts") or {},
-                    "retired_models": p.get("retired_models") or {}}
+        out[pid] = {"label": p.get("label") or pid, "adapter": adapter,
+                    "model": p.get("model") or "", "effort": p.get("effort") or "",
+                    "permission_profile": p.get("permission_profile") or "", "fast": p.get("fast"), "governed": governed}
     return out
 
 
-STAGE1, STAGE2, STAGE3, MAINTAINER = "stage1", "stage2", "stage3", "maintainer"
-STAGE1_AB, STAGE1_C, STAGE1_D = "stage1-ab", "stage1-c", "stage1-d"
-STAGE1_METHOD_ROLES = (STAGE1_AB, STAGE1_C, STAGE1_D)
-ASSIGNMENT_ROLES = (STAGE1, *STAGE1_METHOD_ROLES, STAGE2, STAGE3)   # Maintainer remains the single top-level `maintainer`
+STAGE2, STAGE3, MAINTAINER = "stage2", "stage3", "maintainer"
+ASSIGNMENT_ROLES = (STAGE2, STAGE3)   # Maintainer remains the single top-level `maintainer`
 
 
 def role_of(method: str) -> str:
-    """The assignment role of a batch's method, including the Stage 1 A/B, C, and D profiles."""
-    return {"a": STAGE1_AB, "b": STAGE1_AB, "c": STAGE1_C, "d": STAGE1_D,
-            "s2": STAGE2, "s3": STAGE3, "m": MAINTAINER}.get(method, STAGE1)
+    """The assignment role of a batch's method ('' for a retired Stage 1 method: it resolves to no profile)."""
+    return {"s2": STAGE2, "s3": STAGE3, "m": MAINTAINER}.get(method, "")
 
 
 def _profiles(cfg: dict) -> dict[str, dict]:
@@ -290,8 +297,7 @@ def maintainer_target(cfg: dict) -> tuple[str | None, str | None, str | None]:
 def role_entry(cfg: dict, producer: str, role: str) -> dict:
     """The registry entry of `producer` with the run pins selected for its `role`.
 
-    Stage 1 A/B, C, and D: the method-specific profile, then the shared `stage1` profile, else the producer's own
-    pin. Stage 2/3 use their exact role assignment. Maintainer: the configured profile when `maintainer` names one
+    Stage 2/3 use their exact role assignment, else the producer's own pin. Maintainer: the configured profile when `maintainer` names one
     (it must resolve to this producer), else the producer's own pin. Raises ValueError on a mismatch.
     """
     p = dict(registry(cfg)[producer])
@@ -305,15 +311,10 @@ def role_entry(cfg: dict, producer: str, role: str) -> dict:
         pid = m
     else:
         pid = _assigned(cfg, role, producer)
-        if role in STAGE1_METHOD_ROLES and not pid:
-            pid = _assigned(cfg, STAGE1, producer)
         if not pid and _assigned_profiles(cfg, producer):   # governed: another stage's profile is never borrowed
             if role == STAGE3:
                 raise ValueError(f"{producer}: Stage 3 프로필이 배정되지 않았습니다 (assignments.stage3). "
                                  "기존 설정으로 실행하려면 Stage 2와 같은 프로필 ID를 지정하세요.")
-            if role in STAGE1_METHOD_ROLES:
-                raise ValueError(f"{producer}: {role} 프로필이 배정되지 않았습니다 "
-                                 f"(assignments.{role} 또는 assignments.stage1).")
             raise ValueError(f"{producer}: {role} 단계에 배정된 프로필이 없습니다 (assignments.{role}).")
         if not pid:
             return p
@@ -347,9 +348,7 @@ def role_problem(cfg: dict, producer: str, role: str) -> str | None:
 
 def _endpoints(cfg: dict, pid: str, p: dict) -> list[str]:
     """Every concrete model ID a logical model runs on (a duplicate endpoint is a duplicate model)."""
-    eps = [ep for ep in p["models"].values() if ep]
-    if p["adapter"] not in TIERED_ADAPTERS:
-        eps += [m for m in [p["model"]] + [_profiles(cfg).get(x, {}).get("model") for x in _assigned_profiles(cfg, pid)] if m]
+    eps = [m for m in [p["model"]] + [_profiles(cfg).get(x, {}).get("model") for x in _assigned_profiles(cfg, pid)] if m]
     return list(dict.fromkeys(eps))
 
 
@@ -358,11 +357,10 @@ def _producer_problem(pid: str, p: dict) -> str | None:
         return f"모델 ID {pid!r}는 [a-z0-9-]만 허용됩니다."
     if p["adapter"] not in ADAPTER_LABELS:
         return f"알 수 없는 adapter {p['adapter']!r} (허용: {', '.join(ADAPTER_LABELS)})."
-    if p["adapter"] not in TIERED_ADAPTERS:
-        if not p["model"]:
-            return "모델 ID가 설정되지 않았습니다 — CLI 기본 모델에 맡기지 않고 `model`을 명시해야 합니다."
-        if not _MODEL_ID.match(p["model"]):
-            return f"모델 ID {p['model']!r}는 허용되지 않는 형식입니다 (플래그처럼 보이거나 공백이 있음)."
+    if not p["model"]:
+        return "모델 ID가 설정되지 않았습니다 — CLI 기본 모델에 맡기지 않고 `model`을 명시해야 합니다."
+    if not _MODEL_ID.match(p["model"]):
+        return f"모델 ID {p['model']!r}는 허용되지 않는 형식입니다 (플래그처럼 보이거나 공백이 있음)."
     profile = p["permission_profile"]
     if profile and p["adapter"] != "codex":
         return f"permission_profile은 Codex 모델에만 지정할 수 있습니다 (adapter: {p['adapter']})."
@@ -391,7 +389,7 @@ def registry_problems(cfg: dict) -> dict[str, str]:
 
 
 # Wired once at Supervisor start (CLI binaries, GitHub client, git identity): a reload cannot change them.
-RESTART_KEYS = ("repo", "opencode_bin", "claude_bin", "codex_bin", "git_name", "git_email")
+RESTART_KEYS = ("repo", "claude_bin", "codex_bin", "git_name", "git_email")
 
 
 def _number(v) -> bool:
@@ -413,25 +411,8 @@ def _strings(v, *, patterns=False, nonempty=False) -> bool:
 
 
 def _entry_problems(name: str, p: dict, fields: tuple[str, ...]) -> list[str]:
-    """Type problems of one producer-like entry: its scalar fields and its `models` tiers must be strings."""
-    bad = [f"{name}.{k}는 문자열이어야 합니다" for k in fields if k in p and not isinstance(p[k], str)]
-    m = p.get("models")
-    if m is not None and not isinstance(m, dict):
-        bad.append(f"{name}.models는 객체여야 합니다")
-    elif isinstance(m, dict):
-        bad += [f"{name}.models.{k}는 문자열이어야 합니다" for k, v in m.items() if not isinstance(v, str)]
-    e = p.get("tier_efforts")
-    if e is not None and not isinstance(e, dict):
-        bad.append(f"{name}.tier_efforts는 객체여야 합니다")
-    elif isinstance(e, dict):
-        bad += [f"{name}.tier_efforts.{k}는 문자열이어야 합니다" for k, v in e.items() if not isinstance(v, str)]
-    r = p.get("retired_models")   # #6027: models an unfinished session may move FROM, per tier (explicit opt-in)
-    if r is not None and not isinstance(r, dict):
-        bad.append(f"{name}.retired_models는 객체여야 합니다")
-    elif isinstance(r, dict):
-        bad += [f"{name}.retired_models.{k}는 모델 ID 문자열 배열이어야 합니다" for k, v in r.items()
-                if not isinstance(v, list) or not all(isinstance(m, str) and _MODEL_ID.match(m) for m in v)]
-    return bad
+    """Type problems of one producer-like entry: its scalar fields must be strings."""
+    return [f"{name}.{k}는 문자열이어야 합니다" for k in fields if k in p and not isinstance(p[k], str)]
 
 
 def config_problem(cfg: dict) -> str | None:
@@ -453,41 +434,23 @@ def config_problem(cfg: dict) -> str | None:
     r = cfg.get("rate_limit_retries")
     if not isinstance(r, int) or isinstance(r, bool) or r < 0:
         bad.append("rate_limit_retries는 0 이상의 정수여야 합니다")
-    for key in ("repo", "base_branch", "expected_account", "opencode_bin", "claude_bin", "codex_bin"):
+    for key in ("repo", "base_branch", "expected_account", "claude_bin", "codex_bin"):
         if not isinstance(cfg.get(key), str) or not cfg[key].strip():
             bad.append(f"{key}는 비어 있지 않은 문자열이어야 합니다")
-    for key in ("git_name", "git_email", "free_model_pattern", "literary_index_path", "corpus_index_path"):
+    for key in ("git_name", "git_email"):
         if not isinstance(cfg.get(key), str):
             bad.append(f"{key}는 문자열이어야 합니다")
-    if not isinstance(cfg.get("ab_chunk_sessions"), bool):
-        bad.append("ab_chunk_sessions는 true/false여야 합니다")
-    if isinstance(cfg.get("free_model_pattern"), str):
-        try:
-            re.compile(cfg["free_model_pattern"])
-        except re.error:
-            bad.append("free_model_pattern이 올바른 정규식이 아닙니다")
     if not _strings(cfg.get("quota_patterns"), patterns=True):
         bad.append("quota_patterns는 정규식 문자열 목록이어야 합니다")
     if not _strings(cfg.get("trusted_reviewers")):
         bad.append("trusted_reviewers는 문자열 목록이어야 합니다")
-    if not _strings(cfg.get("methods"), nonempty=True):
-        bad.append("methods는 비어 있지 않은 문자열 목록이어야 합니다")
-    elif {m.lower() for m in cfg["methods"]} & RESERVED_METHODS:   # Stage 2/3 and Maintainer are not Stage 1 Methods
-        bad.append(f"methods에 예약된 이름 {sorted({m.lower() for m in cfg['methods']} & RESERVED_METHODS)}을 쓸 수 없습니다")
     if not isinstance(cfg.get("producers"), dict) or not all(isinstance(p, dict) for p in cfg["producers"].values()):
         bad.append("producers는 {모델 ID: 객체} 형태여야 합니다")
-    for key in ("models", "worker"):
-        if not isinstance(cfg.get(key), dict):
-            bad.append(f"{key}는 객체여야 합니다")
-    if isinstance(cfg.get("models"), dict):   # legacy tiers: values are model IDs
-        bad += [f"models.{k}는 문자열이어야 합니다" for k, v in cfg["models"].items() if not isinstance(v, str)]
-    if isinstance(cfg.get("worker"), dict):
-        bad += _entry_problems("worker", cfg["worker"], ("adapter", "producer"))
     if isinstance(cfg.get("producers"), dict):
         for pid, p in cfg["producers"].items():
             if isinstance(p, dict):
                 bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort", "permission_profile"))
-                if p.get("adapter", "opencode") == "codex" and "fast" in p and not isinstance(p["fast"], bool):
+                if p.get("adapter") == "codex" and "fast" in p and not isinstance(p["fast"], bool):
                     bad.append(f"producers.{pid}.fast는 Codex에서 true/false Boolean이어야 합니다")
     bad += pricing_problems(cfg.get("pricing"))
     bad += _maintainer_config_problems(cfg)
@@ -504,7 +467,7 @@ def _profile_config_problems(cfg: dict) -> list[str]:
     if not isinstance(profiles, dict) or not all(isinstance(p, dict) for p in profiles.values()):
         return ["model_profiles는 {프로필 ID: 객체} 형태여야 합니다"]
     if not isinstance(assign, dict) or not all(isinstance(v, dict) for v in assign.values()):
-        return ["assignments는 {stage1|stage1-ab|stage1-c|stage1-d|stage2|stage3: {모델 ID: 프로필 ID}} 형태여야 합니다"]
+        return ["assignments는 {stage2|stage3: {모델 ID: 프로필 ID}} 형태여야 합니다"]
     for pid, p in profiles.items():
         bad += _entry_problems(f"model_profiles.{pid}", p, ("adapter", "model", "effort", "permission_profile"))
         if p.get("adapter") == "codex" and "fast" in p and not isinstance(p["fast"], bool):
@@ -512,9 +475,7 @@ def _profile_config_problems(cfg: dict) -> list[str]:
     if bad:
         return bad
     for pid, p in _profiles(cfg).items():
-        if p["adapter"] in TIERED_ADAPTERS:
-            bad.append(f"model_profiles.{pid}: {adapter_label(p['adapter'])}의 Free/Go 모델은 producers.models로 설정합니다")
-        elif why := _producer_problem(pid, {**p, "models": {}}):
+        if why := _producer_problem(pid, p):
             bad.append(f"model_profiles.{pid}: {why}")
     for role, by_producer in assign.items():
         if role not in ASSIGNMENT_ROLES:
@@ -524,14 +485,14 @@ def _profile_config_problems(cfg: dict) -> list[str]:
             prod = cfg["producers"].get(producer)
             if prod is None:
                 bad.append(f"assignments.{role}.{producer}: 등록되지 않은 모델 ID입니다")
-            elif role == STAGE3 and prod.get("adapter", "opencode") not in STAGE2_ADAPTERS:
+            elif role == STAGE3 and prod.get("adapter") not in STAGE2_ADAPTERS:
                 bad.append(f"assignments.stage3.{producer}: Stage 3는 Claude 또는 Codex 모델에만 배정할 수 있습니다")
             elif not isinstance(pid, str) or pid not in profiles:
                 bad.append(f"assignments.{role}.{producer}: 프로필 {pid!r}가 없습니다")
-            elif profiles[pid].get("adapter") != prod.get("adapter", "opencode"):
+            elif profiles[pid].get("adapter") != prod.get("adapter"):
                 bad.append(f"assignments.{role}.{producer}: 프로필 {pid!r}의 adapter가 모델 ID의 adapter와 다릅니다")
             elif any(k in prod for k in ("model", "effort", "permission_profile")) \
-                    or (prod.get("adapter", "opencode") == "codex" and "fast" in prod):
+                    or (prod.get("adapter") == "codex" and "fast" in prod):
                 bad.append(f"producers.{producer}: 직접 실행 핀과 assignments를 함께 쓸 수 없습니다 — 프로필로만 지정하세요")
     return list(dict.fromkeys(bad))
 
@@ -574,7 +535,6 @@ def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:
         return f"설정 값 오류: {problem}"
     try:
         reg, bad = registry(new), registry_problems(new)
-        methods(new)
     except Exception as e:   # a wrongly typed section (producers: [], ...) is a config error, not a crash
         return f"설정 구조 오류: {type(e).__name__}: {e}"
     if bad:
@@ -592,12 +552,7 @@ def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:
     return None
 
 
-def methods(cfg: dict) -> list[str]:
-    return [m.lower() for m in cfg.get("methods") or ["a", "b", "c", "d"]]
-
-
-RESERVED_METHODS = {"m", "s2", "s3"}   # hidden Maintainer and Stage 2/3 execution methods (never Stage 1 Methods)
-STAGE2_ADAPTERS = ("claude", "codex")   # Stages 2 and 3 run on Claude or Codex, never DeepSeek/OpenCode
+STAGE2_ADAPTERS = ("claude", "codex")   # every War Room line runs on Claude or Codex
 
 
 def stage2_problem(cfg: dict, model: str) -> str | None:
@@ -640,18 +595,13 @@ def stage3_problem(cfg: dict, model: str) -> str | None:
     return role_problem(cfg, model, STAGE3)
 
 
-ADAPTER_LABELS = {"claude": "Claude", "codex": "Codex", "opencode": "OpenCode"}   # display names only
-TIERED_ADAPTERS = ("opencode",)   # the only CLI with a Free and a Go model per logical model
+ADAPTER_LABELS = {"claude": "Claude", "codex": "Codex"}   # display names only
 # Reasoning effort each CLI accepts. Claude: its `--effort` choices; Codex: the values the API reports for
-# gpt-6-luna (rejected with "Supported values are ..." otherwise). OpenCode variants are model-specific:
-# only their format is checked here, and the OpenCode adapter proves each model+variant at Start (preflight).
+# gpt-6-luna (rejected with "Supported values are ..." otherwise).
 ADAPTER_EFFORTS = {
     "claude": ("low", "medium", "high", "xhigh", "max"),
     "codex": ("none", "low", "medium", "high", "xhigh", "max"),
-    "opencode": None,
 }
-# A DeepSeek entry without `effort` (configs written before #1373) runs at the owner-fixed `high`, passed explicitly.
-LEGACY_EFFORT = {"opencode": "high"}
 _MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/:-]*$")   # never a flag ("-x") and never whitespace
 _EFFORT_ID = re.compile(r"^[a-z0-9-]+$")
 _PROFILE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")   # a TOML bare key: never a flag, whitespace, `=` or a path
@@ -673,23 +623,18 @@ def effort_problem(adapter: str, effort: str) -> str | None:
     return None
 
 
-def run_spec(cfg: dict, producer: str, tier: str = "free", role: str = STAGE1) -> RunSpec:
-    """The exact run settings selected for `producer` in `role`. Raises ValueError if model or effort is unset.
-
-    Tiered (OpenCode): the model of `tier`; a Go switch changes only the model, never the effort.
-    Single-model CLIs: their one `model`; `tier` is ignored (they have no Free/Go tiers).
-    """
+def run_spec(cfg: dict, producer: str, role: str) -> RunSpec:
+    """The exact run settings selected for `producer` in `role`. Raises ValueError if model or effort is unset."""
     p = role_entry(cfg, producer, role)
-    model = p["models"].get(tier, "") if p["adapter"] in TIERED_ADAPTERS else p["model"]
+    model = p["model"]
     if not model:
-        raise ValueError(f"{producer}: {tier if p['adapter'] in TIERED_ADAPTERS else 'model'} 모델 ID가 설정되지 않았습니다.")
+        raise ValueError(f"{producer}: model 모델 ID가 설정되지 않았습니다.")
     if not _MODEL_ID.match(model):
         raise ValueError(f"{producer}: 모델 ID {model!r}의 형식이 올바르지 않습니다.")
-    effort = p.get("tier_efforts", {}).get(tier, p["effort"]) if p["adapter"] in TIERED_ADAPTERS else p["effort"]
-    problem = effort_problem(p["adapter"], effort)
+    problem = effort_problem(p["adapter"], p["effort"])
     if problem:
         raise ValueError(f"{producer}: {problem}")
-    return RunSpec(model=model, effort=effort, permission_profile=p["permission_profile"],
+    return RunSpec(model=model, effort=p["effort"], permission_profile=p["permission_profile"],
                    fast=p.get("fast") if p["adapter"] == "codex" else None)
 
 
@@ -698,8 +643,6 @@ def pin_summary(p: dict) -> str:
     effort = p["effort"] or "(미설정)"
     if p.get("governed"):   # the pin depends on the stage: role_pin_lines lists each
         return "단계별 프로필 배정 (아래 참조)"
-    if p["adapter"] in TIERED_ADAPTERS:
-        return f"free={p['models']['free'] or '(미설정)'}  go={p['models']['go'] or '(미설정)'}  effort={effort}"
     profile = f"  permission_profile={p['permission_profile']}" if p["permission_profile"] else ""
     return f"model={p['model'] or '(미설정)'}  effort={effort}{profile}"
 
@@ -707,14 +650,14 @@ def pin_summary(p: dict) -> str:
 def ordered_models(cfg: dict) -> list[str]:
     """Registered logical models in board order: adapter label, then model label, then id.
 
-    Independent of `producers` registration order, so Claude -> Codex -> OpenCode always holds.
+    Independent of `producers` registration order, so Claude -> Codex always holds.
     """
     reg = registry(cfg)
     return sorted(reg, key=lambda pid: (adapter_label(reg[pid]["adapter"]), reg[pid]["label"], pid))
 
 
 def adapters(cfg: dict) -> list[str]:
-    """Adapters that have at least one registered logical model, ordered by display label (Claude, Codex, OpenCode)."""
+    """Adapters that have at least one registered logical model, ordered by display label (Claude, Codex)."""
     found = {p["adapter"] for p in registry(cfg).values()}
     return sorted(found, key=lambda a: (adapter_label(a), a))
 

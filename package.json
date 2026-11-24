@@ -35,8 +35,6 @@
     "relation:relink": "node scripts/relation/relink-cli.mjs",
     "relation:polish": "node scripts/relation/polish-cli.mjs",
     "relation:replay": "node scripts/relation/replay-cli.mjs",
-    "relation:candidate-workbench": "node scripts/relation/candidate-workbench.mjs",
-    "relation:literary": "node scripts/relation/literary-context-cli.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "ci:category": "node scripts/ci/run-category.mjs",

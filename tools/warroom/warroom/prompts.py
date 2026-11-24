@@ -7,7 +7,6 @@ Values are substituted in one pass, so a value that itself contains `{{x}}` (e.g
 from __future__ import annotations
 
 import re
-import shlex
 from pathlib import Path
 
 from .config import RootError, operating_root
@@ -22,24 +21,16 @@ def prompt_dir() -> Path:
     except RootError as e:
         raise PromptError(str(e)) from e
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
-_PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
 _STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note", "chunk_input", "chunk_id",
            "relation_direction_rule"}
 _STAGE3 = {"shard", "branch", "chunk_id", "chunk_input", "session_note", "s3_policy_card"}
 _STAGE3_FIX = {"pr", "head", "branch", "shard", "review_events", "session_note", "relation_path",
                "drop_path", "source_context"}
-_AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contract", "output_scope"}
-_C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract", "cli_path",
-            "chunk_flag"}
-ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
-           "fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context",
+ALLOWED = {"fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context",
                    "s2_policy_card"},
-           "producer_fix": {"pr", "head", "branch", "review_events", "session_note", "source_context",
-                            "canonical", "output", "method_contract", "method_fix_scope"},
            "s3_fix": _STAGE3_FIX,
            "m_fix": {"issue", "pr", "head", "branch", "review_events", "session_note"},
-           "contract_a": set(), "contract_b": set(), "contract_c": set(), "contract_d": set(),
            "s2_policy_card": {"relation_direction_rule"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2,
            "s2_chunk": _STAGE2 | {"s2_policy_card"}, "s2_recovery": _STAGE2,
@@ -51,19 +42,10 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "s2_links": _STAGE2 | {"link_input"},
            "s2_links_fix": {"digest", "problem", "relation_direction_rule"},
            "s2_repair": _STAGE2 | {"repair_input", "round_info", "format_feedback"},
-           "s3_policy_card": set(), "s3_chunk": _STAGE3,
-           "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note", "cli_path", "chunk_flag"},
-           "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input", "method_contract"},
-           "d_chunk_resume": {"chunk_no", "decisions", "searches", "chunk_input", "decision_status"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
-           "a_chunk": _AB_CHUNK, "b_chunk": _AB_CHUNK, "ab_chunk_retry": {"chunk_no", "requested", "problem", "chunk_input"}}
+           "s3_policy_card": set(), "s3_chunk": _STAGE3}
 MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
 CHUNK_VIEW = ".warroom-scratch/active-chunk.txt"
-PRODUCER_HANDOFF = """
-
-The War Room Supervisor owns PR monitoring and worktree/branch cleanup.
-Do not poll for reviews or merges, or delete, move, or repair the assigned worktree or branch.
-"""
 
 
 class PromptError(Exception):
@@ -95,8 +77,6 @@ def render(name: str, values: dict, directory: Path | None = None) -> str:
     if "{{" in stray or "}}" in stray:
         raise PromptError(f"{path.name}: 허용되지 않는 이중 중괄호 구문이 있습니다 (placeholder는 {{{{name}}}} 형태만 가능)")
     used = {m.group(1) for m in _PLACEHOLDER.finditer(text)}
-    if name == "c_chunk" and "chunk_contexts" not in used:
-        raise PromptError(f"{path.name}: 필수 placeholder {{chunk_contexts}}가 없습니다")
     unknown = used - ALLOWED[name]
     if unknown:
         raise PromptError(f"{path.name}: 허용되지 않는 placeholder {sorted(unknown)}")
@@ -107,35 +87,6 @@ def render(name: str, values: dict, directory: Path | None = None) -> str:
     if not out.strip():
         raise PromptError(f"{path.name}: 치환 결과가 비어 있습니다")
     return out
-
-
-def method_contract(method: str, directory: Path | None = None) -> str:
-    """Load the one shared Stage 1 candidate-form contract used by its production and review-fix cards."""
-    if method not in ("a", "b", "c", "d"):
-        raise PromptError(f"알 수 없는 Stage 1 방식: {method!r}")
-    return render(f"contract_{method}", {}, directory).rstrip("\n")
-
-
-def _method_fix_scope(method: str, b) -> str:
-    if method in ("a", "b"):
-        return ("A/B: 리뷰어가 최초로 명시한 `(record_id, sense_id, candidate)` 목록만 삭제/유지를 판단한다. "
-                "목록 밖 후보를 변경하거나 재발굴·전수 재검사하지 않는다.")
-    if method == "c":
-        from . import literary
-
-        checkpoint = literary.names(b).checkpoint
-        return ("C: 리뷰가 지목한 Sense에 한해 #1155의 기존 판정·수정 규칙을 적용한다. 후보 형태 지적과 "
-                "VERIFIED/source-sense 지적을 구분하며, C의 수정 범위를 삭제 전용으로 제한하지 않는다. "
-                "추가 문학 문맥이 필요한 경우에만 다음 명령을 사용한다: `node "
-                f"{shlex.quote(str(literary.cli_path()))} "
-                f"chunk --db \"$TYPEWRITER_APPROVED_LITERARY_DB\" --checkpoint {checkpoint} "
-                "--sense-ids <id,...> --contexts 16 --format text`. 승인 DB 환경변수가 없으면 추측하지 않고 "
-                "설정 오류로 중단한다.")
-    if method == "d":
-        return ("D: `d-chunk-cli.mjs search/search-batch`는 활성 청크를 요구하므로 PR 수정에 실행하지 않는다. "
-                "제공된 `source_context`와 저장 후보만으로 판단한다. 새 검색 근거가 필수인데 사용할 수 없으면 "
-                "파일을 바꾸지 말고 PR에 사유를 설명한 뒤 해당 수정은 멈춘다. 종료 청크를 복구하거나 다시 활성화하지 않는다.")
-    raise PromptError(f"알 수 없는 Stage 1 방식: {method!r}")
 
 
 def _stage2_values(b) -> dict:
@@ -167,25 +118,17 @@ def produce(b, directory: Path | None = None) -> str:
         return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
         return stage2(b, "chunk", None, directory=directory, view="")
-    if b["method"] == "s3":
-        raise PromptError("Stage 3는 현재 chunk view를 사용해 prompts.stage3_chunk으로 시작해야 합니다")
-    values = {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}
-    out = render(b["method"], values, directory)
-    return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
+    raise PromptError(f"{b['method']!r}의 시작 프롬프트가 없습니다 (Stage 3는 prompts.stage3_chunk으로 시작합니다)")
 
 
-def recovery(b, directory: Path | None = None, resolved_defects: str = "", checkpoint: dict | None = None) -> str:
+def recovery(b, directory: Path | None = None, checkpoint: dict | None = None) -> str:
     if b["method"] == MAINTENANCE_METHOD:
         return render("m_recovery", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
         values = _stage2_values(b)
         values["relation_direction_rule"] = _relation_direction_rule(checkpoint)
         return render("s2_recovery", values, directory)
-    if b["method"] == "s3":
-        raise PromptError("Stage 3는 현재 chunk view를 사용해 prompts.stage3_chunk으로 복구해야 합니다")
-    out = render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
-                              "resolved_defects": resolved_defects}, directory)
-    return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
+    raise PromptError(f"{b['method']!r}의 복구 프롬프트가 없습니다 (Stage 3는 prompts.stage3_chunk으로 복구합니다)")
 
 
 def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
@@ -295,117 +238,6 @@ def stage2_chunk_format_fix(chunk_id: str, problem: str, checkpoint: dict | None
 VIEW_BEGIN, VIEW_END = "<<<CHUNK_VIEW_BEGIN>>>", "<<<CHUNK_VIEW_END>>>"
 
 
-def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages: list[str] | None = None,
-            note: str = "", scoped: bool = False, directory: Path | None = None) -> str:
-    """The self-contained card of ONE new Method C chunk session: the whole view inline, or (only when it cannot be
-    delivered that way) the page files to read once each. Exactly one of `view` / `pages`."""
-    if (view is None) == (pages is None):
-        raise PromptError("C 청크 입력은 inline view 또는 page 목록 중 정확히 하나여야 합니다")
-    from . import literary
-
-    if view is not None:
-        chunk_input = (f"아래가 이번 청크의 **전체 view**다(손실 없음). 다시 `cat`으로 읽지 않는다.\n{VIEW_BEGIN}\n{view}"
-                       f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
-    else:
-        reads = "\n".join(f"   - `cat {path}` ({i}/{len(pages)})" for i, path in enumerate(pages, 1))
-        chunk_input = ("청크 view가 한 번에 전달하기에 커서 page 파일로 나눴다. 아래 page를 순서대로 **page마다 별도 도구 호출 한 번씩** "
-                       "`cat`으로 읽는다(Codex는 각 호출에 `max_output_tokens: 10000`). 모두 이으면 view와 같다. "
-                       "하나라도 받지 못했거나 truncated 경고가 보이면 제출하지 말고 그 사실을 보고한 뒤 종료한다.\n" + reads)
-    return render("c_chunk", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
-                              "chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
-                              "cli_path": shlex.quote(str(literary.cli_path())),
-                              "chunk_contexts": literary.CHUNK_CONTEXTS, "session_note": note,
-                              "chunk_flag": f" --chunk {chunk_no:03d}" if scoped else "",
-                              "chunk_input": chunk_input, "method_contract": method_contract("c", directory)}, directory)
-
-
-def c_chunk_resume(chunk_no: int, checkpoint: str, remaining: list[str], *, note: str = "", scoped: bool = False,
-                   directory: Path | None = None) -> str:
-    """Resuming the same session: only the still-open sense ids, never the chunk body again."""
-    from . import literary
-
-    return render("c_chunk_resume", {"chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
-                                     "remaining": "남은 Sense ID: " + ", ".join(remaining),
-                                     "cli_path": shlex.quote(str(literary.cli_path())),
-                                     "chunk_flag": f" --chunk {chunk_no:03d}" if scoped else "",
-                                     "session_note": note}, directory)
-
-
-def d_chunk(b, chunk_no: int, *, view: str | None = None, pages: list[str] | None = None,
-            note: str = "", directory: Path | None = None) -> str:
-    """The self-contained card of ONE new Method D chunk session: the whole view inline, or (only when it cannot be
-    delivered that way) the page files to read once each. Exactly one of `view` / `pages`."""
-    if (view is None) == (pages is None):
-        raise PromptError("D 청크 입력은 inline view 또는 page 목록 중 정확히 하나여야 합니다")
-    if view is not None:
-        chunk_input = (f"아래가 이번 청크의 **전체 view**다(손실 없음). 다시 `cat`으로 읽지 않는다.\n{VIEW_BEGIN}\n{view}"
-                       f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
-    else:
-        reads = "\n".join(f"   - `cat {path}` ({i}/{len(pages)})" for i, path in enumerate(pages, 1))
-        chunk_input = ("청크 view가 한 번에 전달하기에 커서 page 파일로 나눴다. 아래 page를 순서대로 **page마다 별도 도구 호출 한 번씩** "
-                       "`cat`으로 읽는다(Codex는 각 호출에 `max_output_tokens: 10000`). 모두 이으면 view와 같다. "
-                       "하나라도 받지 못했거나 truncated 경고가 보이면 저장하지 말고 그 사실을 보고한 뒤 종료한다.\n" + reads)
-    return render("d_chunk", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"], "chunk_no": f"{chunk_no:03d}",
-                              "session_note": note, "chunk_input": chunk_input,
-                              "method_contract": method_contract("d", directory)}, directory)
-
-
-def d_chunk_resume(chunk_no: int, *, decisions: str, searches: str, chunk_input: str = "", decision_status: str = "unknown", directory: Path | None = None) -> str:
-    """Resume the same session with its verified view available for recovery."""
-    return render("d_chunk_resume", {"chunk_no": f"{chunk_no:03d}", "decisions": decisions,
-                                     "searches": searches, "chunk_input": chunk_input, "decision_status": decision_status}, directory)
-
-
-def d_chunk_fix(b, chunk_no: int, problem: str, directory: Path | None = None) -> str:
-    """Same session after a rejected `save`: only the CLI's rejection reasons, never the view again."""
-    return render("d_chunk_fix", {"chunk_no": f"{chunk_no:03d}", "problem": problem,
-                                  "decisions": f".warroom-scratch/d-{b['shard']}_{b['batch']}/decision-{chunk_no:03d}.txt"}, directory)
-
-
-# The card's output-scope rule for a whole-chunk answer (every new chunk, operator Retry): rendered byte-identically.
-AB_FULL_SCOPE = "- view의 **모든 `S<n>`을 정확히 한 번**, 번호 순서대로. 후보가 없으면 `S<n>`만 쓴다."
-
-
-def ab_partial_scope(requested: str) -> str:
-    """#5539: the output scope of an automatic fresh session that redoes only the requested rows of a partial answer."""
-    return (f"- 이번 답변에는 **{requested} 줄만** 번호 순서대로 정확히 한 번씩 쓴다. 다른 `S<n>` 줄은 쓰지 않는다"
-            "(Supervisor가 기존 행을 그대로 유지한다). 후보가 없으면 `S<n>`만 쓴다.")
-
-
-def ab_view_block(view: str) -> str:
-    return (f"아래가 이번 청크의 **전체 view**다(손실 없음). `#` 줄은 설명, `C` 줄은 이미 저장된 후보다.\n{VIEW_BEGIN}\n{view}"
-            f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
-
-
-def ab_chunk(b, chunk_no: int, *, view: str, note: str = "", directory: Path | None = None,
-             output_scope: str = AB_FULL_SCOPE) -> str:
-    """The self-contained card of ONE new A/B chunk session (`a_chunk.md` / `b_chunk.md`): the fixed contract first (a
-    stable prompt-cache prefix), the whole compact view last, inline and lossless."""
-    if b["method"] not in ("a", "b"):
-        raise PromptError("A/B 청크 카드는 방식 a/b에만 있습니다")
-    return render(f"{b['method']}_chunk", {"batch": f"{b['shard']}_{b['batch']}", "chunk_no": f"{chunk_no:03d}",
-                                           "session_note": note, "chunk_input": ab_view_block(view),
-                                           "output_scope": output_scope,
-                                           "method_contract": method_contract(b["method"], directory)}, directory)
-
-
-def ab_format_resend(chunk_no: int, view: str, requested: list[str] | None) -> str:
-    """#5539: the same-session correction of an unparsable answer carries the exact verified view once more."""
-    scope = (f"{', '.join(requested)} 줄만 답하고 다른 `S<n>` 줄은 쓰지 않는다(이미 받은 유효 행은 Supervisor가 유지한다)"
-             if requested else "view의 모든 `S<n>` 줄을 번호 순서대로 정확히 한 번씩 답한다")
-    return (f"\n직전 답변은 형식 오류로 파싱되지 않았다. 형식 예시(`S<n>`, `후보`)를 복사하지 말고 아래 view의 실제 "
-            f"S1, S2 … 별칭으로 `BEGIN chunk {chunk_no:03d}`/`END chunk {chunk_no:03d}` 사이에 후보 줄을 쓴다. {scope}.\n"
-            + ab_view_block(view) + "\n")
-
-
-def ab_chunk_retry(chunk_no: int, requested: str, problem: str, directory: Path | None = None, *,
-                   chunk_input: str = "") -> str:
-    """Resuming the same session after a rejected save: only the rejection and the aliases to redo. The view is carried
-    again only for a structural (unparsable) answer (`chunk_input`, #5539); a candidate rejection stays unchanged."""
-    return render("ab_chunk_retry", {"chunk_no": f"{chunk_no:03d}", "requested": requested, "problem": problem,
-                                     "chunk_input": chunk_input}, directory)
-
-
 def fix(b, events, resumed: bool, directory: Path | None = None, source_context: str = "",
         checkpoint: dict | None = None, retry_note: str = "") -> str:
     lines = []
@@ -432,7 +264,7 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
             note += (" The Supervisor could not apply the previous submission and wrote nothing: "
                      f"{retry_note} Correct the judgment and write the response file again.")
     else:
-        template = "producer_fix"
+        raise PromptError(f"{b['method']!r}의 리뷰 수정 프롬프트가 없습니다")
     values = {"pr": b["pr_number"], "head": b["head_sha"], "branch": b["branch"],
               "shard": b["shard"], "batch": b["batch"].split("-")[0] if b["method"] == STAGE2_METHOD else b["batch"],
               "part": b["batch"].split("-")[1] if b["method"] == STAGE2_METHOD else "",
@@ -445,17 +277,4 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
     if b["method"] == "s3":
         values.update(relation_path=f"data/relations/relation-{b['shard']}.jsonl",
                       drop_path=f"data/relation-drops/drop-{b['shard']}.jsonl")
-    if b["method"] in ("a", "b", "c", "d"):
-        from . import dchunk, literary, stage1ab
-
-        if b["method"] in stage1ab.METHODS:
-            canonical, output = stage1ab.names(b).canonical, stage1ab.names(b).output
-        elif b["method"] == "c":
-            canonical, output = literary.names(b).canonical, literary.names(b).output
-        else:
-            canonical, output = dchunk.names(b).canonical, dchunk.names(b).output
-        values.update(canonical=canonical, output=output,
-                      method_contract=method_contract(b["method"], directory),
-                      method_fix_scope=_method_fix_scope(b["method"], b))
-    out = render(template, values, directory)
-    return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
+    return render(template, values, directory)

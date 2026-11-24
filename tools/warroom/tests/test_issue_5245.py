@@ -94,7 +94,7 @@ class StructuredContinuation(unittest.TestCase):
     def setUp(self):
         self.w = world()
         self.addCleanup(self.w.tmp.cleanup)
-        self.batch_id, self.defect_id, self.m, self.request = t3614.NoCodeRecovery.prepare_failed_d_task(self)
+        self.batch_id, self.defect_id, self.m, self.request = t3614.NoCodeRecovery.prepare_failed_s2_task(self)
 
     def submit(self, **over):
         w, m = self.w, self.m
@@ -318,7 +318,7 @@ class RecurrenceReintake(unittest.TestCase):
         proof.setUp()
         self.addCleanup(proof.tearDown)
         w = proof.w
-        b = t1555.make_batch(w, "d", run_kind="d_chunk_resume", session_id="ses_1")
+        b = t1555.make_batch(w, run_kind="s2_deterministic_finalize", session_id="ses_1")
         w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
         w.store.set(f"error_evidence_{b['id']}_1", json.dumps(proof.EVIDENCE))
         w.git.changed[t1555.MERGE] = [proof.PROMPT]
@@ -356,7 +356,7 @@ class RecurrenceReintake(unittest.TestCase):
         w = world()
         self.addCleanup(w.tmp.cleanup)
         self.w = w
-        batch_id, defect_id, m, request = t3614.NoCodeRecovery.prepare_failed_d_task(self)
+        batch_id, defect_id, m, request = t3614.NoCodeRecovery.prepare_failed_s2_task(self)
         scope = {"task": "002", "chunk": "002"}
         texts = ("오진이었다", "Sense ID를 다시 대조했다", "task 002를 기존 세션에서 다시 판정한다", "002의 공식 저장을 확인한다")
         result = {"version": 2, "issue": 101, "attempt": m["id"], "round": request["round"], "defect_id": defect_id,

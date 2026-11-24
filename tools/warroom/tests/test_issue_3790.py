@@ -6,12 +6,15 @@ Every scenario freezes the stage right after `finish_runs()` (pid=None) and befo
 import json
 import unittest
 
-from tests.fakes import World
-from tests.test_issue_2034_d import DWorld
-from tests.test_issue_2035 import ABWorld
-from tests.test_supervisor import QUOTA_LINE
-from warroom import dchunk, stage1ab
+from tests.test_reload import stage2_world
 from warroom.store import exit_verdict_key
+
+
+def World(models=None):
+    """A Codex World whose only shard has its preserved Stage 2 inputs: every scenario runs on one Stage 2 chunk."""
+    w = stage2_world()
+    w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+    return w
 
 
 class Died(BaseException):
@@ -94,21 +97,6 @@ class ExitVerdictSurvives(unittest.TestCase):
         w.tick()
         self.assertEqual((w.row()["retries"], len(w.adapter.launches)), (1, 2))     # exactly one relaunch after the backoff
 
-    def test_free_quota_on_a_new_instance_goes_to_go_once_or_pauses_never_double_launches(self):
-        w = failed_world(QUOTA_LINE)
-        self.addCleanup(w.tmp.cleanup)
-        w.sup.launch_gate.close()
-        w.tick()
-        b = w.row()
-        self.assertEqual((b["model_tier"], len(w.adapter.launches), len(w.store.runs(b["id"]))), ("free", 1, 1))
-        self.assertIsNotNone(w.store.get(exit_verdict_key(b["id"])))                # classified-but-deferred evidence kept
-        restart(w)
-        w.tick(2)
-        b = w.row()
-        self.assertEqual((b["state"], b["model_tier"], len(w.adapter.launches), len(w.store.runs(b["id"]))),
-                         ("PRODUCING", "go", 2, 2))
-        self.assertEqual(w.adapter.launches[-1]["model"], "p/go")
-
     def test_stale_marker_for_another_run_fails_closed_without_an_ai(self):
         w = failed_world("HTTP 429 Too Many Requests")
         self.addCleanup(w.tmp.cleanup)
@@ -121,7 +109,9 @@ class ExitVerdictSurvives(unittest.TestCase):
         self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("ERROR", 1))
 
     def test_zero_exit_and_missing_status_verdicts_do_not_need_the_gate(self):
-        for name, code in (("exit0", 0), ("missing", None)):
+        # A Stage 2 chunk that exits 0 without an answer gets its one bounded re-entry (#2136); a lost exit status
+        # stays an ERROR. Either way the verdict is applied exactly once, whatever the gate or a restart does.
+        for name, code, want in (("exit0", 0, ("PRODUCING", "PRODUCING", 2)), ("missing", None, ("ERROR", "ERROR", 1))):
             with self.subTest(name):
                 w = World()
                 self.addCleanup(w.tmp.cleanup)
@@ -138,7 +128,7 @@ class ExitVerdictSurvives(unittest.TestCase):
                 state = w.row()["state"]
                 restart(w)
                 w.tick()
-                self.assertEqual((state, w.row()["state"], len(w.adapter.launches)), ("ERROR", "ERROR", 1))
+                self.assertEqual((state, w.row()["state"], len(w.adapter.launches)), want)
 
 
 class DeathBeforeTheVerdict(unittest.TestCase):
@@ -150,7 +140,7 @@ class DeathBeforeTheVerdict(unittest.TestCase):
         w.tick()
 
     def test_zero_exit_and_missing_status_keep_their_original_error_after_death(self):
-        for name, code in (("exit0", 0), ("missing", None)):
+        for name, code, want in (("exit0", 0, ("PRODUCING", 2)), ("missing", None, ("ERROR", 1))):
             with self.subTest(name):
                 w = World()
                 self.addCleanup(w.tmp.cleanup)
@@ -161,136 +151,8 @@ class DeathBeforeTheVerdict(unittest.TestCase):
                 if code is None:
                     next(iter(w.paths.logs.glob("*.exit"))).unlink()
                 self.die_then_restart(w)
-                self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("ERROR", 1))
+                self.assertEqual((w.row()["state"], len(w.adapter.launches)), want)
                 self.assertIsNone(w.store.get(exit_verdict_key(w.row()["id"])))
-
-    def test_ab_partial_begin_response_is_corrected_in_its_session_after_death(self):
-        w = ABWorld()
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", "deepseek", "a")
-        w.ai(w.block(1, end=False), session="ses_1")
-        w.ai(w.block(1), session="ses_1")
-        w.tick()
-        w.finish_last()
-        self.die_then_restart(w)
-        last = w.adapter.launches[-1]
-        self.assertEqual((len(w.adapter.launches), last["kind"], last["session"]), (2, "resume", "ses_1"))
-        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry"])
-
-    def test_ab_rejection_commits_before_interrupted_retry_and_resumes_once(self):
-        for method in ("a", "b"):
-            with self.subTest(method=method):
-                w = ABWorld(method=method)
-                self.addCleanup(w.tmp.cleanup)
-                w.start("single", "deepseek", method)
-                w.ai(w.block(1, end=False), session="ses_1")
-                w.ai(w.block(1), session="ses_1")
-                w.tick()
-                w.finish_last()
-                bid = w.row_()["id"]
-                w.sup._launch_ab_next = lambda *a, **k: (_ for _ in ()).throw(Died())
-                with self.assertRaises(Died):
-                    w.tick()
-                self.assertIsNone(w.store.get(exit_verdict_key(bid)))
-                self.assertIsNotNone(w.store.get(stage1ab.run_start_key(bid)))
-                restart(w)
-                w.tick()
-                self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry"])
-                self.assertEqual(w.adapter.launches[-1]["session"], "ses_1")
-                self.assertEqual(stage1ab.load_state(w.store, bid, 1)["tries"], 1)
-
-    def test_ab_death_after_the_official_save_accepts_the_saved_file_without_an_ai(self):
-        w = ABWorld()
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", "deepseek", "a")
-        w.ai(w.block(1), session="ses_1")
-        w.ai(w.block(2), session="ses_2")
-        w.tick()
-        w.finish_last()
-        bid = w.row_()["id"]
-        orig = w.sup._ab_accept
-        w.sup._ab_accept = lambda *a, **k: (_ for _ in ()).throw(Died())     # dies right after stage1ab.save
-        with self.assertRaises(Died):
-            w.tick()
-        self.assertIsNotNone(w.store.get(exit_verdict_key(bid)))
-        restart(w)
-        w.tick()
-        self.assertIsNotNone(w.store.get(f"ab_sha_{bid}_1"))
-        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_new"])           # chunk 2 is the only extra run
-        self.assertEqual(len(w.adapter.launches), 2)
-
-
-class SavedOutputStillGetsItsFailureVerdict(unittest.TestCase):
-    def test_auth_failure_after_an_official_save_is_paused_on_normal_and_restart_paths(self):
-        for mode in ("normal", "death"):
-            with self.subTest(mode):
-                w = DWorld()
-                self.addCleanup(w.tmp.cleanup)
-                w.start("single", "deepseek", "d")
-                w.ai(code=1)
-                w.adapter.plan[-1]["text"] = "401 unauthorized: please login"
-                w.tick()
-                w.finish_last()
-                settle(w, mode)
-                self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PAUSED", 1))
-
-
-class SavedOutputWithADenial(unittest.TestCase):
-    def test_denial_after_an_official_save_is_paused_on_normal_and_restart_paths(self):
-        for mode in ("normal", "death"):
-            with self.subTest(mode):
-                w = DWorld()
-                self.addCleanup(w.tmp.cleanup)
-                w.adapter.denied_actions = lambda log: [{"tool_name": "Bash", "tool_input": {"command": "git push"}}]
-                w.start("single", "deepseek", "d")
-                w.ai()
-                w.tick()
-                w.finish_last()
-                settle(w, mode)
-                self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PAUSED", 1))
-
-
-class SavedOutputIsAcceptedWithAClosedGate(unittest.TestCase):
-    def test_ab_chunk_save_is_accepted_but_the_next_run_waits_for_admission(self):
-        w = ABWorld()
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", "deepseek", "a")
-        w.ai(w.block(1), session="ses_1")
-        w.ai(w.block(2), session="ses_2")
-        w.tick()
-        w.finish_last()
-        bid = w.row_()["id"]
-        w.sup.launch_gate.close()
-        w.tick()
-        chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(w.wt(), w.row_()), 1)
-        self.assertTrue(stage1ab.chunk_saved(w.wt(), w.row_(), chunk))
-        self.assertIsNotNone(w.store.get(f"ab_sha_{bid}_1"))                          # acceptance bookkeeping committed
-        self.assertIsNone(w.store.get(stage1ab.run_start_key(bid)))
-        self.assertEqual((len(w.adapter.launches), len(w.store.runs(bid))), (1, 1))    # no additional run before a permit
-        restart(w)
-        w.tick()
-        self.assertEqual((len(w.adapter.launches), len(w.store.runs(bid))), (2, 2))    # next chunk, new session, once
-
-    def test_d_fix_budget_is_not_consumed_by_a_denied_launch(self):
-        w = DWorld()
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", "deepseek", "d")
-        w.ai_rejected()
-        w.ai()
-        w.tick()
-        w.finish_last()
-        bid = w.row_()["id"]
-        w.sup.launch_gate.close()
-        w.tick()
-        self.assertIsNone(w.store.get(dchunk.fix_key(bid, 1)))
-        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PRODUCING", 1))
-        restart(w)
-        w.tick(2)
-        # exit 0 re-enters through the existing saved-output evidence recovery: exactly one more same-session run
-        self.assertEqual((len(w.adapter.launches), w.kinds()[0], w.kinds()[1] in ("d_chunk_fix", "d_chunk_resume")),
-                         (2, "d_chunk_new", True))
-        self.assertIn(w.store.get(dchunk.fix_key(bid, 1)), (None, "1"))
-
 
 class GateSemantics(unittest.TestCase):
     def test_close_waits_for_a_permit_taken_before_it_and_a_close_before_a_permit_denies(self):

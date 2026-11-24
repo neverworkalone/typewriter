@@ -146,28 +146,6 @@ def issue_title(report: dict, source: str = "report") -> str:
     return f"[urgent][War Room] 공통 결함: {report['defect_class']}"
 
 
-# ---- Autonomous incident intake (Issue #3326): an approved Maintainer integration HEAD the boundary check rejected ------
-class BoundaryProblem(str):
-    """A boundary rejection that was proven, at the moment of rejection, to be the batch's own RELEASED integration HEAD.
-
-    Only the HEAD-mismatch branch of a boundary check returns this, and only after `Maintenance.approved_integration_receipt`
-    proved it (same-batch RELEASED receipt, ancestry, unchanged remote, clean worktree). Every other rejection stays a plain
-    `str`. `+` keeps the type (callers append a suffix); f-strings, slicing and `format` drop it on purpose.
-    """
-    receipt: dict
-
-    def __new__(cls, text: str, receipt: dict):
-        obj = super().__new__(cls, text)
-        obj.receipt = receipt
-        return obj
-
-    def __add__(self, other):
-        return BoundaryProblem(str.__add__(self, other), self.receipt) if isinstance(other, str) else NotImplemented
-
-    def __radd__(self, other):
-        return BoundaryProblem(str.__add__(other, self), self.receipt) if isinstance(other, str) else NotImplemented
-
-
 def incident_report(site: str, bid: int, sha8: str, cases: list[str], reproduction: str) -> str:
     """The report JSON for one incident. The class is unique per incident: nothing merges it with another before a cause is known."""
     return json.dumps({
@@ -202,7 +180,7 @@ def observation(status: str, value=None) -> dict:
 
 
 def evidence_fingerprint(evidence: dict) -> str | None:
-    """Cause identity of a structured evidence record. Today: a BoundaryProblem receipt's (site, base, head)."""
+    """Cause identity of a structured `boundary` evidence record (site, base, head); None for any other record."""
     if not isinstance(evidence, dict) or evidence.get("kind") != "boundary":
         return None
     parts = [evidence.get(k) for k in ("site", "base", "head")]

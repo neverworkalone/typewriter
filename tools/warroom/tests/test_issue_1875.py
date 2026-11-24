@@ -1,67 +1,26 @@
-"""Issue #1875: keep producer runs out of Supervisor cleanup and recover proven partial removals safely."""
+"""Issue #1875: a proven partial worktree removal survives a Supervisor restart and resumes on Retry."""
 from __future__ import annotations
 
 import unittest
 from pathlib import Path
 
-from tests.fakes import HEAD1, FakeAdapter, World
+from tests.fakes import HEAD1
+from tests.test_issue_1555 import make_batch, world
+from tests.test_issue_1908 import write_state
 from warroom import control
-from warroom.gitops import CleanupBlocked, GitError
-
-
-
-
-class FinalResultAdapter(FakeAdapter):
-    requires_session_for_pr = True
-    requires_final_result_for_pr = True
-
-    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
-        self.last_env = dict(env)
-        return super().start(prompt, cwd, env, run, title, log_file, exit_file)
-
-
-def install_batch_pr(w, b, number=1870, *, merged=True, state="closed"):
-    branch = b["branch"]
-    w.pr_info(number, HEAD1, state=state, merged=merged, head_ref=branch)
-    w.gh.by_branch[branch] = [{"number": number, "state": state.upper(), "headRefOid": HEAD1}]
-    w.gh.files[number] = [{"path": f"data/relation-candidates/{b['shard']}/"
-                                  f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"}]
-    if state == "open":
-        w.git.remote[branch] = HEAD1
+from warroom.gitops import GitError
 
 
 class Recovery(unittest.TestCase):
-    def test_missing_pr_number_recovers_merged_claim_without_registration_or_ai_rerun(self):
-        w = World()
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", method="b")
-        w.tick()
-        b = w.row(method="b")
-        w.adapter.stop(b["pid"])
-        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", pr_number=None,
-                       records_done=500, records_total=500, error="lost final run status")
-        w.git.reg.pop(b["worktree"])
-        install_batch_pr(w, b)
-
-        w.tick()  # recover exact merged PR ownership, without needing the deleted registration
-        self.assertEqual((w.row(method="b")["state"], w.row(method="b")["pr_number"]), ("MERGED", 1870))
-        w.tick(2)  # cleanup fails closed because this historical case has no pre-removal proof
-
-        row = w.row(method="b")
-        self.assertEqual((row["state"], row["paused_from"]), ("ERROR", "CLEANUP"))
-        self.assertIn("no matching cleanup proof", row["error"])
-        self.assertTrue(Path(b["worktree"]).exists())
-        self.assertEqual(len(w.adapter.launches), 1)
-
     def test_cleanup_proof_survives_supervisor_restart_and_retry(self):
-        w = World()
+        w = world(maintainer=None)
         self.addCleanup(w.tmp.cleanup)
-        w.start("single", method="b")
-        w.tick()
-        b = w.row(method="b")
-        other = dict(w.store.line("deepseek", "a"))
-        install_batch_pr(w, b)
-        w.store.update(b["id"], state="MERGED", pid=None, pr_number=1870, head_sha=HEAD1, merged=1)
+        b = make_batch(w, state="MERGED", run_kind="s2_deterministic_finalize", pr_number=1870,
+                       head_sha=HEAD1, merged=1)
+        write_state(b, decided=2, total=2, merged=True)
+        w.git.verified.add(("part", "001", "01", "01"))   # the merged Part re-verifies on latest master
+        w.pr_info(1870, HEAD1, state="closed", merged=True, head_ref=b["branch"])
+        w.gh.by_branch[b["branch"]] = [{"number": 1870, "state": "CLOSED", "headRefOid": HEAD1}]
         w.tick()  # MERGED -> CLEANUP
 
         original = w.git.remove_owned
@@ -77,51 +36,20 @@ class Recovery(unittest.TestCase):
 
         w.git.remove_owned = partial
         w.tick()
-        row = w.row(method="b")
+        row = w.store.batch(b["id"])
         self.assertEqual((row["state"], row["paused_from"]), ("ERROR", "CLEANUP"))
         self.assertTrue(w.store.get(f"cleanup_proof_{b['id']}"))
 
         w.sup = w.make_sup()  # same durable Store, a new Supervisor instance
         w.sup_runner_ok()
-        self.assertTrue(control.retry(w.store, "deepseek", "b"))
+        self.assertTrue(control.retry(w.store, "codex", "s2", cfg=w.sup.cfg))
         w.tick()  # Retry restores CLEANUP; no producer launch
         w.tick()  # the saved proof lets cleanup resume
 
-        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual(w.store.batch(b["id"])["state"], "COMPLETE")
         self.assertFalse(Path(b["worktree"]).exists())
         self.assertIsNone(w.store.get(f"cleanup_proof_{b['id']}"))
-        self.assertEqual(dict(w.store.line("deepseek", "a")), other)
-        self.assertEqual(len(w.adapter.launches), 1)
-
-
-class ProducerHandoff(unittest.TestCase):
-    def test_validated_pr_stops_codex_style_producer_before_it_can_poll_or_cleanup(self):
-        w = World()
-        self.addCleanup(w.tmp.cleanup)
-        w.adapter = FinalResultAdapter()
-        w.cfg["producers"] = {"codex": {"label": "Codex", "adapter": "codex",
-                                         "model": "gpt-6-luna", "effort": "xhigh"}}
-        w.sup = w.make_sup()
-        w.sup_runner_ok()
-        w.start("single", model="codex", method="b")
-        w.adapter.plan.append({"code": 0, "session": "ses_live"})
-        w.tick()
-        b = w.row(model="codex", method="b")
-        pid = b["pid"]
-        install_batch_pr(w, b, state="open", merged=False)
-
-        w.tick()
-        row = w.row(model="codex", method="b")
-        self.assertEqual((row["state"], row["pr_number"]), ("WAITING_REVIEW", 1870))
-        self.assertFalse(w.adapter.alive(pid))
-        self.assertTrue(w.store.get(f"stop_after_pr_{b['id']}"))
-        self.assertEqual(w.adapter.last_env.get("PATH"), w.sup.env.get("PATH"))   # normal Git: no shim directory first
-        self.assertFalse(any(k.startswith("WARROOM_GIT_SHIM") or k == "WARROOM_REAL_GIT" for k in w.adapter.last_env))
-
-        w.tick()  # reap the stopped process and clear the handoff marker
-        self.assertIsNone(w.row(model="codex", method="b")["pid"])
-        self.assertIsNone(w.store.get(f"stop_after_pr_{b['id']}"))
-        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.adapter.launches, [])
 
 
 if __name__ == "__main__":

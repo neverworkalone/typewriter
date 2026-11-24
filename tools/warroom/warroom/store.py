@@ -151,14 +151,13 @@ ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
 # Per-batch kv keys the Supervisor writes; removed with the batch by Clear.
 BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge_check_", "no_pr_recovery_",
                      "verified_completion_run_", "defect_hold_", "cleanup_proof_", "stop_after_pr_",
-                     "fix_claim_", "fix_context_sent_", "fix_context_pending_",
+                     "fix_claim_",
                      "s2_run_start_", "s2_chunk_correction_", "s2_chunk_retry_fix_", "s2_links_start_",
                      "s2_repair_state_", "s2_repair_run_start_",
                      "s2_finalize_base_", "s2_commit_head_", "s2_fix_start_",
                      "s3_run_start_", "s3_wait_", "s3_apply_ready_", "s3_apply_result_", "s3_commit_head_",
                      "s3_merge_wait_", "s3_mode_", "s3_plan_", "s3_parallel_start_",
-                     "c_retry_guard_",
-                     "s2_mode_", "s2_plan_", "s2_defect_path_", "d_mode_", "c_mode_", "c_parallel_retry_epoch_",
+                     "s2_mode_", "s2_plan_", "s2_defect_path_",
                      "pending_", "pr_create_")
 
 
@@ -168,13 +167,6 @@ class LineBusy(Exception):
 
 class LineNotRunnable(Exception):
     """The Line's controls no longer allow a new batch (run cancelled, Drain, Drain All) at insert time."""
-
-
-class DuplicateBatch(LineBusy):
-    """Another model already holds this (method, shard, batch) of a shared (C/D) queue."""
-
-
-SHARED_QUEUE_METHODS = ("c", "d")   # one queue across all models; A/B keep a queue per model
 
 
 VERDICT_OUTCOME_FIELDS = frozenset({"state", "retries", "retry_after"})
@@ -304,32 +296,6 @@ class Store:
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
                       "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
 
-    def commit_ab_rejection(self, batch_id: int, key: str, value: str) -> None:
-        """Commit a rejected answer and its exit outcome together; retain its boundary until the next launch."""
-        with self._conn() as c:
-            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
-            c.execute("DELETE FROM kv WHERE key=?", (exit_verdict_key(batch_id),))
-
-    def begin_ab_operator_recovery(self, b, key: str, value: str) -> bool:
-        """Consume one pinned Retry and its new chunk state in the same transaction."""
-        with self._conn() as c:
-            c.execute("BEGIN IMMEDIATE")
-            row = c.execute("SELECT state,pid,run_kind FROM batches WHERE id=?", (b["id"],)).fetchone()
-            line = c.execute("SELECT retry_batch,force_stop FROM lines WHERE model=? AND method=?",
-                             (b["producer"], b["method"])).fetchone()
-            if (row is None or row["state"] not in ("ERROR", "PAUSED") or row["pid"] is not None
-                    or row["run_kind"] != b["run_kind"] or line is None
-                    or line["retry_batch"] != b["id"] or line["force_stop"]
-                    or c.execute("SELECT 1 FROM clear_requests WHERE model=? AND method=?", (b["producer"], b["method"])).fetchone()
-                    or c.execute("SELECT 1 FROM runs WHERE batch_id=? AND ended_at IS NULL", (b["id"],)).fetchone()):
-                return False
-            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
-            c.execute("DELETE FROM kv WHERE key=?", (exit_verdict_key(b["id"]),))
-            c.execute("UPDATE lines SET retry_batch=NULL,run=1 WHERE model=? AND method=?", (b["producer"], b["method"]))
-            c.execute("UPDATE batches SET state='PRODUCING',error=NULL,retries=0,retry_after=NULL,"
-                      "pause_reason='',defect_id=NULL WHERE id=?", (b["id"],))
-            return True
-
     # --- restart_phase: {instance, phase, request, seq[, stopping_at]}, changed only by an exact-match CAS (#3774, #5162) ---
     def restart_phase(self) -> dict | None:
         raw = self.get(RESTART_PHASE_KEY)
@@ -435,12 +401,6 @@ class Store:
                                "AND state!='COMPLETE'", (STAGE2_METHOD, f["shard"])).fetchone()
                 if s2:
                     raise LineBusy(f"Stage 2가 샤드 {f['shard']}를 점유 중입니다 ({s2['producer']}/{s2['batch']}/{s2['state']}).")
-            if f["method"] in SHARED_QUEUE_METHODS:
-                other = c.execute("SELECT producer, state FROM batches WHERE method=? AND shard=? AND batch=? "
-                                  "AND producer!=?", (f["method"], f["shard"], f["batch"], f["producer"])).fetchone()
-                if other:
-                    raise DuplicateBatch(f"{f['method'].upper()} {f['shard']}_{f['batch']} 배치는 이미 "
-                                         f"{other['producer']}({other['state']})가 점유 중입니다.")
             cur = c.execute(
                 "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,"
                 "model_tier,records_total,run_kind,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -601,7 +561,7 @@ class Store:
                     or b is None or b["state"] != "PAUSED" or b["pause_reason"] != "shared_defect"
                     or b["defect_id"] != defect_id or b["paused_from"] != "PRODUCING"
                     or b["error_seq"] != approval.get("source_error_seq")
-                    or b["method"] not in ("c", "d", "s2", "s3") or b["pid"] is not None
+                    or b["method"] not in ("s2", "s3") or b["pid"] is not None
                     or m is None or m["state"] != "PRODUCING" or m["batch"] != str(issue)
                     or m["pr_number"] is not None or m["merged"]
                     or maint is None or maint["state"] != "ACTIVE"
@@ -627,11 +587,8 @@ class Store:
             if task is not None:
                 if approval.get("recovery_type") in ("resume_report_task", "continue_after_saved_report"):
                     owner = approval.get("task_report")
-                    expected_kind = {"c": "c_parallel", "d": "d_parallel", "s2": "s2_parallel"}.get(b["method"])
-                    task_kinds = {"c": {"c_chunk_new", "c_chunk_resume", "c_chunk_fix", "c_chunk_recovery",
-                                         "c_chunk_scope_recovery"},
-                                  "d": {"d_chunk_new", "d_chunk_resume", "d_chunk_fix"},
-                                  "s2": {"s2_chunk_new", "s2_chunk_resume", "s2_chunk_fix",
+                    expected_kind = {"s2": "s2_parallel"}.get(b["method"])
+                    task_kinds = {"s2": {"s2_chunk_new", "s2_chunk_resume", "s2_chunk_fix",
                                          "s2_chunk_format_fix"}}.get(b["method"], set())
                     if (not isinstance(owner, dict) or b["run_kind"] != expected_kind
                             or not isinstance(task, str) or not task or row is None
@@ -690,28 +647,9 @@ class Store:
                 if (run is None or run["ended_at"] is None or run["id"] != approval.get("run_id")
                         or run["session_id"] != approval["session_id"]):
                     return False
-            if b["method"] == "c" and task is not None and approval.get("recovery_type") == "resume_failed_task":
-                epoch_key = f"c_parallel_retry_epoch_{b['id']}"
-                old = c.execute("SELECT value FROM kv WHERE key=?", (epoch_key,)).fetchone()
-                try:
-                    epoch = int(old["value"]) if old else 0
-                except (TypeError, ValueError):
-                    return False
-                c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) "
-                          "DO UPDATE SET value=excluded.value", (epoch_key, str(epoch + 1)))
             followup_tasks = None
             if approval.get("recovery_type") == "continue_after_saved_report":
-                if b["method"] != "d" or b["run_kind"] != "d_parallel":
-                    return False
-                current = c.execute("SELECT task,chunk_id,state,run_id,session_id FROM s2_tasks WHERE batch_id=? ORDER BY task", (b["id"],)).fetchall()
-                baseline = approval.get("baseline_tasks")
-                actual = [{"task": r["task"], "chunk": r["chunk_id"], "state": r["state"],
-                           "run_id": r["run_id"], "session_id": r["session_id"]} for r in current]
-                if not isinstance(baseline, list) or sorted(baseline, key=lambda x: x["task"]) != actual:
-                    return False
-                followup_tasks = [r["task"] for r in current if r["state"] in ("PENDING", "FIXQ")]
-                if not followup_tasks:
-                    return False
+                return False   # only the removed D path had a saved-report follow-up (#9933)
             max_run_id = c.execute("SELECT COALESCE(MAX(id),0) FROM runs WHERE batch_id=?", (b["id"],)).fetchone()[0]
             saved = {**approval, "status": "APPROVED", "approved_at": now,
                      "followup_tasks": followup_tasks, "baseline_run_id": max_run_id}
@@ -750,19 +688,7 @@ class Store:
             except (TypeError, ValueError):
                 return False
             if isinstance(proof, dict) and proof.get("recovery_type") == "continue_after_saved_report":
-                followup = c.execute("SELECT state FROM s2_tasks WHERE batch_id=? AND task=?", (batch_id, followup_task)).fetchone()
-                new_run = c.execute("SELECT 1 FROM runs WHERE batch_id=? AND task=? AND id>? AND ended_at IS NOT NULL AND exit_status='0' LIMIT 1",
-                                    (batch_id, followup_task, proof.get("baseline_run_id", -1))).fetchone()
-                if (proof.get("status") != "APPROVED" or followup_task not in (proof.get("followup_tasks") or [])
-                        or followup is None or followup["state"] != "SAVED" or new_run is None):
-                    return False
-            elif (isinstance(proof, dict) and task is not None and proof.get("saved_checkpoint_accept") is True
-                  and proof.get("recovery_type") == "resume_report_task" and proof.get("status") == "APPROVED"
-                  and proof.get("baseline_task_state") in ("RUNNING", "FIXQ")
-                  and proof.get("task") == task):
-                # #7812: the checkpoint was already fully saved; accepting it creates no run. Only the approved
-                # task's own SAVED transition (checked below) is the progress; the baseline row was never SAVED.
-                pass
+                return False   # only the removed D path had a saved-report follow-up (#9933)
             elif isinstance(proof, dict) and task is not None:
                 baseline = proof.get("baseline_run_id")
                 if "baseline_run_id" not in proof:
@@ -958,24 +884,6 @@ class Store:
         cols = ", ".join(f"{k}=?" for k in fields)
         with self._conn() as c:
             c.execute(f"UPDATE lines SET {cols} WHERE model=? AND method=?", (*fields.values(), model, method))
-
-    def request_start(self, model: str, method: str, mode: str) -> tuple[str, sqlite3.Row | None]:
-        """Reserve a new Stage 1 run unless an active batch or the Line's Drain won the write race."""
-        now = time.time()
-        with self._conn() as c:
-            c.execute("BEGIN IMMEDIATE")
-            active = c.execute("SELECT shard, batch, state FROM batches WHERE producer=? AND method=? "
-                               "AND state!='COMPLETE' ORDER BY id DESC LIMIT 1", (model, method)).fetchone()
-            if active is not None:
-                return "active", active
-            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
-            ln = c.execute("SELECT drain FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
-            if ln["drain"]:
-                return "drain", None
-            c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, updated_at=? "
-                      "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single",
-                                                       now, model, method))
-        return "", None
 
     def lines(self):
         with self._conn() as c:
@@ -1460,11 +1368,6 @@ class Store:
             c.execute("UPDATE runs SET submit_failures=COALESCE(submit_failures,0)+1 "
                       "WHERE id=(SELECT MAX(id) FROM runs WHERE batch_id=?)", (batch_id,))
 
-    def run_by_log(self, log_file):
-        """The run that wrote `log_file` (one launch = one log), or None."""
-        with self._conn() as c:
-            return c.execute("SELECT * FROM runs WHERE log_file=? ORDER BY id DESC LIMIT 1", (str(log_file),)).fetchone()
-
     def runs(self, batch_id: int):
         with self._conn() as c:
             return c.execute("SELECT * FROM runs WHERE batch_id=? ORDER BY id DESC", (batch_id,)).fetchall()
@@ -1476,16 +1379,6 @@ class Store:
         with self._conn() as c:
             return c.execute("SELECT r.*, b.shard, b.batch FROM runs r JOIN batches b ON b.id=r.batch_id "
                              f"WHERE {who}b.method=? ORDER BY r.id DESC LIMIT ?", args).fetchall()
-
-    def claimed_keys(self, method: str, producer: str | None) -> set[tuple[str, str]]:
-        """Batches already owned here, finished ones included. producer=None: every model (shared C/D queue)."""
-        with self._conn() as c:
-            if producer is None:
-                rows = c.execute("SELECT shard,batch FROM batches WHERE method=?", (method,)).fetchall()
-            else:
-                rows = c.execute("SELECT shard,batch FROM batches WHERE method=? AND producer=?",
-                                 (method, producer)).fetchall()
-        return {(r["shard"], r["batch"]) for r in rows}
 
     def all_batches(self):
         with self._conn() as c:
@@ -1572,7 +1465,7 @@ class Store:
 
     def mark_handled(self, batch_id: int, pr: int, head: str, keys: list[str], *,
                      run_id: int | None = None, reply_id: int | None = None) -> None:
-        """Complete a Stage 1 fix with proof; no-proof callers retain their legacy Stage 2 behavior."""
+        """Complete a fix event with run/reply proof; no-proof callers retain their legacy Stage 2 behavior."""
         now = time.time()
         with self._conn() as c:
             for key in keys:
@@ -1716,7 +1609,7 @@ class Store:
     def intake_candidates(self):
         """ERROR batches of the autonomous-recovery methods that carry an incident number and no incident row yet."""
         with self._conn() as c:
-            rows = c.execute("SELECT * FROM batches WHERE state='ERROR' AND error_seq>0 AND method IN ('c','d','s2','s3') "
+            rows = c.execute("SELECT * FROM batches WHERE state='ERROR' AND error_seq>0 AND method IN ('s2','s3') "
                              "AND COALESCE(paused_from,'')!='CLEARING' ORDER BY id").fetchall()
             done = {r["event_key"] for r in c.execute("SELECT event_key FROM defects WHERE source='incident'")}
         return [r for r in rows if f"incident:{r['id']}:e{r['error_seq']}" not in done]
@@ -1724,7 +1617,7 @@ class Store:
     def legacy_errors(self):
         with self._conn() as c:
             return c.execute("SELECT id, method, shard, batch FROM batches WHERE state='ERROR' AND error_seq=0 "
-                             "AND method IN ('c','d','s2','s3') ORDER BY id").fetchall()
+                             "AND method IN ('s2','s3') ORDER BY id").fetchall()
 
     def defect(self, defect_id: int):
         with self._conn() as c:

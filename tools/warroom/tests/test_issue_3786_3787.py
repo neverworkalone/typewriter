@@ -1,13 +1,12 @@
-"""Parallel C/D/Stage 2/Stage 3 task launchers hold admission from first write through PID evidence."""
+"""Parallel Stage 2/Stage 3 task launchers hold admission from first write through PID evidence."""
 import threading
 import unittest
 
 from tests.fakes import World
-from warroom import adapters, cparallel, dparallel, s2parallel, s3parallel
+from warroom import adapters, s2parallel, s3parallel
 from warroom.launch_gate import LaunchDenied, LaunchGate, task_launch_scope
 
-LAUNCHERS = [(s2parallel.ParallelStage2, '_launch_task'), (dparallel.ParallelD, '_launch'),
-             (cparallel.ParallelC, '_launch'), (s3parallel.ParallelStage3, '_launch_task')]
+LAUNCHERS = [(s2parallel.ParallelStage2, '_launch_task'), (s3parallel.ParallelStage3, '_launch_task')]
 
 
 class _Sup:
@@ -81,7 +80,7 @@ class PreparationIsAdmitted(unittest.TestCase):
         from tests.test_issue_1555 import make_batch
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
-        self.b = make_batch(self.w, method='a', run_kind='produce', state='PREPARE', worktree=False)
+        self.b = make_batch(self.w, run_kind=None, state='PREPARE', worktree=False)
 
     def test_denied_prepare_creates_no_worktree_and_changes_no_row(self):
         w, b = self.w, self.b

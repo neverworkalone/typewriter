@@ -17,11 +17,11 @@ class LaneMaintenance(unittest.TestCase):
 
     def test_busy_lane_skips_intake_and_release_but_other_lane_proceeds(self):
         w = self.w
-        first = break_batch(w, make_batch(w, 'd', 'deepseek', '001'))
-        second = break_batch(w, make_batch(w, 'c', 'sonnet', '002', run_kind='c_chunk_new'))
+        first = break_batch(w, make_batch(w, 's2', 'codex', '001'))
+        second = break_batch(w, make_batch(w, 's3', 'claude', '002', 'all', run_kind='s3_chunk_new'))
         entered, release = threading.Event(), threading.Event()
         def producer():
-            with w.sup.lanes.try_hold('deepseek', 'd') as held:
+            with w.sup.lanes.try_hold('codex', 's2') as held:
                 self.assertTrue(held)
                 entered.set()
                 self.assertTrue(release.wait(5))
@@ -46,14 +46,14 @@ class LaneMaintenance(unittest.TestCase):
 
     def test_release_skips_busy_lane_and_rechecks_other_lane(self):
         w = self.w
-        first = break_batch(w, make_batch(w, 'd', 'deepseek', '001'))
-        second = break_batch(w, make_batch(w, 'c', 'sonnet', '002', run_kind='c_chunk_new'))
+        first = break_batch(w, make_batch(w, 's2', 'codex', '001'))
+        second = break_batch(w, make_batch(w, 's3', 'claude', '002', 'all', run_kind='s3_chunk_new'))
         w.sup.maint._intake_errors()
         for defect in incidents(w):
             w.store.update_defect(defect['id'], state='FIX_MERGED', merge_sha='a' * 40)
         entered, release = threading.Event(), threading.Event()
         def producer():
-            with w.sup.lanes.try_hold('deepseek', 'd') as held:
+            with w.sup.lanes.try_hold('codex', 's2') as held:
                 self.assertTrue(held)
                 entered.set()
                 self.assertTrue(release.wait(5))
@@ -64,7 +64,7 @@ class LaneMaintenance(unittest.TestCase):
             with patch.object(w.sup.maint, '_release_incident') as apply:
                 w.sup.maint._release()
                 self.assertEqual([call.args[1]['id'] for call in apply.call_args_list], [second['id']])
-                w.store.set_line('sonnet', 'c', force_stop=1)
+                w.store.set_line('claude', 's3', force_stop=1)
                 apply.reset_mock()
                 w.sup.maint._release()
                 apply.assert_not_called()

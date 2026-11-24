@@ -9,12 +9,10 @@ from warroom import batches, control, prompts, stage2, stage3
 from warroom.config import stage3_model
 from warroom.store import LineBusy, STAGE2_METHOD, STAGE3_METHOD
 from warroom.supervisor import RecoveryBlocked
-from warroom.web.api import _controls
 
 PRODUCERS = {
     "claude": {"label": "Claude", "adapter": "claude", "model": "claude-x", "effort": "high"},
     "codex": {"label": "Codex", "adapter": "codex", "model": "gpt-x", "effort": "high"},
-    "deepseek": {"adapter": "opencode", "models": {"free": "p/free-x-free", "go": "p/go"}},
 }
 RELATION = "data/relations/relation-001.jsonl"
 DROP = "data/relation-drops/drop-001.jsonl"
@@ -55,11 +53,6 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
                                                 "label": "ZZZ Backup"}
         owner = stage3_model(w.cfg)
         self.assertIn(owner, w.cfg["producers"])
-        controls = _controls(w.cfg)["adapters"]
-        for adapter in ("claude", "codex"):
-            group = next(group for group in controls if group["id"] == adapter)
-            self.assertIn("s3", [method["id"] for method in group["methods"]])
-        self.assertEqual(_controls(w.cfg)["stage3_model"], owner)
         other_codex = next(model for model, producer in w.cfg["producers"].items()
                            if producer["adapter"] == "codex" and model != owner)
         self.assertTrue(control.start(w.store, "claude", STAGE3_METHOD, "single", cfg=w.cfg)[0])
