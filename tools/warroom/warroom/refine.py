@@ -7,10 +7,15 @@ before it, exactly as Stage 3 is gated on Stage 2. A Stage is therefore one `Ref
 CLI, its prompts and policy card, its answer rule, its PR naming and its gate. Everything else — parallel chunk tasks,
 finalize, merge verify, the Review FIXING Coordinator, Maintainer handling — is shared and keyed by the batch's Stage.
 
-A batch records its Stage in `batches.batch` (`spec.tag`); Stage 3 keeps its historical tag `all`.
+A batch records its Stage in `batches.batch` (`spec.tag`); Stage 3 keeps its historical tag `all`. Each Stage's run
+profile is `assignments.<spec.role>` (Stage 3: `assignments.stage3`), resolved from the batch's own spec.
+
+`STAGE_MODULES` is the one registration entry point: the Stage modules, in run order. A new Stage is a module that calls
+`register(RefineSpec(...))` at import time plus one name appended here; nothing is discovered automatically.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import re
 from dataclasses import dataclass
@@ -18,6 +23,8 @@ from pathlib import Path
 from typing import Callable
 
 SHARDS = 428
+STAGE_MODULES = ("stage3",)   # refinement Stage modules in run order — the single registration entry point
+RESERVED_ROLES = ("stage2", "maintainer")   # assignment roles that are not refinement Stages
 
 
 class RefineError(ValueError):
@@ -36,6 +43,7 @@ class RefineSpec:
     id: str                     # "s3": branch/worktree/kv prefix and the CLI-facing name
     tag: str                    # `batches.batch` of this Stage's batches ("all" for Stage 3)
     label: str                  # "Stage 3"
+    role: str                   # `assignments.<role>` run profile of this Stage ("stage3")
     short: str                  # "S3": PR title prefix `[S3/<Model>] SSS`
     issue: int                  # production contract Issue linked from every PR body
     cli: str                    # repository-relative Stage CLI
@@ -76,16 +84,29 @@ _OPS: dict[str, object] = {}
 
 
 def register(spec: RefineSpec) -> RefineSpec:
-    if any(existing.id == spec.id or existing.tag == spec.tag for existing in _REGISTRY):
-        raise ValueError(f"refinement Stage {spec.id} is registered twice")
+    if any(existing.id == spec.id or existing.tag == spec.tag or existing.role == spec.role
+           for existing in _REGISTRY):
+        raise ValueError(f"refinement Stage {spec.id} is registered twice (id, tag or role {spec.role!r})")
+    if not isinstance(spec.role, str) or not re.fullmatch(r"[a-z0-9-]+", spec.role) or spec.role in RESERVED_ROLES:
+        raise ValueError(f"refinement Stage {spec.id} has an invalid or reserved role {spec.role!r}")
     _REGISTRY.append(spec)
     return spec
 
 
 def stages() -> list[RefineSpec]:
-    """Every refinement Stage in run order (Stage 3 first)."""
-    from . import stage3  # noqa: F401 - registers Stage 3
+    """Every refinement Stage in run order: the `STAGE_MODULES` order (Stage 3 first)."""
+    for name in STAGE_MODULES:
+        importlib.import_module(f".{name}", __package__)
     return list(_REGISTRY)
+
+
+def roles() -> tuple[str, ...]:
+    """The `assignments` role of every registered refinement Stage, in run order."""
+    return tuple(spec.role for spec in stages())
+
+
+def spec_for_role(role: str) -> RefineSpec | None:
+    return next((spec for spec in stages() if spec.role == role), None)
 
 
 def spec_for(b) -> RefineSpec:

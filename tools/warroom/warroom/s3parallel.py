@@ -1,7 +1,7 @@
 """Parallel Stage 3 chunk judgment (Issue #3149, PR 2): dynamic chunk-task scheduler with a single-writer save.
 
 A *new* shard (`s3_mode_<batch>` = "parallel") judges its prepared `edit-cli` chunks as independent answer-only
-sessions, up to `stage3_max_parallel` at once. The batch stays PRODUCING with `run_kind="s3_parallel"` and `pid=None`;
+sessions, up to the shard's fixed cap (`refine_max_parallel` when its plan began) at once. The batch stays PRODUCING with `run_kind="s3_parallel"` and `pid=None`;
 the real executions are task runs (`runs.task`, `s2_tasks`). Each tick, in this fixed order:
 
 1. apply a Maintainer release (invalidated tasks) and restore tasks whose chunk the checkpoint already holds,
@@ -11,7 +11,9 @@ the real executions are task runs (`runs.task`, `s2_tasks`). Each tick, in this 
    writer; completion order never changes the final data),
 4. a FAILED task blocks every new assignment (running ones are still followed and saved), then halts to ERROR,
 5. once every chunk is SAVED and the checkpoint is complete, persist `closed` and hand over to the existing finalize,
-6. fill free slots (`stage3_max_parallel - slots in use`, a slot being free only when its run's end is confirmed).
+6. fill free slots (`cap - slots in use`, a slot being free only when its run's end is confirmed). The cap is recorded
+   in the shard's parallel baseline when its plan begins, so a config reload or Supervisor restart changes only the
+   plan of the NEXT new shard.
 
 Task states: PENDING, RUNNING, RESPONDED (answer preserved, save pending), SAVED, FAILED. Stage 3 has no same-session
 correction loop: a missing answer gets exactly one new session; a strict save rejection never calls the AI again.
@@ -71,6 +73,7 @@ class _Round:
         self.s3p, self.b = s3p, b
         self._remote = self._pr = self._preflight = self._unset = object()
         self.boundary = None
+        self.run = None   # the RunSpec proven by `preflight()`
 
     def remote(self):
         if self._remote is self._unset:
@@ -83,8 +86,9 @@ class _Round:
         return self._pr
 
     def preflight(self):
+        """Resolve this round's RunSpec once and prove exactly it; every task launched in the round spawns `self.run`."""
         if self._preflight is self._unset:
-            self._preflight = self.s3p.sup._preflight(self.b["producer"], self.b["method"])
+            self.run, self._preflight = self.s3p.sup.batch_run(self.b)
         return self._preflight
 
 
@@ -125,6 +129,20 @@ class ParallelStage3:
             return None
         return value if isinstance(value, dict) else None
 
+    def cap(self, b) -> int:
+        """This shard's concurrent-session cap, fixed in its parallel baseline: recorded when the plan begins; a shard
+        planned before #9934 records the effective `refine_max_parallel` once, the first time it is read here."""
+        key = stage3.parallel_start_key(b["id"])
+        base = self._baseline(b)
+        cap = base.get("cap") if base is not None else None
+        if type(cap) is int and cap >= 1:
+            return cap
+        cap = self.cfg["refine_max_parallel"]
+        if base is not None:
+            self.store.set(key, json.dumps({**base, "cap": cap}, sort_keys=True))
+            self.store.log(b["id"], f"진행 중 샤드의 병렬 상한을 현재 설정값 {cap}으로 고정했습니다")
+        return cap
+
     def workers_alive(self, b) -> bool:
         return taskruns.workers_alive(self.store, self._adapter(b), b["id"])
 
@@ -161,11 +179,11 @@ class ParallelStage3:
         except TRANSIENT:
             raise
         except _ERRORS as error:
-            return self.sup._fail(b, "ERROR", f"Stage 3 병렬 청크 계획 준비 실패: {error}. worktree를 보존합니다.")
+            return self.sup._fail(b, "ERROR", f"{refine.spec_for(b).label} 병렬 청크 계획 준비 실패: {error}. worktree를 보존합니다.")
         if self.store.get(stage3.parallel_start_key(b["id"])) is None:   # not the serial s3_run_start baseline
             self.store.set(stage3.parallel_start_key(b["id"]), json.dumps(
                 {"branch": b["branch"], "worktree": str(b["worktree"]), "head": head, "remote_head": remote,
-                 "invalidated": []}, sort_keys=True))
+                 "invalidated": [], "cap": self.cfg["refine_max_parallel"]}, sort_keys=True))
         total = state["chunk_total"]
         self.store.add_tasks(b["id"], [(f"{n:03d}", f"{n:03d}") for n in range(1, total + 1)])
         self.store.update(b["id"], state="PRODUCING", run_kind=RUN_KIND, pid=None, session_id=None, retries=0,
@@ -175,7 +193,7 @@ class ParallelStage3:
             self.store.set(stage3.plan_key(b["id"]), "closed")
             return self.continue_after_close(self.store.batch(b["id"]))
         self.store.set(stage3.plan_key(b["id"]), "open")
-        self.store.log(b["id"], f"Stage 3 병렬 청크 계획: {total}개 청크 · 동시 상한 {self.cfg['stage3_max_parallel']}")
+        self.store.log(b["id"], f"{refine.spec_for(b).label} 병렬 청크 계획: {total}개 청크 · 동시 상한 {self.cap(b)}")
         self.poll(self.store.batch(b["id"]))
 
     # ---- one scheduling tick ----------------------------------------------------------------------------------------
@@ -250,26 +268,26 @@ class ParallelStage3:
         base = self._baseline(b)
         try:
             if base is None or base.get("branch") != b["branch"] or base.get("worktree") != str(b["worktree"]):
-                return "Stage 3 병렬 Git 경계 기준이 없거나 다른 실행을 가리킵니다. worktree를 보존합니다."
+                return f"{self.sup._stage(b)} 병렬 Git 경계 기준이 없거나 다른 실행을 가리킵니다. worktree를 보존합니다."
             wt = self._wt(b)
             if self.sup.git.registered(wt) != b["branch"]:
-                return f"Stage 3 병렬 worktree가 소유 브랜치 {b['branch']}에 있지 않습니다. 후속 실행을 중단합니다."
+                return f"{self.sup._stage(b)} 병렬 worktree가 소유 브랜치 {b['branch']}에 있지 않습니다. 후속 실행을 중단합니다."
             head = self.sup.git.head(wt)
             if head != base.get("head"):
-                return f"Stage 3 병렬 실행 중 소유 HEAD가 변경됐습니다 ({base.get('head')} / {head}). 후속 실행을 중단합니다."
+                return f"{self.sup._stage(b)} 병렬 실행 중 소유 HEAD가 변경됐습니다 ({base.get('head')} / {head}). 후속 실행을 중단합니다."
             tracked = [line for line in self.sup.git.dirty(wt).splitlines() if line and not line.startswith("??")]
             if tracked:
-                return "Stage 3 병렬 실행 중 추적 파일이 수정됐습니다. 후속 실행을 중단하고 보존합니다."
+                return f"{self.sup._stage(b)} 병렬 실행 중 추적 파일이 수정됐습니다. 후속 실행을 중단하고 보존합니다."
             if round_.remote() != base.get("remote_head"):
-                return (f"Stage 3 병렬 실행 중 원격 브랜치 {b['branch']}가 변경됐습니다 "
+                return (f"{self.sup._stage(b)} 병렬 실행 중 원격 브랜치 {b['branch']}가 변경됐습니다 "
                         f"({base.get('remote_head')} / {round_.remote()}). 후속 실행을 중단합니다.")
             info = round_.pr()
             if info is not None:
-                return f"병렬 Stage 3 실행 중 소유 브랜치에 예상하지 않은 PR #{info['number']}이 있습니다. PR과 worktree를 보존합니다."
+                return f"병렬 {self.sup._stage(b)} 실행 중 소유 브랜치에 예상하지 않은 PR #{info['number']}이 있습니다. PR과 worktree를 보존합니다."
         except TRANSIENT:
             raise
         except Exception as error:   # RecoveryBlocked, GitError, ...
-            return f"Stage 3 병렬 Git/PR 경계를 확인하지 못했습니다: {error}. worktree를 보존합니다."
+            return f"{self.sup._stage(b)} 병렬 Git/PR 경계를 확인하지 못했습니다: {error}. worktree를 보존합니다."
         return None
 
     # ---- Maintainer release, saved-chunk restore, orphan runs ------------------------------------------------------------
@@ -427,7 +445,7 @@ class ParallelStage3:
             self._task_failed(b, row, data, f"[{task}] 정책 거부 청크가 이미 저장됐거나 view가 바뀌어 Keep-all을 저장하지 않습니다", "input_changed")
             return True
         senses = view.get("senses") or []
-        lines = [f"Stage 3 {b['shard']} chunk {task}: 정책 거부로 AI 판정 없이 Keep-all(`none`) 저장됨 — 사람 검토 필요",
+        lines = [f"{self.sup._stage(b)} {b['shard']} chunk {task}: 정책 거부로 AI 판정 없이 Keep-all(`none`) 저장됨 — 사람 검토 필요",
                  f"relation_count={view.get('relation_count')}"]
         for sense in senses:
             src = sense.get("source") or {}
@@ -529,7 +547,7 @@ class ParallelStage3:
 
     # ---- slots ----------------------------------------------------------------------------------------------------------------------
     def _fill_slots(self, b, rows, round_: _Round) -> None:
-        free = self.cfg["stage3_max_parallel"] - taskruns.slots_used(self.store, b["id"])
+        free = self.cap(b) - taskruns.slots_used(self.store, b["id"])
         if free <= 0:
             return
         now = self.sup.clock()
@@ -565,17 +583,16 @@ class ParallelStage3:
                     if not self._start_allowed(b, round_):
                         return
                     checked = True
-                if not self._launch_task(b, self.store.task_row(b["id"], row["task"])):
+                if not self._launch_task(b, self.store.task_row(b["id"], row["task"]), round_):
                     return
 
     @task_launch_scope
-    def _launch_task(self, b, row) -> bool:
+    def _launch_task(self, b, row, round_: _Round) -> bool:
         task, data, sup = row["task"], _data(row), self.sup
         wt, ad = self._wt(b), self._adapter(b)
-        try:
-            run = sup._run(b)
-        except ValueError as error:
-            sup._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {error}")
+        run = round_.run   # proven by this round's preflight (`_start_allowed`), never re-resolved
+        if run is None:
+            sup._fail(b, "ERROR", "실행 전 확인을 거치지 않은 실행 설정으로 AI를 시작하지 않았습니다")
             return False
         ts = int(sup.clock())
         while any((sup.paths.logs / f"batch-{b['id']}-s3-{task}-{ts}.{x}").exists() for x in ("log", "exit")):
@@ -603,7 +620,7 @@ class ParallelStage3:
             self._set(b, task, data, state="RUNNING", run_id=run_id, session_id=None, view_sha256=sha,
                       attempts=row["attempts"] + 1)
             try:
-                handle = ad.start(prompt, wt, env, run, f"Stage 3 {b['shard']} chunk {task}", log, ex, **extra)
+                handle = ad.start(prompt, wt, env, run, f"{refine.spec_for(b).label} {b['shard']} chunk {task}", log, ex, **extra)
             except LaunchDenied:
                 raise   # denial happens before the first write (the permit is held), never through this rollback
             except BaseException:
@@ -638,7 +655,7 @@ class ParallelStage3:
         state = "PAUSED" if all(_data(r).get("pause") for r in failed) else "ERROR"
         for r in failed:
             self._set(b, r["task"], _data(r) | {"ack": True})
-        self.sup._fail(b, state, f"Stage 3 병렬 청크 판정 중지: {message}")
+        self.sup._fail(b, state, f"{self.sup._stage(b)} 병렬 청크 판정 중지: {message}")
 
     def _reset_acknowledged_failures(self, b, round_: _Round) -> None:
         """After an operator Retry: a rejected save re-saves its preserved answer once more when every proof still holds;
@@ -701,7 +718,7 @@ class ParallelStage3:
             self.store.update(b["id"], progress_kind="chunks", progress_done=total, progress_total=total,
                               records_done=None)
         self.store.set(stage3.plan_key(b["id"]), "closed")
-        self.store.log(b["id"], "Stage 3 병렬 청크 판정 완료: 모든 청크 저장, plan 종료. 최종화(apply → verify → PR)로 진행합니다.")
+        self.store.log(b["id"], f"{self.sup._stage(b)} 병렬 청크 판정 완료: 모든 청크 저장, plan 종료. 최종화(apply → verify → PR)로 진행합니다.")
         self.store.update(b["id"], retries=0, retry_after=None, error=None, session_id=None)
         self.continue_after_close(self.store.batch(b["id"]))
 

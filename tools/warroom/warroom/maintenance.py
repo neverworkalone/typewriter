@@ -857,7 +857,7 @@ class Maintenance:
             return None
         if base["head"] != new_head:
             base["head"] = new_head
-            stage = "Stage 2" if b["method"] == STAGE2_METHOD else "Stage 3"
+            stage = "Stage 2" if b["method"] == STAGE2_METHOD else self.sup._stage(b)
             self.store.log(b["id"], f"승인된 Maintainer 통합으로 {stage} 실행 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
         return key, json.dumps(base, sort_keys=True)
 
@@ -894,7 +894,7 @@ class Maintenance:
             return None
         if base["head"] != new_head:
             base["head"] = new_head
-            self.store.log(b["id"], f"승인된 Maintainer 통합으로 Stage 3 병렬 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다"
+            self.store.log(b["id"], f"승인된 Maintainer 통합으로 {self.sup._stage(b)} 병렬 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다"
                            + (f" (view 변경 task {len(base['invalidated'])}개는 새 세션으로 재판정)" if base["invalidated"] else "") + ".")
         return key, json.dumps(base, sort_keys=True)
 
@@ -2336,7 +2336,7 @@ class Maintenance:
             if (env["batch_id"] != b["id"] or env["branch"] != b["branch"]
                     or env["worktree"] != b["worktree"] or env["paused_from"] != "PREPARE"
                     or env["run_kind"] not in ("", "s3_chunk_new")
-                    or not str(env["error"]).startswith("Stage 3 병렬 청크 계획 준비 실패:")
+                    or not str(env["error"]).startswith(f"{self.sup._stage(b)} 병렬 청크 계획 준비 실패:")
                     or obs["git"]["status"] != "ok"
                     or obs["checkpoint"]["status"] != "missing" or obs["runs"]["status"] != "missing"
                     or facts["registered"] != b["branch"] or facts["dirty"] or facts["pr_number"] is not None
@@ -2686,7 +2686,7 @@ class Maintenance:
             if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
                 run_start = self._retargeted_run_start(b, head, completed_pr_head=initial_pr["head_sha"])
                 if run_start is None:
-                    raise IntegrationBlocked("완료된 Stage 3 PR의 원래 finalize 기준을 승인된 최신 PR HEAD에 "
+                    raise IntegrationBlocked(f"완료된 {self.sup._stage(b)} PR의 원래 finalize 기준을 승인된 최신 PR HEAD에 "
                                              "안전하게 재결속할 수 없어 push를 중단합니다")
             head = self._sync_approved_integration(b, d, initial_pr, batch_head, head, protected)
         return head, run_start

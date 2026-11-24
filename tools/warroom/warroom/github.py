@@ -254,10 +254,6 @@ class GhClient:
         return [{"path": f.get("filename")} for f in
                 self._api(f"repos/{self.repo}/pulls/{n}/files", paginate=True)]
 
-    def latest_stage3_production(self, base: str) -> dict | None:
-        from . import stage3
-        return self.latest_refine_production(base, stage3.SPEC)
-
     def latest_refine_production(self, base: str, spec) -> dict | None:
         """The latest merged production PR of one refinement Stage (`refine.RefineSpec`). Search all bounded production
         results; GitHub relevance order is not merge order."""

@@ -2,7 +2,7 @@
 import unittest
 from unittest import mock
 
-from tests.fakes import HEAD1, HEAD2, World
+from tests.fakes import HEAD1, HEAD2, World, assign_profiles
 from warroom import stage2, stage3
 from warroom.store import STAGE2_METHOD, STAGE3_METHOD
 
@@ -73,6 +73,7 @@ class Stage3IndependentStart(unittest.TestCase):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
         self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        assign_profiles(self.w.cfg)
         self.assertTrue(self.w.store.start_stage3("codex", "continuous")[0])
 
     def start(self):
@@ -109,7 +110,7 @@ class Stage3IndependentStart(unittest.TestCase):
     def test_search_limit_blocks_without_automatic_retry(self):
         from warroom.github import GhError
         w = self.w
-        with mock.patch.object(w.gh, "latest_stage3_production", side_effect=GhError("search exceeds 1000 results")) as search:
+        with mock.patch.object(w.gh, "latest_refine_production", side_effect=GhError("search exceeds 1000 results")) as search:
             self.start().assert_not_called()
             line = w.store.line("codex", STAGE3_METHOD)
             self.assertTrue(line["blocked"])

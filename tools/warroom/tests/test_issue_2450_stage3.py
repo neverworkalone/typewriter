@@ -4,9 +4,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.fakes import HEAD1, HEAD2, World
+from tests.fakes import HEAD1, HEAD2, World, assign_profiles
 from warroom import batches, control, prompts, stage2, stage3
-from warroom.config import stage3_model
 from warroom.store import LineBusy, STAGE2_METHOD, STAGE3_METHOD
 from warroom.supervisor import RecoveryBlocked
 
@@ -22,6 +21,7 @@ def s3_world(test):
     world = World()
     test.addCleanup(world.tmp.cleanup)
     world.cfg["producers"] = json.loads(json.dumps(PRODUCERS))
+    assign_profiles(world.cfg)
     return world
 
 
@@ -51,7 +51,7 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
         w = self.w
         w.cfg["producers"]["codex-backup"] = {"adapter": "codex", "model": "gpt-backup", "effort": "high",
                                                 "label": "ZZZ Backup"}
-        owner = stage3_model(w.cfg)
+        owner = "codex"
         self.assertIn(owner, w.cfg["producers"])
         other_codex = next(model for model, producer in w.cfg["producers"].items()
                            if producer["adapter"] == "codex" and model != owner)
@@ -248,7 +248,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
         batch = w.store.batch(batch["id"])
         event = {"kind": "review", "author": "reviewer", "key": "review:stage3-test",
                  "body": f"-1\nHEAD: {HEAD1}\nCorrect this shard row."}
-        with mock.patch.object(w.sup, "_preflight", return_value=None), \
+        with mock.patch.object(w.sup, "_preflight_run", return_value=None), \
                 mock.patch.object(w.sup, "_agent_env", return_value={}), \
                 mock.patch.object(w.sup, "_launch_env", return_value={}):
             w.sup._launch(batch, "fix_new", [event])
@@ -336,7 +336,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
                  "body": f"-1\nHEAD: {HEAD1}\nCorrect this shard row."}
         batch = w.store.batch(batch["id"])
         self.assertEqual(w.sup._fix_kind(batch), "fix_new")
-        with mock.patch.object(w.sup, "_preflight", return_value=None), \
+        with mock.patch.object(w.sup, "_preflight_run", return_value=None), \
                 mock.patch.object(w.sup, "_agent_env", return_value={}), \
                 mock.patch.object(w.sup, "_launch_env", return_value={}):
             w.sup._launch(batch, w.sup._fix_kind(batch), [event])

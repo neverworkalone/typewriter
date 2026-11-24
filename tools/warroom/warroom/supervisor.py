@@ -31,7 +31,7 @@ from . import (auth, batches, control, defects, fixcoord, prbody, progress, prom
 from .adapters import (NO_CHILD_ERRNOS, PREFLIGHT_PENDING, SpawnNotStarted, RunSpec, classify_claude_failure, classify_failure,
                        classify_codex_failure, usage_limit_override_key)
 from .config import (adapter_label, config_problem, load_config, registry, registry_problems,
-                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_problem)
+                     refine_problem, reload_problem, role_for, role_problem, run_spec, stage2_problem, STAGE2)
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, InspectContextFailure, IntegrationBlocked, RefineAmendRejected, ResourceFenced, Stage2AmendRejected
 from .lanes import Lanes
@@ -50,7 +50,6 @@ S2_FIX_AMEND_INPUT = ".warroom-scratch/s2-fix-amend.txt"
 S2_FIX_COMMIT_SUBJECT = "Apply Stage 2 review amendments"
 S2_FIX_APPLY_ATTEMPTS = 2   # returns of a refused judgment to the same session before the batch stops
 S2_FIX_REPLY_LIST_WAIT_SECONDS = 600   # a possibly posted reply is awaited, never posted again; then ERROR
-S3_FIX = stage3.SPEC.fix   # #6555: the Stage 3 Review FIXING Coordinator spec
 S3_FIX_CONTEXT_ROWS = 400   # base rows shown to a Stage 3 fix; more are read with one `decisions --senses` call
 
 
@@ -169,7 +168,6 @@ class Supervisor:
         self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
         self.s3p = s3parallel.ParallelStage3(self)   # parallel Stage 3 chunk tasks inside a new shard (#3149)
         self.refine_fix = {}   # #6555: one Review FIXING Coordinator per refinement Stage (`_refine_fix`)
-        self.s3fix = self._refine_fix_for(stage3.SPEC)
         self.parallel_new_s3 = True   # False only lets a fixture exercise the serial Stage 3 path an already running shard keeps
         self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
 
@@ -1112,7 +1110,7 @@ class Supervisor:
                 except stage3.Stage3Error as error:
                     raise RecoveryBlocked(str(error)) from error
                 if shard != b["shard"]:
-                    raise RecoveryBlocked(f"PR #{number}가 Stage 3 소유 샤드 {b['shard']}와 다릅니다 ({shard})")
+                    raise RecoveryBlocked(f"PR #{number}가 {self._stage(b)} 소유 샤드 {b['shard']}와 다릅니다 ({shard})")
             candidates = batches.pr_claims(b, {"number": number, "files": files})
             expected = batches.expected_claim(b)
             stage3_empty_diff = b["method"] == STAGE3_METHOD and files == []
@@ -1197,7 +1195,7 @@ class Supervisor:
         if s2parallel.is_parallel(self.store, b) and not self.s2p.stop_workers(b):
             return self.store.log(b["id"], "Clear: 병렬 Stage 2 task AI 프로세스 종료 요청, 종료 확인 대기")
         if s3parallel.is_parallel(self.store, b) and not self.s3p.stop_workers(b):
-            return self.store.log(b["id"], "Clear: 병렬 Stage 3 task AI 프로세스 종료 요청, 종료 확인 대기")
+            return self.store.log(b["id"], f"Clear: 병렬 {self._stage(b)} task AI 프로세스 종료 요청, 종료 확인 대기")
         if b["pid"] is not None:
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
@@ -1302,10 +1300,11 @@ class Supervisor:
             return self._blocked(ln, "시작 차단: " + registry_problems(self.cfg)[model])
         if method == STAGE2_METHOD and (why := stage2_problem(self.cfg, model)):   # fail closed here too, not only in Start
             return self._blocked(ln, "시작 차단: " + why)
-        if method == STAGE3_METHOD:
-            if why := stage3_problem(self.cfg, model):
-                return self._blocked(ln, "시작 차단: " + why)
-        if why := role_problem(self.cfg, model, role_of(method)):   # the stage's assigned profile must resolve to a valid pin
+        if method == STAGE3_METHOD and (why := refine_problem(self.cfg, model)):
+            return self._blocked(ln, "시작 차단: " + why)
+        # The Stage 2 profile is proven here; a refinement shard's Stage (and so its `assignments.<role>`) is known only
+        # once it is selected, and is proven there before any batch exists.
+        if method == STAGE2_METHOD and (why := role_problem(self.cfg, model, STAGE2)):
             return self._blocked(ln, "시작 차단: " + why)
         key, line = f"line:{model}:{method}:prepare", f"{model}/{method}"
         if not self._transient_due(key):
@@ -1315,10 +1314,13 @@ class Supervisor:
             return self._transient_wait(key, d["transient"], line=line)
         if not d["ok"]:
             return self._blocked(ln, "시작 차단: " + "; ".join(d["problems"]))
-        problem = self._preflight(model, method)
-        if problem and problem.startswith(PREFLIGHT_PENDING):
-            return   # the CLI check runs in the background: this Line waits here, the others keep moving
-        if problem:
+        if method == STAGE2_METHOD:
+            problem = self._preflight_role(model, STAGE2)
+            if problem and problem.startswith(PREFLIGHT_PENDING):
+                return   # the CLI check runs in the background: this Line waits here, the others keep moving
+            if problem:
+                return self._blocked(ln, "시작 차단: " + problem)
+        elif (problem := self._adapter_problem(model)):
             return self._blocked(ln, "시작 차단: " + problem)
         if self._stop_requested():
             return   # STOPPING landed while this Line was being checked: no Git work and no claim start after it
@@ -1376,7 +1378,17 @@ class Supervisor:
         self.store.set(wait_key, "")
         if choice.status in ("done", "unready"):
             self.store.set_line(model, method, run=0, shard_pin="")
-            return self.store.log(None, choice.note, line=line)
+            note = "등록된 모든 정제 Stage의 전체 샤드 생산이 완료되었습니다." if choice.status == "done" else choice.note
+            return self.store.log(None, note, line=line)
+        # The selected Stage's own profile, proven before the batch exists: a missing `assignments.<role>` blocks only
+        # this line (never borrows another Stage's profile); the pin proven here is the one its runs resolve to.
+        if why := refine_problem(self.cfg, model, spec.role):
+            return self._blocked(ln, f"{spec.label} 시작 차단: {why}")
+        problem = self._preflight_role(model, spec.role)
+        if problem and problem.startswith(PREFLIGHT_PENDING):
+            return
+        if problem:
+            return self._blocked(ln, f"{spec.label} 시작 차단: {problem}")
         shard = choice.shard
         branch = spec.branch(model, shard)
         wt = self.paths.worktrees / spec.worktree_name(shard)
@@ -1460,18 +1472,31 @@ class Supervisor:
             return f"{adapter_label(name)} CLI 어댑터가 이 War Room 빌드에 없습니다 — 다른 CLI로 대신 실행하지 않습니다."
         return None
 
-    def _preflight(self, producer: str, method: str) -> str | None:
-        """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
-        if method == STAGE3_METHOD and (problem := stage3_problem(self.cfg, producer)):
+    def _preflight_run(self, producer: str, run: RunSpec) -> str | None:
+        """Fail closed before any process starts: the CLI must be able to run exactly this pinned RunSpec."""
+        if problem := self._adapter_problem(producer):
             return problem
-        problem = self._adapter_problem(producer)
-        if problem:
-            return problem
+        return self._adapter(producer).preflight(self.runner, self.env, [run])
+
+    def _preflight_role(self, producer: str, role: str) -> str | None:
+        """Preflight of a not-yet-created batch: the pin `role` resolves to (Stage 2, or a selected refinement Stage)."""
         try:
-            runs = [run_spec(self.cfg, producer, role_of(method))]
+            run = run_spec(self.cfg, producer, role)
         except ValueError as e:
             return str(e)
-        return self._adapter(producer).preflight(self.runner, self.env, runs)
+        return self._preflight_run(producer, run)
+
+    def batch_run(self, b) -> tuple[RunSpec | None, str | None]:
+        """(the RunSpec this batch's next session runs with, why it must not start). The one resolution every launch
+        path (serial, review FIXING, Retry/Resume, parallel chunks) uses: the batch's own Stage role (`role_for`),
+        proven by preflight on exactly the returned RunSpec, which is then the one spawned."""
+        if b["method"] == STAGE3_METHOD and (problem := refine_problem(self.cfg, b["producer"])):
+            return None, problem
+        try:
+            run = self._run(b)
+        except ValueError as e:
+            return None, str(e)
+        return run, self._preflight_run(b["producer"], run)
 
     def _launch_env(self, b, kind: str, base_env: dict | None = None) -> dict:
         """Add run-specific worker environment without inheriting Stage 2 chunk restrictions into finalization."""
@@ -1573,15 +1598,15 @@ class Supervisor:
         """Resume this exact unsaved chunk or accept its one saved checkpoint advance; never select a new shard."""
         try:
             if self.git.registered(Path(b["worktree"])) != b["branch"]:
-                return self._fail(b, "ERROR", "Stage 3 worktree가 소유 브랜치에 등록되어 있지 않습니다. 보존합니다.")
+                return self._fail(b, "ERROR", f"{self._stage(b)} worktree가 소유 브랜치에 등록되어 있지 않습니다. 보존합니다.")
             if self.git.dirty(b["worktree"]).strip():
-                return self._fail(b, "ERROR", "Stage 3 재시도 전 추적 파일 변경이 있어 보존합니다.")
+                return self._fail(b, "ERROR", f"{self._stage(b)} 재시도 전 추적 파일 변경이 있어 보존합니다.")
             if self._find_recovery_pr(b) is not None:
-                return self._fail(b, "ERROR", "Stage 3 청크 중 예상하지 않은 소유 PR이 있어 재실행을 중단합니다. 보존합니다.")
+                return self._fail(b, "ERROR", f"{self._stage(b)} 청크 중 예상하지 않은 소유 PR이 있어 재실행을 중단합니다. 보존합니다.")
         except TRANSIENT:
             raise
         except Exception as error:
-            return self._fail(b, "ERROR", f"Stage 3 재시도 전 worktree/PR 확인 실패: {error}. 보존합니다.")
+            return self._fail(b, "ERROR", f"{self._stage(b)} 재시도 전 worktree/PR 확인 실패: {error}. 보존합니다.")
         raw = self.store.get(stage3.run_start_key(b["id"]))
         if raw is not None:
             problem = self._stage3_chunk_boundary_problem(b)
@@ -1590,54 +1615,54 @@ class Supervisor:
             baseline = json.loads(raw)
             if baseline.get("view") is None:
                 if self._stage3_chunk_saved(b):
-                    return self._fail(b, "ERROR", "view 스냅샷이 없는 구 Stage 3 실행에서 checkpoint가 진행됐습니다. 저장 응답의 원본을 증명할 수 없어 다음 청크로 진행하지 않고 보존합니다.")
+                    return self._fail(b, "ERROR", f"view 스냅샷이 없는 구 {self._stage(b)} 실행에서 checkpoint가 진행됐습니다. 저장 응답의 원본을 증명할 수 없어 다음 청크로 진행하지 않고 보존합니다.")
                 return self._stage3_fallback_for_missing_view(b)
             if not isinstance(baseline["view"], dict):
-                return self._fail(b, "ERROR", "Stage 3 실행 시작 read-chunk view 스냅샷이 손상되었습니다. worktree와 응답을 보존합니다.")
+                return self._fail(b, "ERROR", f"{self._stage(b)} 실행 시작 read-chunk view 스냅샷이 손상되었습니다. worktree와 응답을 보존합니다.")
             if baseline.get("answer_invalidated"):
                 if self._stage3_chunk_saved(b):
-                    return self._fail(b, "ERROR", "입력 view 변경으로 응답이 무효화된 Stage 3 청크가 이미 저장됐습니다. checkpoint와 결과를 보존합니다.")
+                    return self._fail(b, "ERROR", f"입력 view 변경으로 응답이 무효화된 {self._stage(b)} 청크가 이미 저장됐습니다. checkpoint와 결과를 보존합니다.")
                 try:
                     current_view = refine.ops(b).read_chunk(self.runner, self.env, b["worktree"], b["shard"])
                 except TRANSIENT:
                     raise
                 except Exception as error:
-                    return self._fail(b, "ERROR", f"Maintainer 통합 후 현재 Stage 3 청크 재준비를 확인하지 못했습니다: {error}. 보존합니다.")
+                    return self._fail(b, "ERROR", f"Maintainer 통합 후 현재 {self._stage(b)} 청크 재준비를 확인하지 못했습니다: {error}. 보존합니다.")
                 if current_view != baseline["view"] or current_view.get("chunk") != baseline.get("chunk"):
-                    return self._fail(b, "ERROR", "Maintainer 통합 후 Stage 3 청크 view가 재결속된 기준과 달라 재사용/재생성을 중단합니다. 보존합니다.")
+                    return self._fail(b, "ERROR", f"Maintainer 통합 후 {self._stage(b)} 청크 view가 재결속된 기준과 달라 재사용/재생성을 중단합니다. 보존합니다.")
                 try:
                     if self._find_recovery_pr(b) is not None:
-                        return self._fail(b, "ERROR", "Stage 3 청크 재준비 전에 예상하지 않은 소유 PR이 있어 중단합니다. 보존합니다.")
+                        return self._fail(b, "ERROR", f"{self._stage(b)} 청크 재준비 전에 예상하지 않은 소유 PR이 있어 중단합니다. 보존합니다.")
                 except TRANSIENT:
                     raise
                 except Exception as error:
-                    return self._fail(b, "ERROR", f"Stage 3 청크 재준비 전 PR 소유권 확인 실패: {error}. 보존합니다.")
-                self.store.log(b["id"], f"Maintainer 통합으로 Stage 3 청크 {baseline['chunk']} 입력 view가 바뀌어 이전 답변을 폐기하고 같은 미완료 청크만 새 세션으로 준비합니다.", "warn")
+                    return self._fail(b, "ERROR", f"{self._stage(b)} 청크 재준비 전 PR 소유권 확인 실패: {error}. 보존합니다.")
+                self.store.log(b["id"], f"Maintainer 통합으로 {self._stage(b)} 청크 {baseline['chunk']} 입력 view가 바뀌어 이전 답변을 폐기하고 같은 미완료 청크만 새 세션으로 준비합니다.", "warn")
                 self.store.update(b["id"], session_id=None)
                 return self._launch(self.store.batch(b["id"]), "s3_chunk_fallback_new")
         if self._stage3_chunk_saved(b):
             if problem := self._saved_chunk_identity_problem(b):
-                return self._fail(b, problem[0], f"저장된 Stage 3 청크의 실행 소유권/핀 확인 실패: {problem[1]}")
-            self.store.log(b["id"], "이전 실행의 현재 Stage 3 청크 저장을 확인했습니다. 재생산하지 않고 다음 청크로 진행합니다.")
+                return self._fail(b, problem[0], f"저장된 {self._stage(b)} 청크의 실행 소유권/핀 확인 실패: {problem[1]}")
+            self.store.log(b["id"], f"이전 실행의 현재 {self._stage(b)} 청크 저장을 확인했습니다. 재생산하지 않고 다음 청크로 진행합니다.")
             self.store.delete(stage3.run_start_key(b["id"]))
             self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
             return self._launch_stage3_next(self.store.batch(b["id"]))
         if raw is not None:
             if b["run_kind"] == "s3_chunk_fallback_new":
-                return self._fail(b, "PAUSED", "해당 Stage 3 청크의 허용된 새 세션도 완료되지 않았습니다. 추가 AI 재호출 없이 상태를 보존합니다.")
+                return self._fail(b, "PAUSED", f"해당 {self._stage(b)} 청크의 허용된 새 세션도 완료되지 않았습니다. 추가 AI 재호출 없이 상태를 보존합니다.")
             latest_run = next(iter(self.store.runs(b["id"])), None)
             submit_failures = int(latest_run["submit_failures"] or 0) if latest_run else 0
             if submit_failures >= 2:
-                return self._fail(b, "ERROR", "정규화한 Stage 3 응답도 strict save-chunk가 거부했습니다. AI 재호출 없이 worktree와 응답을 보존합니다.")
+                return self._fail(b, "ERROR", f"정규화한 {self._stage(b)} 응답도 strict save-chunk가 거부했습니다. AI 재호출 없이 worktree와 응답을 보존합니다.")
             answer = self._adapter(b["producer"]).final_answer(Path(b["log_file"])) if b["log_file"] else None
             if answer is not None:
                 if problem := self._saved_chunk_identity_problem(b):
-                    self.store.log(b["id"], f"보존된 Stage 3 응답 소유권을 확인하지 못해 현재 청크만 새 세션으로 전환합니다: {problem[1]}", "warn")
+                    self.store.log(b["id"], f"보존된 {self._stage(b)} 응답 소유권을 확인하지 못해 현재 청크만 새 세션으로 전환합니다: {problem[1]}", "warn")
                 else:
-                    self.store.log(b["id"], "보존된 Stage 3 응답과 청크 소유권을 확인했습니다. AI 재호출 없이 결정 정규화와 strict 저장을 다시 수행합니다.", "warn")
+                    self.store.log(b["id"], f"보존된 {self._stage(b)} 응답과 청크 소유권을 확인했습니다. AI 재호출 없이 결정 정규화와 strict 저장을 다시 수행합니다.", "warn")
                     return self._run_ok_stage3_chunk(self.store.batch(b["id"]))
             else:
-                self.store.log(b["id"], "보존된 Stage 3 최종 응답이 없어 현재 미완료 청크만 새 세션으로 생성합니다.", "warn")
+                self.store.log(b["id"], f"보존된 {self._stage(b)} 최종 응답이 없어 현재 미완료 청크만 새 세션으로 생성합니다.", "warn")
             self.store.update(b["id"], session_id=None, run_kind="s3_chunk_fallback_new")
             return self._launch(self.store.batch(b["id"]), "s3_chunk_fallback_new")
         else:
@@ -1663,38 +1688,38 @@ class Supervisor:
     def _stage3_chunk_boundary_problem(self, b, base_override: dict | None = None) -> str | None:
         raw = json.dumps(base_override) if base_override is not None else self.store.get(stage3.run_start_key(b["id"]))
         if raw is None:
-            return "Stage 3 청크 실행 기준이 없어 재개를 중단합니다. worktree를 보존합니다."
+            return f"{self._stage(b)} 청크 실행 기준이 없어 재개를 중단합니다. worktree를 보존합니다."
         try:
             baseline = json.loads(raw)
             if (not isinstance(baseline, dict) or baseline.get("branch") != b["branch"]
                     or baseline.get("worktree") != str(b["worktree"])
                     or baseline.get("chunk") != stage3.next_chunk(baseline.get("checkpoint", {}))):
-                return "Stage 3 청크 실행 기준이 손상되었거나 다른 실행을 가리킵니다. worktree를 보존합니다."
+                return f"{self._stage(b)} 청크 실행 기준이 손상되었거나 다른 실행을 가리킵니다. worktree를 보존합니다."
             wt = Path(b["worktree"])
             if self.git.registered(wt) != b["branch"]:
-                return "Stage 3 worktree가 소유 브랜치에 등록되어 있지 않습니다. 보존합니다."
+                return f"{self._stage(b)} worktree가 소유 브랜치에 등록되어 있지 않습니다. 보존합니다."
             if self.git.head(wt) != baseline.get("head"):
-                return "Stage 3 AI 실행 중 worktree HEAD가 바뀌었습니다. 보존합니다."
+                return f"{self._stage(b)} AI 실행 중 worktree HEAD가 바뀌었습니다. 보존합니다."
             if self.git.remote_head(b["branch"]) != baseline.get("remote_head"):
-                return "Stage 3 AI 실행 중 원격 브랜치가 바뀌었습니다. 보존합니다."
+                return f"{self._stage(b)} AI 실행 중 원격 브랜치가 바뀌었습니다. 보존합니다."
             if self.git.dirty(wt).strip():
-                return "Stage 3 AI가 Git 추적 파일을 변경했습니다. 결정 파일로 받아들이지 않고 보존합니다."
+                return f"{self._stage(b)} AI가 Git 추적 파일을 변경했습니다. 결정 파일로 받아들이지 않고 보존합니다."
             current = refine.ops(b).checkpoint(wt, b["shard"])
             original = baseline["checkpoint"]
             if current is None or (current != original and not stage3.chunk_saved_since(original, current)):
-                return "Stage 3 checkpoint가 실행 시작 상태와 다릅니다. 변경을 Keep-all로 가리지 않고 보존합니다."
+                return f"{self._stage(b)} checkpoint가 실행 시작 상태와 다릅니다. 변경을 Keep-all로 가리지 않고 보존합니다."
         except TRANSIENT:
             raise
         except Exception as error:
-            return f"Stage 3 실행 경계를 확인하지 못했습니다: {error}. 보존합니다."
+            return f"{self._stage(b)} 실행 경계를 확인하지 못했습니다: {error}. 보존합니다."
         return None
 
     def _stage3_fallback_for_missing_view(self, b) -> None:
         """Discard an unbound legacy answer and start this exact chunk once with a saved view."""
         if b["run_kind"] == "s3_chunk_fallback_new":
-            return self._fail(b, "PAUSED", "새 Stage 3 fallback 실행 기준에 read-chunk view가 없습니다. 추가 AI 재호출 없이 상태를 보존합니다.")
+            return self._fail(b, "PAUSED", f"새 {self._stage(b)} fallback 실행 기준에 read-chunk view가 없습니다. 추가 AI 재호출 없이 상태를 보존합니다.")
         with self.launch_gate.permit():
-            self.store.log(b["id"], "기존 Stage 3 실행에 원본 read-chunk view 스냅샷이 없어 보존 응답을 폐기하고 현재 청크만 새 세션으로 처리합니다.", "warn")
+            self.store.log(b["id"], f"기존 {self._stage(b)} 실행에 원본 read-chunk view 스냅샷이 없어 보존 응답을 폐기하고 현재 청크만 새 세션으로 처리합니다.", "warn")
             self.store.update(b["id"], session_id=None, run_kind="s3_chunk_fallback_new")
             return self._launch(self.store.batch(b["id"]), "s3_chunk_fallback_new")
 
@@ -1706,13 +1731,13 @@ class Supervisor:
             chunk = baseline["chunk"]
             if baseline.get("view") is None:
                 if self._stage3_chunk_saved(b):
-                    return self._fail(b, "ERROR", "view 스냅샷이 없는 구 Stage 3 실행에서 checkpoint가 진행됐습니다. 저장 응답의 원본을 증명할 수 없어 다음 청크로 진행하지 않고 보존합니다.")
+                    return self._fail(b, "ERROR", f"view 스냅샷이 없는 구 {self._stage(b)} 실행에서 checkpoint가 진행됐습니다. 저장 응답의 원본을 증명할 수 없어 다음 청크로 진행하지 않고 보존합니다.")
                 info = self._find_recovery_pr(b)
                 if info is not None:
                     raise stage3.Stage3Error(f"청크 실행 중 소유 PR #{info['number']}이 발견되었습니다")
                 return self._stage3_fallback_for_missing_view(b)
             if not isinstance(baseline["view"], dict):
-                raise stage3.Stage3Error("Stage 3 실행 시작 read-chunk view 스냅샷이 손상되었습니다")
+                raise stage3.Stage3Error(f"{self._stage(b)} 실행 시작 read-chunk view 스냅샷이 손상되었습니다")
             if self._stage3_chunk_saved(b):
                 info = self._find_recovery_pr(b)
                 if info is not None:
@@ -1731,7 +1756,7 @@ class Supervisor:
                 context = refine.spec_for(b).rule.decision_context(original_view, chunk)
                 normalized, warnings = refine.spec_for(b).rule.normalize_decisions(answer, chunk, context)
                 if warnings:
-                    self.store.log(b["id"], f"Stage 3 청크 {chunk} 판정 정규화: {'; '.join(warnings)}", "warn")
+                    self.store.log(b["id"], f"{self._stage(b)} 청크 {chunk} 판정 정규화: {'; '.join(warnings)}", "warn")
                 saved = refine.ops(b).save_chunk(self.runner, self.env, b["worktree"], b["shard"], chunk, normalized)
                 after = refine.ops(b).checkpoint(b["worktree"], b["shard"])
                 if saved.get("chunk") != chunk or not stage3.chunk_saved_since(baseline["checkpoint"], after):
@@ -1741,11 +1766,11 @@ class Supervisor:
             raise
         except (OSError, ValueError, KeyError, TypeError, RecoveryBlocked, DuplicateClaim, stage3.Stage3Error) as error:
             self.store.add_submit_failure(b["id"])
-            return self._fail(b, "ERROR", f"Stage 3 청크 응답을 저장하지 못했습니다. worktree와 로그를 보존합니다: {error}")
+            return self._fail(b, "ERROR", f"{self._stage(b)} 청크 응답을 저장하지 못했습니다. worktree와 로그를 보존합니다: {error}")
         self.store.delete(stage3.run_start_key(b["id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None,
                           progress_kind="chunks", progress_done=progress[0], progress_total=progress[1])
-        self.store.log(b["id"], f"Stage 3 청크 {saved.get('chunk', chunk)} 저장 ({progress[0]}/{progress[1]}). 다음 청크는 새 세션에서 시작합니다.")
+        self.store.log(b["id"], f"{self._stage(b)} 청크 {saved.get('chunk', chunk)} 저장 ({progress[0]}/{progress[1]}). 다음 청크는 새 세션에서 시작합니다.")
         return self._launch_stage3_next(self.store.batch(b["id"]))
 
     @staticmethod
@@ -1775,25 +1800,25 @@ class Supervisor:
         if first.ok:
             return None
         if first.failure is not None:
-            return f"Stage 3 shard verify에서 데이터/편집 검증 오류가 확인됐습니다 (HEAD {head[:10]}): {first.tail}"
+            return f"{self._stage(b)} shard verify에서 데이터/편집 검증 오류가 확인됐습니다 (HEAD {head[:10]}): {first.tail}"
         second = self.git.verify_stage2_outcome(*args)
         same_failure = (not second.ok and second.failure is None and first.code == second.code
                         and first.tail == second.tail)
         if not same_failure or not self._stage3_cli_crash(first):
             detail = second.tail if not same_failure else first.tail
-            return (f"Stage 3 shard verify 실패를 공통 코드 결함으로 확인하지 못했습니다 "
+            return (f"{self._stage(b)} shard verify 실패를 공통 코드 결함으로 확인하지 못했습니다 "
                     f"(HEAD {head[:10]}, 재현 일치={same_failure}): {detail}")
 
         fingerprint = hashlib.sha256(f"{head}\n{command}\n{first.code}\n{first.tail}".encode("utf-8")).hexdigest()[:16]
         report = {
             "version": 1,
             "defect_class": f"stage3-verify-cli-{b['shard']}",
-            "summary": f"Stage 3 샤드 {b['shard']} verify가 같은 HEAD에서 Relation CLI runtime exception으로 두 번 실패했습니다.",
+            "summary": f"{self._stage(b)} 샤드 {b['shard']} verify가 같은 HEAD에서 Relation CLI runtime exception으로 두 번 실패했습니다.",
             "failing_cases": [f"HEAD {head}; {command}; exit {first.code}; {first.tail}"],
             "reproduction": f"{command} at HEAD {head}; 두 번 실행해 exit {first.code}와 동일 오류를 확인했습니다.",
             "suspected_layer": f"{command} (uncaught project-code runtime exception)",
             "root_cause": "공식 verify 명령이 코드 예외로 종료했습니다. Maintainer가 공유 CLI/검증기 원인을 조사해야 합니다.",
-            "scope": f"Stage 3 최종화, shard {b['shard']}; 동일 명령과 오류를 재현한 HEAD {head}.",
+            "scope": f"{self._stage(b)} 최종화, shard {b['shard']}; 동일 명령과 오류를 재현한 HEAD {head}.",
             "proposed_fix": "예외를 발생시킨 공유 CLI/검증기 원인을 수정하고 재현 회귀를 추가합니다.",
             "regression": f"HEAD {head}의 {command}에서 관찰된 예외를 old-fails/new-passes로 재현합니다.",
         }
@@ -1801,9 +1826,9 @@ class Supervisor:
         self.maint.report(b, "report", event_key, json.dumps(report, ensure_ascii=False, sort_keys=True))
         current = self.store.batch(b["id"])
         if current["state"] == "PAUSED" and current["pause_reason"] == "shared_defect":
-            self.store.log(b["id"], f"Stage 3 shard verify의 공통 CLI 예외를 같은 HEAD에서 재현해 기존 Maintainer 경로로 이관했습니다 ({command}).", "warn")
+            self.store.log(b["id"], f"{self._stage(b)} shard verify의 공통 CLI 예외를 같은 HEAD에서 재현해 기존 Maintainer 경로로 이관했습니다 ({command}).", "warn")
             return "reported"
-        return "Stage 3 verify의 재현된 CLI 오류를 Maintainer 경로에 등록하지 못했습니다. worktree를 보존합니다."
+        return f"{self._stage(b)} verify의 재현된 CLI 오류를 Maintainer 경로에 등록하지 못했습니다. worktree를 보존합니다."
 
     def _stage3_log_repair_conflicts(self, b, result: dict) -> None:
         conflicts = result.get("repair_conflicts", [])
@@ -1833,10 +1858,9 @@ class Supervisor:
         """Apply all persisted chunk edits, verify and submit the shard's single bounded data PR."""
         wt = Path(b["worktree"])
         self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="s3_finalize", error=None)
-        allowed = {f"data/relations/relation-{b['shard']}.jsonl",
-                   f"data/relation-drops/drop-{b['shard']}.jsonl"}
-        label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
         spec = refine.spec_for(b)
+        allowed = spec.allowed(b["shard"])   # the Stage's edit scope: the single definition (`RefineSpec.allowed`)
+        label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
         title = spec.title_for(label, b["shard"])
         legacy_title = spec.legacy_title(b["shard"]) if spec.legacy_title else None   # commits made before #2838
         try:
@@ -1849,7 +1873,7 @@ class Supervisor:
             pre_key = f"s3_pre_apply_{b['id']}"
             if checkpoint is not None:
                 if len(checkpoint["completed_chunks"]) != checkpoint["chunk_total"]:
-                    raise stage3.Stage3Error("모든 Stage 3 청크 완료 전에 apply 할 수 없습니다")
+                    raise stage3.Stage3Error(f"모든 {self._stage(b)} 청크 완료 전에 apply 할 수 없습니다")
                 # The edit CLI removes the local checkpoint after its atomic two-file apply. Persist this in-flight
                 # finalization state so a Supervisor restart can report the Git diff and continue without re-editing.
                 self.store.set(applied_key, "1")
@@ -1868,9 +1892,9 @@ class Supervisor:
                 try:
                     result = json.loads(raw_result) if raw_result else {}
                 except (TypeError, ValueError) as error:
-                    raise stage3.Stage3Error("저장된 Stage 3 apply 결과를 읽을 수 없습니다") from error
+                    raise stage3.Stage3Error(f"저장된 {self._stage(b)} apply 결과를 읽을 수 없습니다") from error
                 if not isinstance(result, dict):
-                    raise stage3.Stage3Error("저장된 Stage 3 apply 결과 형식이 올바르지 않습니다")
+                    raise stage3.Stage3Error(f"저장된 {self._stage(b)} apply 결과 형식이 올바르지 않습니다")
                 try:
                     pre = json.loads(self.store.get(pre_key) or "{}")
                 except ValueError:
@@ -1878,7 +1902,7 @@ class Supervisor:
                 for key, value in (pre if isinstance(pre, dict) else {}).items():
                     result.setdefault(key, value)
             else:
-                raise stage3.Stage3Error("Stage 3 checkpoint가 없어 apply 완료 여부를 복구할 수 없습니다")
+                raise stage3.Stage3Error(f"{self._stage(b)} checkpoint가 없어 apply 완료 여부를 복구할 수 없습니다")
             self._stage3_log_repair_conflicts(b, result)
             report = refine.ops(b).report(self.runner, self.env, wt, b["shard"])
             result.setdefault("removed", len(report.get("deleted_relations", [])))
@@ -1888,7 +1912,7 @@ class Supervisor:
             changed = self.git.changed_paths(wt)
             unexpected = changed - allowed
             if unexpected:
-                raise GitError(f"Stage 3 apply가 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
+                raise GitError(f"{self._stage(b)} apply가 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
             commit_key = f"s3_commit_head_{b['id']}"
             committed = self.store.get(commit_key)
             head = self.git.head(wt)
@@ -1897,36 +1921,36 @@ class Supervisor:
             if committed is not None:
                 if committed == head:
                     if changed or set(self.git.changed_files(head)) - allowed:
-                        raise GitError(f"기록된 Stage 3 commit이 허용 파일 범위를 벗어났습니다 ({committed} / {head})")
+                        raise GitError(f"기록된 {self._stage(b)} commit이 허용 파일 범위를 벗어났습니다 ({committed} / {head})")
                 elif (released_head != head or not self.git.contains(wt, committed)
                       or set(self.git.changed_files(committed)) - allowed):
-                    raise GitError(f"기록된 Stage 3 commit과 승인된 Maintainer 통합 HEAD가 다릅니다 ({committed} / {head})")
+                    raise GitError(f"기록된 {self._stage(b)} commit과 승인된 Maintainer 통합 HEAD가 다릅니다 ({committed} / {head})")
                 else:
-                    self.store.log(b["id"], f"승인된 Maintainer 통합 HEAD {head[:10]}에서 기존 Stage 3 데이터 commit {committed[:10]}을 이어 검증합니다.")
+                    self.store.log(b["id"], f"승인된 Maintainer 통합 HEAD {head[:10]}에서 기존 {self._stage(b)} 데이터 commit {committed[:10]}을 이어 검증합니다.")
             elif changed:
                 head = self.git.commit_paths(wt, sorted(changed), title)
                 self.store.set(commit_key, head)
-                self.store.log(b["id"], f"Stage 3 변경 파일을 commit했습니다 ({head[:10]})")
+                self.store.log(b["id"], f"{self._stage(b)} 변경 파일을 commit했습니다 ({head[:10]})")
             elif self.git.commit_subject(wt) in (title, legacy_title) and self.git.commit_parent(wt) is not None:
                 committed_paths = set(self.git.changed_files(head))
                 unexpected = committed_paths - allowed
                 if unexpected:
-                    raise GitError(f"기존 Stage 3 commit이 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
+                    raise GitError(f"기존 {self._stage(b)} commit이 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
                 head = self.git.head(wt)
                 self.store.set(commit_key, head)
             else:
                 head = self.git.commit_paths(wt, [], title, allow_empty=True)
                 self.store.set(commit_key, head)
-                self.store.log(b["id"], "Stage 3 변경이 없는 샤드를 명시적 empty commit으로 기록했습니다")
+                self.store.log(b["id"], f"{self._stage(b)} 변경이 없는 샤드를 명시적 empty commit으로 기록했습니다")
             if self.git.dirty(wt).strip():
-                raise GitError("Stage 3 commit 뒤 worktree가 깨끗하지 않아 push를 중단합니다")
+                raise GitError(f"{self._stage(b)} commit 뒤 worktree가 깨끗하지 않아 push를 중단합니다")
             remote = self.git.remote_head(b["branch"])
             remote_key = f"s3_commit_remote_head_{b['id']}"
             previous_remote = self.store.get(remote_key)
             if previous_remote is None:
                 self.store.set(remote_key, remote or "")
             elif previous_remote != (remote or "") and remote != head:
-                raise GitError(f"Stage 3 verify 전 기록한 원격 기준이 변경됐습니다 ({previous_remote or None} / {remote})")
+                raise GitError(f"{self._stage(b)} verify 전 기록한 원격 기준이 변경됐습니다 ({previous_remote or None} / {remote})")
             verify = self._stage3_finalize_verify(b, head)
             if verify == "reported":
                 return
@@ -1934,11 +1958,11 @@ class Supervisor:
                 raise GitError(verify)
             if remote != head:
                 if remote is not None and not self.git.contains(wt, remote):
-                    raise GitError(f"Stage 3 원격 브랜치가 로컬 HEAD의 조상이 아닙니다 ({remote} / {head})")
+                    raise GitError(f"{self._stage(b)} 원격 브랜치가 로컬 HEAD의 조상이 아닙니다 ({remote} / {head})")
                 self.git.push_branch(wt, b["branch"])
                 remote = self.git.remote_head(b["branch"])
             if remote != head:
-                raise GitError(f"push 뒤 Stage 3 원격 HEAD가 다릅니다 ({remote} / {head})")
+                raise GitError(f"push 뒤 {self._stage(b)} 원격 HEAD가 다릅니다 ({remote} / {head})")
             open_prs = self.gh.open_prs()
             occupied = set().union(*(batches.pr_stage3_shards(pr) for pr in open_prs)) if open_prs else set()
             if b["shard"] in occupied:
@@ -1954,14 +1978,18 @@ class Supervisor:
         except TRANSIENT:
             raise
         except (GitError, stage3.Stage3Error, OSError, ValueError, KeyError, TypeError) as error:
-            return self._fail(b, "ERROR", f"Stage 3 최종화 중단: {error}. worktree와 checkpoint를 보존합니다.")
+            return self._fail(b, "ERROR", f"{self._stage(b)} 최종화 중단: {error}. worktree와 checkpoint를 보존합니다.")
         except Exception as error:
-            return self._fail(b, "ERROR", f"Stage 3 최종화 중단: {error}. worktree와 checkpoint를 보존합니다.")
+            return self._fail(b, "ERROR", f"{self._stage(b)} 최종화 중단: {error}. worktree와 checkpoint를 보존합니다.")
 
     # ---- launching runs ------------------------------------------------
+    def _stage(self, b) -> str:
+        """The label of a refinement batch's own Stage for messages ("Stage 3"); "정제 Stage" for an unknown tag."""
+        return control.stage_label(b) or "정제 Stage"
+
     def _run(self, b) -> RunSpec:
-        """The model and effort this batch's next run is pinned to."""
-        return run_spec(self.cfg, b["producer"], role_of(b["method"]))
+        """The model and effort this batch's next run is pinned to: its own Stage's assignment (`role_for`)."""
+        return run_spec(self.cfg, b["producer"], role_for(b))
 
     def _recorded_run(self, b) -> RunSpec | None:
         """The settings the batch's current run was launched with (the store is the source of truth)."""
@@ -1996,13 +2024,14 @@ class Supervisor:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
         if b["method"] == STAGE3_METHOD and kind.endswith("_resume"):
             recorded = self._recorded_run(b)
+            stage = refine.spec_for(b).label
             if recorded is None:
-                return self._fail(b, "ERROR", "Stage 3 기존 세션의 model/effort/permission_profile/fast 기록이 없어 재개하지 않습니다. "
+                return self._fail(b, "ERROR", f"{stage} 기존 세션의 model/effort/permission_profile/fast 기록이 없어 재개하지 않습니다. "
                                   "worktree와 세션을 보존합니다.")
             if recorded != run:
                 return self._fail(
                     b, "ERROR",
-                    "Stage 3 프로필이 기존 실행 후 바뀌어 그 세션을 새 설정으로 재개하지 않습니다 "
+                    f"{stage} 프로필이 기존 실행 후 바뀌어 그 세션을 새 설정으로 재개하지 않습니다 "
                     f"(기존 model={recorded.model}, effort={recorded.effort}, "
                     f"permission_profile={recorded.permission_profile or '(기본)'}, fast={recorded.fast}; "
                     f"현재 model={run.model}, effort={run.effort}, "
@@ -2011,8 +2040,10 @@ class Supervisor:
                 )
         if kind.startswith("fix") and b["method"] in (STAGE3_METHOD, MAINTENANCE_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
-        # Every launch proves the CLI again (cached once proven).
-        problem = self._preflight(b["producer"], b["method"])
+        # Every launch proves the CLI again (cached once proven), on exactly the RunSpec it spawns.
+        if b["method"] == STAGE3_METHOD and (problem := refine_problem(self.cfg, b["producer"])):
+            return self._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+        problem = self._preflight_run(b["producer"], run)
         if problem and problem.startswith(PREFLIGHT_PENDING):
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
@@ -2062,14 +2093,14 @@ class Supervisor:
                     return self._stage3_finalize(b)
                 view, prompt_view = refine.ops(b).read_chunk_prompt(self.runner, run_env, wt, b["shard"])
                 if view["chunk"] != chunk:
-                    raise prompts.PromptError("Stage 3 read-chunk가 checkpoint의 다음 청크와 다릅니다")
+                    raise prompts.PromptError(f"{self._stage(b)} read-chunk가 checkpoint의 다음 청크와 다릅니다")
                 # The model sees only the compact view; the baseline keeps the unchanged JSON view for equality checks.
                 prompt = prompts.stage3_chunk(b, chunk, prompt_view, resumed=kind == "s3_chunk_resume")
                 baseline = {"checkpoint": checkpoint, "chunk": chunk, "branch": b["branch"],
                             "worktree": str(wt), "head": self.git.head(Path(wt)), "remote_head": remote,
                             "view": view}
                 self.store.set(stage3.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
-                title = f"Stage 3 {b['shard']} chunk {chunk}"
+                title = f"{self._stage(b)} {b['shard']} chunk {chunk}"
                 if kind == "s3_chunk_resume":
                     h = resume_checked(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
@@ -2710,7 +2741,7 @@ class Supervisor:
                 if saved_chunk:
                     self.store.log(b["id"], "AI 종료 상태 기록은 없지만 현재 청크의 정확한 저장 증거와 실행 핀을 확인했습니다. 저장물을 다시 만들지 않고 진행합니다.", "warn")
                 else:
-                    self.store.log(b["id"], "AI 종료 상태 기록은 없지만 현재 Stage 3 청크의 완전한 D/L 응답과 실행 핀을 확인했습니다. 같은 strict save 경로로 저장합니다.", "warn")
+                    self.store.log(b["id"], f"AI 종료 상태 기록은 없지만 현재 {self._stage(b)} 청크의 완전한 D/L 응답과 실행 핀을 확인했습니다. 같은 strict save 경로로 저장합니다.", "warn")
                 return self._run_ok(b)
             return self._fail(b, "ERROR", "AI 프로세스가 종료 상태 기록 없이 사라졌습니다. "
                               "자동 재생산하지 않음 — worktree/PR 확인 후 Retry.")
@@ -2773,7 +2804,7 @@ class Supervisor:
                 if problem:
                     self._fail(b, "ERROR", problem)
                     return False
-                self.store.log(b["id"], f"Stage 3 answer-only 청크에서 도구 호출 {len(denied)}건이 거부됐습니다 "
+                self.store.log(b["id"], f"{self._stage(b)} answer-only 청크에서 도구 호출 {len(denied)}건이 거부됐습니다 "
                                "(정확한 view/checkpoint 경계와 출력 검증으로 판정합니다)", "warn")
                 return True
             self.store.log(b["id"], f"answer-only 청크에서 도구 호출 {len(denied)}건이 거부됐습니다 (부작용 없으면 실패 아님)", "warn")
@@ -3103,19 +3134,19 @@ class Supervisor:
         `verified` is the HEAD this same call already verified exactly before pushing it (#6555); it is not re-run."""
         if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
                 or info.get("state") != "open" or info.get("merged")):
-            return "Stage 3 리뷰 수정이 열린 소유 PR 번호/head 브랜치에서 끝나지 않았습니다. worktree와 PR을 보존합니다."
+            return f"{self._stage(b)} 리뷰 수정이 열린 소유 PR 번호/head 브랜치에서 끝나지 않았습니다. worktree와 PR을 보존합니다."
         head = info.get("head_sha")
         if not isinstance(head, str) or not re.fullmatch(r"[a-f0-9]{40}", head):
-            return "Stage 3 리뷰 수정 PR HEAD가 유효한 commit SHA가 아닙니다. PR을 보존합니다."
+            return f"{self._stage(b)} 리뷰 수정 PR HEAD가 유효한 commit SHA가 아닙니다. PR을 보존합니다."
         try:
             files = self.gh.pull_files(b["pr_number"])
             shard = refine.ops(b).validate_pr(info, files)
         except TRANSIENT:
             raise
         except Exception as error:
-            return f"Stage 3 리뷰 수정 PR 파일 범위를 검증할 수 없습니다: {error}. PR을 보존합니다."
+            return f"{self._stage(b)} 리뷰 수정 PR 파일 범위를 검증할 수 없습니다: {error}. PR을 보존합니다."
         if shard != b["shard"]:
-            return f"Stage 3 리뷰 수정 PR 샤드 {shard}가 소유 샤드 {b['shard']}와 다릅니다. PR을 보존합니다."
+            return f"{self._stage(b)} 리뷰 수정 PR 샤드 {shard}가 소유 샤드 {b['shard']}와 다릅니다. PR을 보존합니다."
         if verified == head:
             return None
         try:
@@ -3123,9 +3154,9 @@ class Supervisor:
         except TRANSIENT:
             raise
         except Exception as error:
-            return f"Stage 3 리뷰 수정 HEAD 검증을 실행할 수 없습니다: {error}. PR을 보존합니다."
+            return f"{self._stage(b)} 리뷰 수정 HEAD 검증을 실행할 수 없습니다: {error}. PR을 보존합니다."
         if not ok:
-            return f"Stage 3 리뷰 수정 HEAD의 shard verify 실패: {detail}. PR을 보존합니다."
+            return f"{self._stage(b)} 리뷰 수정 HEAD의 shard verify 실패: {detail}. PR을 보존합니다."
         return None
 
     def _stage3_fix_completion_problem(self, b, info, verified: str | None = None) -> str | None:
@@ -3162,7 +3193,7 @@ class Supervisor:
         except GitError as e:
             # Fail closed: without the PR's decisions the judgment would have no evidence, so no session starts and
             # the review events stay unanswered (#6599 review).
-            raise prompts.PromptError(f"Stage 3 리뷰 수정 PR context(edit-cli decisions)를 만들지 못했습니다: {e}. "
+            raise prompts.PromptError(f"{self._stage(b)} 리뷰 수정 PR context(edit-cli decisions)를 만들지 못했습니다: {e}. "
                                       "PR과 리뷰 이벤트를 보존합니다") from e
         rows = listed.get("rows") or []
         scope = f"every base row of the named Senses {', '.join(named)}"
@@ -7345,13 +7376,13 @@ class Supervisor:
                 found = batches.pr_claims(b, {"number": info["number"], "files": files})
                 expected = [] if not files else [claim]
                 if found != expected:
-                    raise FastForwardBlocked(f"PR #{info['number']}의 Stage 3 산출물 소유권이 샤드와 일치하지 않습니다")
+                    raise FastForwardBlocked(f"PR #{info['number']}의 {self._stage(b)} 산출물 소유권이 샤드와 일치하지 않습니다")
                 try:
                     shard = refine.ops(b).validate_pr(info, files)
                 except stage3.Stage3Error as error:
                     raise FastForwardBlocked(str(error)) from error
                 if shard != b["shard"]:
-                    raise FastForwardBlocked(f"PR #{info['number']}의 Stage 3 샤드가 배치와 일치하지 않습니다")
+                    raise FastForwardBlocked(f"PR #{info['number']}의 {self._stage(b)} 샤드가 배치와 일치하지 않습니다")
                 return paths
             if b["method"] == MAINTENANCE_METHOD and paths:
                 return paths
@@ -7696,14 +7727,14 @@ class Supervisor:
             answer = self._stage3_answer_only(b)
             if saved or answer:
                 reason = "checkpoint 저장" if saved else "완전한 현재 청크 D/L 응답"
-                self.store.log(b["id"], f"AI가 비정상 종료했지만 {reason}을 확인해 Stage 3의 기존 검증·저장 경로로 전달합니다.", "warn")
+                self.store.log(b["id"], f"AI가 비정상 종료했지만 {reason}을 확인해 {self._stage(b)}의 기존 검증·저장 경로로 전달합니다.", "warn")
                 if problem := self._saved_chunk_identity_problem(b):
                     if cls == "session_missing":
-                        self.store.log(b["id"], f"현재 Stage 3 응답의 세션 identity가 불충분합니다. 새 세션 재진입 안전성을 확인합니다: {problem[1]}", "warn")
+                        self.store.log(b["id"], f"현재 {self._stage(b)} 응답의 세션 identity가 불충분합니다. 새 세션 재진입 안전성을 확인합니다: {problem[1]}", "warn")
                         if saved:
                             return self._fail(b, "PAUSED", f"저장 청크의 실행 세션을 확인할 수 없어 완료로 인정하지 않습니다. checkpoint와 worktree를 보존합니다: {problem[1]}")
                     else:
-                        return self._fail(b, problem[0], f"현재 Stage 3 응답의 소유권/모델·effort/session 핀 확인 실패: {problem[1]}")
+                        return self._fail(b, problem[0], f"현재 {self._stage(b)} 응답의 소유권/모델·effort/session 핀 확인 실패: {problem[1]}")
                 else:
                     if not self._denials_cleared(b, Path(b["log_file"])):
                         return
@@ -7962,7 +7993,8 @@ class Supervisor:
                 self.store.set(f"last_poll_{b['id']}", "0")
                 return self.store.log(b["id"], "relation replay 확인 중 기준 브랜치가 이동해 다시 감시합니다.", "warn")
             self.store.set(key, attempt)
-            owned = {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"}
+            owned = (refine.spec_for(b).allowed(b["shard"]) if b["method"] == STAGE3_METHOD else
+                     {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"})
             checkpoint = None
             if b["method"] == STAGE2_METHOD:
                 bb, pp = stage2.split_key(b["batch"])
@@ -8092,9 +8124,9 @@ class Supervisor:
             if b["method"] == STAGE3_METHOD:
                 try:
                     if refine.ops(b).validate_pr(info, self.gh.pull_files(b["pr_number"])) != b["shard"]:
-                        return self._fail(b, "ERROR", "머지 Stage 3 PR 파일 범위가 소유 샤드와 다릅니다. worktree를 보존합니다.")
+                        return self._fail(b, "ERROR", f"머지 {self._stage(b)} PR 파일 범위가 소유 샤드와 다릅니다. worktree를 보존합니다.")
                 except stage3.Stage3Error as error:
-                    return self._fail(b, "ERROR", f"머지 Stage 3 PR 범위 검증 실패: {error}. worktree를 보존합니다.")
+                    return self._fail(b, "ERROR", f"머지 {self._stage(b)} PR 범위 검증 실패: {error}. worktree를 보존합니다.")
                 if not self._stage3_merged_verify(b, info):
                     return
             path = Path(os.path.abspath(b["worktree"])).resolve()
@@ -8215,7 +8247,7 @@ class Supervisor:
             sha = self.git.fetch_base(base)
             merge_sha = info.get("merge_commit_sha")
             if not isinstance(merge_sha, str) or not re.fullmatch(r"[a-f0-9]{40}", merge_sha):
-                self._fail(b, "ERROR", "Stage 3 PR merge commit SHA를 확인할 수 없어 완료 처리하지 않습니다.")
+                self._fail(b, "ERROR", f"{self._stage(b)} PR merge commit SHA를 확인할 수 없어 완료 처리하지 않습니다.")
                 return False
             if not self.git.contains_on_base(merge_sha, base):
                 self.store.log(b["id"], f"머지 커밋 {merge_sha[:10]}이 아직 origin/{base}에 보이지 않습니다 — 재확인 예정", "warn")
@@ -8227,7 +8259,7 @@ class Supervisor:
             self._transient_wait(gate, error, b["id"])
             return False
         except Exception as error:
-            self.store.log(b["id"], f"머지 후 Stage 3 shard verify 준비 실패(재시도 예정): {error}", "warn")
+            self.store.log(b["id"], f"머지 후 {self._stage(b)} shard verify 준비 실패(재시도 예정): {error}", "warn")
             return False
         if not ok:
             self._fail(b, "ERROR", f"PR #{info['number']} 머지 후 최신 master에서 샤드 {b['shard']} verify 실패: "
@@ -8235,7 +8267,7 @@ class Supervisor:
             self.store.set(gate, "0")
             return False
         self.store.set(refine.ops(b).ok_key(b["shard"]), sha)
-        self.store.log(b["id"], f"최신 master {sha[:10]}에서 Stage 3 샤드 {b['shard']} verify 통과")
+        self.store.log(b["id"], f"최신 master {sha[:10]}에서 {self._stage(b)} 샤드 {b['shard']} verify 통과")
         return True
 
     def _parallel_maintenance(self) -> None:

@@ -56,6 +56,7 @@ class _Round:
     def __init__(self, s2p, b):
         self.s2p, self.b = s2p, b
         self._remote = self._prs = self._preflight = self._unset = object()
+        self.run = None   # the RunSpec proven by `preflight()`
 
     def remote(self):
         if self._remote is self._unset:
@@ -68,8 +69,9 @@ class _Round:
         return self._prs
 
     def preflight(self):
+        """Resolve this round's RunSpec once and prove exactly it; every task launched in the round spawns `self.run`."""
         if self._preflight is self._unset:
-            self._preflight = self.s2p.sup._preflight(self.b["producer"], self.b["method"])
+            self.run, self._preflight = self.s2p.sup.batch_run(self.b)
         return self._preflight
 
 
@@ -471,10 +473,9 @@ class ParallelStage2:
         kind = data.get("kind", "new")
         wt, (bb, pp) = self._wt(b), stage2.split_key(b["batch"])
         ad, sup = self._adapter(b), self.sup
-        try:
-            run = sup._run(b)
-        except ValueError as error:
-            return sup._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {error}")
+        run = round_.run   # proven by this round's preflight (`_start_allowed`), never re-resolved
+        if run is None:
+            return sup._fail(b, "ERROR", "실행 전 확인을 거치지 않은 실행 설정으로 AI를 시작하지 않았습니다")
         ts = int(sup.clock())
         while any((sup.paths.logs / f"batch-{b['id']}-{task}-{ts}.{x}").exists() for x in ("log", "exit")):
             ts += 1

@@ -6,8 +6,9 @@ import time
 import unicodedata
 
 from . import control, stage2
-from .config import adapter_label, ordered_models, registry, stage2_models, stage3_models
-from .store import STAGE2_METHOD, STAGE3_METHOD
+from .config import (MAINTAINER, STAGE2, adapter_label, ordered_models, refine_models, refine_roles, registry,
+                     role_for, role_label, role_view, stage2_models)
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
 from .timing import elapsed_seconds
 
 
@@ -64,14 +65,14 @@ def stage2_display_model(store, cfg: dict, statuses: dict | None = None) -> str 
     return stage2_column(cfg)
 
 
-def stage3_column(cfg: dict) -> str | None:
-    """Stage 3's fixed board column, preferring Codex so the Stage 2/3 cards sit side by side."""
-    return role_column(cfg, "codex") or next(iter(stage3_models(cfg)), None)
+def refine_column(cfg: dict) -> str | None:
+    """The refinement card's fixed board column, preferring Codex so the Stage 2 / Refinement cards sit side by side."""
+    return role_column(cfg, "codex") or next(iter(refine_models(cfg)), None)
 
 
-def stage3_display_model(store, cfg: dict, statuses: dict | None = None) -> str | None:
-    """Choose the current/last Stage 3 owner for its single shared board card."""
-    models = stage3_models(cfg)
+def refine_display_model(store, cfg: dict, statuses: dict | None = None) -> str | None:
+    """Choose the current/last refinement line owner for its single shared board card (every registered Stage)."""
+    models = refine_models(cfg)
     if not models:
         return None
     if statuses is None:
@@ -91,7 +92,7 @@ def stage3_display_model(store, cfg: dict, statuses: dict | None = None) -> str 
             latest.append((runs[0]["started_at"], runs[0]["id"], model))
     if latest:
         return max(latest)[2]
-    return stage3_column(cfg)
+    return refine_column(cfg)
 
 
 CARD_W = 34   # content cells of a card (column 38 - border - padding): every line is fit to it
@@ -207,7 +208,8 @@ def card_text(st: dict) -> str:
     phase = PHASE.get(st["state"], st["state"])
     if st["drain"]:
         phase += "+DRAIN"
-    identity = f"Stage 2 · {s2['shard']}/{s2['batch']}/{s2['part']}" if s2 else f"{m} · {st['batch']}"
+    identity = (f"Stage 2 · {s2['shard']}/{s2['batch']}/{s2['part']}" if s2
+                else f"{st.get('stage_label') or m} · {st['batch']}")
     title = _two_sided(identity, f"{phase}  {icon}")
     done, total, unit = progress_of(st)
     observed = done is not None and bool(total)
@@ -334,13 +336,51 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
     return "\n".join(lines)
 
 
-def _pins(reg: dict, st: dict) -> str:
-    """The fixed model, effort, and optional permission profile of the Line's stage."""
+def _recorded_pin(reg: dict, run, source: str) -> dict:
+    return {**reg, "model": run["model"] or "", "effort": run["effort"] or "",
+            "permission_profile": run["permission_profile"] or "", "unassigned": None, "source": source}
+
+
+def pin_view(store, cfg: dict, model: str, method: str) -> dict:
+    """What the Line's model runs (or ran) with, from records only — never a display-only state:
+
+    a running session -> its recorded RunSpec; an unfinished batch between sessions -> its own Stage's assignment;
+    a finished batch -> its last recorded run; no batch yet -> the assignment of each Stage the line may run."""
+    reg = registry(cfg).get(model) or {}
+    b = None if method == MAINTENANCE_METHOD else store.latest_batch(model, method)
+    runs = [r for r in store.runs(b["id"]) if r["model"]] if b is not None else []
+    live = next((r for r in runs if r["ended_at"] is None), None)
+    if live is not None:
+        return _recorded_pin(reg, live, "실행 중 기록")
+    if b is not None and b["state"] != "COMPLETE":
+        try:
+            role = role_for(b)
+        except ValueError as error:   # an unregistered Stage tag: no profile is guessed
+            return {**reg, "model": "", "effort": "", "permission_profile": "", "unassigned": str(error), "source": ""}
+        return {**role_view(cfg, model, role), "source": f"{role_label(role)} 배정"}
+    if runs:
+        return _recorded_pin(reg, runs[0], "마지막 실행 기록")
+    roles = ((MAINTAINER,) if method == MAINTENANCE_METHOD else (STAGE2,) if method == STAGE2_METHOD
+             else refine_roles() if method == STAGE3_METHOD else ())
+    if len(roles) == 1:
+        return {**role_view(cfg, model, roles[0]), "source": f"{role_label(roles[0])} 배정"}
+    return {**reg, "stages": [(role_label(role), role_view(cfg, model, role)) for role in roles]}
+
+
+def _pin_text(reg: dict) -> str:
     if reg.get("unassigned"):   # a stage with no profile: never show another stage's pin
-        return "model id: (이 단계 미배정)   effort: (이 단계 미배정)"
+        return f"model id: (이 단계 미배정)   effort: (이 단계 미배정)   사유: {reg['unassigned']}"
     permission = (f"   permission_profile: {reg.get('permission_profile') or '(기본)'}"
                   if reg.get("adapter") == "codex" else "")
-    return f"model id: {reg.get('model') or '-'}   effort: {reg.get('effort') or '-'}{permission}"
+    source = f"   ({reg['source']})" if reg.get("source") else ""
+    return f"model id: {reg.get('model') or '-'}   effort: {reg.get('effort') or '-'}{permission}{source}"
+
+
+def _pins(reg: dict, st: dict) -> str:
+    """The model, effort, and optional permission profile the Line runs with (`pin_view`)."""
+    if "stages" in reg:
+        return "   ".join(f"[{label}] {_pin_text(entry)}" for label, entry in reg["stages"]) or "model id: -"
+    return _pin_text(reg)
 
 
 def detail_meta(st: dict, reg: dict, model: str) -> str:
