@@ -118,7 +118,7 @@ def produce(b, directory: Path | None = None) -> str:
         return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
         return stage2(b, "chunk", None, directory=directory, view="")
-    raise PromptError(f"{b['method']!r}의 시작 프롬프트가 없습니다 (Stage 3는 prompts.stage3_chunk으로 시작합니다)")
+    raise PromptError(f"{b['method']!r}의 시작 프롬프트가 없습니다 (정제 Stage는 prompts.stage3_chunk으로 시작합니다)")
 
 
 def recovery(b, directory: Path | None = None, checkpoint: dict | None = None) -> str:
@@ -128,7 +128,7 @@ def recovery(b, directory: Path | None = None, checkpoint: dict | None = None) -
         values = _stage2_values(b)
         values["relation_direction_rule"] = _relation_direction_rule(checkpoint)
         return render("s2_recovery", values, directory)
-    raise PromptError(f"{b['method']!r}의 복구 프롬프트가 없습니다 (Stage 3는 prompts.stage3_chunk으로 복구합니다)")
+    raise PromptError(f"{b['method']!r}의 복구 프롬프트가 없습니다 (정제 Stage는 prompts.stage3_chunk으로 복구합니다)")
 
 
 def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
@@ -209,7 +209,7 @@ def stage3_chunk(b, chunk_id: str, view: str, *, resumed: bool = False,
                  directory: Path | None = None) -> str:
     """One new Stage 3 editing session for exactly one complete source-Sense chunk."""
     if not re.fullmatch(r"\d{3}", chunk_id):
-        raise PromptError(f"Stage 3 chunk ID가 잘못되었습니다: {chunk_id!r}")
+        raise PromptError(f"정제 Stage chunk ID가 잘못되었습니다: {chunk_id!r}")
     chunk_input = (f"아래가 이번 청크의 전체 입력이다. 손실 없이 함께 판단한다.\n"
                    f"<<<STAGE3_CHUNK_BEGIN>>>\n{view}"
                    f"{'' if view.endswith(chr(10)) else chr(10)}<<<STAGE3_CHUNK_END>>>")
@@ -256,10 +256,11 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
             note += (" The Supervisor could not apply the previous submission and wrote nothing: "
                      f"{retry_note} Correct the judgment and write the response file again.")
     elif b["method"] == "s3":
-        template = _refine_templates(b).fix_prompt
-        note = ("This continues the same Stage 3 review-fix session. Use the review events and PR context already "
+        spec = _refine_templates(b)
+        template = spec.fix_prompt
+        note = (f"This continues the same {spec.label} review-fix session. Use the review events and PR context already "
                 "given in this session and submit the complete judgment again." if resumed else
-                "This is a fresh Stage 3 review-fix session for the current-HEAD review events below.")
+                f"This is a fresh {spec.label} review-fix session for the current-HEAD review events below.")
         if retry_note:
             note += (" The Supervisor could not apply the previous submission and wrote nothing: "
                      f"{retry_note} Correct the judgment and write the response file again.")

@@ -6,7 +6,7 @@ import threading
 import unittest
 from pathlib import Path
 
-from tests.fakes import World
+from tests.fakes import World, assign_profiles
 from warroom import control, stage2, taskruns
 
 
@@ -34,10 +34,11 @@ def build_s3(case, nested):
     w = World()
     case.addCleanup(w.tmp.cleanup)
     w.cfg["producers"] = json.loads(json.dumps(PRODUCERS))
+    assign_profiles(w.cfg)
     w.parallel_s3 = True
     w.sup.parallel_new_s3 = True
     w.runner.edit.chunks = 3 if nested else 4
-    w.cfg["stage3_max_parallel"] = 2   # two slots: the second task is the one a closing gate must stop
+    w.cfg["refine_max_parallel"] = 2   # two slots: the second task is the one a closing gate must stop
     w.store.set(stage2.ok_key("001", None), w.git.base_sha)
     assert control.start(w.store, "claude", STAGE3_METHOD, "single", cfg=w.cfg)[0]
     if not nested:

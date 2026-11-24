@@ -2,6 +2,7 @@ import json
 import unittest
 
 from tests.fakes import HEAD1, HEAD2
+from warroom import stage3
 from warroom.github import GhClient
 from warroom.shell import Result
 
@@ -38,7 +39,7 @@ class PullRequestFiles(unittest.TestCase):
                     "merged": True, "state": "closed", "merged_at": "2026-02-01T00:00:00Z", "merge_commit_sha": HEAD2,
                     "base": {"ref": "master", "repo": repo}, "head": {"ref": "s3-codex-006", "repo": repo}}))
         gh = GhClient(Runner(), {}, "neverworkalone/typewriter")
-        self.assertEqual(gh.latest_stage3_production("master")["number"], 2)
+        self.assertEqual(gh.latest_refine_production("master", stage3.SPEC)["number"], 2)
 
     def test_stage3_search_limit_is_not_transient(self):
         from warroom.github import GhError, GhTransient
@@ -46,7 +47,7 @@ class PullRequestFiles(unittest.TestCase):
             def run(self, argv, **kwargs):
                 return Result(0, json.dumps({"items": [], "total_count": 1001, "incomplete_results": False}))
         with self.assertRaises(GhError) as caught:
-            GhClient(Runner(), {}, "neverworkalone/typewriter").latest_stage3_production("master")
+            GhClient(Runner(), {}, "neverworkalone/typewriter").latest_refine_production("master", stage3.SPEC)
         self.assertNotIsInstance(caught.exception, GhTransient)
 
     def test_branch_pr_listing_includes_merge_timestamp_for_closed_state_classification(self):

@@ -41,7 +41,22 @@ Stage 3는 `b.method='s3'`로 바꿔 shard 단위로 조회합니다. 과거 Sta
 
 설정 변경은 `tools/warroom/.local/config.json` 수정 후 TUI의 `r`로 리로드합니다. 기존 AI run의 프로필·세션은 바뀌지 않습니다. 새 모델에 따른 TUI 열 구성은 TUI를 다시 열어야 반영될 수 있습니다.
 
-지원 adapter는 `claude`와 `codex`뿐이며 단계별 프로필은 `assignments.stage2`·`assignments.stage3`와 `maintainer`로 지정합니다(`tools/warroom/config.example.json`). 이전 Stage 1·DeepSeek/OpenCode 설정(`methods`, `assignments.stage1*`, `adapter: "opencode"`인 모델·프로필, `opencode_bin`, `free_model_pattern`, 인덱스 경로 등)이 남아 있으면 기동과 리로드 때 경고만 남기고 무시합니다. 그 밖의 잘못된 값(알 수 없는 adapter, 오타, 없는 프로필 참조)은 이전처럼 거부합니다. **설정 리로드는 Python 코드 재시작이 아닙니다.**
+지원 adapter는 `claude`와 `codex`뿐이며 단계별 프로필은 `assignments.stage2`, 등록된 정제 Stage마다 `assignments.<role>`(현재 `assignments.stage3`) 및 `maintainer`로 지정합니다(`tools/warroom/config.example.json`). 정제 Stage는 **자기 role의 배정만** 사용합니다. 배정이 없으면 다른 Stage 프로필이나 producer 직접 핀으로 대신하지 않고, 그 Stage의 샤드 선정 시점에 정제 라인만 `BLOCKED`(사유 `assignments.<role>`)로 멈춥니다. Stage 2와 Maintainer는 계속 동작합니다. 이전 Stage 1·DeepSeek/OpenCode 설정(`methods`, `assignments.stage1*`, `adapter: "opencode"`인 모델·프로필, `opencode_bin`, `free_model_pattern`, 인덱스 경로 등)이 남아 있으면 기동과 리로드 때 경고만 남기고 무시합니다. 그 밖의 잘못된 값(알 수 없는 adapter, 오타, 없는 프로필 참조)은 이전처럼 거부합니다. **설정 리로드는 Python 코드 재시작이 아닙니다.**
+
+### 설정 전환 (#9934)
+
+- `stage3_max_parallel`은 `refine_max_parallel`(기본 16)로 바뀌었습니다. `.local/config.json`에 옛 이름만 있으면 그 값을 새 키로 옮기고 기동 경고에 표시합니다. 경고를 확인한 뒤 파일의 키 이름을 직접 `refine_max_parallel`로 바꾸세요. 두 이름이 함께 있으면 설정 오류로 Start와 리로드를 거부합니다.
+- 상한은 **샤드의 병렬 계획을 처음 만들 때** 그 샤드의 기준 기록(`s3_parallel_start_<id>`)에 고정됩니다. 리로드나 Supervisor 재시작은 진행 중 샤드의 상한을 바꾸지 않고, 다음 새 샤드부터 적용됩니다. 전환 전부터 진행 중인 샤드는 새 코드가 처음 확인할 때의 유효값을 한 번 기록해 이후 그대로 사용합니다. `stage2_max_parallel`·`supervisor_workers`는 그대로입니다.
+- 실행 중인 세션은 기록된 RunSpec(model/effort/permission_profile/fast)을 유지합니다. 세션 재개 때 현재 배정이 기록과 다르면 재개하지 않습니다(기존 계약). TUI 상세의 model id/effort는 실행 중이면 그 실행 기록, 실행 사이에는 배치 Stage의 배정, 완료 후에는 마지막 실행 기록을 표시합니다.
+
+### 정제 Stage 추가 방법
+
+정제 라인(TUI의 **Refinement** 카드, 내부 method `s3`)은 등록된 Stage를 순서대로 실행합니다. 한 Stage의 전체 샤드가 끝나야 다음 Stage로 넘어가며 각 샤드는 이전 Stage 성공에 묶입니다. 마지막 등록 Stage까지 끝나면 정상 종료합니다. 새 Stage는 다음만 추가하며 Supervisor·병렬 엔진·TUI·설정 파서·복구 코드는 고치지 않습니다.
+
+1. Stage 모듈 `tools/warroom/warroom/<name>.py`: `refine.register(refine.RefineSpec(id=..., tag=..., label=..., role=..., short=..., issue=..., cli=..., scratch=..., title=..., ...))`로 spec을 등록하고, 답 규칙(`decision_text`·`decision_context`·`validate_prompt_view`·`normalize_decisions`)과 `fixcoord.FixSpec`을 둡니다(`stage3.py` 참고). `role`은 고유해야 하며 `stage2`·`maintainer`는 예약어입니다. 편집 범위가 다르면 spec의 `allowed()`에서 정의합니다.
+2. 등록 진입점 `tools/warroom/warroom/refine.py`의 `STAGE_MODULES`에 모듈 이름을 실행 순서대로 한 줄 추가합니다(예: `("stage3", "<name>")`). 자동 탐색은 없습니다.
+3. 프롬프트 `tools/warroom/prompts/<chunk_prompt>.md`·`<fix_prompt>.md`·`<policy_card>.md`와, `scripts/relation/refine/core.mjs` 기반 Stage CLI(`prepare`·`read-chunk`·`save-chunk`·`apply`·`report`·`amend`)를 둡니다.
+4. 운영 설정에 `assignments.<role>`을 추가합니다. 예: `"stage4": {"codex": "sol", "claude": "sonnet-medium"}`.
 
 ## Supervisor 재시작과 코드 반영 (#5162)
 

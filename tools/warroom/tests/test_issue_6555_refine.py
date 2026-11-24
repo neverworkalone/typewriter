@@ -4,8 +4,10 @@ import re
 import unittest
 from unittest import mock
 
-from tests.fakes import World
-from warroom import refine, stage3
+from tests.fakes import World, assign_profiles
+from warroom import refine, s3parallel, stage3
+from warroom.adapters import RunSpec
+from warroom.config import config_problem, role_problem
 from warroom.store import STAGE3_METHOD, LineBusy
 
 
@@ -14,10 +16,14 @@ class RefinementStageRegistry(unittest.TestCase):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
         self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        assign_profiles(self.w.cfg)
+        # #9934: the test-only Stage's own profile, distinct from Stage 3's, under its own `assignments.<role>`.
+        self.w.cfg["model_profiles"]["codex-s4"] = {"adapter": "codex", "model": "gpt-s4", "effort": "xhigh"}
+        self.w.cfg["assignments"]["stage-test"] = {"codex": "codex-s4"}
         self.assertTrue(self.w.store.start_stage3("codex", "continuous")[0])
         # A later Stage is only a spec: its own CLI, prompts, PR naming and its gate on the Stage before it.
         self.s4 = refine.register(dataclasses.replace(
-            stage3.SPEC, id="s4", tag="s4", label="Stage 4", short="S4", cli="scripts/relation/s4-cli.mjs",
+            stage3.SPEC, id="s4", tag="s4", label="Stage 4", role="stage-test", short="S4", cli="scripts/relation/s4-cli.mjs",
             scratch="relation-s4", title=re.compile(r"^\[S4/[^\]/\s]+\] (\d{3})$"),
             detail_title=re.compile(r"\[S4/([A-Za-z0-9-]+)\] (\d{3})"), search_phrases=('"S4"',), legacy_title=None,
             gate=lambda kv, shard: bool(kv.get(stage3.SPEC.ok_key(shard))), gate_label="Stage 3",
@@ -56,6 +62,40 @@ class RefinementStageRegistry(unittest.TestCase):
         self.assertEqual(str(ops.checkpoint_path("/wt", "001")), "/wt/.warroom-scratch/relation-s4-001.json")
         self.assertIs(refine.spec_for(b), self.s4)
         self.assertIs(w.sup._refine_fix(b).spec, self.s4.fix)
+        # its runs resolve to its own Stage profile, and the round's preflight proves exactly the RunSpec it spawns
+        self.assertEqual(w.sup._run(b), RunSpec("gpt-s4", "xhigh"))
+        self.assertEqual(w.sup.batch_run(b), (RunSpec("gpt-s4", "xhigh"), None))
+        round_ = s3parallel._Round(w.sup.s3p, b)
+        self.assertIsNone(round_.preflight())
+        self.assertEqual(round_.run, RunSpec("gpt-s4", "xhigh"))
+        self.assertIsNone(config_problem(w.cfg))
+
+    def test_a_missing_stage_profile_blocks_only_that_stage_and_never_borrows_another(self):
+        w = self.w
+        del w.cfg["assignments"]["stage-test"]
+        w.gh.merged_stage3_prs = [{"title": "[S3/Codex] 428", "merge_commit_sha": w.git.base_sha}]
+        w.store.set(stage3.SPEC.ok_key("001"), w.git.base_sha)
+        self.start().assert_not_called()
+        line = w.store.line("codex", STAGE3_METHOD)
+        self.assertIn("Stage 4", line["blocked"])
+        self.assertIn("assignments.stage-test", line["blocked"])
+        self.assertIsNone(w.store.latest_batch("codex", STAGE3_METHOD))
+        self.assertIsNone(role_problem(w.cfg, "codex", "stage2"))   # Stage 2 still runs on its own profile
+        self.assertIsNone(role_problem(w.cfg, "codex", "stage3"))
+
+    def test_the_line_ends_normally_after_the_last_registered_stage(self):
+        w = self.w
+        w.gh.merged_stage3_prs = [{"title": "[S3/Codex] 428", "merge_commit_sha": w.git.base_sha}]
+        w.gh.latest_s4_pr = {"title": "[S4/Codex] 428", "merge_commit_sha": w.git.base_sha}
+        self.start().assert_not_called()
+        self.assertEqual(w.store.line("codex", STAGE3_METHOD)["run"], 0)
+        self.assertIsNone(w.store.latest_batch("codex", STAGE3_METHOD))
+        self.assertIn("등록된 모든 정제 Stage", " ".join(e["msg"] for e in w.store.recent_events()))
+
+    def test_registration_rejects_a_duplicate_or_reserved_role(self):
+        for role in ("stage-test", "stage3", "stage2", "maintainer"):
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                refine.register(dataclasses.replace(self.s4, id="s9", tag="s9", role=role))
 
     def test_stage3_keeps_its_own_operations_and_historical_names(self):
         w = self.w

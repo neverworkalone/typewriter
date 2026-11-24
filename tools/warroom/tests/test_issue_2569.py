@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.fakes import HEAD1, World
+from tests.fakes import HEAD1, World, assign_profiles
 from tests.test_issue_1555 import MERGE, report, review_source, world
 from warroom import stage3
 from warroom.gitops import Git, GitTransient, IntegrationBlocked
@@ -290,6 +290,7 @@ class Stage3FinalizeRelease(unittest.TestCase):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
         self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        assign_profiles(self.w.cfg)
         self.path = self.w.paths.worktrees / "s3-001"
         self.path.mkdir(parents=True)
         self.branch = "s3-codex-001"

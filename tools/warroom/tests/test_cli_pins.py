@@ -89,6 +89,17 @@ class RetiredConfig(unittest.TestCase):
         self.assertNotIn("/private/index", notice)          # paths are named, values never
         self.assertIsNone(retired_notice(self.load({"producers": {"codex": LUNA}})))
 
+    def test_the_renamed_parallel_cap_moves_once_and_both_names_together_are_refused(self):
+        """#9934: `stage3_max_parallel` is judged on the operator's own file, before DEFAULTS add the new name."""
+        moved = self.load({**self.OWNER_SHAPE, "stage3_max_parallel": 6})
+        self.assertIsNone(config_problem(moved))
+        self.assertEqual(moved["refine_max_parallel"], 6)
+        self.assertNotIn("stage3_max_parallel", moved)
+        self.assertIn("stage3_max_parallel → refine_max_parallel", retired_notice(moved))
+        self.assertEqual(self.load(self.OWNER_SHAPE)["refine_max_parallel"], 16)
+        both = self.load({**self.OWNER_SHAPE, "stage3_max_parallel": 6, "refine_max_parallel": 8})
+        self.assertIn("stage3_max_parallel와 refine_max_parallel가 함께 있습니다", config_problem(both))
+
     def test_wrong_values_are_still_rejected(self):
         cases = [
             ("unknown adapter", {"producers": {"codex": {**LUNA, "adapter": "gemini"}}}, "알 수 없는 adapter"),
@@ -172,7 +183,9 @@ class RunPins(unittest.TestCase):
     def test_every_run_carries_its_model_and_effort(self):
         cfg = cfg_with({"claude": SONNET, "codex": LUNA})
         self.assertEqual(run_spec(cfg, "claude", "stage2"), RunSpec("sonnet", "medium"))
-        self.assertEqual(run_spec(cfg, "codex", "stage3"), RunSpec("gpt-6-luna", "xhigh"))
+        self.assertEqual(run_spec(cfg, "codex", "stage2"), RunSpec("gpt-6-luna", "xhigh"))
+        with self.assertRaises(ValueError):   # #9934: a refinement Stage never runs on the producer pin
+            run_spec(cfg, "codex", "stage3")
 
     def test_unpinned_run_raises_instead_of_defaulting(self):
         for entry in ({**SONNET, "model": ""}, {**SONNET, "effort": ""}):

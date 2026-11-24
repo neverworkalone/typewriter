@@ -6,8 +6,10 @@ from tests.test_issue_1555 import produce_and_report
 from tests.test_issue_1684 import s2_world
 from tests.test_reload import reload, stage2_world, write
 from warroom import control
-from warroom.config import (DEFAULTS, MAINTAINER, STAGE2, STAGE3, config_problem, maintainer_id, maintainer_problem,
-                            registry_problems, reload_problem, role_of, role_problem, role_view, run_spec)
+from warroom.config import (DEFAULTS, MAINTAINER, STAGE2, config_problem, maintainer_id, maintainer_problem,
+                            registry_problems, reload_problem, role_for, role_problem, role_view, run_spec)
+
+STAGE3 = "stage3"   # the Stage 3 spec's `role` (#9934)
 
 PROFILES = {
     "luna-high": {"adapter": "codex", "model": "gpt-6-luna", "effort": "high", "permission_profile": "worktree", "fast": True},
@@ -40,9 +42,10 @@ class Resolution(unittest.TestCase):
         c = cfg()
         self.assertIsNone(config_problem(c))
         self.assertEqual(registry_problems(c), {})
-        for method, role in (("s2", STAGE2), ("s3", STAGE3), ("m", MAINTAINER)):
-            self.assertEqual(role_of(method), role)
-        self.assertEqual(role_of("a"), "")   # a retired Stage 1 method resolves to no role (#9933)
+        for b, role in (({"method": "s2"}, STAGE2), ({"method": "s3", "batch": "all", "id": 1}, STAGE3),
+                        ({"method": "m"}, MAINTAINER)):
+            self.assertEqual(role_for(b), role)   # a refinement batch's role is its own Stage spec's
+        self.assertEqual(role_for({"method": "a"}), "")   # a retired Stage 1 method resolves to no role (#9933)
         self.assertEqual(pin(c, "codex", STAGE2), ("gpt-6-luna", "xhigh", "worktree"))
         self.assertEqual(pin(c, "codex", STAGE3), ("gpt-6-luna", "high", "worktree"))
         self.assertEqual(pin(c, "codex", MAINTAINER), ("gpt-6-luna", "xhigh", "worktree"))
@@ -57,10 +60,10 @@ class Resolution(unittest.TestCase):
         self.assertEqual(registry_problems(c), {})
         self.assertEqual(pin(c, "codex", STAGE3), ("gpt-6-luna", "high", "worktree"))
         self.assertIsNotNone(role_problem(c, "codex", STAGE2))
-        self.assertEqual(role_view(c, "codex", "s2")["model"], "")
-        self.assertIn("unassigned", role_view(c, "codex", "s2"))
-        self.assertIn("unassigned", role_view(c, "codex", "a"))      # a retired method shows no pin either
-        self.assertEqual(role_view(c, "codex", "s3")["effort"], "high")
+        self.assertEqual(role_view(c, "codex", STAGE2)["model"], "")
+        self.assertIn("unassigned", role_view(c, "codex", STAGE2))
+        self.assertIn("unassigned", role_view(c, "codex", ""))      # a retired method's role shows no pin either
+        self.assertEqual(role_view(c, "codex", STAGE3)["effort"], "high")
 
     def test_maintainer_is_a_profile_id_or_a_legacy_producer_id(self):
         for name, m, want_producer, want_pin, ok in [
@@ -83,9 +86,11 @@ class Resolution(unittest.TestCase):
         c["maintainer"] = "codex"
         self.assertIsNone(config_problem(c))
         self.assertIsNone(maintainer_problem(c))
-        for role in (STAGE2, STAGE3, MAINTAINER):
+        for role in (STAGE2, MAINTAINER):
             self.assertEqual(pin(c, "codex", role), ("gpt-6-luna", "xhigh", ""))
             self.assertIs(run_spec(c, "codex", role).fast, False)
+        # #9934: a refinement Stage runs only on its own `assignments.<role>`, never on the producer pin.
+        self.assertIn("assignments.stage3", role_problem(c, "codex", STAGE3))
         c["producers"]["codex"]["fast"] = "true"
         self.assertIn("fast", config_problem(c))
 

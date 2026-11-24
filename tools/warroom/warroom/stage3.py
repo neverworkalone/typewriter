@@ -269,7 +269,7 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
 
 
 SPEC = refine.register(refine.RefineSpec(
-    id="s3", tag="all", label="Stage 3", short="S3", issue=prbody.S3_ISSUE, cli=EDIT_CLI, scratch="relation-edit",
+    id="s3", tag="all", label="Stage 3", role="stage3", short="S3", issue=prbody.S3_ISSUE, cli=EDIT_CLI, scratch="relation-edit",
     title=prbody.S3_TITLE,   # new `[S3/<Model>] SSS` and legacy `[Relation Stage 3] SSS` (#2838)
     issue_link=prbody.S3_ISSUE_LINK,   # #2455 (production contract) or legacy #2450
     detail_title=re.compile(r"(?:\[S3/([A-Za-z0-9-]+)\]|\[Relation Stage 3\]) (\d{3})"),

@@ -19,12 +19,12 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select
 import time
 
 from . import auth, control
-from .config import (ROOT_ENV, Paths, RootError, check_runtime_root, role_view, adapter_label, adapters, load_config, ordered_models, registry, retired_notice,
-                     stage2_models, stage3_models, STAGE2_ADAPTERS)
+from .config import (ROOT_ENV, Paths, RootError, check_runtime_root, adapter_label, adapters, load_config, ordered_models, registry, retired_notice,
+                     refine_models, stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
                     model_title, board_footer, detail_meta, scheduled_at, usage_text, stage2_column,
-                    stage2_display_model, stage3_column, stage3_display_model)
+                    stage2_display_model, refine_column, refine_display_model, pin_view)
 from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 
@@ -200,8 +200,8 @@ class Card(Static, can_focus=True):
         models = list(dict.fromkeys(c.model for c in cards))
 
         def nav_row(card: Card) -> str:
-            # Stage 2, Stage 3 and the Maintainer share the board's bottom card row.
-            if card.method == STAGE3_METHOD and self.app.stage3_col == self.app.stage2_col:
+            # Stage 2, Refinement and the Maintainer share the board's bottom card row.
+            if card.method == STAGE3_METHOD and self.app.refine_col == self.app.stage2_col:
                 return STAGE3_METHOD
             return "special" if card.method in (STAGE2_METHOD, STAGE3_METHOD, MAINTENANCE_METHOD) else card.method
 
@@ -232,11 +232,12 @@ class Stage2Card(Card):
         self.app.push_screen(LineDetail(self.owner_model, STAGE2_METHOD))
 
 
-class Stage3Card(Card):
-    """One shared Stage 3 card whose detail target follows the selected Claude/Codex owner."""
+class RefineCard(Card):
+    """The one shared Refinement card (every registered refinement Stage: Stage 3, ...). Its title is the current
+    batch's own Stage label; its detail target follows the selected Claude/Codex owner."""
 
     def __init__(self, column_model: str):
-        super().__init__(column_model, STAGE3_METHOD, card_id="card-stage3")
+        super().__init__(column_model, STAGE3_METHOD, card_id="card-refine")
         self.owner_model = column_model
 
     def action_open(self) -> None:
@@ -482,7 +483,7 @@ class LineDetail(Screen):
     # --- view ---
     def refresh_view(self) -> None:
         st = self._status()
-        reg = role_view(self.app.cfg, self.model, self.method)   # the pin this Line's method runs on (profiles differ by stage)
+        reg = pin_view(self.app.store, self.app.cfg, self.model, self.method)   # recorded run or the batch Stage's profile
         meta = detail_meta(st, reg, self.model)
         runs = self._runs()
         if runs:   # the latest batch's runs only; usage is secondary and must never break the view
@@ -633,7 +634,7 @@ class WarRoom(App):
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
     #card-stage2 { height: auto; min-height: 6; }
-    #card-stage3 { height: auto; min-height: 6; }
+    #card-refine { height: auto; min-height: 6; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     RichLog { border: round $primary; height: 1fr; }
     """
@@ -665,9 +666,9 @@ class WarRoom(App):
         return set(stage2_models(self.cfg))
 
     @property
-    def stage3_capable(self) -> set:
-        """Claude / Codex columns that can own the single shared Stage 3 queue."""
-        return set(stage3_models(self.cfg))
+    def refine_capable(self) -> set:
+        """Claude / Codex columns that can own the single shared refinement queue."""
+        return set(refine_models(self.cfg))
 
     @property
     def maintainer_col(self):
@@ -679,8 +680,8 @@ class WarRoom(App):
         return stage2_column(self.cfg)
 
     @property
-    def stage3_col(self):
-        return stage3_column(self.cfg)
+    def refine_col(self):
+        return refine_column(self.cfg)
 
     def _line_keys(self):
         """Every production Line on the Board; also shared with scheduled Drain All execution."""
@@ -721,8 +722,8 @@ class WarRoom(App):
                     yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     if model == self.stage2_col:
                         yield Stage2Card(model)
-                    if model == self.stage3_col:
-                        yield Stage3Card(model)
+                    if model == self.refine_col:
+                        yield RefineCard(model)
                     if model == self.maintainer_col:   # ... and the Maintainer status under the Stage 2 card
                         yield MaintainerCard(model)
         yield Static(id="banner")
@@ -799,16 +800,16 @@ class WarRoom(App):
                 if reg[pid]["adapter"] == adapter]
 
     def _method_options(self, adapter: str, model: str | None = None):
-        """Stage 2 and Stage 3 on Claude/Codex models."""
+        """Stage 2 and the refinement line on Claude/Codex models."""
         opts = []
         if adapter in STAGE2_ADAPTERS:
             opts.append(("Stage 2", STAGE2_METHOD))
-        if model in stage3_models(self.cfg):
-            opts.append(("Stage 3", STAGE3_METHOD))
+        if model in refine_models(self.cfg):
+            opts.append((control.REFINE_LABEL, STAGE3_METHOD))
         return opts
 
     def _sync_method_select(self, adapter: str, model: str | None = None) -> None:
-        """Offer Stage 3 only for its assigned model; stale choices fall back to the first offered stage."""
+        """Offer Refinement only for an eligible model; stale choices fall back to the first offered stage."""
         sel = self.query_one("#method", Select)
         cur = sel.value
         opts = self._method_options(adapter, model)
@@ -817,8 +818,8 @@ class WarRoom(App):
             if opts:
                 sel.value = cur if any(v == cur for _, v in opts) else opts[0][1]
         labels = [label for label, _ in self._method_options("claude")]
-        if stage3_models(self.cfg):
-            labels.append("Stage 3")
+        if refine_models(self.cfg):
+            labels.append(control.REFINE_LABEL)
         sel.styles.width = select_width(labels)
         self._fit_controls()
 
@@ -840,7 +841,7 @@ class WarRoom(App):
         """Static top-bar Selects get a width from their longest label (no mid-word wrap)."""
         for sid, labels in (("adapter", [adapter_label(a) for a in adapters(self.cfg)]),
                             ("method", [label for label, _ in self._method_options("claude")] +
-                             (["Stage 3"] if stage3_models(self.cfg) else [])),
+                             ([control.REFINE_LABEL] if refine_models(self.cfg) else [])),
                             ("mode", ["Single", "Continuous"]),
                             ("drain-all-time", [label for label, _ in SCHEDULE_HOURS])):
             self.query_one(f"#{sid}", Select).styles.width = select_width(labels)
@@ -929,13 +930,13 @@ class WarRoom(App):
             card.owner_model = owner
             card.update(Text(card_text({**st, "display_owner": owner_label})))
             card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
-        owner = stage3_display_model(store, self.cfg, {
-            model: statuses[(model, STAGE3_METHOD)] for model in self.stage3_capable
+        owner = refine_display_model(store, self.cfg, {
+            model: statuses[(model, STAGE3_METHOD)] for model in self.refine_capable
         })
-        if owner and self.stage3_col:
+        if owner and self.refine_col:
             st = statuses[(owner, STAGE3_METHOD)]
             owner_label = adapter_label(registry(self.cfg)[owner]["adapter"])
-            card = root.query_one("#card-stage3", Stage3Card)
+            card = root.query_one("#card-refine", RefineCard)
             card.owner_model = owner
             card.update(Text(card_text({**st, "display_owner": owner_label})))
             card.set_classes("card " + (st["state"] if st["batch"] else "empty"))

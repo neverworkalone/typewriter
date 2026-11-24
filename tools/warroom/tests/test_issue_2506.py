@@ -3,7 +3,7 @@ import json
 import unittest
 from unittest import mock
 
-from tests.fakes import HEAD1, HEAD2, World
+from tests.fakes import HEAD1, HEAD2, World, assign_profiles
 from warroom import stage3
 from warroom.gitops import VerifyOutcome
 from warroom.store import STAGE3_METHOD
@@ -28,6 +28,7 @@ class Stage3RunRecovery(unittest.TestCase):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
         self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        assign_profiles(self.w.cfg)
         self.path = self.w.paths.worktrees / "s3-001"
         self.path.mkdir(parents=True)
         self.branch = "s3-codex-001"
@@ -233,6 +234,7 @@ class Stage3MaintainerRelease(unittest.TestCase):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
         self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        assign_profiles(self.w.cfg)
         self.path = self.w.paths.worktrees / "s3-001"
         self.path.mkdir(parents=True)
         self.branch = "s3-codex-001"
@@ -328,6 +330,7 @@ class Stage3FinalizeVerifyRouting(unittest.TestCase):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
         self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        assign_profiles(self.w.cfg)
         path = self.w.paths.worktrees / "s3-001"
         path.mkdir(parents=True)
         branch = "s3-codex-001"

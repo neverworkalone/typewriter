@@ -959,9 +959,8 @@ class FakeGh:
         return self.latest_stage2_pr
 
     def latest_refine_production(self, base, spec):
-        return self.latest_stage3_production(base) if spec.id == "s3" else self.__dict__.get(f"latest_{spec.id}_pr")
-
-    def latest_stage3_production(self, base):
+        if spec.id != "s3":
+            return self.__dict__.get(f"latest_{spec.id}_pr")
         self.merged_stage3_prs_calls += 1
         return self.merged_stage3_prs[-1] if self.merged_stage3_prs else None
 
@@ -1107,6 +1106,19 @@ class _WorldTmp(tempfile.TemporaryDirectory):
         for conn in anchors:
             conn.close()
         super().cleanup()
+
+
+def assign_profiles(cfg: dict, roles=("stage2", "stage3")) -> dict:
+    """Move each producer's direct model/effort pin into a same-named profile assigned to `roles` (#9934: a
+    refinement Stage runs only on its own `assignments.<role>`, never on a producer pin)."""
+    profiles, assign = cfg.setdefault("model_profiles", {}), cfg.setdefault("assignments", {})
+    for pid, p in cfg["producers"].items():
+        pin = {k: p.pop(k) for k in ("model", "effort", "permission_profile", "fast") if k in p}
+        if pin:
+            profiles[pid] = {"adapter": p["adapter"], **pin}
+            for role in roles:
+                assign.setdefault(role, {})[pid] = pid
+    return cfg
 
 
 class World:

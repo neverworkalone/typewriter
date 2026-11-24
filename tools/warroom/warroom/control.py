@@ -9,9 +9,9 @@ import json
 import time
 from datetime import datetime, time as wall_time, timedelta
 
-from . import stage2
-from .config import (maintainer_id, maintainer_problem, ordered_models, stage2_models,
-                     stage2_problem, stage3_models, stage3_problem)
+from . import refine, stage2
+from .config import (maintainer_id, maintainer_problem, ordered_models, refine_models, refine_problem,
+                     stage2_models, stage2_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 from .timing import elapsed_seconds
 
@@ -19,7 +19,7 @@ STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CL
                "COMPLETE", "PAUSED", "ERROR", "CLEARING")
 MODES = {"single": "Single", "continuous": "Continuous"}   # Continuous = sequential batches in ONE Line
 
-# #9933: War Room runs only Stage 2, Stage 3 and the Maintainer, on Claude/Codex. Historical Stage 1 (A/B/C/D) and
+# #9933: War Room runs only Stage 2, the refinement line (Stage 3, ...) and the Maintainer, on Claude/Codex. Historical Stage 1 (A/B/C/D) and
 # DeepSeek/OpenCode rows stay in the DB for viewing; this one rule keeps them out of every execution path.
 LIVE_METHODS = frozenset({STAGE2_METHOD, STAGE3_METHOD, MAINTENANCE_METHOD})
 RETIRED_REFUSAL = "지원 종료된 Line입니다 (Stage 1·DeepSeek/OpenCode, #9933): 조회만 가능하고 실행 명령은 받지 않습니다."
@@ -43,16 +43,23 @@ def retired_rows(store: Store, cfg: dict) -> list:
 def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = None) -> tuple[bool, str]:
     """Request production on a Line. Never creates a second batch for an occupied Line.
 
-    Stage 2 (`s2`) and Stage 3 (`s3`) each use one serial process for the whole factory; both need `cfg` to prove the
-    selected model and role pin, and their occupancy is reserved atomically in the store (missing `cfg` fails closed).
+    Stage 2 (`s2`) and the refinement line (`s3`) each use one serial process for the whole factory; both need `cfg`
+    to prove the selected model and role pin, and their occupancy is reserved atomically in the store (missing `cfg`
+    fails closed). The refinement Stage of a NEW shard is known only when it is selected, so its `assignments.<role>`
+    is proven there (and before every run); here only the line's own unfinished batch's Stage is checked.
     """
     if method == STAGE2_METHOD:
         problem = "설정을 확인할 수 없어 Stage 2를 시작하지 않습니다" if cfg is None else stage2_problem(cfg, model)
         return (False, problem) if problem else store.start_stage2(model, mode)
     if method == STAGE3_METHOD:
         if cfg is None:
-            return False, "설정을 확인할 수 없어 Stage 3를 시작하지 않습니다"
-        if why := stage3_problem(cfg, model):
+            return False, "설정을 확인할 수 없어 정제 Stage를 시작하지 않습니다"
+        b = store.latest_batch(model, method)
+        try:
+            role = refine.spec_for(b).role if b is not None and b["state"] != "COMPLETE" else None
+        except refine.RefineError as error:
+            return False, str(error)
+        if why := refine_problem(cfg, model, role):
             return False, why
         return store.start_stage3(model, mode)
     return False, RETIRED_REFUSAL
@@ -109,14 +116,27 @@ def board_line_keys(store: Store, cfg: dict) -> list[tuple[str, str]]:
     known = set(models)
     models += sorted({ln["model"] for ln in store.lines()} - known)
     keys = [(model, STAGE2_METHOD) for model in models if model in stage2_models(cfg)]
-    keys += [(model, STAGE3_METHOD) for model in stage3_models(cfg)]
+    keys += [(model, STAGE3_METHOD) for model in refine_models(cfg)]
     return [(model, method) for model, method in keys if not retired_line(model, method, cfg)]
 
 
+REFINE_LABEL = "Refinement"   # the one shared refinement line; its batches show their own Stage label
+
+
 def method_label(method: str) -> str:
-    """Board/Detail name of a Line's method: `Stage 2`, `Stage 3` or `Maintainer` (a retired method: its letter)."""
-    return ("Stage 2" if method == STAGE2_METHOD else "Stage 3" if method == STAGE3_METHOD
+    """Board/Detail name of a Line's method: `Stage 2`, `Refinement` or `Maintainer` (a retired method: its letter)."""
+    return ("Stage 2" if method == STAGE2_METHOD else REFINE_LABEL if method == STAGE3_METHOD
             else "Maintainer" if method == MAINTENANCE_METHOD else method.upper())
+
+
+def stage_label(b) -> str | None:
+    """The registered Stage label of a refinement batch ("Stage 3"); None for another method or an unknown tag."""
+    if b is None or b["method"] != STAGE3_METHOD:
+        return None
+    try:
+        return refine.spec_for(b).label
+    except refine.RefineError:
+        return None
 
 
 def set_drain(store: Store, model: str, method: str, on: bool, cfg: dict | None = None) -> None:
@@ -266,7 +286,7 @@ def line_status(store: Store, model: str, method: str) -> dict:
            "blocked": ln["blocked"] or "",
            "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None,
            "records_done": None, "progress_kind": None, "progress_done": None, "progress_total": None,
-           "elapsed": None, "stage2": None, "wait": ""}
+           "elapsed": None, "stage2": None, "wait": "", "stage_label": None}
     if method == STAGE2_METHOD:
         out["wait"] = store.get(f"s2_wait_{model}") or ""
     elif method == STAGE3_METHOD:
@@ -294,7 +314,8 @@ def line_status(store: Store, model: str, method: str) -> dict:
                 count = lambda *states: sum(1 for t in tasks if t["state"] in states)
                 out["stage2"]["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING", "FIXQ", "RESPONDED"),
                                           "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
-        if method == STAGE3_METHOD:   # parallel Stage 3 chunks: running / queued / responded / saved / failed
+        if method == STAGE3_METHOD:   # parallel refinement chunks: running / queued / responded / saved / failed
+            out["stage_label"] = stage_label(b)
             tasks = store.task_rows(b["id"])
             if tasks:
                 count = lambda *states: sum(1 for t in tasks if t["state"] in states)

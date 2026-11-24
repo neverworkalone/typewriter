@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from tests.fakes import HEAD1, HEAD2, World
+from tests.fakes import HEAD1, HEAD2, World, assign_profiles
 from tests.test_issue_2450_stage3 import PRODUCERS
 from warroom.adapters import classify_codex_failure
 from warroom import control, s3parallel, stage2, stage3, taskruns
@@ -77,10 +77,11 @@ class Helpers:
         w = World()
         self.addCleanup(w.tmp.cleanup)
         w.cfg["producers"] = json.loads(json.dumps(PRODUCERS))
+        assign_profiles(w.cfg)
         w.parallel_s3 = True
         w.sup.parallel_new_s3 = True
         w.runner.edit.chunks = chunks
-        w.cfg["stage3_max_parallel"] = cap
+        w.cfg["refine_max_parallel"] = cap
         w.store.set(stage2.ok_key("001", None), w.git.base_sha)
         self.assertTrue(control.start(w.store, "claude", S3, "single", cfg=w.cfg)[0])
         w.tick(2)
@@ -154,6 +155,46 @@ class Scheduling(Helpers, unittest.TestCase):
         self.assertEqual(calls, ["closed"])
         w.tick()
         self.assertEqual(calls, ["closed", "closed"])   # a restart in `closed` goes straight to finalize
+
+
+class FixedPlan(Helpers, unittest.TestCase):
+    """#9934: a shard's cap and every session's RunSpec come from the shard's own plan and Stage profile."""
+
+    def test_a_reload_never_changes_the_cap_of_a_running_shard_and_a_pre_9934_shard_records_it_once(self):
+        w = self.world(4, cap=2)
+        b = self.batch(w)
+        self.assertEqual(json.loads(w.store.get(stage3.parallel_start_key(b["id"])))["cap"], 2)
+        w.cfg["refine_max_parallel"] = 16   # a reload: only the NEXT new shard's plan uses it
+        self.respond(w, "001")
+        w.tick()
+        self.assertEqual(self.count(w, "RUNNING"), 2)
+        # a shard planned before the cap was recorded: the effective value is fixed once, then kept
+        base = json.loads(w.store.get(stage3.parallel_start_key(b["id"])))
+        del base["cap"]
+        w.store.set(stage3.parallel_start_key(b["id"]), json.dumps(base))
+        self.assertEqual(w.sup.s3p.cap(b), 16)
+        w.cfg["refine_max_parallel"] = 1
+        self.assertEqual(w.sup.s3p.cap(b), 16)
+        self.assertEqual(json.loads(w.store.get(stage3.parallel_start_key(b["id"])))["cap"], 16)
+
+    def test_every_chunk_session_spawns_exactly_the_stage_profile_its_preflight_proved(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.cfg["producers"] = json.loads(json.dumps(PRODUCERS))
+        assign_profiles(w.cfg)
+        w.cfg["model_profiles"]["claude-s3"] = {"adapter": "claude", "model": "claude-s3", "effort": "max"}
+        w.cfg["assignments"]["stage3"]["claude"] = "claude-s3"   # differs from the Stage 2 profile
+        w.sup.parallel_new_s3 = True
+        w.runner.edit.chunks = 3
+        w.store.set(stage2.ok_key("001", None), w.git.base_sha)
+        proved = []
+        real = w.sup._preflight_run
+        w.sup._preflight_run = lambda producer, run: proved.append(run) or real(producer, run)
+        self.assertTrue(control.start(w.store, "claude", S3, "single", cfg=w.cfg)[0])
+        w.tick(2)
+        launched = {(x["model"], x["effort"]) for x in w.adapter.launches}
+        self.assertEqual(launched, {("claude-s3", "max")})
+        self.assertTrue(proved and all((r.model, r.effort) == ("claude-s3", "max") for r in proved))
 
 
 class MissingAnswers(Helpers, unittest.TestCase):
@@ -337,6 +378,7 @@ class Restart(Helpers, unittest.TestCase):
         w = World()
         self.addCleanup(w.tmp.cleanup)
         w.cfg["producers"] = json.loads(json.dumps(PRODUCERS))
+        assign_profiles(w.cfg)
         w.parallel_s3 = True
         w.sup.parallel_new_s3 = True
         w.runner.edit.chunks = 1
@@ -364,6 +406,7 @@ class Restart(Helpers, unittest.TestCase):
         w = World()
         self.addCleanup(w.tmp.cleanup)
         w.cfg["producers"] = json.loads(json.dumps(PRODUCERS))
+        assign_profiles(w.cfg)
         w.parallel_s3 = True
         w.sup.parallel_new_s3 = True
         w.runner.edit.chunks = 1

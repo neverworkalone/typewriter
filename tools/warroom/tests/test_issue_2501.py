@@ -3,7 +3,7 @@ import json
 import unittest
 from unittest import mock
 
-from tests.fakes import HEAD1, World
+from tests.fakes import HEAD1, World, assign_profiles
 from warroom import stage3
 from warroom.store import STAGE3_METHOD
 
@@ -98,6 +98,7 @@ class Stage3Recovery(unittest.TestCase):
         self.world = World()
         self.addCleanup(self.world.tmp.cleanup)
         self.world.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        assign_profiles(self.world.cfg)
         worktree = self.world.paths.worktrees / "s3-001"
         worktree.mkdir(parents=True)
         self.branch = "s3-codex-001"

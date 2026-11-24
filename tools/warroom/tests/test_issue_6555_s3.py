@@ -7,7 +7,8 @@ from unittest import mock
 from tests import test_issue_2450_stage3 as t2450
 from tests.fakes import HEAD1
 from warroom.gitops import GitError, RefineAmendRejected
-from warroom.supervisor import S3_FIX
+from warroom import stage3 as _stage3
+S3_FIX = _stage3.SPEC.fix
 
 RELATION, DROP = t2450.RELATION, t2450.DROP
 NEW_HEAD = "9" * 40
@@ -25,7 +26,7 @@ class SupervisedStage3Fix(unittest.TestCase):
         w = self.w
         batch = self._batch(state="WAITING_REVIEW", run_kind="s3_finalize")
         w.store.update(batch["id"], pr_number=9, head_sha=HEAD1, session_id="production-session")
-        with mock.patch.object(w.sup, "_preflight", return_value=None), \
+        with mock.patch.object(w.sup, "_preflight_run", return_value=None), \
                 mock.patch.object(w.sup, "_agent_env", return_value={}), \
                 mock.patch.object(w.sup, "_launch_env", return_value={}):
             w.sup._launch(w.store.batch(batch["id"]), "fix_new", [EVENT])
@@ -83,7 +84,7 @@ class SupervisedStage3Fix(unittest.TestCase):
         self.assertIn("WarRoom-Review-Event: review:31", replies[0].splitlines())
         self.assertIn(f"WarRoom-Fix-Head: {NEW_HEAD}", replies[0].splitlines())
         self.assertTrue(self._handled(batch))
-        self.assertIsNone(w.sup.s3fix.baseline(done))
+        self.assertIsNone(w.sup._refine_fix(done).baseline(done))
 
     def test_rebuttal_changes_nothing_and_is_answered(self):
         w = self.w
@@ -132,7 +133,7 @@ class SupervisedStage3Fix(unittest.TestCase):
         w.store.update(batch["id"], pr_number=9, head_sha=HEAD1, session_id="production-session")
         launches = len(w.adapter.launches)
         with mock.patch.object(w.git, "refine_decisions", side_effect=GitError("edit-cli decisions 실패(exit 1)")), \
-                mock.patch.object(w.sup, "_preflight", return_value=None), \
+                mock.patch.object(w.sup, "_preflight_run", return_value=None), \
                 mock.patch.object(w.sup, "_agent_env", return_value={}), \
                 mock.patch.object(w.sup, "_launch_env", return_value={}):
             w.sup._launch(w.store.batch(batch["id"]), "fix_new", [EVENT])
@@ -141,7 +142,7 @@ class SupervisedStage3Fix(unittest.TestCase):
         self.assertIn("PR context", failed["error"])
         self.assertEqual(len(w.adapter.launches), launches)
         self.assertEqual(w.store.runs(batch["id"]), [])
-        self.assertIsNone(w.sup.s3fix.baseline(failed))
+        self.assertIsNone(w.sup._refine_fix(failed).baseline(failed))
         self.assertIsNone(w.store.handled_event(batch["id"], 9, HEAD1, "review:31"))
 
     def test_changes_unrelated_to_the_submission_are_preserved_not_applied(self):

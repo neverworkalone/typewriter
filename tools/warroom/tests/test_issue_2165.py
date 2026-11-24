@@ -117,7 +117,7 @@ class Stage2Finalization(unittest.TestCase):
         count = len(w.adapter.launches)
         with patch.object(w.sup, "_verified_fix_exit", return_value=True), \
              patch.object(w.sup, "_last_run", return_value=last), \
-             patch.object(w.sup, "_preflight", side_effect=[PREFLIGHT_PENDING + " checking", None]):
+             patch.object(w.sup, "_preflight_run", side_effect=[PREFLIGHT_PENDING + " checking", None]):
             self.assertEqual(w.sup._check_fix_head(b, info), "stop")
             self.assertIsNone(w.store.get(key))
             self.assertEqual(len(w.adapter.launches), count)
@@ -145,7 +145,7 @@ class Stage2Finalization(unittest.TestCase):
         last = {"id": 42, "kind": "fix_new", "session_id": "fix-session"}
         with patch.object(w.sup, "_verified_fix_exit", return_value=True), \
              patch.object(w.sup, "_last_run", return_value=last), \
-             patch.object(w.sup, "_preflight", return_value=None), \
+             patch.object(w.sup, "_preflight_run", return_value=None), \
              patch.object(w.adapter, "resume", side_effect=RuntimeError("spawn failed")) as resume:
             self.assertEqual(w.sup._check_fix_head(b, info), "stop")
             self.assertEqual(w.store.get(f"s2_unpushed_fix_resume_{b['id']}"), "42")
