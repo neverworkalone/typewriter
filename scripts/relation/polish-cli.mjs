@@ -83,7 +83,7 @@ async function readText(root, relative) {
 const linesOf = (text) => (text ? text.split(/\r?\n/u).filter((line) => line.trim() !== '') : []);
 
 /** Every persisted row of all Relation and Drop files that names one of `senseIds`, with its file and line. */
-export async function scanTouching(root, senseIds, overrides = new Map(), { only = null } = {}) {
+export async function scanTouching(root, senseIds, overrides = new Map(), { only = null, reader = null } = {}) {
   const pattern = senseTokenPattern(senseIds);
   const relations = [];
   const drops = [];
@@ -94,7 +94,8 @@ export async function scanTouching(root, senseIds, overrides = new Map(), { only
     for (const name of [...names].sort()) {
       const relative = `${directory}/${name}`;
       if (only && !only.has(relative)) continue;
-      const text = overrides.has(relative) ? overrides.get(relative) : existsSync(path.join(root, relative)) ? await readFile(path.join(root, relative), 'utf8') : null;
+      const text = overrides.has(relative) ? overrides.get(relative) : reader ? await reader(relative)
+        : existsSync(path.join(root, relative)) ? await readFile(path.join(root, relative), 'utf8') : null;
       if (!text) continue;
       const shard = namePattern.exec(name)[1];
       if (family === 'relation') {
@@ -116,7 +117,7 @@ export async function scanTouching(root, senseIds, overrides = new Map(), { only
 /** `scanTouching` after the planned edits, re-reading only the files the plan touched. */
 async function rescan(root, senseIds, base, plan) {
   const overrides = plan.overrides();
-  const fresh = await scanTouching(root, senseIds, overrides, { only: new Set(overrides.keys()) });
+  const fresh = await scanTouching(root, senseIds, overrides, { only: new Set(overrides.keys()), reader: plan.reader });
   const order = (left, right) => left.file.localeCompare(right.file) || left.line - right.line;
   return {
     relations: [...base.relations.filter((entry) => !overrides.has(entry.file)), ...fresh.relations].sort(order),
@@ -262,10 +263,10 @@ export function accountingProblems(args) {
 
 /** File-level plan: per relative path, the original text and the edited line list. */
 class FilePlan {
-  constructor() { this.files = new Map(); }
+  constructor(reader) { this.files = new Map(); this.reader = reader; }
   async open(root, relative) {
     if (!this.files.has(relative)) {
-      const text = await readText(root, relative);
+      const text = await this.reader(relative);
       this.files.set(relative, { original: text, lines: linesOf(text), removed: new Set(), replaced: new Map(), appended: [] });
     }
     return this.files.get(relative);
@@ -281,9 +282,9 @@ class FilePlan {
 }
 const file = (plan, relative) => plan.files.get(relative);
 
-async function writeAll(root, plan, changed) {
+async function writeAll(root, plan, changed, read) {
   for (const relative of changed) {
-    const current = await readText(root, relative);
+    const current = await read(relative);
     if (current !== file(plan, relative).original) throw new Error(`${relative} changed during Polish apply; nothing was written, rerun on the latest files`);
   }
   const staged = [];
@@ -306,23 +307,41 @@ async function writeAll(root, plan, changed) {
   }
 }
 
-export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false } = {}) {
-  const { index, shardOfSense, rowsByShard } = await loadCanonical(root);
+/**
+ * `reader` (relative path -> text or null) binds every read — scan, file plan, validation and accounting — to one
+ * data state (default: the working tree); a caller that rebuilds from a Git base passes that base. `returnTexts` adds
+ * each changed file's planned text to a dry run, so the caller can write it itself.
+ */
+export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false, reader = null, canonical = null,
+  returnTexts = false } = {}) {
+  const read = reader ?? ((relative) => readText(root, relative));
+  const { index, shardOfSense, rowsByShard } = canonical ?? await loadCanonical(root);
   const edits = parseEdits(input, index);
   const editSenses = new Set(edits.flatMap(({ row }) => [row.source_sense_id, ...('text' in row ? [] : [row.target_sense_id])]));
   // One scan of every row touching a Sense of an affected shard; edited Senses are a subset of it.
   const affectedShards = [...new Set([...editSenses].map((senseId) => shardOfSense.get(senseId)))].sort();
-  const accountingSenses = new Set(affectedShards.flatMap((shard) => rowsByShard.get(shard).flatMap((record) => record.senses.map((sense) => sense.id))));
-  const beforeAll = await scanTouching(root, accountingSenses);
+  // The accounting scope: every record owning an edited Sense (#9928). Rows of other records cannot change.
+  const scopeRecordsByShard = new Map();
+  for (const record of new Set([...editSenses].map((senseId) => index.senses.get(senseId).record))) {
+    const shard = shardOfSense.get(record.senses[0].id);
+    if (!scopeRecordsByShard.has(shard)) scopeRecordsByShard.set(shard, []);
+    scopeRecordsByShard.get(shard).push(record);
+  }
+  const scopeSenses = new Set([...scopeRecordsByShard.values()].flat().flatMap((record) => record.senses.map((sense) => sense.id)));
+  const beforeAll = await scanTouching(root, scopeSenses, new Map(), { reader: read });
   const touchesEdit = (entry) => editSenses.has(entry.row.source_sense_id) || editSenses.has(entry.row.target_sense_id);
   const before = { relations: beforeAll.relations.filter(touchesEdit), drops: beforeAll.drops.filter(touchesEdit) };
-  const plan = new FilePlan();
+  const plan = new FilePlan(read);
   const results = [];
   const removedRows = [];
   const addedRows = [];
 
-  const findRelation = (key) => before.relations.filter(({ row }) => relationKey(row) === key);
-  const findExclusions = (key) => before.drops.filter(({ row }) => isExclusionRow(row) && exclusionKey(row) === key);
+  // Key indexes built once: a whole-shard edit list (Stage 4) must not rescan every row per edit.
+  const byKey = (entries) => entries.reduce((map, entry) => (map.has(entry.key) ? map.get(entry.key).push(entry) : map.set(entry.key, [entry]), map), new Map());
+  const relationsByKey = byKey(before.relations.map((entry) => ({ ...entry, key: relationKey(entry.row) })));
+  const exclusionsByKey = byKey(before.drops.filter(({ row }) => isExclusionRow(row)).map((entry) => ({ ...entry, key: exclusionKey(entry.row) })));
+  const findRelation = (key) => relationsByKey.get(key) ?? [];
+  const findExclusions = (key) => exclusionsByKey.get(key) ?? [];
   for (const edit of edits) {
     const [existing, ...extra] = findRelation(edit.key);
     if (extra.length) throw new Error(`relation key ${edit.key.replaceAll('\u0000', '|')} is stored more than once (${[existing, ...extra].map((entry) => `${entry.file}:${entry.line}`).join(', ')})`);
@@ -374,72 +393,91 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
       exclusion: exclusions.length ? `${exclusions[0].file}:${exclusions[0].line}` : dropRelative, reason: edit.reason });
   }
 
-  // Candidate accounting of every shard owning an edited Sense: real orphans get `z`, Drops a Polish Add now covers go.
+  // Every Relation edit is planned. Each affected shard is now settled once, in turn, and its Candidate data released:
+  // Drops an Add now covers go, real orphans get `z`, then its changed files pass the shared row validator and its
+  // accounting gains no new problem. Only the edited records can change: rows and accounting are scoped to them.
   const sideEffects = { z_added: [], drops_removed: [] };
-  const candidateContext = new Map();
+  const shardsOf = (row) => new Set([shardOfSense.get(row.source_sense_id), 'target_sense_id' in row ? shardOfSense.get(row.target_sense_id) : null].filter(Boolean));
+  const byShard = (entries) => {
+    const buckets = new Map();
+    for (const entry of entries) {
+      for (const shard of shardsOf(entry.row)) {
+        if (!buckets.has(shard)) buckets.set(shard, []);
+        buckets.get(shard).push(entry);
+      }
+    }
+    return buckets;
+  };
+  const afterAll = await rescan(root, scopeSenses, beforeAll, plan);
+  const removedByShard = byShard(removedRows.map((row) => ({ row })));
+  const addedByShard = byShard(addedRows.map((row) => ({ row })));
+  const afterRelations = byShard(afterAll.relations);
+  const beforeRelations = byShard(beforeAll.relations);
+  const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
+  const parseRelations = (text, relative) => linesOf(text).map((line, position) => deserializeRelationRow(JSON.parse(line), `${relative}:${position + 1}`));
+  const parseDrops = (text, relative) => linesOf(text).map((line, position) => deserializeDropRow(JSON.parse(line), `${relative}:${position + 1}`));
   for (const shard of affectedShards) {
+    const relationRelative = RELATION_FILE(shard);
+    const dropRelative = DROP_FILE(shard);
     const { files } = await loadShardCandidateFiles(shard, root);
     const canonicalRows = rowsByShard.get(shard);
-    const candidateMerge = mergeCandidates(canonicalRows, files, { canonicalLemmaForms: new Set([...index.byLemma.keys()].map(normalizeCandidate)) });
-    candidateContext.set(shard, { files, canonicalRows, candidateMerge });
-    const shardSenses = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-    const dropRelative = DROP_FILE(shard);
+    const candidateMerge = mergeCandidates(canonicalRows, files, { canonicalLemmaForms });
+    const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
     const dropFile = await plan.open(root, dropRelative);
-    const ownDropEntries = beforeAll.drops.filter((entry) => entry.file === dropRelative && !isExclusionRow(entry.row));
-    for (const row of addedRows) {
+    const ownDropEntries = new Map();
+    for (const entry of beforeAll.drops) {
+      if (entry.file !== dropRelative || isExclusionRow(entry.row)) continue;
+      const dropKey = `${entry.row.source_sense_id}\u0000${entry.row.candidate}`;
+      if (!ownDropEntries.has(dropKey)) ownDropEntries.set(dropKey, []);
+      ownDropEntries.get(dropKey).push(entry);
+    }
+    for (const { row } of addedByShard.get(shard) ?? []) {
       const keys = relationCandidateKeys(row, candidateMerge.merged, index);
       for (const key of [...keys.forward, ...keys.reverse]) {
-        if (!shardSenses.has(key.senseId) || !candidateMerge.merged.get(key.senseId)?.candidates.has(key.candidate)) continue;
-        for (const entry of ownDropEntries) {
-          if (entry.row.source_sense_id !== key.senseId || entry.row.candidate !== key.candidate || dropFile.removed.has(entry.line)) continue;
+        if (!shardSenseIds.has(key.senseId) || !candidateMerge.merged.get(key.senseId)?.candidates.has(key.candidate)) continue;
+        for (const entry of ownDropEntries.get(`${key.senseId}\u0000${key.candidate}`) ?? []) {
+          if (dropFile.removed.has(entry.line)) continue;
           dropFile.removed.add(entry.line);
           sideEffects.drops_removed.push({ stored: `${entry.file}:${entry.line}`, source_sense_id: key.senseId, candidate: key.candidate, by: entry.row.reason });
         }
       }
     }
-  }
-  const afterAll = await rescan(root, accountingSenses, beforeAll, plan);
-  for (const shard of affectedShards) {
-    const { files, canonicalRows, candidateMerge } = candidateContext.get(shard);
-    const dropRelative = DROP_FILE(shard);
-    const orphans = orphanedCandidateDrops({ canonicalRows, candidateFiles: files, removedRelationRows: removedRows,
-      relationRows: afterAll.relations.map(({ row }) => row), dropRows: afterAll.drops.filter((entry) => !isExclusionRow(entry.row)).map(({ row }) => row),
-      index, candidateMerge, includeText: true });
-    for (const row of orphans) {
-      (await plan.open(root, dropRelative)).appended.push(JSON.stringify(serializeDropRow(row)));
-      sideEffects.z_added.push({ stored: dropRelative, source_sense_id: row.source_sense_id, candidate: row.candidate });
+    if (removedByShard.has(shard)) {   // only a removed row reaching this shard's Senses can orphan its Candidates
+      const orphans = orphanedCandidateDrops({ canonicalRows, candidateFiles: files,
+        removedRelationRows: removedByShard.get(shard).map(({ row }) => row),
+        relationRows: (afterRelations.get(shard) ?? []).map(({ row }) => row),
+        dropRows: parseDrops(plan.text(dropRelative) ?? '', dropRelative).filter((row) => !isExclusionRow(row)),
+        index, candidateMerge, includeText: true });
+      for (const row of orphans) {
+        dropFile.appended.push(JSON.stringify(serializeDropRow(row)));
+        sideEffects.z_added.push({ stored: dropRelative, source_sense_id: row.source_sense_id, candidate: row.candidate });
+      }
     }
-  }
 
-  // Shared row validator for every changed shard, and no new Candidate accounting problem in any affected shard.
-  const finalAll = await rescan(root, accountingSenses, beforeAll, plan);
-  const changed = plan.changed();
-  const changedShards = new Set(changed.map((relative) => /-(\d{3})\.jsonl$/u.exec(relative)[1]));
-  for (const shard of affectedShards) {
-    const relationRelative = RELATION_FILE(shard);
-    const dropRelative = DROP_FILE(shard);
-    const ownText = plan.files.has(relationRelative) ? plan.text(relationRelative) : await readText(root, relationRelative);
-    const dropText = plan.files.has(dropRelative) ? plan.text(dropRelative) : await readText(root, dropRelative);
-    const ownRows = linesOf(ownText).map((line, position) => deserializeRelationRow(JSON.parse(line), `${relationRelative}:${position + 1}`));
-    const ownDropAll = linesOf(dropText).map((line, position) => deserializeDropRow(JSON.parse(line), `${dropRelative}:${position + 1}`));
+    const ownText = plan.files.has(relationRelative) ? plan.text(relationRelative) : await read(relationRelative);
+    const ownRows = parseRelations(ownText, relationRelative);
+    const ownDropAll = parseDrops(plan.text(dropRelative), dropRelative);
     const ownDrops = ownDropAll.filter((row) => !isExclusionRow(row));
-    const shardSenseIds = new Set(rowsByShard.get(shard).flatMap((record) => record.senses.map((sense) => sense.id)));
-    const others = finalAll.relations.filter((entry) => entry.file !== relationRelative && relationTouchesSenses(entry.row, shardSenseIds)).map(({ row }) => row);
-    if (changedShards.has(shard)) {
+    const others = (afterRelations.get(shard) ?? []).filter((entry) => entry.file !== relationRelative).map(({ row }) => row);
+    const shardChanged = [relationRelative, dropRelative].some((relative) => plan.files.has(relative)
+      && (plan.text(relative) ?? null) !== plan.files.get(relative).original);
+    // Other-shard rows serve only duplicate detection, so the rows touching the edited records find every new one.
+    if (shardChanged) {
       validateRelationRows({ relationRows: ownRows, dropRows: ownDrops, exclusionRows: ownDropAll.filter(isExclusionRow), index, shardSenseIds, otherRelationRows: others });
     }
-    const context = candidateContext.get(shard);
-    if (!context || context.files.length === 0) continue;
-    const beforeOwnRows = linesOf(await readText(root, relationRelative)).map((line, position) => deserializeRelationRow(JSON.parse(line), `${relationRelative}:${position + 1}`));
-    const beforeOwnDrops = linesOf(await readText(root, dropRelative)).map((line, position) => deserializeDropRow(JSON.parse(line), `${dropRelative}:${position + 1}`)).filter((row) => !isExclusionRow(row));
-    const beforeOthers = beforeAll.relations.filter((entry) => entry.file !== relationRelative && relationTouchesSenses(entry.row, shardSenseIds)).map(({ row }) => row);
-    const common = { canonicalRows: context.canonicalRows, candidateFiles: context.files, index, candidateMerge: context.candidateMerge };
+    if (files.length === 0) continue;
+    const scopeRows = scopeRecordsByShard.get(shard);
+    const beforeOwnRows = parseRelations(await read(relationRelative), relationRelative);
+    const beforeOwnDrops = parseDrops(await read(dropRelative), dropRelative).filter((row) => !isExclusionRow(row));
+    const beforeOthers = (beforeRelations.get(shard) ?? []).filter((entry) => entry.file !== relationRelative).map(({ row }) => row);
+    const common = { canonicalRows, candidateFiles: files, index, candidateMerge, scopeRows };
     const old = new Set(accountingProblems({ ...common, relationRows: beforeOwnRows, dropRows: beforeOwnDrops, otherRelationRows: beforeOthers }));
     const introduced = accountingProblems({ ...common, relationRows: ownRows, dropRows: ownDrops, otherRelationRows: others }).filter((problem) => !old.has(problem));
     if (introduced.length) throw new Error(`Polish edit would introduce Candidate accounting problems in shard ${shard}:\n${introduced.slice(0, 20).map((problem) => `- ${problem}`).join('\n')}`);
   }
+  const changed = plan.changed();
 
-  if (changed.length && !dryRun) await writeAll(root, plan, changed);
+  if (changed.length && !dryRun) await writeAll(root, plan, changed, read);
   return {
     version: 1,
     ok: true,
@@ -447,7 +485,9 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
     status: changed.length ? (dryRun ? 'planned' : 'applied') : 'no-op',
     edits: results,
     ...sideEffects,
-    files: changed.map((relative) => ({ path: relative, sha256: plan.text(relative) === null ? null : sha256(plan.text(relative)) })),
+    files: changed.map((relative) => ({ path: relative, sha256: plan.text(relative) === null ? null : sha256(plan.text(relative)),
+      ...(returnTexts ? { text: plan.text(relative) } : {}) })),
+    affected_shards: affectedShards,
   };
 }
 

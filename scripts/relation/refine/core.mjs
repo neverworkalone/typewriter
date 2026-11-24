@@ -42,6 +42,7 @@ export const DROP_RELATIVE = (shard) => `data/relation-drops/drop-${shard}.jsonl
 export const RELATION_PATH = (shard, root) => path.join(root, RELATION_RELATIVE(shard));
 export const DROP_PATH = (shard, root) => path.join(root, DROP_RELATIVE(shard));
 const MIN_CHUNK_RELATIONS = 350;
+export const SHARD_DATA_FILE = /^data\/(?:relations\/relation|relation-drops\/drop)-\d{3}\.jsonl$/u;
 const MAX_CHUNK_RELATIONS = 500;
 
 const compactRows = (contents) => contents.split(/\r?\n/u).filter((line) => line.trim() !== '');
@@ -162,7 +163,10 @@ export async function writeFilesAtomically(changes) {
   await Promise.all(backups.map((item) => rm(item.backup, { force: true })));
 }
 
-/** Partition by complete source Sense groups, targeting 350–500 Relation rows. */
+/**
+ * Partition by complete source Sense groups, targeting 350–500 Relation rows. A group may carry its own `weight`
+ * (a rule that also shows Senses without Relations, #9928); without it the weight is its Relation count.
+ */
 export function chunkSenseGroups(groups, { minimum = MIN_CHUNK_RELATIONS, maximum = MAX_CHUNK_RELATIONS, label = 'Stage 3' } = {}) {
   if (!Array.isArray(groups) || !Number.isSafeInteger(minimum) || !Number.isSafeInteger(maximum)
       || minimum < 1 || maximum < minimum) fail(`invalid ${label} chunk inputs`);
@@ -170,8 +174,9 @@ export function chunkSenseGroups(groups, { minimum = MIN_CHUNK_RELATIONS, maximu
   let current = [];
   let count = 0;
   for (const group of groups) {
-    if (!group || !Array.isArray(group.relations) || group.relations.length === 0) fail(`${label} chunks require non-empty complete Sense groups`);
-    const size = group.relations.length;
+    const weighted = Number.isSafeInteger(group?.weight) && group.weight > 0;
+    if (!group || !Array.isArray(group.relations) || (!weighted && group.relations.length === 0)) fail(`${label} chunks require non-empty complete Sense groups`);
+    const size = weighted ? group.weight : group.relations.length;
     if (current.length && count >= minimum && count + size > maximum) {
       chunks.push(current);
       current = [];
@@ -251,6 +256,10 @@ const referenceRun = new AsyncLocalStorage();
  */
 export function createRefineCli(rule) {
   const { label } = rule;
+  const decisionKey = (decision) => JSON.stringify(rule.decisionIdentity(decision));
+  const orderDecisions = (decisions) => (rule.keyed
+    ? [...decisions].sort((a, b) => a.chunk.localeCompare(b.chunk) || decisionKey(a).localeCompare(decisionKey(b)))
+    : [...decisions].sort((a, b) => a.row - b.row));
   const scopeName = (shard, scope) => scope ? `${shard}-${scope.batch}-${scope.part}` : shard;
   const VIEW_DIRECTORY = (shard, root, scope = null) => path.join(root, '.warroom-scratch', `${rule.scratch}-${scopeName(shard, scope)}`);
   const CHECKPOINT_PATH = (shard, root, scope = null) => path.join(root, '.warroom-scratch', `${rule.scratch}-${scopeName(shard, scope)}.json`);
@@ -283,8 +292,12 @@ export function createRefineCli(rule) {
       if (typeof decision.chunk !== 'string' || !/^\d{3}$/u.test(decision.chunk)
           || Number(decision.chunk) < 1 || Number(decision.chunk) > checkpoint.chunk_total
           || !completed.has(decision.chunk)) fail(`${label} decision refers to an incomplete or unknown chunk`);
-      if (!Number.isSafeInteger(decision.row) || decision.row < 1 || rows.has(decision.row)) fail(`${label} checkpoint repeats or misnumbers a Relation row`);
-      rows.add(decision.row);
+      // A keyed rule (#9928) binds decisions to relation keys, not base rows: chunks may decide the same key, and the
+      // rule resolves that at apply. One chunk never repeats a decision.
+      const identity = rule.keyed ? `${decision.chunk}\u0000${decisionKey(decision)}` : decision.row;
+      if (!rule.keyed && (!Number.isSafeInteger(decision.row) || decision.row < 1)) fail(`${label} checkpoint repeats or misnumbers a Relation row`);
+      if (rows.has(identity)) fail(rule.keyed ? `${label} checkpoint repeats a decision in chunk ${decision.chunk}` : `${label} checkpoint repeats or misnumbers a Relation row`);
+      rows.add(identity);
     }
     return checkpoint;
   }
@@ -353,8 +366,10 @@ export function createRefineCli(rule) {
       ? partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part, shard).scopeRows
       : context.canonicalRows;
     const scopeSenseIds = scope ? new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id))) : null;
-    const groups = buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations,
-      scopeSenseIds, rowFilter: scope ? rule.scopedRow : null });
+    // A rule may build its own groups from the same projected context (Stage 4: every Sense, both directions).
+    const groups = rule.senseGroups ? rule.senseGroups(context)
+      : buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations,
+        scopeSenseIds, rowFilter: scope ? rule.scopedRow : null });
     const chunks = chunkSenseGroups(groups, { label });
     const views = chunks.map((chunkGroups, index) => rule.renderChunk(chunkGroups, context.index, index + 1, chunks.length));
     return { context, views, scope_record_count: scopeRows.length };
@@ -467,7 +482,6 @@ export function createRefineCli(rule) {
     return null;
   }
 
-  const decisionKey = (decision) => JSON.stringify(rule.decisionIdentity(decision));
 
   async function saveChunkByNumber(shard, chunk, inputPath, expectedSha256, root) {
     assertChunkName(chunk);
@@ -477,7 +491,8 @@ export function createRefineCli(rule) {
     const view = await readRawPreparedView(shard, chunk, root);
     if (viewDigest(view) !== expectedSha256) fail(`${label} chunk ${chunk} view changed since it was launched`);
     const input = path.isAbsolute(inputPath) ? inputPath : path.resolve(root, inputPath);
-    const decisions = rule.parseDecisionText(await readFile(input, 'utf8'), view, checkpoint, { explicit: true });
+    const parsed = await rule.parseDecisionText(await readFile(input, 'utf8'), view, checkpoint, { explicit: true, root });
+    const decisions = Array.isArray(parsed) ? parsed : parsed.decisions;
     const base = { shard, chunk, total_chunks: checkpoint.chunk_total };
     if (checkpoint.completed_chunks.includes(chunk)) {
       const saved = checkpoint.decisions.filter((decision) => decision.chunk === chunk);
@@ -488,9 +503,9 @@ export function createRefineCli(rule) {
       return { ...base, already_saved: true, completed_chunks: checkpoint.completed_chunks.length };
     }
     const completed = [...checkpoint.completed_chunks, chunk].sort();
-    const merged = [...checkpoint.decisions, ...decisions].sort((a, b) => a.row - b.row);
+    const merged = orderDecisions([...checkpoint.decisions, ...decisions]);
     await writeJsonAtomically(CHECKPOINT_PATH(shard, root), { ...checkpoint, completed_chunks: completed, decisions: merged });
-    return { ...base, already_saved: false, completed_chunks: completed.length, ...rule.saveSummary(decisions, view) };
+    return { ...base, already_saved: false, completed_chunks: completed.length, ...rule.saveSummary(decisions, view, parsed) };
   }
 
   async function saveChunk(shard, inputPath, root, scope = null) {
@@ -498,12 +513,14 @@ export function createRefineCli(rule) {
     const view = await rawNextChunk(shard, root, checkpoint, scope);
     if (!view) fail(`all ${label} chunks are already saved`);
     const input = path.isAbsolute(inputPath) ? inputPath : path.resolve(root, inputPath);
-    const decisions = rule.parseDecisionText(await readFile(input, 'utf8'), view, checkpoint);
+    const parsed = await rule.parseDecisionText(await readFile(input, 'utf8'), view, checkpoint, { root });
+    const decisions = Array.isArray(parsed) ? parsed : parsed.decisions;
     const completed = [...checkpoint.completed_chunks, view.chunk].sort();
-    const next = { ...checkpoint, completed_chunks: completed, decisions: [...checkpoint.decisions, ...decisions] };
+    const next = { ...checkpoint, completed_chunks: completed,
+      decisions: rule.keyed ? orderDecisions([...checkpoint.decisions, ...decisions]) : [...checkpoint.decisions, ...decisions] };
     await writeJsonAtomically(CHECKPOINT_PATH(shard, root, scope), next);
     return { shard, ...(scope ? { batch: scope.batch, part: scope.part } : {}), chunk: view.chunk, completed_chunks: completed.length, total_chunks: next.chunk_total,
-      ...rule.saveSummary(decisions, view) };
+      ...rule.saveSummary(decisions, view, parsed) };
   }
 
   /**
@@ -566,6 +583,14 @@ export function createRefineCli(rule) {
     const checkpoint = await loadCheckpoint(shard, root, scope);
     if (checkpoint.completed_chunks.length !== checkpoint.chunk_total) {
       fail(`${label} has ${checkpoint.completed_chunks.length}/${checkpoint.chunk_total} completed chunks`);
+    }
+    if (rule.keyed) {
+      // The keyed rule rebuilds every affected data file from HEAD through the shared Polish path (#9928).
+      const result = await rule.applyCheckpoint({ shard, root, checkpoint,
+        readView: (chunk) => readFile(chunkFile(shard, chunk, root, scope), 'utf8') });
+      await rm(chunkFiles(shard, root, scope), { recursive: true, force: true });
+      await rm(CHECKPOINT_PATH(shard, root, scope), { force: true });
+      return { shard, ...result };
     }
     const relationFile = RELATION_PATH(shard, root);
     const dropFile = DROP_PATH(shard, root);
@@ -636,6 +661,7 @@ export function createRefineCli(rule) {
   async function reportEdits(shard, root) {
     assertShard(shard);
     gitHead(root);
+    if (rule.keyed) return { shard, ...await rule.reportWorktree({ shard, root }) };
     const diff = await parseDiffRows(root, shard);
     const { index } = await loadShard(shard, root);
     return { shard, ...rule.report(diff, index) };
@@ -652,7 +678,9 @@ export function createRefineCli(rule) {
     }
     const allowed = new Set([RELATION_RELATIVE(shard), DROP_RELATIVE(shard)]);
     const changed = git(root, ['diff', '--name-only', '--no-renames', base, head]).split('\n').filter(Boolean);
-    const outside = changed.filter((file) => !allowed.has(file));
+    // A cross-shard rule (#9928) may change any shard's data files; its CLI bounds which relations it may edit.
+    const permitted = (file) => allowed.has(file) || (rule.crossShard === true && SHARD_DATA_FILE.test(file));
+    const outside = changed.filter((file) => !permitted(file));
     if (outside.length) fail(`${label} PR changes files outside shard ${shard} since ${base}: ${outside.join(', ')}`);
     return head;
   }
@@ -679,6 +707,7 @@ export function createRefineCli(rule) {
   /** The decisions a refinement PR made, recovered from its own Git diff: the PR is its own state, there is no ledger. */
   async function listDecisions(shard, root, base, senses = null) {
     assertShard(shard);
+    if (rule.keyed) return rule.listDecisions({ shard, root, base, head: prRevisions(shard, root, base), senses });
     const state = prState(shard, root, base);
     const { index } = await loadShard(shard, root);
     const describe = (decision) => rule.describeDecision(decision, state.baseRelations, index);
@@ -699,6 +728,11 @@ export function createRefineCli(rule) {
    */
   async function amendDecisions(shard, root, base, inputPath) {
     assertShard(shard);
+    if (rule.keyed) {
+      const head = prRevisions(shard, root, base);
+      const input = path.isAbsolute(inputPath) ? inputPath : path.resolve(root, inputPath);
+      return rule.amendDecisions({ shard, root, base, head, text: await readFile(input, 'utf8') });
+    }
     const state = prState(shard, root, base);
     assertCleanInputsFor(root, 'amend', shard);
     const input = path.isAbsolute(inputPath) ? inputPath : path.resolve(root, inputPath);
@@ -759,6 +793,7 @@ export function createRefineCli(rule) {
     if (options.batch !== null) {
       try { assertStage2Part(options.shard, options.batch, options.part); } catch (error) { fail(`${error.message}\n${rule.usage}`); }
     }
+    if (options.batch !== null && !rule.scopedRow) fail(`--batch/--part are not valid for ${label}\n${rule.usage}`);
     if (options.batch !== null && !['prepare', 'read-chunk', 'refresh-pending', 'save-chunk', 'apply'].includes(command)) {
       fail(`--batch/--part are only valid for ${rule.scopedName} commands\n${rule.usage}`);
     }
