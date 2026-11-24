@@ -941,7 +941,7 @@ class Supervisor:
             self._guarded(b, "exit_failed", lambda x: self._run_failed(x, ev["code"]), run_id=ev["run_id"], code=ev["code"])
         elif stage == "finalize":
             fin = {"ab_finalize": self._ab_finalize, "c_finalize": self._c_finalize, "d_finalize": self._d_finalize,
-                   "s2_deterministic_finalize": self._stage2_finalize}
+                   "s2_deterministic_finalize": self._stage2_finalize, "s3_finalize": self._stage3_finalize}
             fin[ev["run_kind"]](b)
         elif stage == "prelaunch":
             entry = {"prepare_existing": self._prepare_existing, "launch_ab_next": self._launch_ab_next,
