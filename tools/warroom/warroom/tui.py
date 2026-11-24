@@ -646,15 +646,15 @@ class WarRoom(App):
     #columns { height: 1fr; margin-top: 1; }
     #board { height: auto; width: auto; grid-gutter: 0; grid-rows: auto; }
     #board-footer { height: 1; padding: 0 1; }
-    .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 0; }
-    .card { border: round $primary; height: 6; padding: 0 1; margin: 0 1; }
+    .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 1; }
+    .card { border: round $primary; height: 7; padding: 0 1; margin: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
     .card.COMPLETE { border: round $success; }
     .card.empty { border: round #444444; color: #777777; }
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
-    #board Stage2Card, #board RefineCard { height: auto; min-height: 6; }   /* beats `.card { height: 6 }` */
+    #board Stage2Card, #board RefineCard { height: auto; min-height: 7; }   /* beats `.card { height: 7 }` */
     .spacer { height: 1; }
     .card.ghost { visibility: hidden; }
     #info { border: round $accent; padding: 0 1; height: auto; }
