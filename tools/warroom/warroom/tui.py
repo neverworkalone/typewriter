@@ -11,7 +11,7 @@ from textual.actions import SkipAction
 from textual.app import App, ComposeResult
 from rich.text import Text
 from textual.binding import Binding
-from textual.containers import Horizontal, HorizontalScroll, Vertical
+from textual.containers import Grid, Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.css.scalar import Unit
 from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select, Static
@@ -22,9 +22,9 @@ from . import auth, control
 from .config import (ROOT_ENV, Paths, RootError, check_runtime_root, adapter_label, adapters, load_config, ordered_models, registry, retired_notice,
                      refine_models, stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
-from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
-                    model_title, board_footer, detail_meta, scheduled_at, usage_text, stage2_column,
-                    stage2_display_model, refine_column, refine_display_model, pin_view)
+from .views import (CARD_W, _hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
+                    model_title, board_footer, detail_meta, scheduled_at, usage_text,
+                    stage2_display_model, refine_display_model, pin_view)
 from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 
@@ -182,11 +182,22 @@ class Card(Static, can_focus=True):
     BINDINGS = [("enter", "open", "Open"), ("left", "move(0,-1)", ""), ("right", "move(0,1)", ""),
                 ("up", "move(-1,0)", ""), ("down", "move(1,0)", "")]
 
-    def __init__(self, model: str, method: str, card_id: str | None = None):
+    ROW = 0   # board row: Stage 2 (and the Maintainer) 0, Refinement 1
+
+    def __init__(self, model: str, method: str, card_id: str | None = None, column: str | None = None):
         # Stage 2/3 cards start neutral: colour belongs to a task that exists, never to an idle slot.
         super().__init__("", id=card_id or f"card-{model}-{method}",
                          classes="card empty" if method in (STAGE2_METHOD, STAGE3_METHOD) else "card")
         self.model, self.method = model, method
+        self.column = column or model   # the (first) board column this card sits in
+        self.span = 1                   # board columns it covers
+        self.text_width = CARD_W        # content cells of its text
+
+    def show(self, text, classes: str, visible: bool) -> None:
+        """Render the card; an invisible twin keeps the same text (and so the same height) to hold its row."""
+        self.update(text)
+        self.set_classes(classes + ("" if visible else " ghost"))
+        self.can_focus = visible
 
     def on_click(self) -> None:
         self.action_open()
@@ -195,37 +206,37 @@ class Card(Static, can_focus=True):
         self.app.push_screen(LineDetail(self.model, self.method))
 
     def action_move(self, drow: int, dcol: int) -> None:
-        """Arrow keys move through model columns and stage rows; up from the top row returns to the controls."""
-        cards = list(self.app.query(Card))
-        models = list(dict.fromkeys(c.model for c in cards))
-
-        def nav_row(card: Card) -> str:
-            # Stage 2, Refinement and the Maintainer share the board's bottom card row.
-            if card.method == STAGE3_METHOD and self.app.refine_col == self.app.stage2_col:
-                return STAGE3_METHOD
-            return "special" if card.method in (STAGE2_METHOD, STAGE3_METHOD, MAINTENANCE_METHOD) else card.method
-
-        rows = list(dict.fromkeys(nav_row(c) for c in cards))
-        row = rows.index(nav_row(self)) + drow
-        col = models.index(self.model) + dcol
+        """Arrow keys move through the board's columns and rows over visible cards; up from the top returns to the
+        controls. A vertical move prefers the same column, else the nearest visible card of that row."""
+        cards = [c for c in self.app.query(Card) if c.can_focus]
+        columns = list(dict.fromkeys(c.column for c in self.app.query(Card)))
+        col = columns.index(self.column) + (self.span - 1 if dcol > 0 else 0)
+        if dcol:
+            row_cards = {c.column: c for c in cards if c.ROW == self.ROW}
+            col += dcol
+            while 0 <= col < len(columns):
+                target = row_cards.get(columns[col]) or next((c for c in cards if c.column == columns[col]), None)
+                if target is not None:
+                    target.focus()
+                    return
+                col += dcol
+            return
+        row = self.ROW + drow
         if row < 0:
             self.app.query_one("#start").focus()
             return
-        while 0 <= col < len(models) and 0 <= row < len(rows):
-            for c in cards:
-                if c.model == models[col] and nav_row(c) == rows[row]:
-                    c.focus()
-                    return
-            if not dcol:
-                return
-            col += dcol
+        targets = sorted((c for c in cards if c.ROW == row), key=lambda c: abs(columns.index(c.column) - col))
+        if targets:
+            targets[0].focus()
 
 
 class Stage2Card(Card):
-    """One fixed Claude-column card whose detail target follows the real Stage 2 owner."""
+    """The Stage 2 slot of one Claude/Codex column (board row 1). Only the slot of the real Stage 2 owner's column is
+    visible; the others stay invisible."""
+    ROW = 0
 
     def __init__(self, column_model: str):
-        super().__init__(column_model, STAGE2_METHOD, card_id="card-stage2")
+        super().__init__(column_model, STAGE2_METHOD, card_id=f"card-stage2-{column_model}")
         self.owner_model = column_model
 
     def action_open(self) -> None:
@@ -233,28 +244,38 @@ class Stage2Card(Card):
 
 
 class RefineCard(Card):
-    """The one shared Refinement card (every registered refinement Stage: Stage 3, ...). Its title is the current
-    batch's own Stage label; its detail target follows the selected Claude/Codex owner."""
+    """The one Refinement card (every registered refinement Stage), board row 2 under Stage 2, spanning the Claude and
+    Codex columns so its counts fit on one line. Its title is the current batch's own Stage label and the owner model
+    is named inside; its detail target follows that owner."""
 
-    def __init__(self, column_model: str):
+    ROW = 1
+
+    def __init__(self, column_model: str, span: int):
         super().__init__(column_model, STAGE3_METHOD, card_id="card-refine")
         self.owner_model = column_model
+        self.span = span
+        self.text_width = CARD_W + (span - 1) * BOARD_COLUMN_W   # one column's content + each further full column
+        self.styles.column_span = span
 
     def action_open(self) -> None:
         self.app.push_screen(LineDetail(self.owner_model, STAGE3_METHOD))
 
 
 class MaintainerCard(Card):
-    """Bottom-row card of the hidden #1555 Maintainer (under the Stage 2 card). It is a Card for focus, arrow keys,
-    Tab and click; Enter/click opens the same Batch Detail as every Line, over the Maintainer Line (Issue #2022)."""
+    """Card of the hidden #1555 Maintainer, fixed in the board's third (Maintainer) column. It is a Card for focus,
+    arrow keys, Tab and click; Enter/click opens the same Batch Detail as every Line, over the Maintainer Line (#2022)."""
 
     def __init__(self, model: str):
-        super().__init__(model, STAGE2_METHOD, card_id="card-maintainer")
+        super().__init__(model, STAGE2_METHOD, card_id="card-maintainer", column=MAINTAINER_COLUMN)
 
     def action_open(self) -> None:
         # The model shown is the producer that really runs the Maintainer, not the Board column the card sits in.
         who = control.maintainer_producer(self.app.store, self.app.cfg, self.model)
         self.app.push_screen(LineDetail(who or self.model, MAINTENANCE_METHOD))
+
+
+MAINTAINER_COLUMN = "maintainer"   # the board's fixed third column
+BOARD_COLUMN_W = 40                # one board column (card text CARD_W + border, padding and margin)
 
 
 class BoardFooter(Footer):
@@ -623,8 +644,8 @@ class WarRoom(App):
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
     #line-controls.narrow { layout: grid; grid-rows: auto; }
     #columns { height: 1fr; margin-top: 1; }
+    #board { height: auto; width: auto; grid-gutter: 0; grid-rows: auto; }
     #board-footer { height: 1; padding: 0 1; }
-    .col { width: 40; height: auto; margin: 0; }
     .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 0; }
     .card { border: round $primary; height: 6; padding: 0 1; margin: 0 1; }
     .card:focus { border: heavy $accent; }
@@ -633,8 +654,9 @@ class WarRoom(App):
     .card.empty { border: round #444444; color: #777777; }
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
-    #card-stage2 { height: auto; min-height: 6; }
-    #card-refine { height: auto; min-height: 6; }
+    #board Stage2Card, #board RefineCard { height: auto; min-height: 6; }   /* beats `.card { height: 6 }` */
+    .spacer { height: 1; }
+    .card.ghost { visibility: hidden; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     RichLog { border: round $primary; height: 1fr; }
     """
@@ -670,19 +692,6 @@ class WarRoom(App):
         """Claude / Codex columns that can own the single shared refinement queue."""
         return set(refine_models(self.cfg))
 
-    @property
-    def maintainer_col(self):
-        """The column of the Maintainer's status card, under the Stage 2 card (whichever model runs the Maintainer)."""
-        return self.stage2_col or next(iter(self.models), None)
-
-    @property
-    def stage2_col(self):
-        return stage2_column(self.cfg)
-
-    @property
-    def refine_col(self):
-        return refine_column(self.cfg)
-
     def _line_keys(self):
         """Every production Line on the Board; also shared with scheduled Drain All execution."""
         return control.board_line_keys(self.store, self.cfg)
@@ -717,15 +726,30 @@ class WarRoom(App):
             yield Select(SCHEDULE_HOURS, value=DEFAULT_SCHEDULE_HOUR, allow_blank=False, id="drain-all-time")
             yield Button("Schedule", id="schedule-all")
         with HorizontalScroll(id="columns"):
-            for model in self._lines():
-                with Vertical(classes="col", id=f"col-{model}"):
-                    yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
-                    if model == self.stage2_col:
+            # Fixed columns: Claude, Codex (board order), then the Maintainer as the third; any further model after it.
+            # Row 1: Stage 2 in the column of the model that really runs it, and the Maintainer. Row 2: the one
+            # Refinement card, spanning the Claude and Codex columns.
+            lines = self._lines()
+            columns = lines[:2] + ([MAINTAINER_COLUMN] if self.models else []) + lines[2:]
+            board = Grid(id="board")
+            board.styles.grid_size_columns = max(len(columns), 1)
+            board.styles.grid_columns = str(BOARD_COLUMN_W)
+            with board:
+                for model in columns:
+                    title = "Maintainer" if model == MAINTAINER_COLUMN else registry(self.cfg).get(model, {}).get("label", model)
+                    yield Static(model_title(title), classes="coltitle", id=f"title-{model}")
+                for model in columns:
+                    if model == MAINTAINER_COLUMN:
+                        yield MaintainerCard(control.maintainer_id(self.cfg) or self.models[0])
+                    elif model in self.stage2_capable:
                         yield Stage2Card(model)
-                    if model == self.refine_col:
-                        yield RefineCard(model)
-                    if model == self.maintainer_col:   # ... and the Maintainer status under the Stage 2 card
-                        yield MaintainerCard(model)
+                    else:
+                        yield Static("", classes="spacer")
+                refine = [model for model in lines[:2] if model in self.refine_capable]
+                if refine:
+                    yield RefineCard(refine[0], span=len(refine))
+                    for _ in range(len(columns) - len(refine)):
+                        yield Static("", classes="spacer")
         yield Static(id="banner")
         yield Static(id="drain-note")
         yield BoardFooter(show_command_palette=False)
@@ -781,7 +805,7 @@ class WarRoom(App):
                       {"controls": lambda w: any(a.id == "controls" for a in w.ancestors_with_self),
                        "cards": lambda w: isinstance(w, Card)},
                       mem,
-                      {"controls": lambda: self.query_one("#start"), "cards": lambda: next(iter(self.query(Card)), None)})
+                      {"controls": lambda: self.query_one("#start"), "cards": lambda: next((c for c in self.query(Card) if c.can_focus), None)})
 
     def action_control_move(self, step: int) -> None:
         """Left/Right move between the top-bar controls like Shift+Tab/Tab (up/down stay with an open Select)."""
@@ -923,23 +947,23 @@ class WarRoom(App):
         owner = stage2_display_model(store, self.cfg, {
             model: statuses[(model, STAGE2_METHOD)] for model in self.stage2_capable
         })
-        if owner and self.stage2_col:
+        if owner:
             st = statuses[(owner, STAGE2_METHOD)]
             owner_label = adapter_label(registry(self.cfg)[owner]["adapter"])
-            card = root.query_one("#card-stage2", Stage2Card)
-            card.owner_model = owner
-            card.update(Text(card_text({**st, "display_owner": owner_label})))
-            card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
+            for card in root.query(Stage2Card):   # visible only in the owner's (Claude 1st / Codex 2nd) column
+                card.owner_model = owner
+                card.show(Text(card_text({**st, "display_owner": owner_label})),
+                          "card " + (st["state"] if st["batch"] else "empty"), card.column == owner)
         owner = refine_display_model(store, self.cfg, {
             model: statuses[(model, STAGE3_METHOD)] for model in self.refine_capable
         })
-        if owner and self.refine_col:
+        if owner:
             st = statuses[(owner, STAGE3_METHOD)]
             owner_label = adapter_label(registry(self.cfg)[owner]["adapter"])
-            card = root.query_one("#card-refine", RefineCard)
-            card.owner_model = owner
-            card.update(Text(card_text({**st, "display_owner": owner_label})))
-            card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
+            for card in root.query(RefineCard):   # the line below Stage 2, across the Claude and Codex columns
+                card.owner_model = owner
+                card.show(Text(card_text({**st, "display_owner": owner_label}, card.text_width)),
+                          "card " + (st["state"] if st["batch"] else "empty"), True)
         maint = control.maintainer_card(store, self.cfg)   # the one rule the web Board uses too
         has_maint_card = bool(list(root.query("#card-maintainer")))
         if has_maint_card:
