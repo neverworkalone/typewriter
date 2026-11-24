@@ -49,8 +49,12 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     });
 
     // A fixture without approved Relations or a meaning layer reports no relation sub-stage.
-    assert.deepEqual(events.map(({ type }) => type), ['start', 'complete', 'start', 'complete', 'start', 'count', 'complete', 'start', 'complete']);
+    assert.deepEqual(events.filter(({ type }) => type !== 'count').map(({ type }) => type), ['start', 'complete', 'start', 'complete', 'start', 'complete', 'start', 'complete']);
     assert.deepEqual(events.find(({ type }) => type === 'count'), { type: 'count', stage: 'Full SQLite records', count: 6, total: 6 });
+    // Every insert phase after the records reports a final count, then the commit is announced before the stage completes.
+    const writeEnd = events.findIndex(({ type, stage }) => type === 'complete' && stage === 'Full SQLite writing');
+    assert.deepEqual(events[writeEnd - 1], { type: 'count', stage: 'Full SQLite commit', count: undefined, total: undefined });
+    assert.ok(events.some(({ stage, count, total }) => stage === 'Full SQLite STDICT relations' && count === 3 && total === 3));
     assert.equal(summary.outputPath, outputPath);
     assert.equal(summary.metadata.database_kind, 'full');
     assert.equal(existsSync(`${outputPath}.staging`), false);
@@ -330,8 +334,14 @@ test('dictionary progress uses one updating TTY line and concise non-TTY output'
     progress({ type: 'start', stage: 'Full SQLite writing' });
     progress({ type: 'count', stage: 'Full SQLite records', count: 5000, total: 6000 });
     progress({ type: 'count', stage: 'Full SQLite records', count: 6000, total: 6000 });
+    progress({ type: 'count', stage: 'Full SQLite meaning relations', count: 3, total: 10 });
+    progress({ type: 'count', stage: 'Full SQLite authored sources', count: 7 });
+    progress({ type: 'count', stage: 'Full SQLite commit' });
     progress({ type: 'complete', stage: 'Full SQLite writing', elapsedMs: 1000 });
-    assert.match(output, /6000 \/ 6000/);
+    assert.match(output, /completed \(1\.0s; Full SQLite records: 6000 \/ 6000\)/);
+    assert.equal(output.includes('meaning relations: 3 / 10'), isTTY);
+    assert.equal(output.includes('authored sources: 7'), isTTY);
+    assert.equal(output.includes('commit: in progress'), isTTY);
     assert.equal(output.includes('5000 / 6000'), isTTY);
     assert.equal(/[\r\x1b]/.test(output), isTTY);
     if (!isTTY) assert.equal(output.trim().split('\n').length, 2);

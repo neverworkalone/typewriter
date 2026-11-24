@@ -242,6 +242,22 @@ function storedMeanings(meaningLayer, model) {
     .sort((left, right) => compareMeaningIds(left.id, right.id));
 }
 
+const PROGRESS_INTERVAL = 5000;
+
+/** Counts one insert phase, reporting every PROGRESS_INTERVAL rows and once at the end. */
+function progressCounter(reportProgress, label, total) {
+  let count = 0;
+  return {
+    tick() {
+      count += 1;
+      if (count % PROGRESS_INTERVAL === 0) reportProgress(label, count, total);
+    },
+    done() {
+      if (count === 0 || count % PROGRESS_INTERVAL !== 0) reportProgress(label, count, total);
+    },
+  };
+}
+
 function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, reportProgress) {
   const insertMetadata = database.prepare(
     'INSERT INTO metadata (key, value) VALUES (?, ?)',
@@ -321,7 +337,7 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
     return sense;
   };
 
-  let insertedRecords = 0;
+  let progress = progressCounter(reportProgress, 'records', model.records.length);
   for (const record of model.records) {
     insertRecord.run(
       record.id,
@@ -338,13 +354,11 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
     record.senses.forEach((sense, position) => {
       insertSense.run(sense.id, record.id, position, sense.pos, sense.gloss);
     });
-    insertedRecords += 1;
-    if (insertedRecords % 5000 === 0 || insertedRecords === model.records.length) {
-      reportProgress(insertedRecords, model.records.length);
-    }
+    progress.tick();
   }
-  if (model.records.length === 0) reportProgress(0, 0);
+  progress.done();
 
+  progress = progressCounter(reportProgress, 'generated surface forms', surfaceFormRows.length);
   for (const row of surfaceFormRows) {
     insertGeneratedSurfaceForm.run(
       row.form,
@@ -353,10 +367,13 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
       sourceSense(row.sense_id).position,
       row.rule_id,
     );
+    progress.tick();
   }
+  progress.done();
 
   // Insert relations after every record and sense so forward references are
   // supported while SQLite still enforces the relation graph.
+  progress = progressCounter(reportProgress, 'STDICT relations', countRelations(model.records));
   for (const record of model.records) {
     for (const sense of record.senses) {
       sense.relations.forEach((relation, position) => {
@@ -369,12 +386,16 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
           relation.note,
           relation.relevance ?? null,
         );
+        progress.tick();
       });
     }
   }
+  progress.done();
 
   // The meaning layer references senses and the original relation rows, so it follows them.
-  for (const meaning of storedMeanings(meaningLayer, model)) {
+  const meanings = storedMeanings(meaningLayer, model);
+  progress = progressCounter(reportProgress, 'meanings', meanings.length);
+  for (const meaning of meanings) {
     insertMeaning.run(
       meaning.id,
       meaning.lemma,
@@ -385,7 +406,10 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
     meaning.sense_ids.forEach((senseId, position) => {
       insertMember.run(meaning.id, position, senseId, sourceSense(senseId).record_id);
     });
+    progress.tick();
   }
+  progress.done();
+  progress = progressCounter(reportProgress, 'meaning relations', meaningLayer.relations.length);
   for (const relation of meaningLayer.relations) {
     insertMeaningRelation.run(
       relation.source_meaning_id,
@@ -407,11 +431,17 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
         source.target_redirected,
       );
     });
+    progress.tick();
   }
+  progress.done();
+  progress = progressCounter(reportProgress, 'authored relations', meaningLayer.authored?.relationCount ?? 0);
   meaningLayer.authored?.forEachRelation((source, position, target, type, relevance, origin) => {
     insertMeaningRelation.run(source, position, target, type, '', relevance, origin);
+    progress.tick();
   });
+  progress.done();
   // `→` gloss evidence follows the relations it supports (Issue #834).
+  progress = progressCounter(reportProgress, 'gloss sources', meaningLayer.relations.length);
   for (const relation of meaningLayer.relations) {
     (relation.gloss_sources ?? []).forEach((source, position) => {
       insertGlossSource.run(
@@ -420,22 +450,33 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer, r
         source.target_record_id, source.target_sense_position,
       );
     });
+    progress.tick();
   }
+  progress.done();
   // Authored Relations (Issue #928): text-only rows and the approved-file provenance of every authored row.
+  progress = progressCounter(reportProgress, 'text relations', meaningLayer.textRelations.length);
   for (const relation of meaningLayer.textRelations) {
     insertTextRelation.run(relation.source_meaning_id, relation.position, relation.text, relation.type, relation.relevance);
+    progress.tick();
   }
+  progress.done();
+  progress = progressCounter(reportProgress, 'authored sources');
   meaningLayer.authored?.forEachAuthoredSource((source, relationPosition, position, direction, sourceSenseId, targetSenseId, shard, line) => {
     insertAuthoredSource.run(source, relationPosition, position, direction, sourceSenseId, targetSenseId, shard, line);
+    progress.tick();
   });
+  progress.done();
   // Derived reverse provenance follows every meaning relation it references.
+  progress = progressCounter(reportProgress, 'reverse sources', meaningLayer.relations.length);
   for (const relation of meaningLayer.relations) {
+    progress.tick();
     if (!relation.reverse_of) continue;
     insertReverseSource.run(
       relation.source_meaning_id, relation.position,
       relation.reverse_of.source_meaning_id, relation.reverse_of.position,
     );
   }
+  progress.done();
 }
 
 export function verifyDatabase(database, { includeSource = false } = {}) {
@@ -576,9 +617,11 @@ export async function buildDictionary({
     database.exec(SQLITE_SCHEMA_SQL);
     database.exec(SQLITE_SOURCE_SCHEMA_SQL);
     database.exec('BEGIN IMMEDIATE;');
-    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows, meaningLayer, (count, total) => {
-      try { onProgress?.({ type: 'count', stage: 'Full SQLite records', count, total }); } catch {}
-    });
+    const reportCount = (label, count, total) => {
+      try { onProgress?.({ type: 'count', stage: `Full SQLite ${label}`, count, total }); } catch {}
+    };
+    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows, meaningLayer, reportCount);
+    reportCount('commit');
     database.exec('COMMIT;');
     finishStage();
     finishStage = progressStage(onProgress, 'Full database verification');
