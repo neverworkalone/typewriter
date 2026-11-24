@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import NamedTuple
 
-from . import auth, cparallel, dchunk, defects, dparallel, literary, progress, refine, stage2, stage3
+from . import auth, control, defects, progress, refine, stage2, stage3
 from .config import maintainer_id, maintainer_problem
 from .github import GhTransient
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked, ResourceFenced
@@ -87,9 +87,9 @@ class Maintenance:
 
     @contextmanager
     def _source_lane(self, batch_id):
-        """Hold one production lane; never acquire a Maintainer lane or use a stale owner."""
+        """Hold one production lane; never acquire a Maintainer lane, a retired lane (#9933) or use a stale owner."""
         snapshot = self.store.batch(batch_id) if batch_id is not None else None
-        if snapshot is None or snapshot["method"] == MAINTENANCE_METHOD:
+        if snapshot is None or snapshot["method"] == MAINTENANCE_METHOD or control.retired(snapshot, self.cfg):
             yield None
             return
         with self.sup.lanes.try_hold(snapshot["producer"], snapshot["method"]) as held:
@@ -638,6 +638,8 @@ class Maintenance:
             if candidate["source"] == "verify":
                 continue
             snapshot = self.store.batch(candidate["batch_id"])
+            if snapshot is not None and control.retired(snapshot, self.cfg):
+                continue   # #9933: a retired batch's defect stays as recorded; it is never released or resumed
             if snapshot is None:
                 current = self.store.defect(candidate["id"])
                 if current is not None and current["state"] in ("FIX_MERGED", "HELD") and self.store.batch(current["batch_id"]) is None:
@@ -709,9 +711,7 @@ class Maintenance:
         if run_start is None:
             run_start = self._retargeted_run_start(b, head)
         if run_start is None and ((b["method"] == STAGE3_METHOD
-                and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] in ("s3_finalize", "s3_parallel")))
-                or (b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel")
-                or (b["method"] == literary.METHOD and b["run_kind"] == "c_parallel")):
+                and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] in ("s3_finalize", "s3_parallel")))):
             self._hold(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
                               "checkpoint/view/commit과 소유 worktree를 보존하고 자동 재개하지 않습니다.")
             return
@@ -762,10 +762,6 @@ class Maintenance:
         if dependency == "maintainer_preflight":
             producer = self.sup._adapter_problem(maintainer_id(self.cfg) or "")
             return producer is None and maintainer_id(self.cfg) is not None
-        if dependency in ("approved_literary_index", "approved_corpus_index"):
-            key = "literary_index_path" if dependency == "approved_literary_index" else "corpus_index_path"
-            path = Path(self.cfg.get(key) or "")
-            return path.is_file() and os.access(path, os.R_OK)
         if dependency == "source_worktree":
             source = self.store.batch(proof.get("batch_id"))
             if source is None or source["state"] != "PAUSED" or source["defect_id"] != proof.get("defect_id"):
@@ -818,10 +814,6 @@ class Maintenance:
         elif b["method"] == STAGE2_METHOD:   # each Stage 2 step checks its OWN baseline key
             key = {"s2_links_new": stage2.links_start_key, "s2_links_fix": stage2.links_start_key,
                    "s2_repair_new": stage2.repair_run_start_key}.get(b["run_kind"], stage2.run_start_key)(b["id"])
-        elif b["method"] == dchunk.METHOD and (b["run_kind"] == "d_parallel" or self._serial_d(b)):
-            key = dchunk.run_start_key(b["id"])   # only the run baseline moves; `d_base_head` stays the first HEAD
-        elif b["method"] == literary.METHOD and (b["run_kind"] == "c_parallel" or self._serial_c(b)):
-            key = literary.run_start_key(b["id"])   # the one approved runtime baseline; the checkpoint HEAD stays
         else:
             return None
         raw = self.store.get(key)
@@ -838,18 +830,6 @@ class Maintenance:
             if self.sup.git.head(wt) != new_head or not self.sup.git.contains(wt, base["head"]) \
                     or self.sup.git.remote_head(b["branch"]) != base["remote_head"]:
                 return None
-            if b["method"] == literary.METHOD:
-                # The baseline only moves forward when the integration kept every input the batch is bound to: the
-                # Canonical shard, the checkpoint's original identity and the exact view of each active chunk.
-                if isinstance(base.get("canonical_sha256"), str):
-                    canonical = hashlib.sha256((wt / literary.names(b).canonical).read_bytes()).hexdigest()
-                    if base["canonical_sha256"] != canonical:
-                        return None
-                elif literary.names(b).canonical in self.sup.git.changed_between(base["head"], new_head):
-                    return None   # a serial baseline records no canonical sha: the integration itself must not touch it
-                literary.checkpoint_head(wt, b)
-                for number, rec in literary.active_chunks(wt, b).items():
-                    literary.read_view(wt, rec, number)
             if b["method"] == STAGE3_METHOD:
                 checkpoint = base.get("checkpoint")
                 chunk = base.get("chunk")
@@ -875,41 +855,11 @@ class Maintenance:
             raise
         except Exception:
             return None
-        if b["method"] == literary.METHOD:   # each preserved active chunk follows the one approved runtime baseline
-            try:
-                for number, rec in literary.active_chunks(wt, b).items():
-                    if rec["git_head"] != new_head:
-                        path = wt / literary._active_paths(number)[0]
-                        tmp = path.with_name(path.name + ".tmp")
-                        tmp.write_text(json.dumps({**rec, "git_head": new_head}, sort_keys=True), "utf-8")
-                        tmp.replace(path)
-            except Exception:
-                return None
-        if b["method"] == dchunk.METHOD and self._serial_d(b):   # each preserved active chunk follows the run baseline
-            try:
-                for number, rec in dchunk.active_chunks(wt, b).items():
-                    if rec["git_head"] != new_head:
-                        path = wt / dchunk.chunk_names(b, number).active
-                        tmp = path.with_name(path.name + ".tmp")
-                        tmp.write_text(json.dumps({**rec, "git_head": new_head}, sort_keys=True), "utf-8")
-                        tmp.replace(path)
-            except Exception:
-                return None
         if base["head"] != new_head:
             base["head"] = new_head
-            stage = {STAGE2_METHOD: "Stage 2", dchunk.METHOD: "D", literary.METHOD: "C"}.get(b["method"], "Stage 3")
+            stage = "Stage 2" if b["method"] == STAGE2_METHOD else "Stage 3"
             self.store.log(b["id"], f"승인된 Maintainer 통합으로 {stage} 실행 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
         return key, json.dumps(base, sort_keys=True)
-
-    @staticmethod
-    def _serial_d(b) -> bool:
-        k = b["run_kind"] or ""
-        return b["method"] == dchunk.METHOD and (k.startswith("d_chunk_") or k == "d_finalize")
-
-    @staticmethod
-    def _serial_c(b) -> bool:
-        k = b["run_kind"] or ""
-        return b["method"] == literary.METHOD and (k.startswith("c_chunk_") or k == "c_finalize")
 
     def _retargeted_s3_parallel(self, b, new_head: str) -> tuple[str, str] | None:
         """Parallel Stage 3: move the one baseline forward and name the pending tasks whose rendered view changed.
@@ -959,10 +909,6 @@ class Maintenance:
             key = stage3.parallel_start_key(b["id"])
         elif b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
             key = f"s3_finalize_released_head_{b['id']}"
-        elif b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":
-            key = dchunk.run_start_key(b["id"])
-        elif b["method"] == literary.METHOD and b["run_kind"] == "c_parallel":
-            key = literary.run_start_key(b["id"])
         else:
             return
         try:
@@ -974,12 +920,7 @@ class Maintenance:
             for d in self.store.defects(("RELEASED",)):
                 if d["batch_id"] != b["id"] or d["integrated_sha"] != head:
                     continue
-                if b["method"] == dchunk.METHOD and b["run_kind"] == "d_parallel":
-                    old_head = recorded.get("head") if isinstance(recorded, dict) else None
-                    proven = self._released_integration_proof(b, old_head, head, d)
-                else:
-                    proven = self.sup.git.contains(Path(b["worktree"]), d["merge_sha"])
-                if proven:
+                if self.sup.git.contains(Path(b["worktree"]), d["merge_sha"]):
                     moved = self._retargeted_run_start(b, head)
                     if moved:
                         self.store.set(*moved)
@@ -1036,15 +977,13 @@ class Maintenance:
             and self.sup.git.head(Path(b["worktree"])) == new_head else None
 
     # ---- autonomous incident intake (Issues #3326, #3349) ---------------------------------------------------------
-    # Every non-ERROR -> ERROR transition of a C/D/Stage 2/Stage 3 batch carries an incident number (`Store.update`). The
+    # Every non-ERROR -> ERROR transition of a Stage 2/Stage 3 batch carries an incident number (`Store.update`). The
     # sweep below is the single intake boundary: whatever wrote the ERROR (`_fail`, a direct write, a parallel task, a
     # restart) is received here, after the batch's process and task runs are confirmed gone.
     DIAGNOSIS_FILE = ".warroom-scratch/incident-diagnosis.json"
     DIAGNOSIS_REQUEST_FILE = ".warroom-scratch/incident-diagnosis-request.json"
     DIAGNOSIS_OUTCOMES = ("undetermined", "no_code_resume", "investigate", "external")
-    DIAGNOSIS_DEPENDENCIES = ("github_auth", "maintainer_preflight", "approved_literary_index",
-                              "approved_corpus_index", "source_worktree")
-    INTAKE_METHODS = ("c", "d", "s2", "s3")
+    DIAGNOSIS_DEPENDENCIES = ("github_auth", "maintainer_preflight", "source_worktree")
 
     def _intake_errors(self) -> None:
         legacy = self.store.legacy_errors()
@@ -1053,6 +992,8 @@ class Maintenance:
             self.store.log(None, "사건 번호가 없는 기존 ERROR 배치는 자동 접수하지 않습니다(운영자 확인): "
                            + ", ".join(f"#{r['id']} {r['method']} {r['shard']}_{r['batch']}" for r in legacy), "warn")
         for snapshot in self.store.intake_candidates():
+            if control.retired(snapshot, self.cfg):
+                continue   # #9933: history only, never a new incident
             try:
                 with self.sup.lanes.try_hold(snapshot["producer"], snapshot["method"]) as held:
                     if not held:
@@ -1263,35 +1204,11 @@ class Maintenance:
             return f"보존 증명 중 조회 실패: {e}"
         return None
 
-    def approved_integration_receipt(self, b, base: str, head: str, site: str, remote_expected) -> dict | None:
-        """Proof, at the moment of rejection, that `head` is this batch's approved integration: the existing same-batch
-        RELEASED receipt + ancestry proof, the remote branch still where the baseline recorded it, and a clean worktree.
-        None (any doubt or error): the caller keeps its plain rejection."""
-        try:
-            wt = Path(b["worktree"])
-            for d in self.store.defects(("RELEASED",)):
-                if d["batch_id"] != b["id"] or d["integrated_sha"] != head:
-                    continue
-                if not self._released_integration_proof(b, base, head, d):
-                    continue
-                if self.sup.git.remote_head(b["branch"]) != remote_expected or self.sup.git.dirty(wt).strip():
-                    return None
-                return {"defect_id": d["id"], "base": base, "head": head, "site": site,
-                        "merge_sha": d["merge_sha"], "remote_head": remote_expected}
-        except Exception:
-            return None
-        return None
-
     @staticmethod
     def _evidence_keys(b) -> list[str]:
         """The only kv entries an incident bundle may carry: explicit per method (no `*_{bid}` sweep)."""
         bid = b["id"]
         extra = f"error_evidence_{bid}_{b['error_seq']}"
-        if b["method"] == "d":
-            return [f"d_base_head_{bid}", f"d_commit_head_{bid}", dchunk.run_start_key(bid),
-                    f"s2_defect_path_{bid}", extra]
-        if b["method"] == "c":
-            return [literary.run_start_key(bid), f"c_commit_head_{bid}", f"s2_defect_path_{bid}", extra]
         if b["method"] == STAGE2_METHOD:
             return [stage2.run_start_key(bid), stage2.links_start_key(bid), stage2.repair_run_start_key(bid),
                     f"s2_commit_head_{bid}", f"s2_defect_path_{bid}", extra]
@@ -1304,11 +1221,7 @@ class Maintenance:
             return None
         expected = {}
         for row in self.store.task_rows(b["id"]):
-            if b["method"] == dchunk.METHOD:
-                path = dparallel.defect_path(b, row["task"])
-            elif b["method"] == literary.METHOD:
-                path = cparallel.defect_path(b, row["task"])
-            elif b["method"] == STAGE2_METHOD:
+            if b["method"] == STAGE2_METHOD:
                 path = stage2.task_path(row["task"], "shared-defect.json")
             else:
                 continue
@@ -1587,8 +1500,7 @@ class Maintenance:
     @staticmethod
     def _batch_investigation_scope(source, tasks) -> bool:
         batch_steps = {(STAGE2_METHOD, "fix_new"), (STAGE2_METHOD, "fix_resume"),
-                       (STAGE2_METHOD, "s2_repair_new"), (literary.METHOD, "c_finalize"),
-                       (dchunk.METHOD, "d_finalize"), (STAGE2_METHOD, "s2_deterministic_finalize"),
+                       (STAGE2_METHOD, "s2_repair_new"), (STAGE2_METHOD, "s2_deterministic_finalize"),
                        (STAGE3_METHOD, "s3_finalize")}
         return (not tasks or ((source["method"], source["run_kind"]) in batch_steps
                               and all(isinstance(t, dict) and t.get("state") == "SAVED" for t in tasks)))
@@ -1779,12 +1691,7 @@ class Maintenance:
                         "next_action": defects.public(data["next_action"].strip()),
                         "baseline_task_state": task_row["state"] if task_row is not None else None,
                         "baseline_task_run_id": task_row["run_id"] if task_row is not None else None,
-                        "baseline_tasks": evidence.get("task_scope") if recovery["type"] == "continue_after_saved_report" else None,
-                        # #7812: a fully saved C checkpoint is accepted without a new run; the SAVED transition is the progress.
-                        "saved_checkpoint_accept": bool(
-                            recovery["type"] == "resume_report_task" and source["method"] == literary.METHOD
-                            and task_row is not None and not self._c_report_task_pending(source, recovery["task"])
-                            and self._c_report_task_saved_unaccepted(source, recovery["task"], task_row))}
+                        "baseline_tasks": evidence.get("task_scope") if recovery["type"] == "continue_after_saved_report" else None}
             proof = {"version": 3, "issue": data["issue"], "outcome": "no_code_resume", "base": base,
                      "branch": b["branch"], "worktree": str(b["worktree"]), **approval}
             self.store.set(f"m_diag_{b['id']}", json.dumps(proof, sort_keys=True))
@@ -1822,39 +1729,9 @@ class Maintenance:
                     and not self.store.open_task_runs(source["id"]))
 
     def _task_report_path(self, source, task: str) -> str | None:
-        if source["method"] == dchunk.METHOD:
-            return dparallel.defect_path(source, task)
-        if source["method"] == literary.METHOD:
-            return cparallel.defect_path(source, task)
         if source["method"] == STAGE2_METHOD:
             return stage2.task_path(task, "shared-defect.json")
         return None
-
-    def _c_report_task_pending(self, source, task: str) -> bool:
-        try:
-            rec = literary.read_active(Path(source["worktree"]), source, int(task))
-            if rec is None or rec.get("repair"):
-                return False
-            literary.read_view(Path(source["worktree"]), rec, int(task))
-            return bool(self.sup.cp._pending(source, rec))
-        except (literary.LiteraryError, OSError, TypeError, ValueError):
-            return False
-
-    def _c_report_task_saved_unaccepted(self, source, task: str, row) -> bool:
-        """A worker saved every Sense of its chunk and only afterwards wrote a shared-defect report (#7812): the report
-        scan stops the poll before the finished RUNNING task is accepted, so the row never reaches SAVED. Once the
-        report is archived, the ordinary `_track` -> `_after_run` accepts that fully saved checkpoint: the task row
-        moving to SAVED is the post-approval progress. Only the exact readable, non-repair chunk qualifies."""
-        if row is None or row["state"] not in ("RUNNING", "FIXQ"):
-            return False
-        try:
-            rec = literary.read_active(Path(source["worktree"]), source, int(task))
-            if rec is None or rec.get("repair"):
-                return False
-            literary.read_view(Path(source["worktree"]), rec, int(task))
-            return not self.sup.cp._pending(source, rec)
-        except (literary.LiteraryError, OSError, TypeError, ValueError):
-            return False
 
     def _validate_report_task(self, source, evidence: dict, recovery: dict) -> bool:
         """Validate the exact task whose stable shared-defect file caused the automatic pause."""
@@ -1881,27 +1758,7 @@ class Maintenance:
                 or before.get("run_id") != row["run_id"] or before.get("session_id") != row["session_id"]):
             return False
         if recovery.get("type") == "continue_after_saved_report":
-            # Only the D path currently has a demonstrated saved-report race. Preserve the saved chunk and
-            # require another existing unsaved task: the old SAVED row cannot prove post-resume progress.
-            if source["method"] != dchunk.METHOD or not any(
-                    r["state"] in ("PENDING", "FIXQ") for r in self.store.task_rows(source["id"])):
-                return False
-            try:
-                saved, _ = dchunk.verified_chunks(Path(source["worktree"]), source)
-                if int(task) not in saved or self.sup._d_chunks_problem(source, [int(task)]):
-                    return False
-            except (dchunk.DChunkError, OSError, ValueError):
-                return False
-        if source["method"] == dchunk.METHOD and not (source["run_kind"] == "d_parallel"):
-            return False
-        if source["method"] == literary.METHOD and source["run_kind"] != "c_parallel":
-            return False
-        if source["method"] == literary.METHOD and recovery.get("type") == "resume_report_task":
-            # A stopped worker may have saved before writing its report, while its task row is still FIXQ.
-            # Unsaved Senses remain, or the checkpoint is fully saved but its row was never accepted (#7812).
-            if not (self._c_report_task_pending(source, task)
-                    or self._c_report_task_saved_unaccepted(source, task, row)):
-                return False
+            return False   # only the removed D path had a demonstrated saved-report race (#9933)
         if source["method"] == STAGE2_METHOD and not str(source["run_kind"] or "").startswith("s2_"):
             return False
         try:
@@ -1939,20 +1796,13 @@ class Maintenance:
             return False
         wt = Path(source["worktree"])
         try:
-            if source["method"] == dchunk.METHOD and self._serial_d(source) and source["run_kind"].startswith("d_chunk_"):
-                record = dchunk.read_active(wt, source)
-                return bool(record is not None and chunk == f"{record['chunk_no']:03d}")
-            if source["method"] == literary.METHOD and self._serial_c(source) and source["run_kind"].startswith("c_chunk_"):
-                record = literary.read_active(wt, source)
-                return bool(record is not None and chunk == f"{record['chunk_no']:03d}")
             if source["method"] == STAGE2_METHOD and str(source["run_kind"] or "").startswith("s2_chunk_"):
                 state = stage2.checkpoint(wt, source["shard"], source["batch"])
                 return bool(state is not None and state.get("pending_chunk") == chunk)
             if source["method"] == STAGE3_METHOD and str(source["run_kind"] or "").startswith("s3_chunk_"):
                 state = refine.ops(source).checkpoint(wt, source["shard"])
                 return bool(state is not None and stage3.next_chunk(state) == chunk)
-        except (dchunk.DChunkError, literary.LiteraryError, stage3.Stage3Error,
-                OSError, ValueError, KeyError, TypeError):
+        except (stage3.Stage3Error, OSError, ValueError, KeyError, TypeError):
             return False
         return False
 
@@ -2232,7 +2082,7 @@ class Maintenance:
                 return
             task = proof.get("task")
             saved_report = proof.get("recovery_type") == "continue_after_saved_report"
-            followup = self._saved_report_followup(proof) if saved_report else None
+            followup = None   # the saved-report follow-up existed only for the removed D path (#9933)
             serial_progress = self._serial_recovery_progress(proof) if task is None else False
             if self.store.finish_no_code_recovery(m["issue_number"], proof["defect_id"],
                                                    proof["batch_id"], task,
@@ -2264,33 +2114,6 @@ class Maintenance:
                 self.store.log(m["batch_id"], f"원 task의 저장 진전을 검증하지 못해 미해결 상태를 유지합니다: {e}", "warn")
 
 
-    def _saved_report_followup(self, proof: dict) -> str | None:
-        """Validate a new D task's official accepted file, never the report's pre-existing SAVED row."""
-        batch = self.store.batch(proof["batch_id"])
-        if batch is None or batch["method"] != dchunk.METHOD:
-            return None
-        try:
-            approval = json.loads(self.store.get(f"no_code_approval_{proof['defect_id']}") or "null")
-            if not isinstance(approval, dict) or approval.get("status") != "APPROVED":
-                return None
-            eligible = approval.get("followup_tasks")
-            if not isinstance(eligible, list) or not eligible:
-                return None
-            saved, _ = dchunk.verified_chunks(Path(batch["worktree"]), batch)
-            for task in eligible:
-                row = self.store.task_row(batch["id"], task)
-                if row is None or row["state"] != "SAVED" or int(task) not in saved:
-                    continue
-                new_run = any(r["task"] == task and r["id"] > approval.get("baseline_run_id", -1)
-                              and r["ended_at"] is not None and r["exit_status"] == "0"
-                              for r in self.store.runs(batch["id"]))
-                known = self.store.get(f"d_chunk_sha_{batch['id']}_{int(task)}")
-                if new_run and known and known == dchunk.chunk_sha(Path(batch["worktree"]), batch, int(task)):
-                    return task
-        except (dchunk.DChunkError, OSError, TypeError, ValueError, KeyError):
-            return None
-        return None
-
     def _serial_recovery_progress(self, proof: dict) -> bool:
         """Confirm the exact serial chunk or saved-progress advancement on its original batch."""
         batch = self.store.batch(proof["batch_id"])
@@ -2300,9 +2123,6 @@ class Maintenance:
             return True
         try:
             chunk = proof["chunk"]
-            if batch["method"] == dchunk.METHOD:
-                saved, _total = dchunk.verified_chunks(Path(batch["worktree"]), batch)
-                return int(chunk) in saved
             if batch["method"] == STAGE3_METHOD:
                 checkpoint = refine.ops(batch).checkpoint(batch["worktree"], batch["shard"])
                 return checkpoint is not None and chunk in checkpoint["completed_chunks"]
@@ -2312,7 +2132,7 @@ class Maintenance:
                         and before.get("kind") == after.get("kind") and before.get("total") == after.get("total")
                         and type(before.get("done")) is int and type(after.get("done")) is int
                         and after["done"] > before["done"])
-        except (dchunk.DChunkError, literary.LiteraryError, stage3.Stage3Error, OSError, ValueError, KeyError, TypeError):
+        except (stage3.Stage3Error, OSError, ValueError, KeyError, TypeError):
             return False
 
     def _verify_recovery_progress(self) -> None:
@@ -2366,18 +2186,6 @@ class Maintenance:
     # `integrated_sha` stays NULL and `applied_code_sha` says which checkout carried it) and WORKTREE INTEGRATION (the fix
     # reaches the production worktree; the run baseline moves to the integrated HEAD in the release transaction itself).
     # Whatever cannot be proven is HELD with its reason and the batch stays PAUSED.
-    class _Shim:
-        """The two lookups a parallel guard takes from its per-round object, answered fresh (pure queries)."""
-
-        def __init__(self, maint, b):
-            self.maint, self.b = maint, b
-
-        def remote(self):
-            return self.maint.sup.git.remote_head(self.b["branch"])
-
-        def pr(self):
-            return self.maint.sup._find_recovery_pr(self.b)
-
     def _hold_unprovable(self, d, b, why: str) -> None:
         self._hold(d, b, f"재개 증명 불가: {b['run_kind'] or b['paused_from']}: {why}")
 
@@ -2479,10 +2287,6 @@ class Maintenance:
         k, m = b["run_kind"] or "", b["method"]
         if k.startswith("fix_") and b["pr_number"] and b["paused_from"] == "FIXING":
             return "fix"
-        if m == dchunk.METHOD:
-            return "d_parallel" if k == "d_parallel" else ("d_serial" if self._serial_d(b) else None)
-        if m == literary.METHOD:
-            return "c_parallel" if k == "c_parallel" else ("c_serial" if self._serial_c(b) else None)
         if m == STAGE2_METHOD:
             if b["paused_from"] == "PREPARE" and not k:
                 return "s2_prepare"
@@ -2501,10 +2305,6 @@ class Maintenance:
         """The FIRST recorded HEAD of the batch's current baseline chain (never rewritten by this module)."""
         if kind == "s2_finalize":
             return self.store.get(f"s2_finalize_base_{b['id']}")
-        if kind.startswith("d_"):
-            return self.store.get(f"d_base_head_{b['id']}")
-        if kind.startswith("c_"):
-            return literary.checkpoint_head(Path(b["worktree"]), b)
         key = {"s2_links": stage2.links_start_key, "s2_repair": stage2.repair_run_start_key,
                "s3_chunk": stage3.run_start_key}.get(kind, stage2.run_start_key)(b["id"])
         try:
@@ -2514,16 +2314,7 @@ class Maintenance:
 
     def _prerun_guards(self, b, kind: str, base: dict, pending: dict) -> str | None:
         """Run the resume guards of this run_kind as PURE queries against the proposed baseline. None = they all pass."""
-        sup, wt = self.sup, Path(b["worktree"])
-        shim = self._Shim(self, b)
-        if kind == "d_parallel":
-            return sup._d_parallel_head_problem(b, wt, base, pending) or sup.dp._boundary_problem(b, shim, base)
-        if kind == "d_serial":
-            return sup._d_head_problem(b, wt, base, pending) or sup._stage2_chunk_boundary_problem(b, None, base)
-        if kind == "c_parallel":
-            return sup._c_head_problem(b, wt, base, pending) or sup.cp._boundary_problem(b, shim, base)
-        if kind == "c_serial":
-            return sup._c_head_problem(b, wt, base, pending) or sup._stage2_chunk_boundary_problem(b, None, base)
+        sup = self.sup
         if kind == "s2_chunk":
             return sup._stage2_chunk_boundary_problem(b, None, base)
         if kind == "s2_links":
@@ -2714,29 +2505,13 @@ class Maintenance:
         loaded it. Unknown (no recorded code_sha, dirty runtime source, a failed lookup) waits."""
         try:
             files = self.sup.git.changed_files(d["merge_sha"])
-            batch = self.store.batch(d["batch_id"])
-            # The official D and C CLIs (and their imports) run from the Supervisor checkout (literary.cli_path /
-            # d-chunk CLI), even when the same fix is also integrated into the producer worktree. Both copies
-            # must carry it, or workers keep running the stale CLI and fail identically (#9291).
-            cli_modules = {
-                dchunk.METHOD: {"scripts/relation/d-chunk-cli.mjs", "scripts/relation/corpus-utility.mjs",
-                                "scripts/relation/candidate-contract.mjs", "scripts/relation/literary-context.mjs"},
-                literary.METHOD: {"scripts/relation/literary-context-cli.mjs",
-                                  "scripts/relation/literary-context-supervisor-cli.mjs",
-                                  "scripts/relation/literary-context.mjs", "scripts/relation/candidate-contract.mjs"},
-            }
-            d_modules = cli_modules.get(batch["method"], set()) if batch is not None else set()
-            d_runtime = bool(d_modules.intersection(files))
-            runtime = any(f.startswith("tools/warroom/warroom/") for f in files) or d_runtime
+            runtime = any(f.startswith("tools/warroom/warroom/") for f in files)
             if not runtime:
                 return False
             code = getattr(self.sup, "code_sha", None)
-            head = self.sup.git.head(self.sup.code_root) if d_runtime else code
-            clean = not d_runtime or self.sup.prompt_checkout_clean(sorted(d_modules))
-            if (code and head and clean and self.sup.git.is_ancestor(d["merge_sha"], code, path=self.sup.code_root)
-                    and self.sup.git.is_ancestor(d["merge_sha"], head, path=self.sup.code_root)):
+            if code and self.sup.git.is_ancestor(d["merge_sha"], code, path=self.sup.code_root):
                 return False
-            reason = "실행 중인 코드 SHA 또는 clean 운영 CLI에 수정이 포함된 것을 증명할 수 없습니다"
+            reason = "실행 중인 코드 SHA에 수정이 포함된 것을 증명할 수 없습니다"
         except Exception as e:
             reason = f"로드 여부를 확인하지 못했습니다: {e}"
         key = f"restart_needed_{d['id']}"

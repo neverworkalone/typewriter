@@ -58,32 +58,7 @@ def build_s2(case, nested):
     return w, w.tick
 
 
-def build_d(case, nested):
-    from tests.test_issue_3074 import ParallelDHelpers
-    h = ParallelDHelpers()
-    h.addCleanup = case.addCleanup
-    w = h.world()
-    h.plan_all(w, range(1, 11))
-    w.start("single", "deepseek", "d")
-    if not nested:
-        w.tick()
-        h.finish_task(w, "001"), h.finish_task(w, "002")
-    return w, w.tick
-
-
-def build_c(case, nested):
-    from tests.test_issue_3076 import Helpers
-    h = Helpers()
-    h.addCleanup = case.addCleanup
-    w = h.world(senses=400)
-    w.start("single", "deepseek", "c")
-    if not nested:
-        w.tick()
-        h.finish(w, "001"), h.finish(w, "002")
-    return w, w.tick
-
-
-BUILDERS = {"s2": build_s2, "d": build_d, "c": build_c, "s3": build_s3}
+BUILDERS = {"s2": build_s2, "s3": build_s3}
 
 
 class UnitAdmission(unittest.TestCase):
@@ -188,30 +163,6 @@ class UnitAdmission(unittest.TestCase):
 
     def test_s2_steady_prepare(self):
         self.check("s2", False, "prepare")
-
-    def test_d_nested_spawn(self):
-        self.check("d", True, "spawn")
-
-    def test_d_nested_prepare(self):
-        self.check("d", True, "prepare")
-
-    def test_d_steady_spawn(self):
-        self.check("d", False, "spawn")
-
-    def test_d_steady_prepare(self):
-        self.check("d", False, "prepare")
-
-    def test_c_nested_spawn(self):
-        self.check("c", True, "spawn")
-
-    def test_c_nested_prepare(self):
-        self.check("c", True, "prepare")
-
-    def test_c_steady_spawn(self):
-        self.check("c", False, "spawn")
-
-    def test_c_steady_prepare(self):
-        self.check("c", False, "prepare")
 
     def test_s3_nested_spawn(self):
         self.check("s3", True, "spawn")

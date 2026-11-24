@@ -7,18 +7,17 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.fakes import FakeAdapter, World
+from tests.fakes import FakeAdapter
 from warroom.adapters import (ClaudeCodeAdapter, Handle, ProcessAdapter, RunSpec, classify_claude_failure,
                               classify_failure)
-from warroom.config import DEFAULTS
 from warroom.shell import Result
 
-QUOTA = DEFAULTS["quota_patterns"]
+QUOTA = ["FreeUsageLimit"]   # an operator-configured quota pattern (the defaults carry none since #9933)
 PIN = RunSpec("sonnet", "medium")
 SESSION = "3bbf1f2a-27f9-4a7e-a8ec-400dc799c0f3"
 HEAD1 = "a" * 40
 HELP_NO_PERMISSION_FLAGS = "  --model <model>  --effort <level>  --output-format <format> stream-json\n  -r, --resume  -n, --name <name>  --verbose\n"
-BRANCH = "a-claude-001-01"
+BRANCH = "s2-claude-001-01-01"
 # War Room passes no permission option at all: the local Claude settings decide, never a flag from here.
 FORBIDDEN = ("--dangerously-skip-permissions", "--allow-dangerously-skip-permissions", "--permission-mode",
              "bypassPermissions", "dontAsk", "--allowedTools", "--disallowedTools", "--yolo")
@@ -293,7 +292,8 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         session_id = ProcessAdapter.session_id   # the stream carries "session_id" on every event
 
     def setUp(self):
-        self.w = World()
+        from tests.test_reload import stage2_world
+        self.w = stage2_world()   # the run under test is a Claude Stage 2 chunk
         self.w.cfg["producers"] = {"claude": {"label": "Sonnet", "adapter": "claude", "model": "sonnet", "effort": "medium"}}
         self.w.adapter = self.Reporting()
         self.w.sup.adapter = self.w.adapter
@@ -303,90 +303,45 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
 
     def test_opus_report_stops_the_run_before_a_pr_is_accepted(self):
         w = self.w
-        w.start("single", "claude", "a")
+        w.start("single", "claude", "s2")
         w.adapter.plan.append({"code": 0, "text": stream(init("claude-opus-5-5"))})   # the run's output, set before launch
         w.tick()
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
-        row = w.row("claude", "a")
+        row = w.row("claude", "s2")
         self.assertEqual(row["state"], "ERROR")
         self.assertIn("다릅니다", row["error"])
         self.assertIsNone(w.adapter.running.get(w.adapter.launches[-1]["pid"]))   # the run was stopped
 
     def test_finished_run_without_a_session_is_not_accepted_even_with_a_pr(self):
         w = self.w
-        w.start("single", "claude", "a")
+        w.start("single", "claude", "s2")
         w.pr_info(7, HEAD1)
         w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
         w.adapter.plan.append({"code": 0, "text": stream(result())})     # exits 0, never reported its session
         w.tick()
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "ERROR")
-        self.assertIn("세션", w.row("claude", "a")["error"])
+        self.assertEqual(w.row("claude", "s2")["state"], "ERROR")
+        self.assertIn("세션", w.row("claude", "s2")["error"])
 
     def test_exit0_with_an_empty_log_and_a_pr_is_not_accepted(self):
         w = self.w
-        w.start("single", "claude", "a")
+        w.start("single", "claude", "s2")
         w.pr_info(7, HEAD1)
         w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
         w.adapter.plan.append({"code": 0, "text": ""})            # exits 0 having written nothing parsable
         w.tick()
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "ERROR")
-        self.assertIn("세션", w.row("claude", "a")["error"])
-
-    def test_a_pr_is_not_adopted_from_a_live_run_before_its_session(self):
-        w = self.w
-        w.start("single", "claude", "a")
-        w.pr_info(7, HEAD1)
-        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
-        w.tick()                                                  # launched, nothing reported yet
-        w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
+        self.assertEqual(w.row("claude", "s2")["state"], "ERROR")
+        self.assertIn("세션", w.row("claude", "s2")["error"])
 
     # An open PR still passes the final result and denial gates. A merged PR can stop the producer immediately, but
     # cleanup remains owned by the Supervisor and waits for its separate cleanup state.
 
     def live_log(self, pid, text):
         Path(self.w.adapter.running[pid]["log"]).write_text(text)   # what the CLI has written so far
-
-    def test_early_pr_with_a_session_is_not_taken_over_before_the_final_result(self):
-        w = self.w
-        w.start("single", "claude", "a")
-        w.pr_info(7, HEAD1)
-        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
-        w.gh.files[7] = []  # the denial case has no verified Candidate claim
-        w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
-        w.tick()
-        pid = w.adapter.launches[-1]["pid"]
-        self.live_log(pid, stream(init()))                       # session and model known, PR already open
-        w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
-        self.assertIsNone(w.row("claude", "a")["pr_number"])
-        w.adapter.finish(pid)                                    # the final result: a denial, exit 0
-        w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "PAUSED")
-        self.assertNotIn(w.row("claude", "a")["state"], ("COMPLETE", "CLEANUP", "MERGED"))
-
-    def test_early_pr_with_a_normal_final_result_reaches_review(self):
-        w = self.w
-        w.start("single", "claude", "a")
-        w.pr_info(7, HEAD1)
-        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
-        w.gh.files[7] = [{"path": "data/relation-candidates/001/001_01_a_claude.jsonl"}]
-        w.git.remote[BRANCH] = HEAD1
-        w.adapter.plan.append({"code": 0, "text": stream(init(), result())})
-        w.tick()
-        pid = w.adapter.launches[-1]["pid"]
-        self.live_log(pid, stream(init()))
-        w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
-        w.adapter.finish(pid)
-        w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "WAITING_REVIEW")
-        self.assertEqual(w.row("claude", "a")["pr_number"], 7)
 
     def test_exit0_without_a_success_result_is_not_accepted_even_with_a_pr(self):
         # Review (post-merge, #1380): init alone, or an error result, must not reach WAITING_REVIEW.
@@ -400,48 +355,15 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
                 self.tearDown()
                 self.setUp()
                 w = self.w
-                w.start("single", "claude", "a")
+                w.start("single", "claude", "s2")
                 w.pr_info(7, HEAD1)
                 w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
                 w.adapter.plan.append({"code": 0, "text": text})
                 w.tick()
                 w.adapter.finish(w.adapter.launches[-1]["pid"])
                 w.tick()
-                self.assertEqual(w.row("claude", "a")["state"], "ERROR")
-                self.assertIsNone(w.row("claude", "a")["pr_number"])
-
-    def test_a_denial_without_any_pr_pauses(self):
-        w = self.w
-        w.start("single", "claude", "a")
-        w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
-        w.tick()
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "PAUSED")
-
-    def test_merged_pr_seen_while_the_run_is_alive_does_not_clean_up_early(self):
-        w = self.w
-        w.start("single", "claude", "a")
-        w.pr_info(7, HEAD1, state="closed", merged=True)
-        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "CLOSED", "headRefOid": HEAD1}]
-        w.gh.files[7] = [{"path": "data/relation-candidates/001/001_01_a_claude.jsonl"}]
-        w.adapter.plan.append({"code": 0, "text": stream(init(), result())})
-        w.tick()
-        pid = w.adapter.launches[-1]["pid"]
-        self.live_log(pid, stream(init()))
-        w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "MERGED")
-        self.assertFalse(w.adapter.alive(pid))
-        self.assertEqual(w.git.removed, [])   # the MERGED transition does not remove the worktree
-
-    def test_denial_pauses_for_the_operator(self):
-        w = self.w
-        w.start("single", "claude", "a")
-        w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
-        w.tick()
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "PAUSED")
+                self.assertEqual(w.row("claude", "s2")["state"], "ERROR")
+                self.assertIsNone(w.row("claude", "s2")["pr_number"])
 
 class RealProcessLaunch(unittest.TestCase):
     def test_pins_reach_the_real_child_process(self):

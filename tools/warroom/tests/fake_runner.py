@@ -5,10 +5,7 @@ import fnmatch
 import os
 from pathlib import Path
 
-from tests.fake_dchunk import FakeDChunkCli
-from tests.fake_literary import FakeLiteraryCli
 from tests.fake_s3 import FakeEditCli
-from tests.fake_workbench import CLI as WORKBENCH_CLI, FakeWorkbenchCli
 from warroom.shell import Result, Runner
 
 
@@ -26,18 +23,7 @@ class ScriptedRunner(Runner):
         self.layout_text: str | None = json.dumps({"version": 1, "legacy_through_shard": "005", "legacy_part_size": 100, "part_size": 250})
         self.layout_refs: list[str] = []          # every `<sha>:config/stage2-part-layout.json` the code asked for
         self.master_stage2_files: list[str] = []  # data/relations|relation-drops files present on the fixed master SHA
-        self.models = ["p/free-x-free", "p/go"]
-        self.models_ok = True
-        self.variant_rejected: set[str] = set()   # model#variant the fake OpenCode refuses before the provider call
-        self.probe_answer = "text"                # what an accepted probe returns: text | quota | silent | garbage
-        self.probes: list[str] = []
-        self.probe_calls: list[dict] = []         # argv + cwd of every `opencode run` (the probe)
-        self.probe_gate = None                    # threading.Event: when set, a probe waits until it is released
-        self.literary = FakeLiteraryCli()          # Method C literary-context CLI
-        self.dchunk = FakeDChunkCli()              # Method D chunk CLI + Candidate v1 validator
         self.edit = FakeEditCli()                  # Stage 3 explicit chunk CLI (#3149)
-        self.workbench = FakeWorkbenchCli()        # A/B candidate-workbench (compact I/O)
-        self.models_gate = None                   # threading.Event: `opencode models` waits until it is released
 
     def ok_auth(self, account):
         self.account = account
@@ -48,46 +34,14 @@ class ScriptedRunner(Runner):
     def run(self, argv, cwd=None, env=None, input=None, timeout=120):
         argv = ["git", *argv[1:]] if argv and os.path.basename(argv[0]) == "git" else argv   # a resolved Git path
         self.calls.append(list(argv))
-        if argv[:3] == ["node", "--input-type=module", "-e"]:
-            if "inspectActiveForSupervisor" in argv[3]:
-                return self.dchunk.inspect_internal(argv, input)
-        if len(argv) > 1 and Path(argv[1]).name == "literary-context-cli.mjs":
-            return self.literary.run(argv, cwd, env, input)
-        if len(argv) > 1 and Path(argv[1]).name == "literary-context-supervisor-cli.mjs":
-            return self.literary.run(argv, cwd, env, input)
         if len(argv) > 2 and Path(argv[1]).name == "edit-cli.mjs":
             return self.edit.run(argv, cwd)
-        if argv[:2] == WORKBENCH_CLI:
-            return self.workbench.run(argv, cwd)
-        if len(argv) > 1 and Path(argv[1]).name in ("d-chunk-cli.mjs", "candidate-contract.mjs"):
-            return self.dchunk.run(argv, cwd, env, input)
         if argv[:3] == ["gh", "api", "user"]:
             return Result(0, self.account + "\n") if self.api_ok else Result(1, "", "not logged in")
         if argv[:2] == ["gh", "api"] and ".permissions.push" in argv:
             return Result(0, self.push + "\n")
         if argv[:3] == ["gh", "auth", "git-credential"]:
             return Result(0, "username=x\npassword=SECRET\n") if self.cred_ok else Result(1, "", "no")
-        if argv[1:] == ["models"]:
-            if self.models_gate is not None:
-                self.models_gate.wait(timeout=10)
-            return Result(0, "\n".join(self.models)) if self.models_ok else Result(1, "", "boom")
-        if argv[1:2] == ["run"]:   # OpenCode start-time probe: model#variant, then the provider
-            spec = argv[argv.index("--model") + 1]
-            self.probes.append(spec)
-            self.probe_calls.append({"argv": list(argv), "cwd": cwd})
-            if self.probe_gate is not None:
-                self.probe_gate.wait(timeout=10)
-            if spec in self.variant_rejected:
-                return Result(1, json.dumps({"type": "error", "error": {"type": "provider.no-route",
-                              "message": f"Variant unavailable for {spec}"}}) + "\n")
-            if self.probe_answer == "quota":
-                return Result(1, json.dumps({"type": "error", "error": {"type": "provider.quota",
-                              "message": "Rate limit exceeded"}}) + "\n")
-            if self.probe_answer == "silent":
-                return Result(124, "", "timeout: opencode")
-            if self.probe_answer == "garbage":
-                return Result(0, "not json at all\n")
-            return Result(0, json.dumps({"type": "text", "part": {"text": "OK"}}) + "\n")
         if argv[:2] == ["git", "show"] and argv[2].endswith(":config/stage2-part-layout.json"):
             self.layout_refs.append(argv[2])
             return Result(0, self.layout_text) if self.layout_text is not None else Result(128, "", "missing")

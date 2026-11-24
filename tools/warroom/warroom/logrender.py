@@ -1,4 +1,4 @@
-"""Human-readable view of an agent log line (OpenCode `run --format json`, Claude `stream-json` and Codex `exec --json` JSON Lines).
+"""Human-readable view of an agent log line (Claude `stream-json` and Codex `exec --json` JSON Lines).
 
 Stateless and per line, so the incremental `tail -f` reader never re-parses the whole log. Only what
 the line actually contains is shown (no invented timestamps, progress or results); long strings are
@@ -46,76 +46,6 @@ def _stamp(ev: dict) -> str:
 
 def _indent(lines: list[str], first: str, rest: str) -> list[str]:
     return [(first if i == 0 else rest) + l for i, l in enumerate(lines)]
-
-
-def _tool(ev: dict, part: dict) -> list[str]:
-    st = part.get("state") if isinstance(part.get("state"), dict) else {}
-    tool = str(part.get("tool") or "tool")
-    inp = st.get("input") if isinstance(st.get("input"), dict) else {}
-    title = st.get("title") or inp.get("description")
-    head = f"{_stamp(ev)}▸ {tool}" + (f" — {_clip(str(title), MAX_INLINE)}" if title else "")
-    out = [head]
-    if tool == "bash" and isinstance(inp.get("command"), str):
-        out += _indent(_block(inp["command"], MAX_COMMAND_LINES, MAX_OUTPUT_CHARS), "  $ ", "    ")
-    else:
-        shown = [f"{k}={_clip(str(inp[k]), MAX_INLINE)}" for k in _SHORT_KEYS if k in inp and k != "description"]
-        if not shown and inp:
-            shown = [_clip(json.dumps(inp, ensure_ascii=False), MAX_INLINE)]
-        out += [f"  {s}" for s in shown]
-    status = st.get("status")
-    meta = st.get("metadata") if isinstance(st.get("metadata"), dict) else {}
-    exit_code = meta.get("exit")
-    if status and status != "completed":
-        out.append(f"  [{status}]")
-    if exit_code not in (None, ""):
-        out.append(f"  exit={exit_code}")
-    if st.get("error"):
-        out += _indent(_block(str(st["error"]), MAX_OUTPUT_LINES, MAX_OUTPUT_CHARS), "  ✖ ", "    ")
-    output = st.get("output")
-    if isinstance(output, str) and output.strip():
-        out += _indent(_block(output.rstrip(), MAX_OUTPUT_LINES, MAX_OUTPUT_CHARS), "  → ", "    ")
-    return out
-
-
-def _step_usage(part: dict) -> str:
-    tokens = part.get("tokens") if isinstance(part.get("tokens"), dict) else {}
-    cache = tokens.get("cache") if isinstance(tokens.get("cache"), dict) else {}
-
-    def count(value):
-        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
-
-    fresh = count(tokens.get("input"))
-    read, write = count(cache.get("read")), count(cache.get("write"))
-    total_input = fresh + read + write if fresh is not None and read is not None and write is not None else None
-    output, reasoning = count(tokens.get("output")), count(tokens.get("reasoning"))
-    fields = []
-    if total_input is not None:
-        fields.append(f"input {total_input:,} (fresh {fresh:,}, cache {read:,}/{write:,})")
-    else:
-        fields.append("input unknown")
-    if output is None:
-        fields.append("output unknown")
-    elif reasoning is None:
-        fields.append(f"output {output:,}")
-    else:
-        fields.append(f"output {output:,} (reasoning subset {reasoning:,})")
-    if reasoning is None:
-        fields.append("reasoning unknown")
-    elif output is None:
-        fields.append(f"reasoning {reasoning:,}")
-    return " · " + ", ".join(fields) if isinstance(tokens, dict) and tokens else ""
-
-
-def _error(ev: dict) -> list[str]:
-    err = ev.get("error")
-    if isinstance(err, dict):
-        data = err.get("data") if isinstance(err.get("data"), dict) else {}
-        msg = data.get("message") or err.get("message")
-        name = err.get("name")
-        body = " — ".join(str(x) for x in (name, msg) if x) or json.dumps(err, ensure_ascii=False)
-    else:
-        body = str(err) if err else json.dumps(ev, ensure_ascii=False)
-    return _indent(_block(body, 20, 4000), f"{_stamp(ev)}✖ ERROR: ", "    ")
 
 
 _CLAUDE_HIDDEN = ("commands_changed", "post_turn_summary", "rate_limit_event")   # noise in the readable view; Raw Log keeps them
@@ -276,21 +206,5 @@ def render_line(raw: str, seen: set | None = None) -> list[str]:
     codex = _codex(ev, seen)
     if codex is not None:
         return [redact(l) for l in codex]
-    part = ev.get("part") if isinstance(ev.get("part"), dict) else {}
-    kind = ev.get("type")
-    if kind == "text" and isinstance(part.get("text"), str):
-        out = _indent(_clip(part["text"].strip(), MAX_TEXT).splitlines() or [""], f"{_stamp(ev)}● ", "  ")
-    elif kind == "reasoning" and isinstance(part.get("text"), str):
-        out = _indent(_clip(part["text"].strip(), MAX_TEXT).splitlines() or [""], f"{_stamp(ev)}… ", "  ")
-    elif kind == "tool_use":
-        out = _tool(ev, part)
-    elif kind == "error":
-        out = _error(ev)
-    elif kind == "step_start":
-        out = [f"{_stamp(ev)}── step ──"]
-    elif kind == "step_finish":
-        reason = part.get("reason")
-        out = [f"{_stamp(ev)}── step 종료" + (f" ({reason})" if reason else "") + _step_usage(part) + " ──"]
-    else:
-        out = [f"{_stamp(ev)}? {kind or 'event'}: " + _clip(json.dumps(ev, ensure_ascii=False), MAX_INLINE)]
+    out = [f"{_stamp(ev)}? {ev.get('type') or 'event'}: " + _clip(json.dumps(ev, ensure_ascii=False), MAX_INLINE)]
     return [redact(l) for l in out]

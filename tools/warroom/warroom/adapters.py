@@ -14,8 +14,6 @@ import shutil
 import signal
 import subprocess
 import sys
-import tempfile
-import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -103,7 +101,7 @@ class AgentAdapter:
 
 
 def is_answer_only(env) -> bool:
-    """The Supervisor marks an A/B answer-only chunk launch (`_launch_env`): the AI only answers; nothing it writes counts."""
+    """The Supervisor marks an answer-only launch (`_launch_env`): the AI only answers; nothing it writes counts."""
     return env.get("WARROOM_ANSWER_ONLY") == "1"
 
 
@@ -326,158 +324,7 @@ def _pinned(run: RunSpec) -> RunSpec:
     return run
 
 
-PREFLIGHT_PROMPT = "Reply with exactly: OK"
-# Every tool is denied for the probe. Verified on opencode 2.0.32 with --standalone: the model gets no tool and nothing runs.
-PROBE_PERMISSIONS = '{"permission":{"*":"deny"}}'
 PREFLIGHT_PENDING = "추론 수준 확인 중"   # a reason that means "not yet known", not "refused"
-PROBE_TIMEOUT = 90
-
-
-class OpenCodeAdapter(ProcessAdapter):
-    name = "opencode"
-    capabilities = {"resume": True, "stop": True}
-
-    def __init__(self, binary: str = "opencode", probe_async: bool = True):
-        self.binary = binary
-        self.probe_async = probe_async   # True: probes and the model listing run in the background, never blocking a tick
-        self._probes: dict[str, dict] = {}   # model#variant -> {"done": Event, "problem": str | None}
-        self._listing: dict | None = None    # `opencode models`, listed once per Supervisor life
-        self._probe_lock = threading.Lock()
-
-    @staticmethod
-    def model_arg(run: RunSpec) -> str:
-        # The installed CLI has no --variant flag (`opencode run --variant` -> "Unrecognized flag");
-        # the reasoning variant is the `#variant` suffix of --model (provider/model#variant).
-        return f"{run.model}#{run.effort}"
-
-    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
-        cmd = [self.binary, "run", "--auto", "--format", "json", "--title", title,
-               "--model", self.model_arg(_pinned(run))]
-        return self._spawn(cmd + [self._argv_prompt(prompt, log_file)], cwd, env, log_file, exit_file)
-
-    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
-        cmd = [self.binary, "run", "--auto", "--format", "json", "--session", session_id,
-               "--model", self.model_arg(_pinned(run))]
-        return self._spawn(cmd + [self._argv_prompt(prompt, log_file)], cwd, env, log_file, exit_file)
-
-    def _argv_prompt(self, prompt: str, log_file) -> str:
-        """opencode takes the message only as arguments: an oversized prompt goes to a file it is told to follow."""
-        if not self._prompt_via_stdin(prompt):
-            return prompt
-        f = Path(log_file).with_name(Path(log_file).name + ".prompt")
-        f.parent.mkdir(parents=True, exist_ok=True)
-        f.write_text(prompt, "utf-8")
-        return f"Your complete instructions are in the file {f}. Read it in full and follow it exactly as this task's prompt."
-
-    def preflight(self, runner, env, runs, answer_required=frozenset()):
-        """`answer_required`: models (the GOAT/API tier) whose probe must show a clean answer, not just a provider reply."""
-        listing = self._model_listing(runner, env)
-        if not listing["done"].is_set():
-            return f"{PREFLIGHT_PENDING} 모델 목록"
-        if listing["problem"]:
-            return listing["problem"]
-        missing = [r.model for r in runs if r.model not in listing["ids"]]
-        if missing:
-            return f"OpenCode가 지원하지 않는 모델 ID: {', '.join(missing)}"
-        for run in runs:
-            problem = self._variant_problem(runner, env, run, strict=run.model in answer_required)
-            if problem:
-                return problem
-        return None
-
-    def _model_listing(self, runner, env) -> dict:
-        """`opencode models`, listed once per Supervisor life. A slow listing runs in the background, so it never
-        holds up a tick; until it finishes the caller gets PREFLIGHT_PENDING."""
-        with self._probe_lock:
-            if self._listing is None:
-                self._listing = {"done": threading.Event(), "ids": set(), "problem": None}
-                if self.probe_async:
-                    threading.Thread(target=self._list_models, args=(runner, env, self._listing), daemon=True).start()
-                else:
-                    self._list_models(runner, env, self._listing)
-        return self._listing
-
-    def _list_models(self, runner, env, listing) -> None:
-        try:
-            res = runner.run([self.binary, "models"], env=env, timeout=60)
-            if res.ok:
-                listing["ids"] = set(res.out.split())
-            else:
-                listing["problem"] = f"`{self.binary} models` 실행 실패: {res.err.strip()[:200]}"
-        except Exception as e:   # any failure is fail-closed
-            listing["problem"] = f"`{self.binary} models` 실행 실패: {e}"
-        finally:
-            listing["done"].set()
-
-    def _variant_problem(self, runner, env, run, strict: bool = False) -> str | None:
-        """Start-time proof that the CLI accepts this model+variant (`--model <id>#<effort>`).
-
-        Each pair is probed once per Supervisor life. While its probe runs this returns a PREFLIGHT_PENDING reason,
-        so the caller waits for it on a later tick and the other Lines keep moving.
-        """
-        key = self.model_arg(run)
-        cache_key = f"{key}|strict" if strict else key   # a strict answer proof and a variant proof never share a result
-        with self._probe_lock:
-            probe = self._probes.get(cache_key)
-            if probe is None:
-                probe = self._probes[cache_key] = {"done": threading.Event(), "problem": None}
-                if self.probe_async:
-                    threading.Thread(target=self._probe, args=(runner, env, run, probe, strict), daemon=True).start()
-                else:
-                    self._probe(runner, env, run, probe, strict)
-        if not probe["done"].is_set():
-            return f"{PREFLIGHT_PENDING} {key}"
-        return probe["problem"]
-
-    def _probe(self, runner, env, run, probe, strict: bool = False) -> None:
-        """One short request from an empty directory outside the repository, without `--auto` and without tools.
-
-        The CLI validates the variant before it calls the provider: `Variant unavailable` refuses; an answer or a
-        provider error proves it. Anything else (silence, timeout, unreadable output) is not proof and blocks.
-        """
-        work = Path(tempfile.mkdtemp(prefix="wr-variant-probe-"))
-        try:
-            res = runner.run([self.binary, "run", "--standalone", "--format", "json", "--title", "WR preflight",
-                              "--model", self.model_arg(run), PREFLIGHT_PROMPT],
-                             cwd=work, env={**env, "OPENCODE_CONFIG_CONTENT": PROBE_PERMISSIONS},
-                             input="", timeout=PROBE_TIMEOUT)
-            probe["problem"] = self._probe_outcome(res, run, strict)
-        except Exception as e:   # any failure is "not proven"
-            probe["problem"] = f"OpenCode가 {run.model}의 추론 수준을 확인하지 못했습니다 ({e}) — 실행하지 않습니다."
-        finally:
-            shutil.rmtree(work, ignore_errors=True)
-            probe["done"].set()
-
-    @staticmethod
-    def _probe_outcome(res, run, strict: bool = False) -> str | None:
-        """Non-strict (Free/Go): an answer or a provider error proves the variant. Strict (the API/GOAT tier, #6027):
-        only a clean answer passes — exit 0, a top-level text event and no top-level error event."""
-        if "Variant unavailable" in (res.out + res.err):
-            return f"OpenCode가 {run.model}에서 추론 수준(variant) {run.effort!r}를 지원하지 않습니다 — Start를 차단합니다."
-        events = []
-        for line in res.out.splitlines():
-            try:
-                events.append(json.loads(line))
-            except ValueError:
-                continue
-        answered = any(isinstance(e, dict) and e.get("type") == "text" for e in events)
-        provider_reached = any(isinstance(e, dict) and e.get("type") == "error"
-                               and str((e.get("error") or {}).get("type", "")).startswith("provider.") for e in events)
-        if strict:
-            errors = [e.get("error") or {} for e in events if isinstance(e, dict) and e.get("type") == "error"]
-            if answered and not errors and res.code == 0:
-                return None
-            # Only the error's type/status: a provider body is never echoed (it may carry account details).
-            detail = ", ".join(f"{(x.get('type') if isinstance(x, dict) else None) or 'error'}"
-                               f"{'/' + str(x.get('status')) if isinstance(x, dict) and x.get('status') is not None else ''}"
-                               for x in errors) or ("응답 없음" if not answered else "비정상 종료")
-            return (f"OpenCode가 {run.model}#{run.effort}에서 정상 응답을 확인하지 못했습니다 (exit {res.code}: {detail}) — "
-                    "인증·모델·한도 확인 전에는 실행하지 않습니다.")
-        if answered or provider_reached:
-            return None
-        detail = (res.err or res.out).strip()[:200]
-        return (f"OpenCode가 {run.model}#{run.effort}의 추론 수준을 확인하지 못했습니다 (exit {res.code}: {detail}) — "
-                "검증되지 않은 설정으로 실행하지 않습니다.")
 
 
 # Permissions are the operator's own local Claude settings (~/.claude/settings.json, project settings), applied by
@@ -534,15 +381,13 @@ def _json_objects(text: str):
 
 
 def final_answer(log_file) -> str | None:
-    """The last assistant answer in one launch's log, for any of the three CLIs:
-    Claude `result.result` (success only), Codex the last completed `agent_message`, OpenCode the text parts of the
-    last step that produced text. A log is one launch, so an earlier run's answer can never be returned."""
+    """The last assistant answer in one launch's log: Claude `result.result` (success only), Codex the last completed
+    `agent_message`. A log is one launch, so an earlier run's answer can never be returned."""
     try:
         text = Path(log_file).read_text("utf-8", errors="replace")
     except OSError:
         return None
     claude = codex = None
-    steps: list[list[str]] = [[]]
     for o in _json_objects(text):
         kind = o.get("type")
         if kind == "result" and o.get("subtype") == "success" and o.get("is_error") is False and isinstance(o.get("result"), str):
@@ -550,18 +395,7 @@ def final_answer(log_file) -> str | None:
         elif kind == "item.completed" and isinstance(o.get("item"), dict) and o["item"].get("type") == "agent_message" \
                 and isinstance(o["item"].get("text"), str):
             codex = o["item"]["text"]
-        elif kind == "step_start":
-            steps.append([])
-        elif kind == "text" and isinstance(o.get("part"), dict) and isinstance(o["part"].get("text"), str):
-            steps[-1].append(o["part"]["text"])
-    if claude is not None:
-        return claude
-    if codex is not None:
-        return codex
-    for texts in reversed(steps):
-        if texts:
-            return "".join(texts)
-    return None
+    return claude if claude is not None else codex
 
 
 class ClaudeCodeAdapter(ProcessAdapter):
@@ -813,7 +647,6 @@ PROMPT_POLICY_REFUSALS = {
         "https://platform.openai.com/docs/guides/reasoning#advice-on-prompting",
     ),
     "claude": (),
-    "opencode": (),
 }
 
 
@@ -1108,131 +941,7 @@ def _logged_in(out: str) -> bool:
         return False
 
 
-QUOTA_EVIDENCE = "provider.quota / FreeUsageLimitError / 429"
-
-
-def _is_free_quota_event(e: object) -> bool:
-    """A top-level OpenCode `error` event whose provider body is FreeUsageLimitError; nothing looser qualifies."""
-    err = e.get("error") if isinstance(e, dict) and e.get("type") == "error" else None
-    if not isinstance(err, dict) or err.get("type") != "provider.quota":
-        return False
-    status = err.get("status")
-    resp = err.get("response")
-    body = resp.get("body") if isinstance(resp, dict) else None
-    if isinstance(status, bool) or status != 429 or not isinstance(body, str):
-        return False
-    try:
-        inner = json.loads(body)
-    except ValueError:
-        return False
-    inner_err = inner.get("error") if isinstance(inner, dict) else None
-    return isinstance(inner_err, dict) and inner_err.get("type") == "FreeUsageLimitError"
-
-
-def opencode_free_quota(log_file: str | Path) -> bool:
-    """True only when this run's JSONL log holds a real provider Free-quota error event.
-
-    The file is streamed line by line, so an error event is never lost to a tail cut; AI text, tool output
-    and embedded JSON strings are never top-level events and cannot qualify. Unreadable or malformed
-    input is simply not evidence (fail closed: the caller keeps its non-paid recovery paths)."""
-    try:
-        with open(log_file, encoding="utf-8", errors="replace") as fh:
-            for line in fh:
-                if '"provider.quota"' not in line:
-                    continue
-                try:
-                    ev = json.loads(line)
-                except ValueError:
-                    continue
-                if _is_free_quota_event(ev):
-                    return True
-    except OSError:
-        return False
-    return False
-
-
-GOAT_PROVIDER = "commandcode/"   # #6027: the persisted model ID of a Command Code GOAT run starts with this provider
-
-
-def is_goat_model(model: object) -> bool:
-    """A run was a GOAT run iff its PERSISTED model ID names the GOAT provider (never the current config or tier)."""
-    return isinstance(model, str) and model.startswith(GOAT_PROVIDER)
-
-
-def opencode_provider_errors(log_file: str | Path) -> tuple[list[dict], str]:
-    """Top-level OpenCode `error` events ({type, status, param}) and the non-JSON CLI diagnostic lines of one run log.
-
-    Every other JSON line (AI text, tool output, step events) is ignored, so a string the model or a tool printed
-    can never become a billing, limit or auth verdict. `param` is the provider body's `error.param`, when the body is
-    JSON. Unreadable input is simply no evidence."""
-    errors, diagnostic = [], []
-    try:
-        with open(log_file, encoding="utf-8", errors="replace") as fh:
-            for line in fh:
-                try:
-                    ev = json.loads(line)
-                except ValueError:
-                    if line.strip():
-                        diagnostic.append(line.rstrip("\n"))
-                    continue
-                err = ev.get("error") if isinstance(ev, dict) and ev.get("type") == "error" else None
-                if not isinstance(err, dict):
-                    continue
-                status = err.get("status")
-                resp = err.get("response")
-                body = resp.get("body") if isinstance(resp, dict) else None
-                param = None
-                if isinstance(body, str):
-                    try:
-                        inner = json.loads(body)
-                    except ValueError:
-                        inner = None
-                    inner_err = inner.get("error") if isinstance(inner, dict) else None
-                    if isinstance(inner_err, dict) and isinstance(inner_err.get("param"), str):
-                        param = inner_err["param"]
-                errors.append({"type": err.get("type") if isinstance(err.get("type"), str) else "",
-                               "status": status if isinstance(status, int) and not isinstance(status, bool) else None,
-                               "param": param,
-                               "message": err.get("message") if isinstance(err.get("message"), str) else ""})
-    except OSError:
-        return [], ""
-    return errors, "\n".join(diagnostic[-200:])
-
-
-def classify_goat_failure(log_file: str | Path) -> str:
-    """'auth' | 'usage_limit' | 'network' | 'effort' | 'session_missing' | 'unknown' for a GOAT run.
-
-    Only top-level provider error events decide billing, limit and auth. A 429 is never split into limit vs.
-    transient without evidence: it is a hold (`usage_limit`). Without a provider event only the non-JSON CLI
-    diagnostics are classified; no evidence is `unknown` (held, never a silent new session or paid fallback)."""
-    errors, diagnostic = opencode_provider_errors(log_file)
-    for e in errors:
-        status = e["status"]
-        if status in (401, 403):
-            return "auth"
-        if status == 429:
-            return "usage_limit"
-    for e in errors:
-        if e["status"] == 400 and e["param"] == "reasoning_effort":
-            return "effort"
-        if isinstance(e["status"], int) and 500 <= e["status"] <= 599:
-            return "network"
-        # A dropped connection mid-stream reports its HTTP status as 200; the transport type and a network-fault
-        # message are the evidence (a transient fault, retried within the existing bounded network backoff).
-        if e["type"] == "provider.transport" and classify_failure(e["message"], []) == "network":
-            return "network"
-        # A response stream cut off before its terminating finish_reason is a truncated transfer (also status 200),
-        # not a model or contract fault: the same transient class, resumed in the preserved session.
-        if e["type"] == "provider.invalid-output" and "stream ended without finish_reason" in e["message"].lower():
-            return "network"
-    if errors:
-        return "unknown"
-    # CLI diagnostics may prove a CLI-side condition, never billing, limit or auth (those need a provider event).
-    cls = classify_failure(diagnostic, []) if diagnostic else "unknown"
-    return cls if cls in ("effort", "session_missing", "network") else "unknown"
-
-
-# --- failure classification: a structured OpenCode Free-quota error is the ONLY trigger for Go ---
+# --- failure classification ---
 def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
     """'free_quota' | 'usage_limit' | 'effort' | 'rate_limit' | 'auth' | 'network' | 'unknown'.
 
@@ -1280,22 +989,6 @@ def usage_limit_reset_at(log_text: str) -> float | None:
         except ValueError:
             continue
         return when.timestamp()
-    return _opencode_retry_after(log_text)
-
-
-def _opencode_retry_after(log_text: str) -> float | None:
-    """Epoch seconds a top-level OpenCode 429 `error` event states through `retryAfterMs` (event time + delay)."""
-    for line in log_text.splitlines():
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
-        err = ev.get("error") if isinstance(ev, dict) and ev.get("type") == "error" else None
-        if not isinstance(err, dict) or err.get("status") != 429:
-            continue
-        delay, stamp = err.get("retryAfterMs"), ev.get("timestamp")
-        if all(isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0 for v in (delay, stamp)):
-            return (stamp + delay) / 1000
     return None
 
 

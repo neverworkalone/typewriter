@@ -86,19 +86,16 @@ class DeterministicStage2Completion(unittest.TestCase):
         self.assertIn("missing candidate", b["error"])
 
     def test_non_stage2_denial_still_requires_a_clean_owned_pr_at_local_head(self):
+        from tests.test_issue_1555 import make_batch
         w = base_s2_world(self)
-        w.runner.set_batches(canon={1: 1000}, done={})
-        w.adapter.plan.append({"code": 0, "session": "ses_a"})
-        control.start(w.store, "claude", "a", "single", cfg=w.cfg)
-        w.tick()
-        b = w.store.active_batch("claude", "a")
+        b = make_batch(w, "s3", "claude", "004", "all", "s3_chunk_new")   # a batch without a Part verify
         self.assertIsNotNone(b)
         head = "c" * 40
         w.git.local_head = head
         w.git.remote[b["branch"]] = head
         w.gh.git = w.git
         w.gh.created_prs = []
-        w.gh._register(b["branch"], "test", "", [])
+        w.gh._register(b["branch"], "[S3/Claude] 004", "implements #2455", [])   # the shard's own issue-linked PR
         b = w.store.batch(b["id"])
         self.assertIsNone(w.sup._denied_run_problem(b))
         w.git.dirty_text = " M README.md\n"

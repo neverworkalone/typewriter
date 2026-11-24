@@ -1,7 +1,7 @@
 import unittest
 
 from tests.fake_runner import ScriptedRunner
-from warroom import auth, batches, reviews
+from warroom import auth, reviews
 from warroom.adapters import classify_failure
 from warroom.config import Paths
 
@@ -140,64 +140,6 @@ class AuthIsolation(unittest.TestCase):
                 # never switches accounts or writes global config
                 self.assertFalse(any(c[:3] == ["gh", "auth", "switch"] or c[:3] == ["git", "config", "--global"]
                                      for c in r.calls))
-
-
-class BatchSelection(unittest.TestCase):
-    def pick(self, canon, done, prs=(), owned=(), method="a", runner=None):
-        r = runner or ScriptedRunner()
-        r.set_batches(canon, done)
-        return batches.next_batch(r, ".", {}, ref="origin/master", method=method, producer="deepseek",
-                                  open_prs=list(prs), owned=set(owned))
-
-    def path(self, s, b):
-        return f"data/relation-candidates/{s:03d}/{s:03d}_{b:02d}_a_deepseek.jsonl"
-
-    def test_table(self):
-        canon = {1: 1000, 2: 600}
-        d1 = {self.path(1, 1): 500}
-        pr = {"files": [{"path": self.path(1, 2)}]}
-        other_model = {"files": [{"path": "data/relation-candidates/001/001_02_a_codex.jsonl"}]}
-        for name, done, prs, owned, want in [
-            ("first", {}, [], [], ("001", "01")),
-            ("skips done", d1, [], [], ("001", "02")),
-            ("open PR same model occupies", d1, [pr], [], ("002", "01")),
-            ("other model PR does not", d1, [other_model], [], ("001", "02")),
-            ("owned by War Room", d1, [], [("001", "02")], ("002", "01")),
-            ("short last batch", {**d1, self.path(1, 2): 500, self.path(2, 1): 500}, [], [], ("002", "02")),
-        ]:
-            with self.subTest(name):
-                b = self.pick(canon, done, prs, owned)
-                self.assertEqual((b.shard, b.batch), want)
-        self.assertEqual(self.pick(canon, {**d1, self.path(1, 2): 500, self.path(2, 1): 500}).records, 100)
-
-    def test_completion_is_by_path_and_reads_only_the_selected_canonical_shard(self):
-        """#9571: completed Candidates are never grepped; only the selected shard's Canonical is counted."""
-        r = ScriptedRunner()
-        self.assertEqual(self.pick({1: 1000, 2: 1000}, {self.path(1, 1): 499, self.path(1, 2): 500}, runner=r).stem,
-                         "002_01")
-        greps = [c[c.index("--") + 1:] for c in r.calls if c[:2] == ["git", "grep"]]
-        self.assertEqual(greps, [["data/canonical/stdict-0002.jsonl"]])
-
-    def test_shared_queue_conflict_and_missing_selected_canonical_are_errors(self):
-        both = {"data/relation-candidates/001/001_01_d_codex.jsonl": 500,
-                "data/relation-candidates/001/001_01_d_claude.jsonl": 500}
-        with self.assertRaises(batches.BatchError):
-            self.pick({1: 1000}, both, method="d")
-        with self.assertRaises(batches.BatchError):
-            self.pick({1: 1000}, {self.path(1, 1): 500, self.path(1, 2): 500})
-
-    def test_exhausted(self):
-        self.assertIsNone(batches.next_batch(
-            _AllDone(), ".", {}, ref="r", method="a", producer="deepseek", open_prs=[], owned=set()))
-
-
-class _AllDone(ScriptedRunner):
-    def __init__(self):
-        super().__init__()
-        self.canon = {i: 1000 for i in range(1, 429)}
-        self.canon[428] = 583
-        self.done = {f"data/relation-candidates/{s:03d}/{s:03d}_{b:02d}_a_deepseek.jsonl":
-                     (500 if not (s == 428 and b == 2) else 83) for s in range(1, 429) for b in (1, 2)}
 
 
 if __name__ == "__main__":

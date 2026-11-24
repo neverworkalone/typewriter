@@ -1,6 +1,6 @@
 """GitHub identity isolation.
 
-War Room children (gh, git, OpenCode) get an environment that is scoped to the
+War Room children (gh, git, the agent CLIs) get an environment that is scoped to the
 producer account via env vars only. `gh auth switch`, `git config --global` and
 the user's own GH_TOKEN/GITHUB_TOKEN are never touched or inherited.
 """

@@ -1,57 +1,22 @@
-"""Pick the next unfinished, unclaimed 500-record batch for one Line.
+"""Open-PR shard claims for Stage 2/3 batches and the shared Git/Candidate-path helpers Stage 2 reads.
 
-Follows #860 (A/B), #1155 (C) and #1156 (D): scan shards in order; a batch is done when master has its
-formal Candidate path (path/existence only: historical Candidate content is never re-read, #9571); an open
-PR touching the same candidate file claims it. A/B keep one queue per (method, model). C/D share one queue
-per method across every model: a file or open PR of any model completes/claims the batch, so two models
-never produce the same C/D batch. Conflicting C/D files are surfaced, never skipped or regenerated. Only
-the selected batch's Canonical shard is counted, for its record total.
+A Stage 2 or Stage 3 PR occupies the shard whose Relation/Drop files it touches (#927); a formal Polish data PR occupies
+none (#8784). The Stage 1 Candidate filename pattern stays here because Stage 2 consumes those preserved files.
 """
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 from .realgit import resolve_git
 from .shell import Runner
-from .store import SHARED_QUEUE_METHODS, STAGE2_METHOD, STAGE3_METHOD
+from .store import STAGE2_METHOD
 
-SHARDS = 428
-BATCH_SIZE = 500
 # Repo-root, whole-path match: `experiments/.../data/relation-candidates/...` is not a production Candidate.
 _CAND = re.compile(r"data/relation-candidates/(\d{3})/\1_(\d{2})_([a-d])_([a-z0-9-]+)\.jsonl")
 
 
 class BatchError(Exception):
     pass
-
-
-@dataclass(frozen=True)
-class Batch:
-    shard: str
-    batch: str
-    records: int
-
-    @property
-    def stem(self) -> str:
-        return f"{self.shard}_{self.batch}"
-
-
-def pr_candidates(pr: dict) -> list[tuple[str, str, str, str]]:
-    """(shard, batch, method, producer) of every Candidate file an open PR touches.
-
-    The single reader of a PR's file list: a missing/None list is *unknown*, never "no files", so a
-    caller cannot conclude "no duplicate" from it. Only a known list (possibly `[]`) is trusted.
-    """
-    files = pr.get("files")
-    if not isinstance(files, list):
-        raise BatchError(f"열린 PR #{pr.get('number')}의 파일 목록을 알 수 없어 중복 점유를 배제할 수 없습니다")
-    out = []
-    for f in files:
-        m = _CAND.fullmatch((f or {}).get("path", ""))
-        if m:
-            out.append((m.group(1), m.group(2), m.group(3), m.group(4)))
-    return out
 
 
 # Stage 2 writes only the shard's cumulative Relation/Drop files (#927): a PR touching them occupies that shard.
@@ -75,7 +40,7 @@ def is_polish_data_pr(pr: dict) -> bool:
 
 
 def pr_stage2_shards(pr: dict) -> set[str]:
-    """Shards whose Stage 2 Relation/Drop files an open PR touches (same unknown-list rule as `pr_candidates`).
+    """Shards whose Stage 2 Relation/Drop files an open PR touches (an unknown file list is never "no files").
 
     A formal Polish data PR occupies none (#8784); Stage 2 and Stage 3 PRs keep their mutual shard occupancy."""
     files = pr.get("files")
@@ -92,24 +57,12 @@ def pr_stage3_shards(pr: dict) -> set[str]:
 
 
 def pr_claims(b, pr: dict) -> list:
-    """What an open PR claims, in the shape `expected_claim(b)` uses: Candidate keys for A-D, shard keys for Stage 2."""
-    if b["method"] == STAGE2_METHOD:
-        return [(STAGE2_METHOD, s) for s in sorted(pr_stage2_shards(pr))]
-    if b["method"] == STAGE3_METHOD:
-        return [(STAGE3_METHOD, s) for s in sorted(pr_stage3_shards(pr))]
-    return pr_candidates(pr)
+    """What an open PR claims, in the shape `expected_claim(b)` uses: Stage 2/3 shard keys."""
+    return [(b["method"], s) for s in sorted(pr_stage2_shards(pr) if b["method"] == STAGE2_METHOD else pr_stage3_shards(pr))]
 
 
 def expected_claim(b) -> tuple:
-    if b["method"] == STAGE2_METHOD:
-        return (STAGE2_METHOD, b["shard"])
-    if b["method"] == STAGE3_METHOD:
-        return (STAGE3_METHOD, b["shard"])
-    return (b["shard"], b["batch"], b["method"], b["producer"])
-
-
-def is_shared_queue(method: str) -> bool:
-    return method in SHARED_QUEUE_METHODS
+    return (b["method"], b["shard"])
 
 
 def _git_bin(env) -> str:
@@ -131,57 +84,3 @@ def _counts(runner: Runner, root, env, ref: str, pathspec: str) -> dict[str, int
         path, _, n = line.rpartition(":")
         out[path.removeprefix(f"{ref}:")] = int(n)
     return out
-
-
-def _candidate_paths(runner: Runner, root, env, ref: str) -> list[str]:
-    """Every formal Candidate path on `ref`, from the tree alone (`git ls-tree`): no file content is read."""
-    res = runner.run([_git_bin(env), "ls-tree", "-r", "--name-only", ref, "--", "data/relation-candidates"],
-                     cwd=root, env=env, timeout=120)
-    if not res.ok:
-        raise BatchError(f"git ls-tree data/relation-candidates: {res.err.strip()}")
-    return [p for p in res.out.splitlines() if _CAND.fullmatch(p)]
-
-
-def expected_records(canon: dict[str, int], shard: int, batch: int) -> int:
-    total = canon.get(f"data/canonical/stdict-{shard:04d}.jsonl")
-    if total is None:
-        raise BatchError(f"canonical shard {shard:04d} missing on master")
-    return min(max(total - (batch - 1) * BATCH_SIZE, 0), BATCH_SIZE)
-
-
-def next_batch(runner: Runner, root, env, *, ref: str, method: str, producer: str,
-               open_prs: list[dict], owned: set[tuple[str, str]]) -> Batch | None:
-    """None means every batch is done/claimed. Raises BatchError on conflicting C/D files, an unknown open-PR file
-    list or a missing selected Canonical shard.
-
-    `owned` is what this War Room already holds: the Line's own batches for A/B, every model's for C/D.
-    """
-    shared = is_shared_queue(method)
-    done: dict[tuple[str, str], list[str]] = {}
-    for path in _candidate_paths(runner, root, env, ref):
-        m = _CAND.fullmatch(path)
-        if m.group(3) == method and (shared or m.group(4) == producer):
-            done.setdefault((m.group(1), m.group(2)), []).append(path)
-    for key, files in done.items():
-        if len(files) > 1:   # two models' files for one shared batch: never pick one automatically
-            raise BatchError(f"{method.upper()} {key[0]}_{key[1]}에 모델 파일이 {len(files)}개 있습니다 "
-                             f"({', '.join(sorted(files))}): 오너 확인 필요")
-    claimed = set(owned)
-    for pr in open_prs:
-        for shard, batch, m, who in pr_candidates(pr):
-            if m == method and (shared or who == producer):
-                claimed.add((shard, batch))
-    canon: dict[str, int] = {}   # only the shards of selectable batches are counted
-    for s in range(1, SHARDS + 1):
-        for b in (1, 2):
-            key = (f"{s:03d}", f"{b:02d}")
-            if key in done or key in claimed:
-                continue
-            path = f"data/canonical/stdict-{s:04d}.jsonl"
-            if path not in canon:
-                canon.update({p: n for p, n in _counts(runner, root, env, ref, path).items() if p == path})
-            n = expected_records(canon, s, b)
-            if n == 0:
-                continue
-            return Batch(key[0], key[1], n)
-    return None

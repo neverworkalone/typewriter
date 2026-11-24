@@ -1,7 +1,7 @@
 """#3774 / #5162: a Supervisor is replaced at any time (RUNNING -> STOPPING by Store CAS, at most HANDOFF_GRACE for its
 in-flight Workers) and the next instance continues every batch from its own state. A Restart never waits for a Line.
 
-Event-based: a real D parallel batch (the common fixture of #3074) is driven through the Coordinator's own cycle with a
+Event-based: a real parallel Stage 2 Part (the fixture of #3047) is driven through the Coordinator's own cycle with a
 real thread pool; Workers are held/released with Events, AI exits are produced by the fake adapter."""
 import json
 import os
@@ -14,13 +14,49 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import HEAD1, HEAD2
-from tests.test_issue_3074 import ParallelDHelpers
+from tests.test_issue_1684 import S2, s2_world
+from tests.test_issue_3047 import Helpers as Stage2Helpers
+from warroom import taskruns
 from warroom import restart_controller as rc
 from warroom.fence import Fence
 from warroom.config import Paths
 from warroom.launch_gate import LaunchDenied, LaunchGate
 
-LINE = ("deepseek", "d")
+LINE = ("claude", S2)
+
+
+class ParallelStage2Helpers(Stage2Helpers):
+    """A parallel Stage 2 Part with one planned task per `tasks` (eight run at once), answered like #3047's workers."""
+
+    def world(self, records=250, tasks=None, **kw):
+        w = s2_world(self)
+        w.parallel_s2 = True
+        w.sup.parallel_new_parts = True
+        w.git.task_layout = [(f"sense-{i}", 240) for i in range(tasks or (10 if records >= 250 else 1))]
+        w.cfg["stage2_max_parallel"], w.cfg["stage2_chunk_candidates"] = 8, 250
+        return w
+
+    def plan_all(self, w, chunks):
+        for n in chunks:
+            w.adapter.plan.append({"code": 0, "session": f"ses_{n}"})
+
+    @staticmethod
+    def row(w):
+        return w.store.active_batch(*LINE) or w.store.latest_batch(*LINE)
+
+    def open_runs(self, w):
+        return taskruns.open_runs(w.store, self.row(w)["id"])
+
+    def task_id(self, w, task):
+        """`"001"` is the first planned task (in plan order), whatever id the Part's plan gives it."""
+        return sorted(r["task"] for r in w.store.task_rows(self.row(w)["id"]))[int(task) - 1]
+
+    def tasks(self, w):
+        rows = sorted(w.store.task_rows(self.row(w)["id"]), key=lambda r: r["task"])
+        return {f"{n:03d}": r for n, r in enumerate(rows, 1)}
+
+    def finish_task(self, w, task):
+        self.respond(w, self.task_id(w, task))
 
 
 class Drive:
@@ -45,7 +81,7 @@ class Drive:
         self.pool.shutdown(wait=True)
 
 
-class RestartWorld(ParallelDHelpers):
+class RestartWorld(ParallelStage2Helpers):
     def world(self, records=250, **kw):
         w = super().world(records=records, **kw)
         self.drive = Drive(w)
@@ -112,12 +148,12 @@ class ReplaceNeverWaitsForOtherLines(RestartWorld, unittest.TestCase):
     def test_running_ai_holds_stop_and_clear_do_not_delay_the_replacement_and_nothing_is_spawned_twice(self):
         w = self.world()
         self.plan_all(w, range(1, 11))
-        w.start("single", "deepseek", "d")
+        w.start("single", *LINE)
         self.drive.cycle()                                    # 8 of 10 chunks run; two are queued
         self.assertEqual(len(w.adapter.launches), 8)
-        w.store.set(f"defect_hold_{w.row_()['id']}", "1")     # another incident's hold: a batch fact, not a Restart gate
-        w.store.line("idle", "a")
-        w.store.set_line("idle", "a", force_stop=1)           # an operator Stop: handed to the next instance
+        w.store.set(f"defect_hold_{self.row(w)['id']}", "1")     # another incident's hold: a batch fact, not a Restart gate
+        w.store.line("idle", "s3")
+        w.store.set_line("idle", "s3", force_stop=1)          # an operator Stop: handed to the next instance
         request = self.request(w)
         state = self.controller(w)
         cur = w.store.restart_phase()
@@ -145,8 +181,8 @@ class ReplaceNeverWaitsForOtherLines(RestartWorld, unittest.TestCase):
         launched = [l["pid"] for l in w.adapter.launches]
         self.assertEqual(len(launched), len(set(launched)))
         self.assertLessEqual(len(launched), 10)               # running chunks were re-attached, never started again
-        self.assertEqual(w.store.line("idle", "a")["force_stop"], 0)   # the Stop was carried out by the new instance
-        self.assertTrue(w.store.get(f"defect_hold_{w.row_()['id']}"))
+        self.assertEqual(w.store.line("idle", "s3")["force_stop"], 0)  # the Stop was carried out by the new instance
+        self.assertTrue(w.store.get(f"defect_hold_{self.row(w)['id']}"))
 
     def test_thirty_seconds_is_a_maximum_then_the_supervisor_is_ended_and_recovered(self):
         """A deterministic Worker (e.g. a long verify) no longer keeps the Supervisor: past the grace it is ended."""
@@ -176,7 +212,7 @@ class ReplaceNeverWaitsForOtherLines(RestartWorld, unittest.TestCase):
     def test_a_stopped_supervisor_is_started_at_once_whatever_was_running(self):
         w = self.world()
         self.plan_all(w, range(1, 11))
-        w.start("single", "deepseek", "d")
+        w.start("single", *LINE)
         self.drive.cycle()
         w.store.set_line(*LINE, force_stop=1)
         request = self.request(w)
@@ -502,7 +538,7 @@ class SerialSupervisorStopping(RestartWorld, unittest.TestCase):
     def test_stopping_recorded_before_the_next_tick_dispatches_nothing(self):
         w = self.world(records=25)
         self.plan_all(w, [1])
-        w.start("single", "deepseek", "d")
+        w.start("single", *LINE)
         self.stop(w)                                              # recorded while the serial loop was asleep
         with mock.patch.object(w.sup, "tick", wraps=w.sup.tick) as tick, mock.patch("warroom.supervisor.time.sleep"):
             w.sup.run_forever(interval=0.01)                      # returns: it left
@@ -512,9 +548,9 @@ class SerialSupervisorStopping(RestartWorld, unittest.TestCase):
     def test_stopping_recorded_during_a_tick_stops_the_remaining_lines_and_every_new_launch(self):
         w = self.world(records=25)
         self.plan_all(w, [1])
-        w.start("single", "deepseek", "d")
+        w.start("single", *LINE)
         for name in ("aaa", "zzz"):
-            w.store.line(name, "a")
+            w.store.line(name, "s3")
         seen, real = [], w.sup._tick_line
 
         def tick_line(model, method):
@@ -534,7 +570,7 @@ class SerialSupervisorStopping(RestartWorld, unittest.TestCase):
             with self.subTest(stopping_recorded_during=moment):
                 w = self.world(records=25)
                 self.plan_all(w, [1])
-                w.start("single", "deepseek", "d")
+                w.start("single", *LINE)
                 owner = w.sup if moment == "_preflight" else w.sup.git
                 real = getattr(owner, moment)
 
@@ -556,14 +592,14 @@ class SerialSupervisorStopping(RestartWorld, unittest.TestCase):
     def test_an_existing_batch_is_still_claimed_normally_while_running(self):
         w = self.world(records=25)
         self.plan_all(w, [1])
-        w.start("single", "deepseek", "d")
+        w.start("single", *LINE)
         w.tick()
         self.assertEqual((len(w.store.incomplete_batches()), len(w.adapter.launches)), (1, 1))
 
     def test_a_line_already_inside_its_tick_is_denied_the_launch_permit(self):
         w = self.world(records=25)
         self.plan_all(w, [1])
-        w.start("single", "deepseek", "d")
+        w.start("single", *LINE)
         self.stop(w)
         try:
             w.sup._tick_line_locked(*LINE)                        # past every dispatch check: only the gate is left
@@ -580,26 +616,25 @@ class FinalizationBoundary(RestartWorld, unittest.TestCase):
     def test_a_chunk_that_ends_during_stopping_is_saved_and_finalized_exactly_once_by_the_next_instance(self):
         w = self.world(records=25)
         self.plan_all(w, [1])
-        w.start("single", "deepseek", "d")
+        w.start("single", *LINE)
         self.drive.cycle()
         self.assertIsNotNone(w.store.cas_restart_phase(w.store.restart_phase(), "STOPPING", "r", stopping_at=1.0))
         self.drive.cycle()
         self.finish_task(w, "001")                                          # the AI ends while the instance is leaving
         self.drive.cycles(3)
-        self.assertEqual((w.gh.created_prs, w.row_()["run_kind"]), ([], "d_parallel"))   # nothing was collected or written
+        self.assertEqual((w.gh.created_prs, self.row(w)["run_kind"]), ([], "s2_parallel"))  # nothing was collected or written
         w.sup = w.make_sup()                                                # the next instance, same DB and worktree
         w.sup.begin_instance()
         for _ in range(6):
             w.tick()
         self.assertEqual(self.tasks(w)["001"]["state"], "SAVED")
         self.assertEqual(len(w.gh.created_prs), 1)                          # exactly one Finalization, one PR
-        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 1))
+        self.assertEqual((self.row(w)["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 1))
 
     def test_a_started_finalization_continues_but_a_new_one_is_held_for_every_method(self):
         w = self.world(records=25)
         w.sup._drain.set()
-        for name, kind in (("_c_finalize", "c_finalize"), ("_d_finalize", "d_finalize"), ("_ab_finalize", "ab_finalize"),
-                           ("_stage2_finalize", "s2_deterministic_finalize"), ("_stage3_finalize", "s3_finalize")):
+        for name, kind in (("_stage2_finalize", "s2_deterministic_finalize"), ("_stage3_finalize", "s3_finalize")):
             with self.subTest(name), mock.patch.object(w.sup, "_guarded") as guarded:
                 getattr(w.sup, name)({"id": 1, "run_kind": "something_else"})
                 self.assertFalse(guarded.called)                             # held before any write
@@ -758,7 +793,7 @@ class MaintainerDrainBoundary(unittest.TestCase):
 class CoordinatorDetails(RestartWorld, unittest.TestCase):
     def test_stopping_never_selects_a_new_batch_or_runs_the_maintainer_step(self):
         w = self.world(records=25)
-        w.start("single", "deepseek", "d")
+        w.start("single", *LINE)
         w.sup._drain.set()
         w.tick()
         self.assertEqual(w.store.incomplete_batches(), [])                          # no new batch was selected
@@ -794,7 +829,7 @@ class CoordinatorDetails(RestartWorld, unittest.TestCase):
     def test_a_long_job_is_logged_once(self):
         w = self.world(records=25)
         w.sup._interval = 0.0
-        w.store.line("slow", "a")
+        w.store.line("slow", "s3")
         release = threading.Event()
         with mock.patch.object(w.sup, "_tick_line", side_effect=lambda *a: release.wait(10)):
             self.drive.cycle(wait_workers=False)
@@ -802,7 +837,7 @@ class CoordinatorDetails(RestartWorld, unittest.TestCase):
                 self.drive.cycle(wait_workers=False)
             release.set()
             wait(list(self.drive.pending.values()), timeout=10)
-        self.assertEqual(sum("2×interval" in e["msg"] and "slow/a" in e["msg"] for e in w.store.recent_events()), 1)
+        self.assertEqual(sum("2×interval" in e["msg"] and "slow/s3" in e["msg"] for e in w.store.recent_events()), 1)
 
     def test_main_scans_fences_and_records_the_actual_workers_before_the_first_dispatch(self):
         import warroom.supervisor as sv

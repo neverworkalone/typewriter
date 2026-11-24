@@ -8,8 +8,6 @@ from pathlib import Path
 
 from tests.fakes import World
 from tests.test_issue_1684 import S2, s2_world
-from tests.test_issue_2034_d import DWorld
-from tests.test_issue_2033_c import CWorld
 from tests.test_issue_2450_stage3 import PRODUCERS
 from warroom import control, stage2, taskruns
 from warroom.launch_gate import LaunchDenied
@@ -49,27 +47,6 @@ def build_s2(case):
     return w, w.sup.s2p, lambda: h.respond(w, f"{PREFIX}-t01")
 
 
-def build_d(case):
-    from tests.test_issue_3074 import ParallelDHelpers
-    h = ParallelDHelpers()
-    h.addCleanup = case.addCleanup
-    w = h.world()
-    h.plan_all(w, range(1, 11))
-    w.start("single", "deepseek", "d")
-    w.tick()
-    return w, w.sup.dp, lambda: h.finish_task(w, "003")
-
-
-def build_c(case):
-    from tests.test_issue_3076 import Helpers
-    h = Helpers()
-    h.addCleanup = case.addCleanup
-    w = h.world(senses=400)   # more chunks than slots: the next chunk is rendered only once a slot frees
-    w.start("single", "deepseek", "c")
-    w.tick()
-    return w, w.sup.cp, lambda: h.finish(w, "001")
-
-
 class DenialIsWriteFree(unittest.TestCase):
     def check(self, build):
         w, par, free_one = build(self)
@@ -103,12 +80,6 @@ class DenialIsWriteFree(unittest.TestCase):
 
     def test_s2(self):
         self.check(build_s2)
-
-    def test_d(self):
-        self.check(build_d)
-
-    def test_c(self):
-        self.check(build_c)
 
     def test_s3(self):
         self.check(build_s3)

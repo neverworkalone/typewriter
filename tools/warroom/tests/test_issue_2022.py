@@ -9,7 +9,8 @@ from unittest import mock
 from pathlib import Path
 
 from tests.fakes import HEAD1
-from tests.test_issue_1555 import (MERGE, maintainer_row, produce_and_report, run_maintainer_to_merge, world)
+from tests.test_issue_1555 import (MERGE, make_batch, maintainer_row, produce_and_report, run_maintainer_to_merge,
+                                   world)
 from warroom import control
 from warroom.store import CLEARED_HOLD
 
@@ -169,10 +170,7 @@ class MaintainerClear(World2022):
 class MaintainerControls(World2022):
     def test_stop_pauses_only_the_maintainer_and_retry_is_pinned_to_the_screen(self):
         w = self.w
-        w.start("single", "deepseek", "b")
-        w.adapter.plan.append({"code": 0, "session": "ses_b"})
-        w.tick()
-        other = w.row("deepseek", "b")
+        other = make_batch(w, "s3", "claude", "004", "all", "s3_chunk_new", state="PAUSED")   # another Line's batch
         b, m = start_maintainer(w)
         self.assertTrue(control.stop_maintainer(w.store, "sonnet", m["id"]))
         w.tick(2)
@@ -180,7 +178,7 @@ class MaintainerControls(World2022):
         self.assertEqual(paused["state"], "PAUSED")
         self.assertTrue(Path(m["worktree"]).exists())
         self.assertEqual(w.store.maintenance(101)["batch_id"], m["id"])
-        self.assertEqual(w.row("deepseek", "b")["state"], other["state"])   # no other Line was touched
+        self.assertEqual(w.store.batch(other["id"])["state"], other["state"])   # no other Line was touched
         self.assertFalse(control.retry_maintainer(w.store, 101, m["id"] + 1))   # stale batch id
         self.assertFalse(control.retry_maintainer(w.store, 999, m["id"]))       # stale Issue
         self.assertTrue(control.retry_maintainer(w.store, 101, m["id"]))

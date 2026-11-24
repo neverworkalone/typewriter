@@ -5,7 +5,14 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
-from tests.test_issue_2034_d import DWorld
+from tests.test_reload import stage2_world
+
+
+def DWorld(**_):
+    """A Codex World whose only shard has its preserved Stage 2 inputs (the Stage 1 D world left with #9933)."""
+    w = stage2_world()
+    w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+    return w
 from warroom.config import config_problem
 from warroom.restart_controller import record_runtime
 from warroom.store import LineBusy
@@ -48,16 +55,12 @@ class ManualTicks:
 
 
 class ParallelCoordinator(unittest.TestCase):
-    def test_blocked_verify_does_not_stop_save_next_chunk_or_heartbeat(self):
-        w = DWorld(records=60)
+    def test_blocked_line_does_not_stop_another_line_or_heartbeat(self):
+        w = DWorld()
         self.addCleanup(w.tmp.cleanup)
         w.cfg['supervisor_workers'] = 16
-        w.start('single', 'deepseek', 'd')
-        w.ai(session='first')
-        w.ai(session='second')
-        w.tick()
-        w.finish_last()  # the official fake CLI saves chunk 1 before reporting exit
-        w.store.line('blocked', 'a')
+        w.start('single', 'codex', 's2')
+        w.store.line('blocked', 's3')
         entered, unblock, advanced = threading.Event(), threading.Event(), threading.Event()
         real = w.sup._tick_line_locked
         active = []
@@ -68,7 +71,7 @@ class ParallelCoordinator(unittest.TestCase):
                 self.assertTrue(unblock.wait(5))
             else:
                 real(model, method)
-                if model == 'deepseek' and method == 'd':
+                if model == 'codex' and method == 's2' and w.adapter.launches:
                     advanced.set()
         ticks = ManualTicks()
         fake_time = [1000.0]
@@ -81,8 +84,7 @@ class ParallelCoordinator(unittest.TestCase):
                 self.assertTrue(ticks.wait_for_cycle(1))
                 self.assertTrue(entered.wait(5))
                 self.assertTrue(advanced.wait(5))
-                self.assertEqual(len(w.adapter.launches), 2)
-                self.assertEqual(w.active()['chunk_no'], 2)
+                self.assertEqual(len(w.adapter.launches), 1)               # the Stage 2 Part launched meanwhile
                 self.assertEqual(w.store.get('heartbeat'), '1000.0')
                 # Thirty five-second turns represent a 150-second synchronous verification.
                 for n in range(2, 32):
@@ -114,7 +116,7 @@ class ParallelCoordinator(unittest.TestCase):
         self.assertEqual(json.loads(w.paths.runtime_record_file.read_text())['supervisor_workers'], 16)
 
     def test_competing_shared_claims_are_atomic(self):
-        for methods in (('c', 'c'), ('d', 'd'), ('s2', 's2'), ('s3', 's3'), ('s2', 's3')):
+        for methods in (('s2', 's2'), ('s3', 's3'), ('s2', 's3')):
             with self.subTest(methods=methods):
                 w = DWorld()
                 self.addCleanup(w.tmp.cleanup)
@@ -144,8 +146,8 @@ class ParallelCoordinator(unittest.TestCase):
     def test_future_exception_is_collected_and_slots_are_bounded(self):
         w = DWorld()
         self.addCleanup(w.tmp.cleanup)
-        w.store.line('first', 'a')
-        w.store.line('second', 'b')
+        w.store.line('first', 's2')
+        w.store.line('second', 's3')
         pending = {}
         called = threading.Event()
         def fail(model, method):

@@ -8,11 +8,19 @@ import json
 from unittest import mock
 from pathlib import Path
 
-from tests.fakes import HEAD1, HEAD2, World
+from tests.fakes import HEAD1, HEAD2
+from tests.test_reload import stage2_world
 from warroom import control
 
-BRANCH = "a-deepseek-001-01"
-CAND = {"path": "data/relation-candidates/001/001_01_a_deepseek.jsonl"}
+BRANCH = "s2-codex-001-01-01"
+CAND = {"path": "data/relations/relation-001.jsonl"}   # the Part's own output file in its PR
+
+
+def World():
+    """A Codex World whose only shard has its preserved Stage 2 inputs: the Batch Detail Clear target is a Stage 2 Part."""
+    w = stage2_world()
+    w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+    return w
 
 
 class ClearBase(unittest.TestCase):
@@ -40,20 +48,19 @@ class ClearBase(unittest.TestCase):
         w.git.local_head = head
 
     def clear(self, b):
-        ok, msg = control.request_clear(self.w.store, "deepseek", "a", b["id"])
+        ok, msg = control.request_clear(self.w.store, "codex", "s2", b["id"])
         self.assertTrue(ok, msg)
 
     def removed(self):
-        return not Path(self.w.row()["worktree"]).exists() if self.w.store.active_batch("deepseek", "a") else True
+        return not Path(self.w.row()["worktree"]).exists() if self.w.store.active_batch("codex", "s2") else True
 
     def assert_idle_and_reusable(self):
         w = self.w
-        self.assertIsNone(w.store.active_batch("deepseek", "a"))
-        self.assertIsNone(w.store.latest_batch("deepseek", "a"))
-        self.assertEqual(w.store.claimed_keys("a", "deepseek"), set())
-        st = control.line_status(w.store, "deepseek", "a")
+        self.assertIsNone(w.store.active_batch("codex", "s2"))
+        self.assertIsNone(w.store.latest_batch("codex", "s2"))
+        st = control.line_status(w.store, "codex", "s2")
         self.assertEqual((st["state"], st["run"], st["occupied"]), ("IDLE", False, False))
-        self.assertIsNone(w.store.clear_request("deepseek", "a"))
+        self.assertIsNone(w.store.clear_request("codex", "s2"))
 
 
 class ClearTeardown(ClearBase):
@@ -73,7 +80,7 @@ class ClearTeardown(ClearBase):
         self.assertEqual(w.git.discarded, [(str(wt), BRANCH)])
         self.assertEqual(len(w.adapter.launches), launches)          # production was never relaunched
         self.assertIsNone(w.store.get(f"last_poll_{b['id']}"))
-        audit = [e["msg"] for e in w.store.line_events("deepseek", "a")]
+        audit = [e["msg"] for e in w.store.line_events("codex", "s2")]
         self.assertTrue(any(m.startswith("Clear 완료") and "001_01" in m for m in audit), audit)
 
     def test_states_and_worktree_dirtiness_table(self):
@@ -103,7 +110,7 @@ class ClearTeardown(ClearBase):
         self.assert_idle_and_reusable()
         self.assertEqual(w.gh.closed, [7])
         self.assertEqual(w.git.remote_deleted, [BRANCH])
-        self.assertTrue(any("PR #7 머지 없이 닫음" in e["msg"] for e in w.store.line_events("deepseek", "a")))
+        self.assertTrue(any("PR #7 머지 없이 닫음" in e["msg"] for e in w.store.line_events("codex", "s2")))
 
     def test_unattached_open_pr_on_owned_branch_is_found(self):
         w = self.w
@@ -141,7 +148,7 @@ class ClearTeardown(ClearBase):
         self.assertEqual(w.git.discarded, [])
         self.assertEqual(w.git.remote_deleted, [])
         self.assertEqual(w.gh.closed, [])
-        self.assertIsNone(w.store.clear_request("deepseek", "a"))
+        self.assertIsNone(w.store.clear_request("codex", "s2"))
 
     def test_merged_between_inspection_and_close_is_reconciled(self):
         w = self.w
@@ -168,7 +175,7 @@ class ClearFailClosed(ClearBase):
         mutate(b)
         self.clear(b)
         w.tick(2)
-        req = w.store.clear_request("deepseek", "a")
+        req = w.store.clear_request("codex", "s2")
         self.assertEqual(req["status"], "BLOCKED", req["error"])
         self.assertEqual(w.store.batch(b["id"])["state"], "CLEARING")   # still pinned: nothing can relaunch
         self.assertEqual(w.git.discarded, [])
@@ -180,7 +187,7 @@ class ClearFailClosed(ClearBase):
         cases = {
             "remote branch moved": lambda b: self.w.git.remote.__setitem__(BRANCH, HEAD2),
             "remote lookup fails": lambda b: self.w.git.remote.__setitem__(BRANCH, RuntimeError("net")),
-            "pr for other candidate file": lambda b: self.w.gh.files.__setitem__(7, [{"path": "data/relation-candidates/002/002_01_a_deepseek.jsonl"}]),
+            "pr for other shard file": lambda b: self.w.gh.files.__setitem__(7, [{"path": "data/relations/relation-002.jsonl"}]),
             "pr head branch mismatch": lambda b: self.w.pr_info(7, HEAD1, head_ref="other"),
             "fork pr with the same branch name": lambda b: self.w.pr_info(7, HEAD1, head_ref=f"someone/typewriter:{BRANCH}"),
             "merged fork pr with the same branch name": lambda b: self.w.pr_info(7, HEAD1, state="closed", merged=True, head_ref=f"someone/typewriter:{BRANCH}"),
@@ -207,8 +214,8 @@ class ClearFailClosed(ClearBase):
 
     def test_unsafe_conditions_block_and_preserve(self):
         cases = {
-            "pr for other candidate file": lambda b: self.w.gh.files.__setitem__(7, [{"path": "data/relation-candidates/002/002_01_a_deepseek.jsonl"}]),
-            "pr with extra candidate file": lambda b: self.w.gh.files.__setitem__(7, [CAND, {"path": "data/relation-candidates/001/001_02_a_deepseek.jsonl"}]),
+            "pr for other shard file": lambda b: self.w.gh.files.__setitem__(7, [{"path": "data/relations/relation-002.jsonl"}]),
+            "pr with extra output file": lambda b: self.w.gh.files.__setitem__(7, [CAND, {"path": "data/relations/relation-002.jsonl"}]),
             "pr head branch mismatch": lambda b: self.w.pr_info(7, HEAD1, head_ref="other"),
             "remote branch moved": lambda b: self.w.git.remote.__setitem__(BRANCH, HEAD2),
             "remote lookup fails": lambda b: self.w.git.remote.__setitem__(BRANCH, RuntimeError("net")),
@@ -234,7 +241,7 @@ class ClearFailClosed(ClearBase):
                 self.w.store.update(b["id"], **{field: value}, state="ERROR", pid=None)
                 self.clear(b)
                 self.w.tick(2)
-                self.assertEqual(self.w.store.clear_request("deepseek", "a")["status"], "BLOCKED")
+                self.assertEqual(self.w.store.clear_request("codex", "s2")["status"], "BLOCKED")
                 self.assertEqual(self.w.git.discarded, [])
 
     def test_blocked_clear_resumes_without_relaunch_after_restart(self):
@@ -246,10 +253,10 @@ class ClearFailClosed(ClearBase):
         self.assertEqual(len(w.adapter.launches), launches)
         w.gh.close_error = None
         w.sup = w.make_sup()                                         # Supervisor restart
-        control.stop_line(w.store, "deepseek", "a")                  # Stop/Retry/Start cannot undo the pin
-        self.assertFalse(control.retry(w.store, "deepseek", "a"))
-        self.assertFalse(control.start(w.store, "deepseek", "a", "single")[0])
-        ok, _ = control.request_clear(w.store, "deepseek", "a", b["id"])   # explicit re-arm
+        control.stop_line(w.store, "codex", "s2")                  # Stop/Retry/Start cannot undo the pin
+        self.assertFalse(control.retry(w.store, "codex", "s2"))
+        self.assertFalse(control.start(w.store, "codex", "s2", "single")[0])
+        ok, _ = control.request_clear(w.store, "codex", "s2", b["id"])   # explicit re-arm
         self.assertTrue(ok)
         w.tick(2)
         self.assert_idle_and_reusable()
@@ -264,10 +271,10 @@ class ClearFailClosed(ClearBase):
         w.tick()                                                     # pin + (partial) teardown
         self.assert_idle_and_reusable()
         # A crash after the worktree was removed but before the DB commit: row still there, directory unregistered.
-        b2 = self.w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch=BRANCH,
-                                       worktree=str(w.paths.worktrees / "a-deepseek-001-01"))
+        b2 = self.w.store.create_batch(method="s2", producer="codex", shard="001", batch="01-01", branch=BRANCH,
+                                       worktree=str(w.paths.worktrees / BRANCH))
         w.store.update(b2, state="ERROR")
-        control.request_clear(w.store, "deepseek", "a", b2)
+        control.request_clear(w.store, "codex", "s2", b2)
         w.sup = w.make_sup()
         w.tick(2)
         self.assert_idle_and_reusable()
@@ -283,19 +290,19 @@ class ClearDrain(ClearBase):
                 b = self.producing()
                 w.adapter.running.clear()
                 w.store.update(b["id"], state="ERROR", pid=None)
-                w.store.set_line("deepseek", "a", **flags)
+                w.store.set_line("codex", "s2", **flags)
                 self.clear(b)
-                w.store.pin_clear("deepseek", "a")
-                control.set_drain(w.store, "deepseek", "a", True)       # ignored while CLEARING
-                self.assertFalse(control.line_status(w.store, "deepseek", "a")["can_drain"])
-                w.store.set_line("deepseek", "a", drain=1)               # even a racing write is cleared at the end
+                w.store.pin_clear("codex", "s2")
+                control.set_drain(w.store, "codex", "s2", True)       # ignored while CLEARING
+                self.assertFalse(control.line_status(w.store, "codex", "s2")["can_drain"])
+                w.store.set_line("codex", "s2", drain=1)               # even a racing write is cleared at the end
                 w.tick(2)
                 self.assert_idle_and_reusable()
-                ln = w.store.peek_line("deepseek", "a")
+                ln = w.store.peek_line("codex", "s2")
                 self.assertEqual(ln["drain"], 0)
                 w.start("single")                                         # schedulable again
                 w.tick()
-                self.assertEqual(w.row()["batch"], "01")
+                self.assertEqual(w.row()["batch"], "01-01")
 
 
 class ClearVsStop(ClearBase):
@@ -305,11 +312,11 @@ class ClearVsStop(ClearBase):
         w.adapter.running.clear()
         w.store.update(b["id"], state="ERROR", pid=None)
         self.clear(b)
-        w.store.pin_clear("deepseek", "a")
-        self.assertFalse(control.can_stop_all(w.store, [("deepseek", "a")]))
+        w.store.pin_clear("codex", "s2")
+        self.assertFalse(control.can_stop_all(w.store, [("codex", "s2")]))
         control.stop_all(w.store)
-        control.stop_line(w.store, "deepseek", "a")
-        self.assertEqual(w.store.peek_line("deepseek", "a")["force_stop"], 0)
+        control.stop_line(w.store, "codex", "s2")
+        self.assertEqual(w.store.peek_line("codex", "s2")["force_stop"], 0)
 
     def test_merged_pr_found_during_clear_is_not_force_stopped_afterwards(self):
         w = self.w
@@ -318,8 +325,8 @@ class ClearVsStop(ClearBase):
         self.with_pr(state="closed", merged=True)
         w.store.update(b["id"], state="ERROR", pid=None, pr_number=7)
         self.clear(b)
-        w.store.pin_clear("deepseek", "a")
-        w.store.set_line("deepseek", "a", force_stop=1, retry_batch=b["id"])   # a flag that raced in while CLEARING
+        w.store.pin_clear("codex", "s2")
+        w.store.set_line("codex", "s2", force_stop=1, retry_batch=b["id"])   # a flag that raced in while CLEARING
         w.tick()                                                     # reconcile -> MERGED, stale flags dropped
         self.assertEqual(w.store.batch(b["id"])["state"], "MERGED")
         w.tick()
@@ -355,11 +362,10 @@ class ClearVsSharedDefects(ClearBase):
         a = self.producing()
         w.adapter.running.clear()
         w.store.update(a["id"], pid=None)
-        w.start("single", "deepseek", "b")
-        w.tick()
-        b = w.row("deepseek", "b")
-        w.adapter.running.clear()
-        w.store.update(b["id"], pid=None)
+        sibling = w.store.create_batch(method="s3", producer="claude", shard="004", batch="all", branch="s3-claude-004",
+                                       worktree=str(w.paths.worktrees / "s3-claude-004"))   # the other open Stage
+        w.store.update(sibling, state="PAUSED", paused_from="PRODUCING")
+        b = w.store.batch(sibling)
         ids = {}
         for key, row in (("a", a), ("b", b)):
             ids[key] = w.store.report_defect(row["id"], f"ev-{key}", "ai", "cls", "LINKED", "r", "shared_defect", "paused")
@@ -386,7 +392,7 @@ class ClearVsSharedDefects(ClearBase):
         w.store.update_maintenance(200, state="RECOVERING")
         w.store.update_defect(ids["a"], state="RECOVERING")
         self.clear(a)
-        w.store.pin_clear("deepseek", "a")
+        w.store.pin_clear("codex", "s2")
         self.assertEqual(w.store.maintenance(200)["state"], "RECOVERING")
         w.store.update_defect(ids["b"], state="OVERRIDDEN")
         # Also repairs the same persisted state left by older versions.
@@ -416,7 +422,7 @@ class ClearVsSharedDefects(ClearBase):
         self.assertEqual(w.store.defects(("REPORTED",)), [])
 
     def test_maintainer_records_are_not_clearable(self):
-        self.assertFalse(control.request_clear(self.w.store, "deepseek", "m", 1)[0])
+        self.assertFalse(control.request_clear(self.w.store, "codex", "m", 1)[0])
 
 
 class ClearRequestRules(ClearBase):
@@ -425,16 +431,16 @@ class ClearRequestRules(ClearBase):
         b = self.producing()
         w.adapter.running.clear()
         self.clear(b)
-        self.assertTrue(control.request_clear(w.store, "deepseek", "a", b["id"])[0])   # repeated: still one request
+        self.assertTrue(control.request_clear(w.store, "codex", "s2", b["id"])[0])   # repeated: still one request
         import sqlite3
         self.assertEqual(sqlite3.connect(w.paths.db).execute("SELECT COUNT(*) FROM clear_requests").fetchone()[0], 1)
         w.tick(2)
         self.assert_idle_and_reusable()
-        ok, msg = control.request_clear(w.store, "deepseek", "a", b["id"])             # stale confirmation screen
+        ok, msg = control.request_clear(w.store, "codex", "s2", b["id"])             # stale confirmation screen
         self.assertFalse(ok)
         self.assertTrue(msg)
-        self.assertFalse(control.request_clear(w.store, "sonnet", "a", 999)[0])
-        self.assertIsNone(w.store.clear_request("deepseek", "a"))
+        self.assertFalse(control.request_clear(w.store, "sonnet", "s3", 999)[0])
+        self.assertIsNone(w.store.clear_request("codex", "s2"))
 
     def test_request_for_batch_that_finished_meanwhile_is_dropped(self):
         w = self.w
@@ -443,65 +449,30 @@ class ClearRequestRules(ClearBase):
         self.clear(b)
         w.store.update(b["id"], state="COMPLETE")
         w.tick()
-        self.assertIsNone(w.store.clear_request("deepseek", "a"))
+        self.assertIsNone(w.store.clear_request("codex", "s2"))
         self.assertEqual(w.store.batch(b["id"])["state"], "COMPLETE")
         self.assertEqual(w.git.discarded, [])
 
     def test_clear_is_not_a_side_effect_of_stop(self):
         w = self.w
         b = self.producing()
-        control.stop_line(w.store, "deepseek", "a")
+        control.stop_line(w.store, "codex", "s2")
         w.tick()
         self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
         self.assertEqual(w.git.discarded, [])
 
     def test_buttons_follow_state(self):
         w = self.w
-        st = control.line_status(w.store, "deepseek", "a")
+        st = control.line_status(w.store, "codex", "s2")
         self.assertFalse(st["can_clear"])                            # no batch selected
         b = self.producing()
-        self.assertTrue(control.line_status(w.store, "deepseek", "a")["can_clear"])
+        self.assertTrue(control.line_status(w.store, "codex", "s2")["can_clear"])
         w.adapter.running.clear()
         self.clear(b)
         w.tick(0)
-        w.store.pin_clear("deepseek", "a")
-        st = control.line_status(w.store, "deepseek", "a")
+        w.store.pin_clear("codex", "s2")
+        st = control.line_status(w.store, "codex", "s2")
         self.assertEqual((st["state"], st["can_clear"], st["can_stop"], st["can_retry"]), ("CLEARING", False, False, False))
-
-
-class ClearQueues(unittest.TestCase):
-    """After Clear exactly the cleared batch is eligible again; other Lines stay untouched."""
-
-    def test_ab_per_model_and_cd_shared_queue(self):
-        for method in ("a", "c"):
-            with self.subTest(method=method):
-                w = World(models=None)
-                try:
-                    if method == "c":
-                        index = Path(w.tmp.name) / "approved-index.sqlite"
-                        index.write_bytes(b"synthetic approved-index path")
-                        w.cfg["literary_index_path"] = str(index)
-                    w.start("single", "deepseek", method)
-                    w.tick()
-                    mine = w.row("deepseek", method)
-                    w.start("single", "deepseek", "b")
-                    w.tick()
-                    other = w.row("deepseek", "b")
-                    w.adapter.running.pop(mine["pid"])
-                    w.store.update(mine["id"], state="ERROR", pid=None)
-                    control.request_clear(w.store, "deepseek", method, mine["id"])
-                    w.tick(2)
-                    self.assertIsNone(w.store.latest_batch("deepseek", method))
-                    self.assertEqual(w.store.claimed_keys(method, None), set())
-                    self.assertEqual(w.store.batch(other["id"])["state"], other["state"])
-                    self.assertTrue(Path(other["worktree"]).exists())
-                    w.start("single", "deepseek", method)
-                    w.tick()
-                    again = w.row("deepseek", method)
-                    self.assertEqual((again["shard"], again["batch"]), (mine["shard"], mine["batch"]))
-                    self.assertNotEqual(again["id"], mine["id"])
-                finally:
-                    w.tmp.cleanup()
 
 
 class ClearRealGit(unittest.TestCase):
@@ -547,13 +518,13 @@ class ClearRealGit(unittest.TestCase):
         wt = w.paths.worktrees / branch
         git.fetch_base("master")
         git.create_worktree(wt, branch, "master")
-        w.store.line("deepseek", "a")
-        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01",
+        w.store.line("codex", "s2")
+        bid = w.store.create_batch(method="s2", producer="codex", shard="001", batch="01-01",
                                    branch=branch, worktree=str(wt), state="ERROR")
         w.store.update(bid, state="ERROR")
-        self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
+        self.assertTrue(w.store.request_clear("codex", "s2", bid)[0])
         git.discard_owned(wt, branch)
-        w.store.pin_clear("deepseek", "a")
+        w.store.pin_clear("codex", "s2")
 
         head = git.head(self.repo)
         request = write_restart_request(w.paths, {"id": 91, "merge_sha": head}, None)
@@ -570,13 +541,13 @@ class ClearRealGit(unittest.TestCase):
              mock.patch("warroom.restart_controller._tmux", side_effect=tmux):
             handle_pending_restart(w.paths, w.store)
         self.assertEqual(json.loads(request.read_text())["state"], "loaded")
-        self.assertEqual(w.store.clear_request("deepseek", "a")["status"], "BLOCKED")
+        self.assertEqual(w.store.clear_request("codex", "s2")["status"], "BLOCKED")
         self.assertTrue(git._git("show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False).ok)
         git._git("branch", "-D", branch)
-        self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
+        self.assertTrue(w.store.request_clear("codex", "s2", bid)[0])
         w.sup._clear(w.store.batch(bid))
         self.assertIsNone(w.store.batch(bid))
-        self.assertIsNone(w.store.clear_request("deepseek", "a"))
+        self.assertIsNone(w.store.clear_request("codex", "s2"))
 
     def test_restart_hands_unpinned_clear_to_new_supervisor(self):
         from warroom.gitops import Git
@@ -591,11 +562,11 @@ class ClearRealGit(unittest.TestCase):
         wt = w.paths.worktrees / BRANCH
         git.fetch_base("master")
         git.create_worktree(wt, BRANCH, "master")
-        w.store.line("deepseek", "a")
-        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01",
+        w.store.line("codex", "s2")
+        bid = w.store.create_batch(method="s2", producer="codex", shard="001", batch="01-01",
                                    branch=BRANCH, worktree=str(wt))
         w.store.update(bid, state="ERROR")
-        self.assertTrue(w.store.request_clear("deepseek", "a", bid)[0])
+        self.assertTrue(w.store.request_clear("codex", "s2", bid)[0])
         git.discard_owned(wt, BRANCH)
         head = git.head(self.repo)
         request = write_restart_request(w.paths, {"id": 91, "merge_sha": head}, None)
@@ -603,7 +574,7 @@ class ClearRealGit(unittest.TestCase):
         def tmux(args, **kwargs):
             if args[0] == "new-session":
                 record_runtime(w.paths, head, instance="new-instance")
-                w.sup._tick_line("deepseek", "a")
+                w.sup._tick_line("codex", "s2")
                 return mock.Mock(returncode=0, stdout="")
             return absent
         with mock.patch("warroom.restart_controller._lock_held", return_value=False), \
@@ -612,7 +583,7 @@ class ClearRealGit(unittest.TestCase):
             handle_pending_restart(w.paths, w.store)
         self.assertEqual(json.loads(request.read_text())["state"], "loaded")
         self.assertIsNone(w.store.batch(bid))
-        self.assertIsNone(w.store.clear_request("deepseek", "a"))
+        self.assertIsNone(w.store.clear_request("codex", "s2"))
 
     def test_discard_missing_worktree_never_deletes_ref_created_after_check(self):
         self.git.fetch_base("master")

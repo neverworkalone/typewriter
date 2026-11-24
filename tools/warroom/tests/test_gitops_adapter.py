@@ -11,7 +11,7 @@ import time
 import unittest
 from pathlib import Path
 
-from warroom.adapters import OpenCodeAdapter, RunSpec
+from warroom.adapters import ClaudeCodeAdapter, RunSpec
 from warroom.gitops import (CleanupBlocked, FastForwardBlocked, FastForwardRace, Git, GitError)
 from warroom.shell import Result, Runner
 
@@ -631,11 +631,11 @@ class RealProcess(unittest.TestCase):
     def test_detached_run_records_session_and_exit(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            fake = d / "opencode"
-            fake.write_text('#!/bin/sh\necho \'{"type":"x","sessionID":"ses_abc123"}\'\n'
+            fake = d / "claude"
+            fake.write_text('#!/bin/sh\necho \'{"type":"system","subtype":"init","session_id":"ses_abc123"}\'\n'
                             'echo "args: $@" >&2\nexit 3\n')
             fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
-            a = OpenCodeAdapter(str(fake))
+            a = ClaudeCodeAdapter(str(fake))
             h = a.start("prompt text", d, dict(os.environ), RunSpec("p/m", "high"), "title", d / "l.log", d / "l.exit")
             for _ in range(100):
                 if not a.alive(h.pid):
@@ -644,23 +644,22 @@ class RealProcess(unittest.TestCase):
             self.assertFalse(a.alive(h.pid))
             self.assertEqual(a.exit_code(h.exit_file), 3)
             self.assertEqual(a.session_id(h.log_file), "ses_abc123")
-            self.assertIn("--model p/m#high", h.log_file.read_text())   # variant rides on --model (no --variant flag)
-            self.assertNotIn("--variant", h.log_file.read_text())
+            self.assertIn("--model p/m --effort high", h.log_file.read_text())   # every launch is pinned
             h2 = a.resume("ses_abc123", "again", d, dict(os.environ), RunSpec("p/m", "high"), d / "r.log", d / "r.exit")
             for _ in range(100):
                 if not a.alive(h2.pid):
                     break
                 time.sleep(0.05)
-            self.assertIn("--session ses_abc123", h2.log_file.read_text())
-            self.assertIn("--model p/m#high", h2.log_file.read_text())   # resume is pinned too
+            self.assertIn("--resume ses_abc123", h2.log_file.read_text())
+            self.assertIn("--model p/m --effort high", h2.log_file.read_text())   # resume is pinned too
 
     def test_alive_while_child_outlives_wrapper(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            fake = d / "opencode"
+            fake = d / "claude"
             fake.write_text("#!/bin/sh\nsleep 30 &\nexit 0\n")   # launcher exits, worker stays
             fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
-            a = OpenCodeAdapter(str(fake))
+            a = ClaudeCodeAdapter(str(fake))
             h = a.start("p", d, dict(os.environ), RunSpec("p/m", "high"), "t", d / "c.log", d / "c.exit")
             try:
                 for _ in range(100):

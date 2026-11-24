@@ -11,9 +11,10 @@ import unittest
 from pathlib import Path
 
 from tests.fakes import HEAD1, HEAD2
+from tests.test_issue_1908 import write_state
 from tests.test_lines import PRODUCERS, multi_world
 from tests.test_supervisor import review
-from warroom import control, dchunk, defects, dparallel, literary, stage2, stage3
+from warroom import control, defects, stage2, stage3
 from warroom.config import config_problem, maintainer_problem, reload_problem, registry
 from warroom.gitops import Git, IntegrationBlocked
 from warroom.shell import Runner
@@ -46,7 +47,7 @@ def write_report(w, row, data=None, raw=None):
     f.write_text(raw if raw is not None else json.dumps(data or report()))
 
 
-def produce_and_report(w, model="deepseek", method="a", data=None, raw=None):
+def produce_and_report(w, model="codex", method="s2", data=None, raw=None):
     """A Line produces, its AI writes a shared-defect report, War Room pauses exactly that batch."""
     w.start("single", model, method)
     w.adapter.plan.append({"code": 0, "session": f"ses_{model}_{method}"})
@@ -56,6 +57,28 @@ def produce_and_report(w, model="deepseek", method="a", data=None, raw=None):
     write_report(w, row, data, raw)
     w.tick(2)    # the first tick only notes the file (it may still be mid-write); the second acts on it
     return w.row(model, method)
+
+
+def second_source(w, data=None, shard="004", model="claude"):
+    """A Stage 3 shard (no AI process running) whose worktree holds a shared-defect report, beside the Stage 2 source:
+    Stage 2 and Stage 3 each own at most one unfinished Part/shard, so a second concurrent source is a Stage 3 one."""
+    b = make_batch(w, "s3", model, shard, "all", "s3_chunk_new")
+    write_report(w, b, data)
+    w.tick()
+    return w.store.batch(b["id"])
+
+
+def review_source(w, pr=7):
+    """A Stage 2 Part whose finalized PR waits for review (the Supervisor, not an AI, opened it)."""
+    b = make_batch(w, state="WAITING_REVIEW", run_kind="s2_deterministic_finalize", pr_number=pr, head_sha=HEAD1,
+                   session_id="ses_1", progress_kind="candidates", progress_done=2, progress_total=2)
+    write_state(b, decided=2, total=2, merged=True)
+    w.pr_info(pr, HEAD1, head_ref=b["branch"])
+    w.gh.by_branch[b["branch"]] = [{"number": pr, "state": "OPEN", "headRefOid": HEAD1}]
+    w.gh.files[pr] = [{"path": "data/relations/relation-001.jsonl"}, {"path": "data/relation-drops/drop-001.jsonl"}]
+    w.git.remote[b["branch"]] = HEAD1
+    w.tick()
+    return w.store.batch(b["id"])
 
 
 def maintainer_row(w):
@@ -107,25 +130,25 @@ class SharedDefectFlow(unittest.TestCase):
         b = produce_and_report(w)
         # the batch is PAUSED for the defect, nothing of it is lost, and exactly one urgent Issue exists
         self.assertEqual((b["state"], b["pause_reason"], b["paused_from"]), ("PAUSED", "shared_defect", "PRODUCING"))
-        self.assertEqual(b["session_id"], "ses_deepseek_a")
+        self.assertEqual(b["session_id"], "ses_codex_s2")
         self.assertTrue(Path(b["worktree"]).exists())
         self.assertEqual(w.gh.created, [101])
         issue = w.gh.issues[101]
         self.assertEqual(issue["labels"], ["urgent"])
-        for needle in ("span-in-jsonl-form", "C000123", "001_01", "deepseek", "a-deepseek-001-01", "node scripts/validate"):
+        for needle in ("span-in-jsonl-form", "C000123", "001", "codex", "s2-codex-001-01-01", "node scripts/validate"):
             self.assertIn(needle, issue["body"])
         d = w.store.defects()[0]
         self.assertEqual((d["state"], d["issue_number"], d["batch_id"]), ("LINKED", 101, b["id"]))
         # the hidden Maintainer: one slot, own worktree off the base branch, the configured producer, no Board card
         m = maintainer_row(w)
         self.assertEqual((m["method"], m["producer"], m["branch"], m["batch"]), ("m", "sonnet", "maint-101", "101"))
-        self.assertEqual(control.line_status(w.store, "sonnet", "a")["batch"], None)
+        self.assertEqual(control.line_status(w.store, "sonnet", "s2")["batch"], None)
         w.tick()
         launch = w.adapter.launches[-1]
         self.assertEqual((launch["kind"], launch["cwd"]), ("start", str(w.paths.worktrees / "maint-101")))
         self.assertIn("#101", launch["prompt"])
         self.assertNotIn("shared-defect", launch["prompt"])
-        self.assertEqual(launch["model"], "p/sonnet-free")
+        self.assertEqual(launch["model"], "claude-sonnet")
         # while the Maintainer works nothing resumes the paused batch, however many ticks pass
         w.tick(4)
         self.assertEqual(w.row()["state"], "PAUSED")
@@ -161,7 +184,7 @@ class SharedDefectFlow(unittest.TestCase):
         # the retry resumed the SAME session in the SAME worktree; ticking on never retries again
         w.tick()
         relaunch = w.adapter.launches[-1]
-        self.assertEqual((relaunch["kind"], relaunch["session"], relaunch["cwd"]), ("resume", "ses_deepseek_a", b["worktree"]))
+        self.assertEqual((relaunch["kind"], relaunch["session"], relaunch["cwd"]), ("resume", "ses_codex_s2", b["worktree"]))
         w.tick(5)
         self.assertEqual(len(w.adapter.launches), launches + 1)       # exactly one relaunch of the batch AI
         self.assertEqual(len(w.gh.created), 1)
@@ -177,15 +200,11 @@ class SharedDefectFlow(unittest.TestCase):
 
     def test_only_the_reporting_batch_pauses(self):
         w = self.w
-        w.start("single", "deepseek", "b")
-        w.adapter.plan.append({"code": 0, "session": "ses_b"})
-        w.tick()
-        b_row = w.row("deepseek", "b")
-        produce_and_report(w, "deepseek", "a")
-        self.assertEqual(w.row("deepseek", "b")["state"], "PRODUCING")
-        self.assertEqual(w.row("deepseek", "b")["id"], b_row["id"])
-        self.assertEqual(w.row("deepseek", "a")["state"], "PAUSED")
-        self.assertEqual(w.row("deepseek", "b")["pause_reason"], "")
+        other = make_batch(w, "s3", "claude", "004", "all", "s3_chunk_new")
+        b = produce_and_report(w)
+        self.assertEqual(b["state"], "PAUSED")
+        self.assertEqual([d["batch_id"] for d in w.store.defects()], [b["id"]])
+        self.assertEqual(w.store.batch(other["id"])["pause_reason"], "")
 
 
 class IdempotentIssue(unittest.TestCase):
@@ -237,15 +256,16 @@ class IdempotentIssue(unittest.TestCase):
 
     def test_second_batch_of_the_same_class_joins_the_open_issue(self):
         w = self.w
-        produce_and_report(w, "deepseek", "a")
-        produce_and_report(w, "sonnet", "a")
+        produce_and_report(w, "codex", "s2")
+        second_source(w)
         self.assertEqual(w.gh.created, [101])
         self.assertEqual({d["issue_number"] for d in w.store.defects()}, {101})
         self.assertEqual(len(w.gh.issue_comments_[101]), 1)
         w.tick(3)
         self.assertEqual(len(w.gh.issue_comments_[101]), 1)           # the link comment is added once
         # a different class gets its own Issue
-        produce_and_report(w, "deepseek", "b", data=report(defect_class="another-class"))
+        w.sup.maint.report(w.row("claude", "s3"), "report", "another-event", json.dumps(report(defect_class="another-class")))
+        w.tick()
         self.assertEqual(w.gh.created, [101, 102])
 
 
@@ -284,7 +304,7 @@ class ReportEvidence(unittest.TestCase):
                 w.tick(3)
                 self.assertEqual(w.gh.created, [])
                 # an ordinary Retry works for this pause (it is not a shared-defect pause) and the same file is not re-read
-                self.assertTrue(control.retry(w.store, "deepseek", "a"))
+                self.assertTrue(control.retry(w.store, "codex", "s2"))
                 w.tick(2)
                 self.assertEqual(w.row()["state"], "PRODUCING")
                 self.assertEqual((len(w.store.defects()), w.gh.created), (1, []))
@@ -315,7 +335,7 @@ class ReportEvidence(unittest.TestCase):
 
     def test_a_report_being_written_is_not_acted_on_until_stable(self):
         w = self.w = world()
-        w.start("single", "deepseek", "a")
+        w.start("single", "codex", "s2")
         w.adapter.plan.append({"code": 0})
         w.tick()
         write_report(w, w.row(), raw='{"version": 1, "defect_cl')
@@ -329,7 +349,7 @@ class ReportEvidence(unittest.TestCase):
 
     def test_a_finished_ai_with_a_report_is_paused_not_reported_as_a_missing_pr(self):
         w = self.w = world()
-        w.start("single", "deepseek", "a")
+        w.start("single", "codex", "s2")
         w.adapter.plan.append({"code": 0, "session": "s"})
         w.tick()
         write_report(w, w.row())
@@ -340,7 +360,7 @@ class ReportEvidence(unittest.TestCase):
 
     def test_ordinary_failures_are_not_shared_defects(self):
         w = self.w = world()
-        w.start("single", "deepseek", "a")
+        w.start("single", "codex", "s2")
         w.adapter.plan.append({"code": 1, "text": "401 unauthorized: please login", "session": "s"})
         w.tick()
         w.adapter.finish(w.adapter.launches[-1]["pid"])
@@ -354,13 +374,7 @@ class ReportEvidence(unittest.TestCase):
 class ReviewEscalation(unittest.TestCase):
     def test_trusted_reviewer_block_pauses_instead_of_fixing_and_the_review_is_fixed_after_release(self):
         w = world()
-        w.start("single", "deepseek", "a")
-        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: (
-            w.pr_info(7, HEAD1, head_ref="a-deepseek-001-01"),
-            w.gh.by_branch.update({"a-deepseek-001-01": [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
-        w.tick()
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
+        review_source(w)
         self.assertEqual(w.row()["state"], "WAITING_REVIEW")
         body = "-1\nHEAD: " + HEAD1 + "\n결함\n```warroom-shared-defect\n" + json.dumps(report()) + "\n```\n"
         w.gh.reviews_ = [{"id": 31, "user": {"login": "genonfire"}, "body": body, "commit_id": HEAD1,
@@ -376,12 +390,7 @@ class ReviewEscalation(unittest.TestCase):
         self.assertIn(HEAD1, w.gh.issues[101]["body"])
         # an untrusted account's block is plain text: never an escalation
         w2 = world()
-        w2.start("single", "deepseek", "a")
-        w2.adapter.plan.append({"code": 0, "session": "s", "effect": lambda: (
-            w2.pr_info(7, HEAD1), w2.gh.by_branch.update({"a-deepseek-001-01": [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
-        w2.tick()
-        w2.adapter.finish(w2.adapter.launches[-1]["pid"])
-        w2.tick()
+        review_source(w2)
         w2.gh.reviews_ = [{"id": 32, "user": {"login": "stranger"}, "body": body, "commit_id": HEAD1,
                            "submitted_at": "2026-10-21T10:00:00Z"}]
         w2.tick(2)
@@ -391,19 +400,14 @@ class ReviewEscalation(unittest.TestCase):
 
     def test_malformed_review_block_holds_without_an_issue(self):
         w = world()
-        w.start("single", "deepseek", "a")
-        w.adapter.plan.append({"code": 0, "session": "s", "effect": lambda: (
-            w.pr_info(7, HEAD1), w.gh.by_branch.update({"a-deepseek-001-01": [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
-        w.tick()
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
+        review_source(w)
         w.gh.reviews_ = [{"id": 33, "user": {"login": "genonfire"},
                           "body": "-1\nHEAD: " + HEAD1 + "\n```warroom-shared-defect\n{not json}\n```", "commit_id": HEAD1,
                           "submitted_at": "2026-10-21T10:00:00Z"}]
         w.tick(2)
         self.assertEqual((w.row()["state"], w.row()["pause_reason"], w.gh.created), ("PAUSED", "defect_unverified", []))
         # Retry returns to review watching; this event is already recorded, so it now goes to the ordinary fix run
-        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        self.assertTrue(control.retry(w.store, "codex", "s2"))
         w.tick(2)
         self.assertEqual(w.row()["state"], "FIXING")
         w.tmp.cleanup()
@@ -435,7 +439,7 @@ class FailClosed(unittest.TestCase):
         self.merged_and_cleaned()
         self.assert_still_paused("HELD")
         self.assertIn("CONFLICT", w.row()["error"])
-        self.assertFalse(control.retry(w.store, "deepseek", "a"))      # a plain Retry cannot skip the fix
+        self.assertFalse(control.retry(w.store, "codex", "s2"))      # a plain Retry cannot skip the fix
         self.assertTrue(Path(w.row()["worktree"]).exists())
 
     def test_transient_git_error_is_retried_not_held(self):
@@ -520,7 +524,7 @@ class FailClosed(unittest.TestCase):
 
     def test_pr_head_mismatch_holds(self):
         w = self.w
-        w.pr_info(9, HEAD2, head_ref="a-deepseek-001-01")
+        w.pr_info(9, HEAD2, head_ref="s2-codex-001-01-01")
         w.store.update(self.b["id"], pr_number=9, head_sha=HEAD2)
         w.git.local_head = HEAD1                       # local does not contain what the PR holds
         self.merged_and_cleaned()
@@ -529,7 +533,7 @@ class FailClosed(unittest.TestCase):
 
     def test_closed_batch_pr_holds(self):
         w = self.w
-        w.pr_info(9, HEAD1, state="closed", head_ref="a-deepseek-001-01")
+        w.pr_info(9, HEAD1, state="closed", head_ref="s2-codex-001-01-01")
         w.store.update(self.b["id"], pr_number=9, head_sha=HEAD1)
         self.merged_and_cleaned()
         self.assert_still_paused("HELD")
@@ -599,16 +603,16 @@ class OperatorControls(unittest.TestCase):
 
     def test_stop_then_retry_is_an_explicit_override_and_blocks_the_automatic_release(self):
         w = self.w
-        self.assertFalse(control.retry(w.store, "deepseek", "a"))           # plain Retry: locked
-        self.assertFalse(control.line_status(w.store, "deepseek", "a")["can_retry"])
-        control.stop_line(w.store, "deepseek", "a")
+        self.assertFalse(control.retry(w.store, "codex", "s2"))           # plain Retry: locked
+        self.assertFalse(control.line_status(w.store, "codex", "s2")["can_retry"])
+        control.stop_line(w.store, "codex", "s2")
         w.tick()
-        self.assertTrue(control.line_status(w.store, "deepseek", "a")["can_retry"])
+        self.assertTrue(control.line_status(w.store, "codex", "s2")["can_retry"])
         run_maintainer_to_merge(w, 101)
         w.tick(3)
         self.assertEqual(w.row()["state"], "PAUSED")                       # operator hold: no automatic release
         self.assertEqual(w.git.integrated, [])
-        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        self.assertTrue(control.retry(w.store, "codex", "s2"))
         w.tick(2)
         b = w.row()
         self.assertEqual((b["state"], b["pause_reason"]), ("PRODUCING", ""))
@@ -618,58 +622,54 @@ class OperatorControls(unittest.TestCase):
 
     def test_batch_pinned_stop_refuses_another_batch_id_and_keeps_stop_then_retry(self):
         w = self.w
-        other = produce_and_report(w, "sonnet", "a")
-        line = dict(w.store.peek_line("deepseek", "a"))
-        self.assertFalse(control.stop_batch(w.store, "deepseek", "a", other["id"]))   # not this Line's batch
-        self.assertEqual(dict(w.store.peek_line("deepseek", "a")), line)
-        self.assertIsNone(w.store.get("stop_pin_deepseek_a"))
-        self.assertTrue(control.stop_batch(w.store, "deepseek", "a", self.b["id"]))
+        other = second_source(w)
+        line = dict(w.store.peek_line("codex", "s2"))
+        self.assertFalse(control.stop_batch(w.store, "codex", "s2", other["id"]))   # not this Line's batch
+        self.assertEqual(dict(w.store.peek_line("codex", "s2")), line)
+        self.assertIsNone(w.store.get("stop_pin_claude_s3"))
+        self.assertTrue(control.stop_batch(w.store, "codex", "s2", self.b["id"]))
         w.tick()
         self.assertEqual(w.store.get(f"defect_hold_{self.b['id']}"), "1")
-        self.assertTrue(control.retry(w.store, "deepseek", "a", self.b["id"]))
+        self.assertTrue(control.retry(w.store, "codex", "s2", self.b["id"]))
         w.tick(2)
         self.assertEqual((w.row()["state"], w.row()["pause_reason"]), ("PRODUCING", ""))
-        self.assertEqual(w.row("sonnet", "a")["state"], "PAUSED")          # the other Line was never touched
+        self.assertEqual(w.store.batch(other["id"])["state"], "PAUSED")     # the other Line was never touched
 
 
 class SerialMaintainer(unittest.TestCase):
     def test_one_maintainer_at_a_time_in_issue_order(self):
         w = world()
-        produce_and_report(w, "deepseek", "a")
-        produce_and_report(w, "deepseek", "b", data=report(defect_class="second-class"))
+        produce_and_report(w, "codex", "s2")
+        second_source(w, data=report(defect_class="second-class"))
         w.tick(3)
         self.assertEqual(w.gh.created, [101, 102])
         self.assertEqual([b["batch"] for b in w.store.all_batches() if b["method"] == "m"], ["101"])
         self.assertEqual(w.store.maintenance(102)["state"], "QUEUED")
         run_maintainer_to_merge(w, 101)
         w.tick(2)
-        self.assertEqual(w.row("deepseek", "a")["state"], "PRODUCING")     # the first batch resumed
-        self.assertEqual(w.row("deepseek", "b")["state"], "PAUSED")        # the second still waits for its own fix
+        self.assertEqual(w.row("codex", "s2")["state"], "PRODUCING")     # the first batch resumed
+        self.assertEqual(w.row("claude", "s3")["state"], "PAUSED")         # the second still waits for its own fix
         self.assertEqual([b["batch"] for b in w.store.all_batches() if b["method"] == "m"], ["101", "102"])
         w.tmp.cleanup()
 
     def test_one_fix_releases_every_batch_of_its_issue_once_each(self):
         w = world()
-        produce_and_report(w, "deepseek", "a")
-        produce_and_report(w, "sonnet", "a")
+        produce_and_report(w, "codex", "s2")
+        second_source(w)
         run_maintainer_to_merge(w, 101)
         w.tick(3)
-        self.assertEqual({w.row("deepseek", "a")["state"], w.row("sonnet", "a")["state"]}, {"PRODUCING"})
+        # each batch of the Issue is handled exactly once: the Stage 2 Part resumes; the Stage 3 shard, whose chunk run
+        # recorded no start baseline, cannot be rebound to the integrated HEAD and is held instead of guessed
+        self.assertEqual((w.row("codex", "s2")["state"], w.row("claude", "s3")["state"]), ("PRODUCING", "PAUSED"))
         self.assertEqual(len(w.git.integrated), 2)
         w.tick(5)
         self.assertEqual(len(w.git.integrated), 2)
-        self.assertEqual({d["state"] for d in w.store.defects()}, {"RELEASED"})
+        self.assertEqual(sorted(d["state"] for d in w.store.defects()), ["HELD", "RELEASED"])
         w.tmp.cleanup()
 
     def test_released_batch_resumes_in_its_original_phase_with_its_pr(self):
         w = world(maintainer=None)
-        w.start("single", "deepseek", "a")
-        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: (
-            w.pr_info(7, HEAD1, head_ref="a-deepseek-001-01"),
-            w.gh.by_branch.update({"a-deepseek-001-01": [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
-        w.tick()
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
+        review_source(w)
         body = "-1\nHEAD: " + HEAD1 + "\n```warroom-shared-defect\n" + json.dumps(report()) + "\n```\n"
         w.gh.reviews_ = [{"id": 31, "user": {"login": "genonfire"}, "body": body, "commit_id": HEAD1,
                           "submitted_at": "2026-10-21T10:00:00Z"}]
@@ -681,8 +681,8 @@ class SerialMaintainer(unittest.TestCase):
         # back in the phase it was paused in (review watching, same PR/session), where the escalating review is now an
         # ordinary blocking review: exactly one resume fix run, not a second escalation
         b = w.row()
-        self.assertEqual((b["state"], b["pr_number"], b["head_sha"], b["session_id"]), ("FIXING", 7, HEAD1, "ses_1"))
-        fixes = [l for l in w.adapter.launches if l["cwd"] == b["worktree"] and l["kind"] == "resume"]
+        self.assertEqual((b["state"], b["pr_number"], b["head_sha"]), ("FIXING", 7, HEAD1))
+        fixes = [l for l in w.adapter.launches if l["cwd"] == b["worktree"] and l["kind"] == "start"]   # a fresh Stage 2 fix
         self.assertEqual(len(fixes), 1)
         self.assertIn("warroom-shared-defect", fixes[0]["prompt"])
         self.assertEqual(len(w.gh.created), 1)
@@ -690,20 +690,15 @@ class SerialMaintainer(unittest.TestCase):
 
     def test_paused_shared_defect_batch_whose_pr_merges_goes_to_cleanup_without_another_run(self):
         w = world(maintainer=None)
-        w.start("single", "deepseek", "a")
-        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: (
-            w.pr_info(7, HEAD1, head_ref="a-deepseek-001-01"),
-            w.gh.by_branch.update({"a-deepseek-001-01": [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
-        w.tick()
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
+        review_source(w)
         body = "-1\nHEAD: " + HEAD1 + "\n```warroom-shared-defect\n" + json.dumps(report()) + "\n```\n"
         w.gh.reviews_ = [{"id": 31, "user": {"login": "genonfire"}, "body": body, "commit_id": HEAD1,
                           "submitted_at": "2026-10-21T10:00:00Z"}]
         w.tick(2)
         self.assertEqual((w.row()["state"], w.row()["pause_reason"]), ("PAUSED", "shared_defect"))
         launches = len(w.adapter.launches)
-        w.pr_info(7, HEAD1, state="closed", merged=True, head_ref="a-deepseek-001-01", merge_sha=MERGE)
+        w.git.verified.add(("part", "001", "01", "01"))   # the merged Part verifies on master
+        w.pr_info(7, HEAD1, state="closed", merged=True, head_ref="s2-codex-001-01-01", merge_sha=MERGE)
         w.now += 120
         w.tick(3)
         self.assertEqual(w.row()["state"], "COMPLETE")
@@ -721,7 +716,7 @@ class ResolvedReportResume(unittest.TestCase):
         w.tick(3)
         return w, w.row()
 
-    def test_resolved_report_is_archived_and_the_resume_prompt_carries_the_evidence(self):
+    def test_resolved_report_is_archived_and_does_not_pause_the_resumed_run_again(self):
         w, b = self.released()
         wt = Path(b["worktree"])
         d = w.store.defects()[0]
@@ -730,16 +725,9 @@ class ResolvedReportResume(unittest.TestCase):
         self.assertTrue((wt / ".warroom-scratch/resolved-defects" / f"defect-{d['id']}.json").exists())
         self.assertTrue(w.sup.maint._archive_report(d, b))  # absent source report is an idempotent success
         self.assertFalse((wt / defects.REPORT_FILE).exists())
-        prompt = [l for l in w.adapter.launches if l["cwd"] == b["worktree"]][-1]["prompt"]
-        self.assertIn("resolved-defects", prompt)
-        self.assertIn(MERGE[:10], prompt)
-        # the resumed AI finishes with a PR: the batch continues to review instead of pausing again
-        branch = b["branch"]
-        w.pr_info(60, HEAD1, head_ref=branch)
-        w.gh.by_branch[branch] = [{"number": 60, "state": "OPEN", "headRefOid": HEAD1}]
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick(2)
-        self.assertEqual((w.row()["state"], w.row()["pr_number"]), ("WAITING_REVIEW", 60))
+        # the resumed run keeps going: the archived report is never read as a new stop signal
+        w.tick(3)
+        self.assertEqual(w.row()["pause_reason"], "")
         self.assertEqual(len(w.gh.created), 1)
         w.tmp.cleanup()
 
@@ -768,24 +756,10 @@ class ResolvedReportResume(unittest.TestCase):
         self.assertEqual(len(w.store.defects()), 2)
         w.tmp.cleanup()
 
-    def test_exit_zero_without_pr_after_release_names_the_cause_and_never_restarts(self):
-        w, b = self.released()
-        n = len(w.adapter.launches)
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick(3)
-        b = w.row()
-        self.assertEqual(b["state"], "ERROR")
-        self.assertIn("PR을 찾지 못했습니다", b["error"])
-        self.assertIn("공통 결함 #1", b["error"])
-        w.tick(5)
-        self.assertEqual(len(w.adapter.launches), n)
-        w.tmp.cleanup()
-
-
 RELEASE_HEAD = MERGE
 
 
-def make_batch(w, method="d", model="deepseek", shard="001", batch="01", run_kind="d_chunk_new", state="PRODUCING",
+def make_batch(w, method="s2", model="codex", shard="001", batch="01-01", run_kind="s2_chunk_new", state="PRODUCING",
                worktree=True, **fields):
     """A production batch row of any method with an (optionally real) fake worktree, no AI process and no live task run."""
     branch = f"{method}-{model}-{shard}-{batch}"
@@ -822,50 +796,27 @@ class AutonomousIncident(unittest.TestCase):
     def tearDown(self):
         self.w.tmp.cleanup()
 
-    def released(self, *models):
-        """Batches (converted to Method D, no AI running) that already own a RELEASED same-batch Maintainer receipt."""
+    def source(self):
+        """The reporting Stage 2 Part; its chunk run baseline HEAD is an ancestor of the integration HEAD (MERGE)."""
+        b = produce_and_report(self.w)
+        self.w.git.integrated.append((b["worktree"], HEAD1))
+        return b
+
+    def released(self):
+        """The Stage 2 source batch (no AI running) that already owns a RELEASED same-batch Maintainer receipt."""
         w = self.w
-        for m in models:
-            produce_and_report(w, m, "a")
+        self.source()
         run_maintainer_to_merge(w, 101)
         w.tick(3)
-        out = []
-        for m in models:
-            b = w.row(m, "a")
-            self.assertEqual(b["state"], "PRODUCING")
-            w.store.set_line(m, "a", run=0)
-            w.store.finish_runs(b["id"], None)
-            with w.store._conn() as c:
-                c.execute("UPDATE batches SET method='d', pid=NULL, run_kind='d_chunk_new' WHERE id=?", (b["id"],))
-            w.store.set(f"d_base_head_{b['id']}", HEAD1)
-            out.append(w.store.batch(b["id"]))
-        return out
+        b = w.row()
+        self.assertEqual(b["state"], "PRODUCING")
+        w.store.set_line("codex", "s2", run=0)
+        w.store.finish_runs(b["id"], None)
+        w.store.update(b["id"], pid=None)
+        return [w.store.batch(b["id"])]
 
     def rejected(self, b):
-        return self.w.sup._d_head_problem(b, Path(b["worktree"]))
-
-    def test_approved_integration_error_keeps_its_evidence_and_is_received_by_the_sweep_once(self):
-        w = self.w
-        b, = self.released("deepseek")
-        problem = self.rejected(b)
-        self.assertIsInstance(problem, defects.BoundaryProblem)
-        w.sup._fail(b, "ERROR", problem + " worktree를 보존합니다.")   # the exact concatenation _d_finalize performs
-        row = w.store.batch(b["id"])
-        self.assertEqual((row["state"], row["error_seq"], incidents(w)), ("ERROR", 1, []))   # nothing is received inside _fail
-        ev = json.loads(w.store.get(f"error_evidence_{b['id']}_1"))
-        self.assertEqual((ev["kind"], ev["site"], ev["head"]), ("boundary", "d-head", MERGE))
-        w.tick(2)
-        row = w.store.batch(b["id"])
-        self.assertEqual((row["state"], row["pause_reason"], row["paused_from"]), ("PAUSED", "shared_defect", "PRODUCING"))
-        self.assertIn("배치 기준 HEAD", row["error"])                  # the original message survives
-        self.assertEqual(len(incidents(w)), 1)
-        self.assertEqual(w.gh.created, [101, 102])
-        self.assertIn("장애 접수", w.gh.issues[102]["title"])
-        self.assertNotIn("Traceback", w.gh.issues[102]["body"])
-        w.sup = w.make_sup()                                          # a restart over the same DB
-        w.sup.maint.__dict__.pop("_intake_errors", None)
-        w.tick(3)
-        self.assertEqual((len(incidents(w)), w.gh.created), (1, [101, 102]))
+        return "청크 실행 기준 HEAD가 현재 worktree HEAD와 다릅니다(테스트). worktree를 보존합니다."
 
     def test_any_error_without_structured_evidence_is_received_with_that_item_missing(self):
         w = self.w
@@ -894,11 +845,10 @@ class AutonomousIncident(unittest.TestCase):
 
     def test_two_batches_are_two_issues_never_merged_by_class(self):
         w = self.w
-        batches = self.released("deepseek", "sonnet")
-        for b in batches:
-            w.sup._fail(b, "ERROR", self.rejected(b))
+        for b in (make_batch(w), make_batch(w, "s3", "claude", "004", "all", "s3_chunk_new")):
+            break_batch(w, b, "the same failure text")
         w.tick(3)
-        self.assertEqual(w.gh.created, [101, 102, 103])
+        self.assertEqual(w.gh.created, [101, 102])
         self.assertEqual(len({d["defect_class"] for d in incidents(w)}), 2)
 
     def diagnose(self, valid=True, commit=False, outcome="undetermined", blocked=False,
@@ -1054,7 +1004,7 @@ class AutonomousIncident(unittest.TestCase):
 
     def test_fix_to_supervisor_code_waits_until_the_running_process_has_it(self):
         w = self.w
-        b = produce_and_report(w)
+        b = self.source()
         w.git.changed[MERGE] = ["tools/warroom/warroom/supervisor.py"]
         w.cfg["shared_defect_verify"] = [["true"]]
         w.sup.code_sha = "1" * 40
@@ -1100,14 +1050,16 @@ class AutonomousIncidentReview(unittest.TestCase):
 
     def test_evidence_is_explicit_atomic_and_required(self):
         t, w = self.t, self.w
-        b, = t.released("deepseek")
+        b, = t.released()
         w.store.set(f"unrelated_secret_{b['id']}", "x")
         w.sup._fail(b, "ERROR", t.rejected(b))
+        w.store.set(f"error_evidence_{b['id']}_1", json.dumps({"kind": "boundary", "site": "s2-head", "base": HEAD1,
+                                                               "head": MERGE}))
         w.tick(4)
         m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
         files = list((Path(m["worktree"]) / ".warroom-scratch/incident").glob("*.json"))
         data = json.loads(files[0].read_text())
-        self.assertIn(f"d_base_head_{b['id']}", data["kv"])
+        self.assertIn(stage2.run_start_key(b["id"]), data["kv"])
         self.assertIn(f"error_evidence_{b['id']}_1", data["kv"])
         self.assertEqual(data["maintainer_attempt"], m["id"])
         self.assertNotIn(f"unrelated_secret_{b['id']}", data["kv"])
@@ -1115,7 +1067,7 @@ class AutonomousIncidentReview(unittest.TestCase):
 
     def test_evidence_write_failure_does_not_start_the_maintainer(self):
         t, w = self.t, self.w
-        b, = t.released("deepseek")
+        b, = t.released()
         launches = len(w.adapter.launches)
         w.sup._fail(b, "ERROR", t.rejected(b))
         w.sup.maint.write_incident_evidence = lambda mb: "증거 작성 실패(테스트)"
@@ -1125,7 +1077,7 @@ class AutonomousIncidentReview(unittest.TestCase):
 
     def test_legacy_diagnosis_marker_does_not_bypass_the_new_handoff_proof(self):
         t, w = self.t, self.w
-        b, = t.released("deepseek")
+        b, = t.released()
         w.sup._fail(b, "ERROR", t.rejected(b))
         w.tick(4)
         m = [x for x in w.store.all_batches() if x["method"] == "m"][-1]
@@ -1139,7 +1091,7 @@ class AutonomousIncidentReview(unittest.TestCase):
 
     def test_diagnosis_cleanup_survives_a_crash_before_the_state_transaction(self):
         t, w = self.t, self.w
-        b, = t.released("deepseek")
+        b, = t.released()
         observe = w.sup.maint._observe
         def observed_with_unknown(batch, evidence):
             result = observe(batch, evidence)
@@ -1178,7 +1130,7 @@ class AutonomousIncidentReview(unittest.TestCase):
 
     def test_outcomes_are_reported_once_per_phase(self):
         t, w = self.t, self.w
-        b, = t.released("deepseek")
+        b, = t.released()
         d = w.store.defects()[0]
         with w.store._conn() as c:
             c.execute("UPDATE defects SET source='incident' WHERE id=?", (d["id"],))   # a RELEASED incident of this batch
@@ -1224,16 +1176,6 @@ class IncidentNumberAndIntake(unittest.TestCase):
         w.store.update(b["id"], pid=None, session_id="x")                     # a non-state write never counts
         self.assertEqual(w.store.batch(b["id"])["error_seq"], 2)
 
-    def test_error_evidence_of_an_event_keeps_its_first_record(self):
-        w = self.w
-        b, = self.t.released("deepseek")
-        problem = self.t.rejected(b)
-        w.sup._fail(b, "ERROR", problem)
-        first = w.store.get(f"error_evidence_{b['id']}_1")
-        w.git.local_head = "d" * 40                       # a later write of the SAME ERROR with another receipt
-        w.sup._fail(w.store.batch(b["id"]), "ERROR", defects.BoundaryProblem("later", {**problem.receipt, "head": "d" * 40}))
-        self.assertEqual((w.store.get(f"error_evidence_{b['id']}_1"), w.store.batch(b["id"])["error_seq"]), (first, 1))
-
     def test_batches_without_a_number_are_not_received_and_are_listed_once(self):
         w = self.w
         b = make_batch(w)
@@ -1243,25 +1185,23 @@ class IncidentNumberAndIntake(unittest.TestCase):
         self.assertEqual((incidents(w), w.store.batch(b["id"])["state"]), ([], "ERROR"))
         self.assertEqual(sum("사건 번호가 없는" in e["msg"] for e in w.store.recent_events(500)), 1)
 
-    def test_one_sweep_receives_c_d_stage2_stage3_through_any_error_path(self):
+    def test_one_sweep_receives_stage2_stage3_through_any_error_path(self):
         w = self.w
-        rows = [make_batch(w, "c", "deepseek", "001", "01", "c_parallel"),
-                make_batch(w, "d", "deepseek", "002", "01", "d_chunk_new"),
-                make_batch(w, "s2", "deepseek", "003", "01-01", "s2_parallel"),
-                make_batch(w, "s3", "deepseek", "004", "00", "s3_finalize")]
+        rows = [make_batch(w, "s2", "codex", "003", "01-01", "s2_parallel"),
+                make_batch(w, "s3", "claude", "004", "00", "s3_finalize")]
         for i, b in enumerate(rows):
             break_batch(w, b, direct=bool(i % 2))          # `_fail` for two, a direct Store write for the others
         w.tick(2)
         self.assertEqual(sorted(d["event_key"] for d in incidents(w)), sorted(f"incident:{b['id']}:e1" for b in rows))
         self.assertTrue(all(w.store.batch(b["id"])["state"] == "PAUSED" for b in rows))
 
-    def test_a_b_maintainer_stop_and_clearing_are_never_received(self):
+    def test_retired_maintainer_stop_and_clearing_are_never_received(self):
         w = self.w
-        a = make_batch(w, "a", "deepseek", "001", "01", "produce")
-        break_batch(w, a)
-        d = make_batch(w, "d", "deepseek", "002", "01")
+        a = make_batch(w, "a", "deepseek", "001", "01", "produce")   # a retired Stage 1 row (#9933): history only
+        break_batch(w, a, direct=True)
+        d = make_batch(w, "s2", "codex", "002", "01-01")
         w.store.update(d["id"], state="PAUSED", paused_from="PRODUCING", error="Stop")              # not an ERROR
-        c = make_batch(w, "c", "deepseek", "003", "01", "c_chunk_new")
+        c = make_batch(w, "s3", "claude", "003", "all", "s3_chunk_new")
         w.store.update(c["id"], state="ERROR", paused_from="CLEARING", error="clear failed")        # Clear in progress
         w.tick(3)
         self.assertEqual(incidents(w), [])
@@ -1269,7 +1209,7 @@ class IncidentNumberAndIntake(unittest.TestCase):
 
     def test_a_prepare_error_without_a_worktree_is_received_with_missing_observations(self):
         w = self.w
-        b = make_batch(w, "d", state="PREPARE", run_kind=None, worktree=False)
+        b = make_batch(w, "s2", state="PREPARE", run_kind=None, worktree=False)
         break_batch(w, b, "worktree 준비 실패: boom", paused_from="PREPARE")
         w.tick(2)
         d, = incidents(w)
@@ -1296,29 +1236,29 @@ class IncidentNumberAndIntake(unittest.TestCase):
     def test_operator_controls_win_inside_the_pausing_transaction(self):
         w = self.w
         cases = {
-            "clear request": lambda b: w.store.request_clear("deepseek", "d", b["id"]),
-            "force stop": lambda b: w.store.set_line("deepseek", "d", force_stop=1),
-            "retry": lambda b: w.store.set_line("deepseek", "d", retry_batch=b["id"]),
-            "stop pin": lambda b: w.store.set("stop_pin_deepseek_d", str(b["id"])),
+            "clear request": lambda b: w.store.request_clear("codex", "s2", b["id"]),
+            "force stop": lambda b: w.store.set_line("codex", "s2", force_stop=1),
+            "retry": lambda b: w.store.set_line("codex", "s2", retry_batch=b["id"]),
+            "stop pin": lambda b: w.store.set("stop_pin_codex_s2", str(b["id"])),
             "defect hold": lambda b: w.store.set(f"defect_hold_{b['id']}", "1"),
             "live pid": lambda b: w.store.update(b["id"], pid=77),
-            "task run": lambda b: w.store.add_run(b["id"], "d_chunk_new", None, 5, "/l", "/e", task="001"),
+            "task run": lambda b: w.store.add_run(b["id"], "s2_chunk_new", None, 5, "/l", "/e", task="001"),
         }
         for n, (name, arrange) in enumerate(cases.items()):
             with self.subTest(name):
-                b = break_batch(w, make_batch(w, "d", "deepseek", f"{n + 1:03d}", "01"))
+                b = break_batch(w, make_batch(w, "s2", "codex", f"{n + 1:03d}"))
                 expect = {k: b[k] for k in ("error_seq", "paused_from", "run_kind", "branch", "worktree")}
                 kw = dict(batch_id=b["id"], event_key=f"k{n}", source="incident", defect_class="incident-d-1-e1", state="REPORTED",
                           report="{}", pause_reason="shared_defect", error=None)
                 arrange(b)
                 self.assertIsNone(w.store.report_defect(expect=expect, **kw))
                 self.assertEqual((w.store.batch(b["id"])["state"], incidents(w)), ("ERROR", []))
-                w.store.set_line("deepseek", "d", force_stop=0, retry_batch=None)       # the next case starts clean
-                w.store.delete("stop_pin_deepseek_d")
+                w.store.set_line("codex", "s2", force_stop=0, retry_batch=None)         # the next case starts clean
+                w.store.delete("stop_pin_codex_s2")
                 with w.store._conn() as c:
                     c.execute("DELETE FROM clear_requests")
                 w.store.update(b["id"], state="COMPLETE", pid=None)
-        b = break_batch(w, make_batch(w, "d", "deepseek", "099", "01"))
+        b = break_batch(w, make_batch(w, "s2", "codex", "099"))
         kw = dict(batch_id=b["id"], event_key="kx", source="incident", defect_class="incident-d-1-e1", state="REPORTED",
                   report="{}", pause_reason="shared_defect", error=None)
         expect = {k: b[k] for k in ("error_seq", "paused_from", "run_kind", "branch", "worktree")}
@@ -1332,10 +1272,10 @@ class IncidentNumberAndIntake(unittest.TestCase):
         w.sup.maint._intake_errors()
         self.assertEqual(incidents(w), [])
         w.store.set(f"defect_hold_{b['id']}", "")          # an emptied hold is no hold
-        w.store.set("stop_pin_deepseek_d", "1")
+        w.store.set("stop_pin_codex_s2", "1")
         w.sup.maint._intake_errors()
         self.assertEqual(incidents(w), [])
-        w.store.delete("stop_pin_deepseek_d")
+        w.store.delete("stop_pin_codex_s2")
         w.sup.maint._intake_errors()
         self.assertEqual(len(incidents(w)), 1)
 
@@ -1344,8 +1284,8 @@ class IncidentNumberAndIntake(unittest.TestCase):
         b = break_batch(w, make_batch(w))
         w.sup.maint._intake_errors()
         d, = incidents(w)
-        w.store.request_clear("deepseek", "d", b["id"])
-        w.store.pin_clear("deepseek", "d")
+        w.store.request_clear("codex", "s2", b["id"])
+        w.store.pin_clear("codex", "s2")
         self.assertEqual(w.store.defect(d["id"])["state"], "OVERRIDDEN")
         w.store.update_defect(d["id"], issue_number=101, state="OVERRIDDEN")
         w.store.ensure_maintenance(101)
@@ -1362,7 +1302,7 @@ class IncidentNumberAndIntake(unittest.TestCase):
         w.store.update(b["id"], state="PRODUCING", pause_reason="", defect_id=None, error=None)
         w.store.update_defect(incidents(w)[0]["id"], state="OVERRIDDEN")
         break_batch(w, w.store.batch(b["id"]), "second event")
-        other = break_batch(w, make_batch(w, "c", "deepseek", "005", "01", "c_chunk_new"))
+        other = break_batch(w, make_batch(w, "s3", "claude", "005", "all", "s3_chunk_new"))
         w.tick(4)
         self.assertEqual(sorted(d["event_key"] for d in incidents(w)),
                          sorted([f"incident:{b['id']}:e1", f"incident:{b['id']}:e2", f"incident:{other['id']}:e1"]))
@@ -1414,7 +1354,7 @@ class IncidentNumberAndIntake(unittest.TestCase):
 class IncidentRecoveryProof(unittest.TestCase):
     """#3349 §4–§6: recurrence only when proven; Runtime-only vs Worktree-integration proofs; HOLD when unprovable."""
 
-    PROMPT = "tools/warroom/prompts/d_chunk_resume.md"
+    PROMPT = "tools/warroom/prompts/s2_repair.md"   # the one template a deterministic-finalize resume may render
     PY = "tools/warroom/warroom/supervisor.py"
 
     def setUp(self):
@@ -1429,7 +1369,8 @@ class IncidentRecoveryProof(unittest.TestCase):
     def tearDown(self):
         self.t.tearDown()
 
-    def merged(self, files, method="d", run_kind="d_chunk_resume", paused_from="PRODUCING", error_fields=None, **fields):
+    def merged(self, files, method="s2", run_kind="s2_deterministic_finalize", paused_from="PRODUCING", error_fields=None,
+               **fields):
         """An incident for a fresh batch, its Maintainer fix merged (FIX_MERGED), nothing applied yet."""
         w = self.w
         b = make_batch(w, method, run_kind=run_kind, **fields)
@@ -1525,13 +1466,13 @@ class IncidentRecoveryProof(unittest.TestCase):
     def test_prompt_only_fix_resumes_without_restart_integration_or_line_flag_change(self):
         w = self.w
         b, d = self.merged([self.PROMPT], session_id="ses_1")
-        before = dict(w.store.line("deepseek", "d"))
+        before = dict(w.store.line("codex", "s2"))
         d = self.settle(d)
         row = w.store.batch(b["id"])
         self.assertEqual((d["state"], d["fix_kind"], d["integrated_sha"], d["applied_code_sha"]), ("RELEASED", "runtime", None, HEAD1))
         self.assertEqual((row["state"], row["pause_reason"]), ("PRODUCING", ""))
         self.assertEqual(w.git.integrated, [x for x in w.git.integrated if x[0] != b["worktree"]])   # production worktree untouched
-        after = dict(w.store.line("deepseek", "d"))
+        after = dict(w.store.line("codex", "s2"))
         self.assertEqual((after["run"], after["drain"], after["force_stop"]), (before["run"], before["drain"], before["force_stop"]))
         self.assertIsNone(w.store.get(f"restart_needed_{d['id']}"))
         bodies = [c["body"] for c in w.gh.issue_comments_.get(d["issue_number"], [])]
@@ -1548,40 +1489,6 @@ class IncidentRecoveryProof(unittest.TestCase):
         w.git.ancestor_pairs.add((MERGE, w.sup.code_sha))
         d = self.settle(d)
         self.assertEqual((d["state"], d["fix_kind"], d["integrated_sha"]), ("RELEASED", "runtime", None))
-
-    def test_d_cli_fix_waits_for_supervisor_checkout_before_worktree_release(self):
-        w = self.w
-        b, d = self.merged(["scripts/relation/d-chunk-cli.mjs"])
-        w.git.ancestor_pairs.discard((MERGE, w.sup.code_sha))
-        d = self.settle(d)
-        self.assertEqual((d["state"], w.store.batch(b["id"])["state"]), ("FIX_MERGED", "PAUSED"))
-        self.assertFalse(any(path == b["worktree"] for path, *_ in w.git.integrated))
-        w.git.ancestor_pairs.add((MERGE, w.sup.code_sha))
-        self.assertFalse(w.sup.maint._fix_not_loaded(d))
-        w.sup.prompt_checkout_clean = lambda paths: False
-        self.assertTrue(w.sup.maint._fix_not_loaded(d))
-
-    def test_c_cli_fix_waits_for_supervisor_checkout_before_worktree_release(self):
-        # #9291: C workers run the official CLI from the Supervisor checkout; a fix only in the worktree never reaches them.
-        w = self.w
-        b, d = self.merged(["scripts/relation/literary-context.mjs"], method="c", run_kind="c_parallel")
-        w.git.ancestor_pairs.discard((MERGE, w.sup.code_sha))
-        d = self.settle(d)
-        self.assertEqual((d["state"], w.store.batch(b["id"])["state"]), ("FIX_MERGED", "PAUSED"))
-        self.assertFalse(any(path == b["worktree"] for path, *_ in w.git.integrated))
-        w.git.ancestor_pairs.add((MERGE, w.sup.code_sha))
-        self.assertFalse(w.sup.maint._fix_not_loaded(d))
-        w.sup.prompt_checkout_clean = lambda paths: False
-        self.assertTrue(w.sup.maint._fix_not_loaded(d))
-
-    def test_a_prompt_the_resumed_launch_does_not_render_holds(self):
-        w = self.w
-        b, d = self.merged(["tools/warroom/prompts/d_chunk.md"], session_id="ses_1")   # a resume sends only d_chunk_resume
-        d = self.settle(d)
-        self.assertEqual(d["state"], "HELD")
-        self.assertIn("재개 증명 불가", d["hold_reason"])
-        self.assertIn("재개 실행에 전달되지 않음", d["hold_reason"])
-        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
 
     def test_stage2_deterministic_finalize_releases_for_repair_prompt_only(self):
         w = self.w
@@ -1638,161 +1545,20 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertEqual(d["state"], "HELD")
         self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
 
-    def test_parallel_d_retry_with_one_used_fix_predicts_and_launches_the_fix_prompt(self):
-        from unittest import mock
-        from warroom import prompts
-
-        w = self.w
-        b = make_batch(w, "d", run_kind="d_parallel")
-        task = "001"
-        w.store.add_tasks(b["id"], [(task, task)])
-        w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
-                            data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
-        w.store.add_run(b["id"], "d_chunk_new", "ses_1", None, "old.log", "old.exit",
-                        model="p/free-x-free", effort="high", task=task)
-        w.store.set(dchunk.fix_key(b["id"], 1), "1")
-        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
-        rejection = {"errors": ["fixture rejection"]}
-        with mock.patch.object(dchunk, "read_active", return_value=active), \
-             mock.patch.object(dchunk, "read_rejection", return_value=rejection), \
-             mock.patch.object(dchunk, "fix_bindings", return_value="s1 [record=w1] w1-s1 · 표제어"):
-            predicted = w.sup.resume_prompt_names(w.store.batch(b["id"]))
-            self.assertEqual(predicted, {"d_chunk_fix"})
-
-            round_ = dparallel._Round(w.sup.dp, w.store.batch(b["id"]))
-            w.sup.dp._reset_acknowledged_failures(w.store.batch(b["id"]), round_)
-            row = w.store.task_row(b["id"], task)
-            self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
-
-            w.adapter.plan.append({"code": 0, "session": "ses_1"})
-            self.assertTrue(w.sup.dp._launch(w.store.batch(b["id"]), row, round_))
-
-        launch = w.adapter.launches[-1]
-        self.assertEqual(launch["prompt"], prompts.d_chunk_fix(b, 1, "fixture rejection\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\ns1 [record=w1] w1-s1 · 표제어"))
-        self.assertEqual(w.store.runs(b["id"])[0]["kind"], "d_chunk_fix")
-
-    def test_parallel_d_stale_rejection_is_proved_without_writing_then_refreshed_for_retry(self):
-        from unittest import mock
-        w = self.w
-        b = make_batch(w, "d", run_kind="d_parallel")
-        task = "001"
-        w.store.add_tasks(b["id"], [(task, task)])
-        w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
-                            data=json.dumps({"ack": True, "kind": "fix"}))
-        w.store.set(dchunk.fix_key(b["id"], 1), "1")
-        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
-        rejection = {"errors": ["remaining rejected sense"]}
-        with mock.patch.object(dchunk, "read_active", return_value=active), \
-             mock.patch.object(dchunk, "read_rejection", return_value=None), \
-             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=rejection) as refresh:
-            self.assertEqual(w.sup.resume_prompt_names(b), {"d_chunk_fix"})
-            self.assertTrue(refresh.call_args.kwargs["dry_run"])
-            self.assertTrue(refresh.call_args.kwargs["limit_to_previous"])
-            round_ = dparallel._Round(w.sup.dp, b)
-            w.sup.dp._reset_acknowledged_failures(b, round_)
-            self.assertNotIn("dry_run", refresh.call_args.kwargs)
-            row = w.store.task_row(b["id"], task)
-            self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
-
-    def test_parallel_d_queued_fix_reinspects_stale_rejection_before_launch(self):
-        from unittest import mock
-        from warroom import prompts
-        w = self.w
-        b = make_batch(w, "d", run_kind="d_parallel")
-        w.store.add_tasks(b["id"], [("001", "001")])
-        w.store.update_task(b["id"], "001", state="FIXQ", session_id="ses_1",
-                            data=json.dumps({"kind": "fix"}))
-        w.store.add_run(b["id"], "d_chunk_new", "ses_1", None, "old.log", "old.exit",
-                        model="p/free-x-free", effort="high", task="001")
-        w.store.set(dchunk.fix_key(b["id"], 1), str(dchunk.MAX_FIXES))
-        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
-        rejection = {"errors": ["remaining rejected sense"]}
-        round_ = dparallel._Round(w.sup.dp, b)
-        w.adapter.plan.append({"code": 0, "session": "ses_1"})
-        with mock.patch.object(dchunk, "read_active", return_value=active), \
-             mock.patch.object(dchunk, "read_rejection", return_value=None), \
-             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=rejection) as refresh, \
-             mock.patch.object(dchunk, "fix_bindings", return_value="s1 [record=w1] w1-s1 · 표제어"):
-            self.assertTrue(w.sup.dp._launch(b, w.store.task_row(b["id"], "001"), round_))
-            self.assertTrue(refresh.call_args.kwargs["limit_to_previous"])
-        self.assertEqual(w.adapter.launches[-1]["prompt"], prompts.d_chunk_fix(b, 1, "remaining rejected sense\n\n거부된 Sense의 정확한 결속 (active 청크 기준):\ns1 [record=w1] w1-s1 · 표제어"))
-
-    def test_parallel_d_queued_fix_with_already_valid_decisions_resumes_to_save(self):
-        """#5171: a fix run repaired the judgments but stopped before save; no rejection is left to bind, so the queued
-        fix must continue the same session as a resume instead of ending in a prompt error."""
-        from unittest import mock
-        w = self.w
-        b = make_batch(w, "d", run_kind="d_parallel")
-        w.store.add_tasks(b["id"], [("001", "001")])
-        w.store.update_task(b["id"], "001", state="FIXQ", session_id="ses_1", data=json.dumps({"kind": "fix"}))
-        w.store.add_run(b["id"], "d_chunk_fix", "ses_1", None, "old.log", "old.exit",
-                        model="p/free-x-free", effort="high", task="001")
-        w.store.set(dchunk.fix_key(b["id"], 1), str(dchunk.MAX_FIXES))
-        active = {"chunk_no": 1, "view_sha256": "v" * 64, "git_head": HEAD1}
-        round_ = dparallel._Round(w.sup.dp, b)
-        w.adapter.plan.append({"code": 0, "session": "ses_1"})
-        with mock.patch.object(dchunk, "read_active", return_value=active), \
-             mock.patch.object(dchunk, "read_rejection", return_value=None), \
-             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=None), \
-             mock.patch.object(dchunk, "corrected_decisions_valid", return_value=True), \
-             mock.patch.object(w.sup, "_d_chunk_prompt", return_value=("resume prompt", None)):
-            self.assertTrue(w.sup.dp._launch(b, w.store.task_row(b["id"], "001"), round_))
-        self.assertEqual(w.store.batch(b["id"])["state"], "PRODUCING")
-        self.assertEqual(w.adapter.launches[-1]["prompt"], "resume prompt")
-        self.assertEqual(w.store.runs(b["id"])[0]["kind"], "d_chunk_resume")   # runs() is newest-first
-        # an invalid/unknown inspection still fails closed
-        w.store.update_task(b["id"], "001", state="FIXQ")
-        with mock.patch.object(dchunk, "read_active", return_value=active), \
-             mock.patch.object(dchunk, "read_rejection", return_value=None), \
-             mock.patch.object(dchunk, "refresh_stale_search_rejection", return_value=None), \
-             mock.patch.object(dchunk, "corrected_decisions_valid", return_value=False):
-            self.assertFalse(w.sup.dp._launch(b, w.store.task_row(b["id"], "001"), round_))
-
-    def test_parallel_c_retry_predicts_the_actual_correction_prompt(self):
-        from unittest import mock
-        from warroom import literary, cparallel
-
-        w = self.w
-        b = make_batch(w, "c", run_kind="c_parallel")
-        w.store.add_tasks(b["id"], [("004", "004")])
-        w.store.update_task(b["id"], "004", state="FAILED", session_id="ses_1",
-                            data=json.dumps({"ack": True, "completed_fix_runs": []}))
-        with mock.patch.object(literary, "read_active", return_value={"chunk_no": 4}), \
-             mock.patch.object(literary, "submit_retryable", return_value=True):
-            self.assertEqual(w.sup.resume_prompt_names(b), {"c_chunk_resume"})
-            round_ = cparallel._Round(w.sup.cp, b)
-            w.sup.cp._reset_acknowledged_failures(b, round_)
-            row = w.store.task_row(b["id"], "004")
-            self.assertEqual((row["state"], json.loads(row["data"])["kind"]), ("FIXQ", "fix"))
-        with mock.patch.object(literary, "read_active", return_value=None):
-            w.store.update_task(b["id"], "004", state="FAILED", data=json.dumps({"ack": True}))
-            self.assertIsNone(w.sup.resume_prompt_names(b))
-
     def test_a_held_incident_is_reproved_after_the_code_checkout_changes(self):
         from unittest import mock
-        from pathlib import Path
-        from warroom import dchunk
 
         w = self.w
-        files = ["tools/warroom/prompts/d_chunk.md", "tools/warroom/prompts/d_chunk_fix.md",
-                 "tools/warroom/prompts/d_chunk_resume.md"]
-        b, d = self.merged(files, run_kind="d_parallel")
-        task = "009"
-        w.store.add_tasks(b["id"], [(task, task)])
-        w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
-                            data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
+        b, d = self.merged([self.PROMPT])
         w.store.set(f"defect_reproof_head_{d['id']}", HEAD1)
-        w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: d_parallel: 이전 코드에서 prompt 집합을 계산할 수 없음")
+        w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: 이전 코드에서 prompt 집합을 계산할 수 없음")
         w.sup.code_sha = HEAD1
         w.git.ancestor_pairs.add((MERGE, HEAD2))
         w.store.set(f"defect_hold_{b['id']}", "1")
         self.assertFalse(w.store.rearm_held_defect(d["id"], b["id"], HEAD2))
         self.assertEqual(w.store.defect(d["id"])["state"], "HELD")
         w.store.delete(f"defect_hold_{b['id']}")
-        active = {"chunk_no": 9, "view_sha256": "v" * 64, "git_head": HEAD1}
-        with mock.patch.object(w.git, "head", side_effect=lambda path: HEAD2 if Path(path) == w.sup.code_root else HEAD1), \
-             mock.patch.object(dchunk, "read_active", return_value=active), \
-             mock.patch.object(dchunk, "read_rejection", return_value=None):
+        with mock.patch.object(w.git, "head", side_effect=lambda path: HEAD2 if Path(path) == w.sup.code_root else HEAD1):
             d = self.settle(d)   # checkout H2 with H1 loaded must not consume H2's reproof
             self.assertEqual((d["state"], w.store.get(f"defect_reproof_head_{d['id']}")), ("HELD", HEAD1))
             w.sup.code_sha = HEAD2   # the Supervisor has now restarted from H2
@@ -1802,21 +1568,12 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertEqual((w.store.batch(b["id"])["state"], w.store.batch(b["id"])["pause_reason"]), ("PRODUCING", ""))
 
     def test_a_failed_held_reproof_waits_for_another_code_change(self):
-        from unittest import mock
-        from warroom import dchunk
-
         w = self.w
-        b, d = self.merged(["tools/warroom/prompts/d_chunk.md"], run_kind="d_parallel")
-        task = "009"
-        w.store.add_tasks(b["id"], [(task, task)])
-        w.store.update_task(b["id"], task, state="FAILED", session_id="ses_1",
-                            data=json.dumps({"ack": True, "kind": "resume", "resumed": True}))
+        b, d = self.merged(["tools/warroom/prompts/s2_links.md"])   # a template the finalize resume never renders
         w.sup.code_sha = HEAD1
         w.store.set(f"defect_reproof_head_{d['id']}", "c" * 40)
-        w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: d_parallel: 이전 코드에서 prompt 집합을 계산할 수 없음")
-        active = {"chunk_no": 9, "view_sha256": "v" * 64, "git_head": HEAD1}
-        with mock.patch.object(dchunk, "read_active", return_value=active), \
-             mock.patch.object(dchunk, "read_rejection", return_value=None):
+        w.store.update_defect(d["id"], state="HELD", hold_reason="재개 증명 불가: 이전 코드에서 prompt 집합을 계산할 수 없음")
+        if True:
             d = self.settle(d)
             held_events = [e["msg"] for e in w.store.batch_events(b["id"]) if "공통 수정 반영 보류" in e["msg"]]
             self.assertEqual(d["state"], "HELD")
@@ -1827,7 +1584,7 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertEqual(again, held_events)
 
     def test_an_unmodelled_run_kind_cannot_prove_prompt_delivery(self):
-        b, d = self.merged([self.PROMPT], run_kind="d_finalize", session_id="ses_1")
+        b, d = self.merged([self.PROMPT], run_kind="s2_chunk_new", session_id="ses_1")
         d = self.settle(d)
         self.assertEqual(d["state"], "HELD")
         self.assertIn("prompt 집합을 정할 수 없어", d["hold_reason"])
@@ -1872,7 +1629,7 @@ class IncidentRecoveryProof(unittest.TestCase):
                 self.tearDown()
                 self.setUp()
                 w = self.w
-                branch = "d-deepseek-001-01"
+                branch = "s2-codex-001-01-01"
                 w.pr_info(70, HEAD1, state=state, merged=merged, head_ref=branch)
                 b, d = self.merged([self.PY], run_kind=None, paused_from="WAITING_REVIEW", pr_number=70, head_sha=HEAD1)
                 d = self.settle(d)
@@ -1888,67 +1645,6 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertEqual((d["state"], d["fix_kind"], w.store.batch(b["id"])["state"]), ("RELEASED", "runtime", "PREPARE"))
 
     # ---- Worktree integration ---------------------------------------------------------------------------------------
-    def d_baseline(self, b, head=HEAD1):
-        wt = Path(b["worktree"])
-        self.w.git.integrated.append((str(wt), head))
-        self.w.store.set(f"d_base_head_{b['id']}", head)
-        self.w.store.set(dchunk.run_start_key(b["id"]), json.dumps(
-            {"branch": b["branch"], "worktree": str(wt), "head": head, "remote_head": None, "chunk_no": 1}, sort_keys=True))
-
-    def worktree_fix(self, run_kind, parallel=False):
-        w = self.w
-        b = make_batch(w, "d", run_kind=run_kind, session_id="ses_1")
-        if parallel:
-            w.store.set(dparallel.mode_key(b["id"]), dparallel.PARALLEL)
-        self.d_baseline(b)
-        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
-        w.git.changed[MERGE] = ["scripts/relation/d-chunk-cli.mjs"]
-        w.tick(2)
-        d, = incidents(w)
-        return self.merge_fix(b, d)
-
-    def test_serial_d_integration_moves_only_the_run_baseline_and_the_resume_guard_passes(self):
-        w = self.w
-        b, d = self.worktree_fix("d_chunk_resume")
-        d = self.settle(d)
-        row = w.store.batch(b["id"])
-        self.assertEqual((d["state"], d["fix_kind"], d["integrated_sha"]), ("RELEASED", "worktree", MERGE))
-        self.assertEqual(row["state"], "PRODUCING")
-        self.assertEqual(w.store.get(f"d_base_head_{b['id']}"), HEAD1)                         # the first HEAD never moves
-        self.assertEqual(json.loads(w.store.get(dchunk.run_start_key(b["id"])))["head"], MERGE)
-        self.assertIsNone(w.sup._d_head_problem(row, Path(row["worktree"])))                   # the real guard, now by receipt
-
-    def test_parallel_d_integration_keeps_the_first_head_and_passes_both_guards(self):
-        w = self.w
-        b, d = self.worktree_fix("d_parallel", parallel=True)
-        d = self.settle(d)
-        row = w.store.batch(b["id"])
-        self.assertEqual((d["state"], d["integrated_sha"]), ("RELEASED", MERGE))
-        self.assertEqual(w.store.get(f"d_base_head_{b['id']}"), HEAD1)
-        self.assertIsNone(w.sup._d_head_problem(row, Path(row["worktree"])))
-
-    def test_serial_c_keeps_the_checkpoint_head_and_resumes_on_the_run_baseline(self):
-        w = self.w
-        b = make_batch(w, "c", run_kind="c_chunk_new", session_id="ses_1")
-        wt = Path(b["worktree"])
-        cp = wt / literary.names(b).checkpoint
-        cp.parent.mkdir(parents=True, exist_ok=True)
-        cp.write_text(json.dumps({"batch": {"git_head": HEAD1}}))
-        w.git.integrated.append((str(wt), HEAD1))
-        w.store.set(literary.run_start_key(b["id"]), json.dumps(
-            {"branch": b["branch"], "worktree": str(wt), "head": HEAD1, "remote_head": None, "chunk_no": 1}, sort_keys=True))
-        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
-        w.git.changed[MERGE] = ["scripts/relation/c-chunk-cli.mjs"]
-        w.tick(2)
-        d, = incidents(w)
-        b, d = self.merge_fix(b, d)
-        d = self.settle(d)
-        row = w.store.batch(b["id"])
-        self.assertEqual((d["state"], d["integrated_sha"], row["state"]), ("RELEASED", MERGE, "PRODUCING"))
-        self.assertEqual(literary.checkpoint_head(wt, row), HEAD1)                                   # never rewritten
-        self.assertEqual(json.loads(w.store.get(literary.run_start_key(b["id"])))["head"], MERGE)
-        self.assertIsNone(w.sup._c_head_problem(row, wt))                                            # the real guard, by receipt
-
     def test_stage2_links_use_their_own_baseline_key(self):
         w = self.w
         b = make_batch(w, "s2", run_kind="s2_links_new", shard="001", batch="01-01", session_id="ses_1")
@@ -1972,21 +1668,28 @@ class IncidentRecoveryProof(unittest.TestCase):
         self.assertIsNone(w.store.get(stage2.run_start_key(b["id"])))                                # no other step's key invented
         self.assertIsNone(w.sup._stage2_links_boundary_problem(row))
 
-    def test_a_failed_pre_run_guard_holds_and_leaves_the_first_head_and_chunks_alone(self):
+    def test_a_failed_pre_run_guard_holds_and_leaves_the_baseline_alone(self):
         w = self.w
-        b, d = self.worktree_fix("d_chunk_resume")
+        b = make_batch(w, run_kind="s2_chunk_resume", session_id="ses_1")
+        start = {"branch": b["branch"], "worktree": b["worktree"], "head": HEAD1, "remote_head": None}
+        w.git.integrated.append((b["worktree"], HEAD1))
+        w.store.set(stage2.run_start_key(b["id"]), json.dumps(start, sort_keys=True))
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
+        w.git.changed[MERGE] = ["scripts/relation/admission-cli.mjs"]
+        w.tick(2)
+        d, = incidents(w)
+        b, d = self.merge_fix(b, d)
         real = w.sup._stage2_chunk_boundary_problem
         w.sup._stage2_chunk_boundary_problem = lambda *a, **k: "청크 경계 거부(테스트)"
         d = self.settle(d)
         self.assertEqual((d["state"], w.store.batch(b["id"])["state"]), ("HELD", "PAUSED"))
         self.assertIn("재개 guard 사전 검증 실패", d["hold_reason"])
-        self.assertEqual(w.store.get(f"d_base_head_{b['id']}"), HEAD1)
-        self.assertEqual(json.loads(w.store.get(dchunk.run_start_key(b["id"])))["head"], HEAD1)   # nothing was stored
+        self.assertEqual(json.loads(w.store.get(stage2.run_start_key(b["id"])))["head"], HEAD1)   # nothing was stored
         w.sup._stage2_chunk_boundary_problem = real
 
     def test_a_run_kind_without_a_pre_runnable_guard_is_held_before_any_integration(self):
         w = self.w
-        b = make_batch(w, "s3", "deepseek", "004", "00", "s3_finalize")
+        b = make_batch(w, "s3", "claude", "004", "00", "s3_finalize")
         w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
         w.git.changed[MERGE] = ["scripts/relation/edit-cli.mjs"]
         w.tick(2)
@@ -2003,7 +1706,7 @@ class IncidentRecoveryProof(unittest.TestCase):
     def test_same_structured_evidence_after_the_fix_continues_on_the_same_issue_once(self):
         """#5245: the same evidence after a merged fix is not parked for the operator; the fixing Issue continues."""
         w = self.w
-        b = make_batch(w, "d", run_kind="d_chunk_resume", session_id="ses_1")
+        b = make_batch(w, run_kind="s2_deterministic_finalize", session_id="ses_1")
         w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
         w.store.set(f"error_evidence_{b['id']}_1", json.dumps(self.EVIDENCE))
         w.git.changed[MERGE] = [self.PROMPT]
@@ -2049,7 +1752,7 @@ class MaintainerConfig(unittest.TestCase):
     def test_config_table(self):
         w = world()
         base = dict(w.cfg)
-        for name, value, ok in [("unset", None, True), ("registered", "sonnet", True), ("registered other", "deepseek", True),
+        for name, value, ok in [("unset", None, True), ("registered", "sonnet", True), ("registered other", "claude", True),
                                 ("empty string", "", False), ("unregistered", "ghost", False), ("number", 5, False),
                                 ("list", ["sonnet"], False), ("bool", True, False)]:
             with self.subTest(name):
@@ -2065,7 +1768,7 @@ class MaintainerConfig(unittest.TestCase):
         w = world()
         w.cfg["producers"] = {**PRODUCERS, "sonnet": {"adapter": "claude", "model": "m", "effort": "bogus"}}
         self.assertIsNotNone(maintainer_problem(w.cfg))
-        produce_and_report(w, "deepseek", "a")
+        produce_and_report(w, "codex", "s2")
         w.tick(3)
         self.assertIsNone(maintainer_row(w))
         self.assertEqual(w.row()["state"], "PAUSED")
@@ -2073,19 +1776,19 @@ class MaintainerConfig(unittest.TestCase):
 
     def test_a_started_task_keeps_its_producer_across_maintainer_target_change_and_restart(self):
         w = world()
-        produce_and_report(w, "deepseek", "a")
+        produce_and_report(w, "codex", "s2")
         w.tick(2)
         m = maintainer_row(w)
         self.assertEqual(m["producer"], "sonnet")
         launch_model = w.adapter.launches[-1]["model"]
-        w.cfg["maintainer"] = "deepseek"                       # selection changed after the task started
+        w.cfg["maintainer"] = "codex"                          # selection changed after the task started
         w.sup = w.make_sup()                                   # and the Supervisor restarted
         w.tick(3)
         self.assertEqual(maintainer_row(w)["producer"], "sonnet")
         self.assertEqual(len([l for l in w.adapter.launches if l["cwd"] == str(w.paths.worktrees / "maint-101")]), 1)
         self.assertEqual(w.adapter.launches[-1]["model"], launch_model)
         # the producer of an unfinished Maintainer task cannot be removed or swapped to another CLI by a reload
-        new = {**w.cfg, "producers": {"deepseek": PRODUCERS["deepseek"]}}
+        new = {**w.cfg, "producers": {"codex": PRODUCERS["codex"]}}
         self.assertIsNotNone(reload_problem(w.cfg, new, {b["producer"] for b in w.store.incomplete_batches()}))
         w.tmp.cleanup()
 
@@ -2209,24 +1912,24 @@ class RealGitIntegration(unittest.TestCase):
         w.git = self.git
         w.sup = w.make_sup()
         wt = str(self.wt)
-        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch="a-x-001-01", worktree=wt)
-        w.store.update(bid, state="PRODUCING", session_id="ses_1")
-        w.store.add_run(bid, "produce_new", "ses_1", None, "old.log", "old.exit",
-                        model="p/free-x-free", effort="high")
+        bid = w.store.create_batch(method="s2", producer="codex", shard="001", batch="01-01", branch="a-x-001-01", worktree=wt)
+        w.store.update(bid, state="PRODUCING", session_id="ses_1", run_kind="s2_deterministic_finalize")
+        w.store.add_run(bid, "s2_finalize_new", "ses_1", None, "old.log", "old.exit", model="gpt-x", effort="high")
         (self.wt / "partial.jsonl").write_text("p\n")
         did = w.store.report_defect(bid, "k", "report", "span-in-jsonl-form", "REPORTED", "{}", "shared_defect", "paused")
         sha = self.land_fix()
         w.store.update_defect(did, state="FIX_MERGED", issue_number=1, merge_sha=sha)
         w.store.ensure_maintenance(1)
-        w.tick(2)
+        w.sup.maint.step()
         b = w.store.batch(bid)
-        self.assertEqual((b["state"], b["pause_reason"]), ("PRODUCING", ""))
+        self.assertEqual((b["state"], b["pause_reason"], b["defect_id"]), ("PRODUCING", "", None))   # one automatic Retry
         self.assertEqual(w.store.defect(did)["state"], "RELEASED")
         self.assertTrue(self.git.contains(self.wt, sha))
         self.assertEqual((self.wt / "partial.jsonl").read_text(), "p\n")
-        self.assertEqual(w.store.defect(did)["integrated_sha"], self.git.head(self.wt))
-        w.tick(3)
-        self.assertEqual(len([l for l in w.adapter.launches if l["cwd"] == wt]), 1)    # one relaunch, never two
+        integrated = w.store.defect(did)["integrated_sha"]
+        self.assertEqual(integrated, self.git.head(self.wt))
+        w.sup.maint.step()
+        self.assertEqual((w.store.defect(did)["integrated_sha"], self.git.head(self.wt)), (integrated, integrated))   # once
         w.tmp.cleanup()
 
 

@@ -10,11 +10,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from warroom import control
-from warroom.adapters import AgentAdapter, Handle, OpenCodeAdapter
+from warroom.adapters import AgentAdapter, Handle
 from warroom.config import DEFAULTS, Paths
 from warroom.gitops import (CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient,
                             IntegrationBlocked)
-from warroom.shell import Result
+
 from warroom.store import Store
 from warroom.supervisor import Supervisor
 
@@ -31,7 +31,6 @@ class FakeAdapter(AgentAdapter):
         self.plan: list[dict] = []   # {code, log, session, on_finish(callable)}
         self.running: dict[int, dict] = {}
         self._pid = itertools.count(1000)
-        self._opencode = OpenCodeAdapter("opencode", probe_async=False)   # probes inline in the fake world
 
     def _go(self, kind, cwd, log, ex, **kw):
         pid = next(self._pid)
@@ -48,14 +47,9 @@ class FakeAdapter(AgentAdapter):
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         permission_profile=run.permission_profile, fast=run.fast,
-                        approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
-                        approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
                         stage2_repair=env.get("WARROOM_STAGE2_REPAIR"),
-                        d_chunk_cli=env.get("TYPEWRITER_D_CHUNK_CLI"),
-                        d_scratch=env.get("TYPEWRITER_D_SCRATCH"),
-                        d_canonical_root=env.get("TYPEWRITER_D_CANONICAL_ROOT"),
-                        answer_only=env.get("WARROOM_ANSWER_ONLY"), opencode_config=env.get("OPENCODE_CONFIG_CONTENT"),
+                        answer_only=env.get("WARROOM_ANSWER_ONLY"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
                         git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
@@ -64,21 +58,17 @@ class FakeAdapter(AgentAdapter):
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         permission_profile=run.permission_profile, fast=run.fast,
-                        session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
-                        approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
+                        session=session_id,
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
                         stage2_repair=env.get("WARROOM_STAGE2_REPAIR"),
-                        answer_only=env.get("WARROOM_ANSWER_ONLY"), opencode_config=env.get("OPENCODE_CONFIG_CONTENT"),
+                        answer_only=env.get("WARROOM_ANSWER_ONLY"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
                         git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
                         worker_path=env.get("PATH"))
 
-    def preflight(self, runner, env, runs, answer_required=frozenset()):
-        """Stands in for OpenCode: the provider-qualified (p/...) IDs get the real `opencode models` check."""
-        opencode_runs = [r for r in runs if "/" in r.model]
-        return (self._opencode.preflight(runner, env, opencode_runs, answer_required=answer_required)
-                if opencode_runs else None)
+    def preflight(self, runner, env, runs):
+        return None
 
     def finish(self, pid):
         """Simulate the AI process ending (writes log + exit file, runs side effects)."""
@@ -1141,8 +1131,6 @@ class World:
         self.paths.ensure()
         self.cfg = json.loads(json.dumps(DEFAULTS))
         self.cfg["poll_seconds"] = 0
-        self.cfg["ab_chunk_sessions"] = False   # legacy A/B tests drive the long session; test_issue_2035 enables chunks
-        self.cfg["models"] = models or {"free": "p/free-x-free", "go": "p/go"}
         self.cfg["rate_limit_backoff_seconds"] = 10
         self.store = Store(self.paths.db)
         self.adapter, self.git, self.gh = FakeAdapter(), FakeGit(self.paths.worktrees), FakeGh()
@@ -1153,14 +1141,12 @@ class World:
 
     parallel_s2 = False   # the serial Stage 2 path stays covered; test_issue_3047 turns the parallel path on
     parallel_s3 = False   # likewise the serial Stage 3 path; test_issue_3149 turns the parallel path on
-    parallel_c = False    # likewise the serial C path; test_issue_3076 turns the parallel path on
     intake = False        # autonomous ERROR intake (#3349) is off here so legacy tests keep observing their plain ERROR
 
     def make_sup(self):
         sup = Supervisor(self.paths, self.cfg, self.store, self.runner_obj(), self.adapter,
                          self.gh, self.git, {"GH_CONFIG_DIR": "x"}, clock=lambda: self.now)
         sup.parallel_new_parts = self.parallel_s2
-        sup.parallel_new_c = self.parallel_c
         sup.parallel_new_s3 = self.parallel_s3
         if not self.intake:
             sup.maint._intake_errors = lambda: None
@@ -1183,10 +1169,10 @@ class World:
         for _ in range(n):
             self.sup.tick()
 
-    def start(self, mode="single", model="deepseek", method="a"):
-        ok, msg = control.start(self.store, model, method, mode, cfg=self.cfg)
+    def start(self, mode="single", model="codex", method="s2"):
+        ok, msg = control.start(self.store, model, method, mode, cfg=self.sup.cfg)   # the Supervisor's current (reloaded) config
         assert ok, msg
 
-    def row(self, model="deepseek", method="a"):
+    def row(self, model="codex", method="s2"):
         return self.store.active_batch(model, method) or self.store.latest_batch(model, method)
 

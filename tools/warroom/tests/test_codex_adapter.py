@@ -13,7 +13,14 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import (ClaudeCodeAdapter, CodexCLIAdapter, Handle, OpenCodeAdapter, RunSpec,
+from tests.test_issue_1684 import ready
+
+
+def s2_ready(w):
+    """The World's only shard has its preserved Stage 2 inputs, so a Codex Stage 2 Line can start a Part."""
+    w.runner.set_batches(canon={1: 1000}, done={**ready("01", 500), **ready("02", 500)})
+    return w
+from warroom.adapters import (ClaudeCodeAdapter, CodexCLIAdapter, Handle, RunSpec,
                               classify_codex_failure, classify_failure)
 from warroom.config import DEFAULTS
 from warroom.shell import Result
@@ -127,11 +134,6 @@ class Argv(unittest.TestCase):
                     commands.append(cmd) or Handle(0, d / "c.exit", d / "c.log"))):
                 claude.start("p", d, {}, run, "t", d / "c.log", d / "c.exit")
                 claude.resume(THREAD, "p", d, {}, run, d / "c.log", d / "c.exit")
-            opencode = OpenCodeAdapter("opencode")
-            with mock.patch.object(opencode, "_spawn", side_effect=lambda cmd, *args: (
-                    commands.append(cmd) or Handle(0, d / "o.exit", d / "o.log"))):
-                opencode.start("p", d, {}, run, "t", d / "o.log", d / "o.exit")
-                opencode.resume(THREAD, "p", d, {}, run, d / "o.log", d / "o.exit")
         for argv in commands:
             self.assertFalse(any("fast" in value.lower() or "service_tier" in value for value in argv))
 
@@ -408,7 +410,7 @@ class Classification(unittest.TestCase):
             ("Unsupported value: 'minimal' is not supported with the 'gpt-6-luna' model. Supported values are: 'none'", "effort"),
             ("Error: thread/resume failed: no rollout found for thread id 0000 (code -32600)", "session_missing"),
             ("Error: 401 Unauthorized", "auth"),
-            ("FreeUsageLimitError reached", "free_quota"),
+            ("FreeUsageLimitError reached", "unknown"),   # quota text counts only through configured quota_patterns
         ]
         for text, want in cases:
             with self.subTest(text=text):
@@ -433,17 +435,17 @@ class Classification(unittest.TestCase):
                 self.assertEqual(classify_codex_failure(text, QUOTA), want)
 
     def test_explicit_fast_rejection_errors_once_without_standard_retry(self):
-        w = World()
+        w = s2_ready(World())
         self.addCleanup(w.tmp.cleanup)
         w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna",
                                          "effort": "xhigh", "fast": True}}
         w.adapter.name = "codex"
         w.adapter.plan.append({"code": 1, "text": "Error: unknown config key `service_tier`"})
-        w.start("single", "codex", "a")
+        w.start("single", "codex", "s2")
         w.tick()
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
-        row = w.row("codex", "a")
+        row = w.row("codex", "s2")
         self.assertEqual(row["state"], "ERROR")
         self.assertEqual(len(w.adapter.launches), 1)
         self.assertIn("자동 Standard 재시도도 하지 않습니다", row["error"])
@@ -505,11 +507,10 @@ class PolicyRefusal(unittest.TestCase):
                 self.assertIn(evidence, reason)
 
     def test_other_adapters_never_report_a_refusal(self):
-        from warroom.adapters import ClaudeCodeAdapter, OpenCodeAdapter
+        from warroom.adapters import ClaudeCodeAdapter
         with tempfile.TemporaryDirectory() as d:
             log = Path(d) / "l.log"
             log.write_text("Operation not permitted\n")
-            self.assertIsNone(OpenCodeAdapter().policy_refusal(log))
             self.assertIsNone(ClaudeCodeAdapter().policy_refusal(log))
 
 
@@ -521,7 +522,7 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
         denied_actions = CodexCLIAdapter.denied_actions
 
     def world(self):
-        w = World()
+        w = s2_ready(World())
         w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}}
         w.adapter = self.Reporting()
         w.sup.adapter = w.adapter
@@ -531,43 +532,13 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
         w = self.world()
         try:
             with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                w.start("single", "codex", "a")
+                w.start("single", "codex", "s2")
                 w.adapter.plan.append({"code": 0, "text": lines(started(), completed())})
                 w.tick()
                 w.adapter.finish(w.adapter.launches[-1]["pid"])
                 w.tick()
-            self.assertEqual(w.row("codex", "a")["state"], "ERROR")
-            self.assertIn("turn_context", w.row("codex", "a")["error"])
-        finally:
-            w.tmp.cleanup()
-
-    def test_no_pr_after_a_permission_failed_command_pauses_instead_of_erroring(self):
-        w = self.world()
-        try:
-            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                rollout_home(Path(home), THREAD, [context()])          # the turn was recorded, as Codex does
-                w.start("single", "codex", "a")
-                w.adapter.plan.append({"code": 0, "text": lines(
-                    started(), command("Operation not permitted", 128, "git commit"), completed())})
-                w.tick()
-                w.adapter.finish(w.adapter.launches[-1]["pid"])
-                w.tick()
-            self.assertEqual(w.row("codex", "a")["state"], "PAUSED")
-        finally:
-            w.tmp.cleanup()
-
-    def test_no_pr_without_a_refusal_stays_an_error(self):
-        w = self.world()
-        try:
-            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                rollout_home(Path(home), THREAD, [context()])
-                w.start("single", "codex", "a")
-                w.adapter.plan.append({"code": 0, "text": lines(started(), completed())})
-                w.tick()
-                w.adapter.finish(w.adapter.launches[-1]["pid"])
-                w.tick()
-            self.assertEqual(w.row("codex", "a")["state"], "ERROR")
-            self.assertIn("PR을 찾지 못했습니다", w.row("codex", "a")["error"])
+            self.assertEqual(w.row("codex", "s2")["state"], "ERROR")
+            self.assertIn("turn_context", w.row("codex", "s2")["error"])
         finally:
             w.tmp.cleanup()
 
@@ -577,7 +548,7 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
         w = self.world()
         try:
             with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                w.start("single", "codex", "a")
+                w.start("single", "codex", "s2")
                 w.tick()
                 pid = w.adapter.launches[-1]["pid"]
                 run = w.adapter.running[pid]
@@ -586,10 +557,10 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
                 run["log"].write_text(run["text"])                  # the failure is in the live log
                 w.tick()
                 self.assertIn(pid, w.adapter.running)              # not stopped
-                self.assertEqual(w.row("codex", "a")["state"], "PRODUCING")
+                self.assertEqual(w.row("codex", "s2")["state"], "PRODUCING")
                 w.adapter.finish(pid)
                 w.tick()
-            row = w.row("codex", "a")
+            row = w.row("codex", "s2")
             self.assertEqual(row["state"], "ERROR")                # no turn.completed: never accepted as finished
             self.assertIn("turn.completed", row["error"])
             self.assertIsNotNone(row["worktree"])                  # worktree, branch and session are kept
@@ -690,7 +661,7 @@ class MaintainerPermissionFailure(unittest.TestCase):
         w = self.w
         case = StructuredContinuation()
         case.w = w
-        case.batch_id, case.defect_id, case.m, case.request = t3614.NoCodeRecovery.prepare_failed_d_task(case)
+        case.batch_id, case.defect_id, case.m, case.request = t3614.NoCodeRecovery.prepare_failed_s2_task(case)
         StructuredContinuation.submit(case)
         launches = len(w.adapter.launches)
         w.adapter.running[w.adapter.launches[-1]["pid"]]["text"] = lines(started(), self.PS)
@@ -807,7 +778,7 @@ class SupervisorGitDir(unittest.TestCase):
             return h
 
     def world(self):
-        w = World()
+        w = s2_ready(World())
         w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh",
                                         "permission_profile": "worktree"}}
         w.adapter = self.Adapter()
@@ -817,9 +788,9 @@ class SupervisorGitDir(unittest.TestCase):
     def test_start_and_resume_launches_receive_the_worktree_gitdir(self):
         w = self.world()
         try:
-            w.start("single", "codex", "a")
+            w.start("single", "codex", "s2")
             w.tick()
-            row = w.row("codex", "a")
+            row = w.row("codex", "s2")
             first = w.adapter.launches[-1]
             self.assertEqual(first["kind"], "start")
             self.assertEqual(Path(first["git_dir"]), Path("/repo/.git/worktrees") / Path(row["worktree"]).name)
@@ -838,16 +809,16 @@ class SupervisorGitDir(unittest.TestCase):
         w = self.world()
         try:
             w.git.gitdir_error = "not a War Room worktree"
-            w.start("single", "codex", "a")
+            w.start("single", "codex", "s2")
             w.tick()
-            row = w.row("codex", "a")
+            row = w.row("codex", "s2")
             self.assertEqual(row["state"], "ERROR")
             self.assertIn("Git 관리 디렉터리", row["error"])
             self.assertIn("not a War Room worktree", row["error"])
             self.assertEqual(w.adapter.launches, [])             # the AI never started
             self.assertIsNotNone(row["worktree"])                 # worktree and branch are kept
             w.git.gitdir_error = ""
-            self.assertTrue(control.retry(w.store, "codex", "a"))
+            self.assertTrue(control.retry(w.store, "codex", "s2"))
             w.tick(); w.tick()
             self.assertEqual(len(w.adapter.launches), 1)
         finally:
@@ -956,134 +927,8 @@ class ConfirmedPromptRefusal(unittest.TestCase):
             self.assertIsNone(ClaudeCodeAdapter().confirmed_prompt_refusal(log))
 
 
-class PrIntake(unittest.TestCase):
-    """#1381 blocker 1 at the Supervisor: a PR is taken over only from a run whose own evidence was recorded."""
-
-    class Reporting(FakeAdapter):
-        run_problem = CodexCLIAdapter.run_problem
-        policy_refusal = CodexCLIAdapter.policy_refusal
-        completion_problem = CodexCLIAdapter.completion_problem
-        requires_session_for_pr = CodexCLIAdapter.requires_session_for_pr
-        requires_final_result_for_pr = CodexCLIAdapter.requires_final_result_for_pr
-
-    def world(self):
-        w = World()
-        w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}}
-        w.adapter = self.Reporting()
-        w.sup.adapter = w.adapter
-        w.pr_info(7, HEAD1)
-        w.gh.by_branch["a-codex-001-01"] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
-        return w
-
-    def test_exit0_with_a_pr_but_no_thread_is_not_accepted(self):
-        w = self.world()
-        try:
-            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                w.start("single", "codex", "a")
-                w.adapter.plan.append({"code": 0, "text": lines(completed())})   # a finished turn, no thread id
-                w.tick()
-                w.adapter.finish(w.adapter.launches[-1]["pid"])
-                w.tick()
-            self.assertEqual(w.row("codex", "a")["state"], "ERROR")
-            self.assertIn("세션", w.row("codex", "a")["error"])
-        finally:
-            w.tmp.cleanup()
-
-    def test_exit0_with_a_pr_but_no_successful_turn_is_not_accepted(self):
-        runs = {"turn.failed": [started(), failed()], "no terminal event": [started()],
-                "completed then failed": [started(), completed(), failed()]}
-        for name, events in runs.items():
-            with self.subTest(name):
-                w = self.world()
-                try:
-                    with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                        rollout_home(Path(home), THREAD, [context()])   # pin-matching record, owned PR, exit 0
-                        w.start("single", "codex", "a")
-                        w.adapter.plan.append({"code": 0, "text": lines(*events)})
-                        w.tick()
-                        w.adapter.finish(w.adapter.launches[-1]["pid"])
-                        w.tick()
-                    self.assertEqual(w.row("codex", "a")["state"], "ERROR")
-                finally:
-                    w.tmp.cleanup()
-
-    def test_exit0_with_a_pr_and_a_completed_turn_reaches_review(self):
-        w = self.world()
-        try:
-            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                rollout_home(Path(home), THREAD, [context()])
-                w.start("single", "codex", "a")
-                w.adapter.plan.append({"code": 0, "text": lines(started(), completed())})
-                w.tick()
-                w.adapter.finish(w.adapter.launches[-1]["pid"])
-                w.tick()
-            self.assertEqual(w.row("codex", "a")["state"], "WAITING_REVIEW")
-        finally:
-            w.tmp.cleanup()
-
-    def test_exit0_with_a_pr_and_a_malformed_thread_id_is_not_accepted(self):
-        for thread in BAD_THREADS:
-            with self.subTest(thread=thread):
-                w = self.world()
-                try:
-                    with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                        rollout_home(Path(home), THREAD, [context()])   # an unrelated, pin-matching session
-                        w.start("single", "codex", "a")
-                        w.adapter.plan.append({"code": 0, "text": lines(
-                            {"type": "thread.started", "thread_id": thread}, completed())})
-                        w.tick()
-                        w.adapter.finish(w.adapter.launches[-1]["pid"])
-                        w.tick()
-                    self.assertEqual(w.row("codex", "a")["state"], "ERROR")
-                finally:
-                    w.tmp.cleanup()
-
-    def test_success_output_with_a_refusal_word_and_no_pr_is_an_error(self):
-        w = self.world()
-        w.gh.by_branch = {}                                    # no PR on the branch
-        try:
-            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                rollout_home(Path(home), THREAD, [context()])
-                w.start("single", "codex", "a")
-                w.adapter.plan.append({"code": 0, "text": lines(started(), command(
-                    "Operation not permitted (printed and handled)", exit_code=0), completed())})
-                w.tick()
-                w.adapter.finish(w.adapter.launches[-1]["pid"])
-                w.tick()
-            self.assertEqual(w.row("codex", "a")["state"], "ERROR")
-            self.assertIn("PR을 찾지 못했습니다", w.row("codex", "a")["error"])
-        finally:
-            w.tmp.cleanup()
-
-    def test_a_pr_is_not_adopted_while_the_run_has_no_session(self):
-        w = self.world()
-        try:
-            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                w.start("single", "codex", "a")
-                w.tick()                       # launched; nothing recorded yet, the PR already exists
-                w.tick()
-            self.assertEqual(w.row("codex", "a")["state"], "PRODUCING")
-        finally:
-            w.tmp.cleanup()
-
-    def test_a_recorded_turn_with_its_pr_reaches_review(self):
-        w = self.world()
-        try:
-            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
-                rollout_home(Path(home), THREAD, [context()])          # the turn was recorded, as Codex does
-                w.start("single", "codex", "a")
-                w.adapter.plan.append({"code": 0, "text": lines(started(), completed())})
-                w.tick()
-                w.adapter.finish(w.adapter.launches[-1]["pid"])
-                w.tick()
-            self.assertEqual(w.row("codex", "a")["state"], "WAITING_REVIEW")
-            self.assertEqual(w.row("codex", "a")["pr_number"], 7)
-        finally:
-            w.tmp.cleanup()
-
-
 class LaunchLogIsOwn(unittest.TestCase):
-    """#1381 Stage 1: a launch's completion evidence comes from its own log, never from an earlier run's events."""
+    """#1381: a launch's completion evidence comes from its own log, never from an earlier run's events."""
 
     def fake_codex(self, d, body):
         fake = d / "codex"
@@ -1133,11 +978,12 @@ class LaunchLogIsOwn(unittest.TestCase):
     def test_launches_in_the_same_second_get_distinct_logs(self):
         for kind in ("produce_resume", "produce_recover"):
             with self.subTest(kind):
-                w = World()
+                w = s2_ready(World())
+                w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
                 try:
-                    w.start("single", "deepseek", "a")
+                    w.start("single", "codex", "s2")
                     w.tick()
-                    b = w.row("deepseek", "a")
+                    b = w.row("codex", "s2")
                     first = Path(b["log_file"])
                     first.write_text("earlier run\n")
                     first.with_suffix(".exit").write_text("0")
