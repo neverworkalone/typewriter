@@ -29,7 +29,7 @@ import {
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import {
   buildShardSenseIdsFromCanonicalRecords,
-  loadApprovedRelationFiles,
+  listApprovedRelationFiles,
   validateApprovedRelationRows,
 } from '../build/authored-relations.mjs';
 import { buildCanonicalRelationFormIndex } from '../relation/admission.mjs';
@@ -478,7 +478,8 @@ async function runInProcessCheck(name, context, { repositoryDirectory = REPOSITO
   }
 
   if (name === 'approved-relations') {
-    const files = await loadApprovedRelationFiles(path.join(repositoryDirectory, 'data/relations'));
+    // Listed files are read one at a time; the full corpus is never held as row objects (#9922).
+    const files = listApprovedRelationFiles(path.join(repositoryDirectory, 'data/relations'));
     const shardSenseIds = buildShardSenseIdsFromCanonicalRecords(canonicalContext.records);
     const canonicalIndex = {
       ...buildCanonicalRelationFormIndex(canonicalContext.records),
@@ -491,7 +492,7 @@ async function runInProcessCheck(name, context, { repositoryDirectory = REPOSITO
         },
       },
     };
-    const result = validateApprovedRelationRows({
+    const result = await validateApprovedRelationRows({
       files,
       shardSenseIds,
       canonicalIndex,

@@ -428,37 +428,72 @@ export class AdmissionVerifyError extends Error {
  * `actionTargetPosSenseIds` (#5178): source Senses whose `action` ID rows must target a verb/expression Sense. Only the
  * Stage 2 Part verify passes it; historical approved rows, the build and Stage 3 keep their existing contract.
  */
-export function validateRelationRows({ relationRows, dropRows = [], exclusionRows = [], index, shardSenseIds, otherRelationRows = [], actionTargetPosSenseIds = null }) {
-  const errors = [];
-  const seenPairs = new Map();
-  const pairKey = relationPairKey;
-  const textKey = relationTextKey;
-  const remember = (key, origin, row) => {
+/**
+ * Duplicate / reverse-duplicate index of approved Relation keys: an ID row owns its forward and reverse Sense-pair keys,
+ * a text row its source Sense + normalized text key. Rows are remembered under a scope; a match is described as
+ * `this shard` when its scope is the current one, otherwise `other shard`.
+ *
+ * `admit(row)` may restrict which rows are remembered at all. The full-corpus approved check (#9922) admits only rows
+ * whose direction-free Sense pair or text key occurs more than once in the corpus: every row that could match, or be
+ * matched by, another row is still remembered, so findings and diagnostics are those of the unrestricted index while
+ * the index stays small and is built once instead of once per shard.
+ */
+export function createRelationDuplicateIndex({ admit = null } = {}) {
+  const seen = new Map();
+  let scope;
+  const remember = (key, row) => {
     // Most keys have exactly one owner across the whole approved corpus: keep that one as a bare entry and only
     // allocate an array when a duplicate appears (bounds peak heap on large corpora, #6088).
-    const entry = { origin, row };
-    const prior = seenPairs.get(key);
-    if (prior === undefined) seenPairs.set(key, entry);
+    const entry = { scope, row };
+    const prior = seen.get(key);
+    if (prior === undefined) seen.set(key, entry);
     else if (Array.isArray(prior)) prior.push(entry);
-    else seenPairs.set(key, [prior, entry]);
+    else seen.set(key, [prior, entry]);
   };
-  const describeMatches = (matches = []) => (Array.isArray(matches) ? matches : [matches]).map(({ origin, row }) => {
-    if (!row) return origin;
-    const direction = 'text' in row
-      ? `${row.source_record_id}/${row.source_sense_id} -> ${JSON.stringify(row.text)}`
-      : `${row.source_record_id}/${row.source_sense_id} -> ${row.target_record_id}/${row.target_sense_id}`;
-    const assignment = 'text' in row ? ''
-      : `; ver:${Object.hasOwn(row, 'candidate_assignment_version') ? row.candidate_assignment_version : 'legacy'}`
-        + `; fm:${JSON.stringify(row.candidate_forms ?? [])}; rfm:${JSON.stringify(row.reverse_candidate_forms ?? [])}`;
-    return `${origin} Relation ${direction} [${row.type}/${row.relevance}${assignment}]`;
-  }).join('; ');
+  const admitted = (row) => admit === null || admit(row);
+  return {
+    setScope(next) { scope = next; },
+    findText(row) { return admitted(row) ? seen.get(relationTextKey(row.source_sense_id, row.text)) : undefined; },
+    addText(row) { if (admitted(row)) remember(relationTextKey(row.source_sense_id, row.text), row); },
+    findId(row) { return admitted(row) ? seen.get(relationPairKey(row.source_sense_id, row.target_record_id, row.target_sense_id)) : undefined; },
+    addId(row) {
+      if (!admitted(row)) return;
+      remember(relationPairKey(row.source_sense_id, row.target_record_id, row.target_sense_id), row);
+      remember(relationPairKey(row.target_sense_id, row.source_record_id, row.source_sense_id), row);
+    },
+    describe(matches = []) {
+      return (Array.isArray(matches) ? matches : [matches]).map(({ scope: owner, row }) => {
+        const origin = owner === scope ? 'this shard' : 'other shard';
+        const direction = 'text' in row
+          ? `${row.source_record_id}/${row.source_sense_id} -> ${JSON.stringify(row.text)}`
+          : `${row.source_record_id}/${row.source_sense_id} -> ${row.target_record_id}/${row.target_sense_id}`;
+        const assignment = 'text' in row ? ''
+          : `; ver:${Object.hasOwn(row, 'candidate_assignment_version') ? row.candidate_assignment_version : 'legacy'}`
+            + `; fm:${JSON.stringify(row.candidate_forms ?? [])}; rfm:${JSON.stringify(row.reverse_candidate_forms ?? [])}`;
+        return `${origin} Relation ${direction} [${row.type}/${row.relevance}${assignment}]`;
+      }).join('; ');
+    },
+  };
+}
 
-  for (const row of otherRelationRows) {
-    if ('text' in row) remember(textKey(row.source_sense_id, row.text), 'other shard', row);
-    else {
-      remember(pairKey(row.source_sense_id, row.target_record_id, row.target_sense_id), 'other shard', row);
-      remember(pairKey(row.target_sense_id, row.source_record_id, row.source_sense_id), 'other shard', row);
+const OTHER_SHARD_SCOPE = Symbol('other shard');
+
+export function validateRelationRows({ relationRows, dropRows = [], exclusionRows = [], index, shardSenseIds, otherRelationRows = [], duplicateIndex = null, actionTargetPosSenseIds = null }) {
+  // A caller-owned `duplicateIndex` already holds every other shard's rows and has its scope set to this shard; it
+  // cannot also receive `otherRelationRows`, which would otherwise be silently ignored or registered twice.
+  if (duplicateIndex !== null && otherRelationRows.length > 0) {
+    throw new Error('validateRelationRows: pass either duplicateIndex or otherRelationRows, not both');
+  }
+  const errors = [];
+  let duplicates = duplicateIndex;
+  if (duplicates === null) {
+    duplicates = createRelationDuplicateIndex();
+    duplicates.setScope(OTHER_SHARD_SCOPE);
+    for (const row of otherRelationRows) {
+      if ('text' in row) duplicates.addText(row);
+      else duplicates.addId(row);
     }
+    duplicates.setScope(Symbol('this shard'));
   }
 
   const checkSource = (row, at) => {
@@ -479,9 +514,9 @@ export function validateRelationRows({ relationRows, dropRows = [], exclusionRow
     if (isText_) {
       if (isText(row.text) && row.text === normalizeCandidate(row.text)) {
         if (source && row.text === normalizeCandidate(source.record.lemma)) errors.push(`${at}: text repeats the source lemma`);
-        const key = textKey(row.source_sense_id, row.text);
-        if (seenPairs.has(key)) errors.push(`${at}: duplicate text relation ${row.source_sense_id} -> ${row.text} (${describeMatches(seenPairs.get(key))})`);
-        remember(key, 'this shard', row);
+        const matches = duplicates.findText(row);
+        if (matches !== undefined) errors.push(`${at}: duplicate text relation ${row.source_sense_id} -> ${row.text} (${duplicates.describe(matches)})`);
+        duplicates.addText(row);
       }
       return;
     }
@@ -491,12 +526,11 @@ export function validateRelationRows({ relationRows, dropRows = [], exclusionRow
     if (row.type === 'action' && actionTargetPosSenseIds?.has(row.source_sense_id) && !ACTION_TARGET_POS.includes(target.sense.pos)) {
       errors.push(`${at}: action relation ${row.source_sense_id} -> ${row.target_record_id}/${row.target_sense_id} targets pos ${target.sense.pos}; expected ${ACTION_TARGET_POS.join(' or ')}`);
     }
-    const forward = pairKey(row.source_sense_id, row.target_record_id, row.target_sense_id);
-    if (seenPairs.has(forward)) {
-      errors.push(`${at}: duplicate or reverse-duplicate ID relation ${row.source_sense_id} <-> ${row.target_sense_id} (${describeMatches(seenPairs.get(forward))})`);
+    const matches = duplicates.findId(row);
+    if (matches !== undefined) {
+      errors.push(`${at}: duplicate or reverse-duplicate ID relation ${row.source_sense_id} <-> ${row.target_sense_id} (${duplicates.describe(matches)})`);
     }
-    remember(forward, 'this shard', row);
-    remember(pairKey(row.target_sense_id, row.source_record_id, row.source_sense_id), 'this shard', row);
+    duplicates.addId(row);
   });
 
   const dropSeen = new Set();
@@ -506,7 +540,7 @@ export function validateRelationRows({ relationRows, dropRows = [], exclusionRow
     if (shapeError) { errors.push(shapeError); return; }
     checkSource(row, at);
     errors.push(...dropRowFieldErrors(row, at));
-    const key = textKey(row.source_sense_id, row.candidate ?? '');
+    const key = relationTextKey(row.source_sense_id, row.candidate ?? '');
     if (dropSeen.has(key)) errors.push(`${at}: duplicate drop ${row.source_sense_id} -> ${row.candidate}`);
     dropSeen.add(key);
   });

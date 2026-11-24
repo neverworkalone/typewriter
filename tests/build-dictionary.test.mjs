@@ -48,7 +48,8 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       allowDirty: true,
     });
 
-    assert.deepEqual(events.map(({ type }) => type), ['start', 'complete', 'start', 'complete', 'start', 'complete', 'start', 'count', 'complete', 'start', 'complete']);
+    // A fixture without approved Relations or a meaning layer reports no relation sub-stage.
+    assert.deepEqual(events.map(({ type }) => type), ['start', 'complete', 'start', 'complete', 'start', 'count', 'complete', 'start', 'complete']);
     assert.deepEqual(events.find(({ type }) => type === 'count'), { type: 'count', stage: 'Full SQLite records', count: 6, total: 6 });
     assert.equal(summary.outputPath, outputPath);
     assert.equal(summary.metadata.database_kind, 'full');

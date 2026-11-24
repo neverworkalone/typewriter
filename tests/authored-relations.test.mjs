@@ -125,6 +125,33 @@ test('DB-free approved Relation validation reads all exact files against the Can
   await assert.rejects(validateSavedFiles, /relevance must be an integer 1\.\.9/u);
 });
 
+test('DB-free approved validation finds a reverse duplicate between non-adjacent shards', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-relation-cross-shard-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const relations = path.join(directory, 'relations');
+  await mkdir(relations);
+  const shards = { '001': RECORDS.slice(0, 2), '002': RECORDS.slice(2, 3), '003': RECORDS.slice(3) };
+  const recordInfos = Object.entries(shards).flatMap(([shard, records]) => records.map((item) => ({ record: item, filePath: `stdict-0${shard}.jsonl` })));
+  const write = (shard, rows) => writeFile(path.join(relations, `relation-${shard}.jsonl`), relationJsonl(rows));
+  await write('001', [idRow({ target_record_id: 'w004', target_sense_id: 'w004-s1' })]);
+  await write('002', [idRow({ source_record_id: 'w003', source_sense_id: 'w003-s1', target_record_id: 'w002', target_sense_id: 'w002-s1' })]);
+  await write('003', [idRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w005', target_sense_id: 'w005-s1' })]);
+  const validate = async () => validateApprovedRelationRows({
+    files: await loadApprovedRelationFiles(relations),
+    records: normalizeRecords(RECORDS).records,
+    shardSenseIds: buildShardSenseIdsFromCanonicalRecords(recordInfos),
+  });
+  assert.equal((await validate()).rowCount, 3);
+
+  await write('003', [idRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w001', target_sense_id: 'w001-s1', type: 'mood' })]);
+  await assert.rejects(validate, (error) => {
+    assert.equal(error.message, 'relation-003.jsonl: Relation Admission rows are invalid:\n'
+      + '- relation:1: duplicate or reverse-duplicate ID relation w004-s1 <-> w001-s1 '
+      + '(other shard Relation w001/w001-s1 -> w004/w004-s1 [near/2; ver:legacy; fm:[]; rfm:[]])');
+    return true;
+  });
+});
+
 // Shard 001 holds w001..w003 and shard 002 holds w004: a relation file may only name sources its own shard stores.
 const SHARDS = { '001': RECORDS.slice(0, 3), '002': RECORDS.slice(3) };
 
