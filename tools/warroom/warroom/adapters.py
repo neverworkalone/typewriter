@@ -706,8 +706,10 @@ class CodexCLIAdapter(ProcessAdapter):
     # Features a chunk run never uses whose instructions/tool schemas ride in every task's fixed prefix. Off, the
     # prefix is ~7.6K tokens smaller and the shared policy card becomes cacheable across tasks (#7827 measurement:
     # a second task's uncached input 9,702 -> 4,161). Only names the installed CLI lists are passed (preflight).
+    # `sleep_tool` drops the clock namespace; `skills.include_instructions=false` drops the skills list (codex-cli 0.171:
+    # a minimal chunk launch 10,943 -> 10,381 input tokens).
     CHUNK_DISABLED_FEATURES = ("apps", "plugins", "remote_plugin", "multi_agent", "computer_use", "browser_use",
-                               "in_app_browser", "image_generation", "tool_suggest")
+                               "in_app_browser", "image_generation", "tool_suggest", "sleep_tool")
 
     def __init__(self, binary: str = "codex"):
         self.binary = binary
@@ -736,7 +738,7 @@ class CodexCLIAdapter(ProcessAdapter):
     def _chunk_args(self) -> list[str]:
         """Keep chunk input lean without replacing the operator's configured permission or approval policy."""
         disabled = [f for f in self.CHUNK_DISABLED_FEATURES if self._features and f in self._features]
-        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0",
+        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0", "-c", "skills.include_instructions=false",
                 *(arg for f in disabled for arg in ("--disable", f))]
 
     def _launch_args(self, env, run: RunSpec, grant: list[str]) -> list[str]:
