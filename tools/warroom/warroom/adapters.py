@@ -212,6 +212,9 @@ class ProcessAdapter(AgentAdapter):
     # True: do not wrap this adapter in the common chunk sandbox. Its own CLI policy (or compatibility needs)
     # defines the boundary; macOS also refuses nested sandbox_apply calls.
     native_stage2_chunk_sandbox = False
+    # True: a Stage 2 task correction runs as a NEW session with a view of only the failing candidates instead of a
+    # resume. For Codex a resume re-reads the whole thread mostly uncached (~44K/fix, more than a new task, #7827).
+    fresh_task_fix = False
     # Opt-in seam for #3787, after every task launcher has been connected.
     required_launch_gate = None
 
@@ -698,9 +701,17 @@ class CodexCLIAdapter(ProcessAdapter):
     requires_final_result_for_pr = True   # a PR is taken over only after the run exited and its final result was checked
     needs_git_dir = True
     native_stage2_chunk_sandbox = True
+    fresh_task_fix = True
+
+    # Features a chunk run never uses whose instructions/tool schemas ride in every task's fixed prefix. Off, the
+    # prefix is ~7.6K tokens smaller and the shared policy card becomes cacheable across tasks (#7827 measurement:
+    # a second task's uncached input 9,702 -> 4,161). Only names the installed CLI lists are passed (preflight).
+    CHUNK_DISABLED_FEATURES = ("apps", "plugins", "remote_plugin", "multi_agent", "computer_use", "browser_use",
+                               "in_app_browser", "image_generation", "tool_suggest")
 
     def __init__(self, binary: str = "codex"):
         self.binary = binary
+        self._features: set[str] | None = None   # feature names `codex features list` reported (set by preflight)
 
     @staticmethod
     def _pins(run: RunSpec) -> list[str]:
@@ -724,7 +735,9 @@ class CodexCLIAdapter(ProcessAdapter):
 
     def _chunk_args(self) -> list[str]:
         """Keep chunk input lean without replacing the operator's configured permission or approval policy."""
-        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0"]
+        disabled = [f for f in self.CHUNK_DISABLED_FEATURES if self._features and f in self._features]
+        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0",
+                *(arg for f in disabled for arg in ("--disable", f))]
 
     def _launch_args(self, env, run: RunSpec, grant: list[str]) -> list[str]:
         """Pin the configured run profile; chunks add only input optimizations and omit Git admin grants."""
@@ -785,6 +798,10 @@ class CodexCLIAdapter(ProcessAdapter):
         lg = runner.run([self.binary, "login", "status"], env=env, timeout=60)
         if not lg.ok or not (lg.out + lg.err).strip().lower().startswith("logged in"):
             return "Codex CLI가 로그인되어 있지 않습니다 (`codex login`)."
+        # Optional input trim: an older CLI without `features list` (or without a name) simply keeps that feature.
+        fl = runner.run([self.binary, "features", "list"], env=env, timeout=60)
+        self._features = ({line.split()[0] for line in fl.out.splitlines() if line.split()}
+                          if fl.ok and "--disable" in h.out else set())
         return None
 
     def policy_refusal(self, log_file):

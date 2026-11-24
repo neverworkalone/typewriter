@@ -59,7 +59,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--source-sense-id <id> --candidate <text>] [--format json|compact] [--out <file>]
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --optional [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs plan-chunks --checkpoint <file.json> --target 250 --out <plan.json>
-  node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --task <plan.json> <task-id> --format compact --out <view>
+  node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --task <plan.json> <task-id> [--only c<n>,...] --format compact --out <view>
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --task <plan.json> <task-id> --in <decisions> --expect-view-sha256 <sha> [--supervisor-fallback]
   node scripts/relation/admission-cli.mjs close-plan --checkpoint <file.json> --plan <plan.json>
   node scripts/relation/admission-cli.mjs inspect --checkpoint <file.json> --source-sense-id <id>[,<id>...] [--candidate <text> | --select <file.json>] [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
@@ -958,7 +958,7 @@ function parseArgs(argv) {
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, relationsOnly: false, sourceSenseId: null, candidateText: null,
     selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0,
     diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, check: false, from: null, fromShas: [], to: null,
-    taskPlan: null, planFile: null, taskId: null, target: DEFAULT_CHUNK_CANDIDATES, expectViewSha256: null, theirs: null };
+    taskPlan: null, planFile: null, taskId: null, target: DEFAULT_CHUNK_CANDIDATES, expectViewSha256: null, theirs: null, only: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -989,6 +989,7 @@ function parseArgs(argv) {
     else if (flag === '--check') options.check = true;
     else if (flag === '--task') { options.taskPlan = rest[++index]; options.taskId = rest[++index]; }
     else if (flag === '--plan') options.planFile = rest[++index];
+    else if (flag === '--only') options.only = String(rest[++index] ?? '').split(',').filter(Boolean);
     else if (flag === '--target') options.target = Number(rest[++index]);
     else if (flag === '--expect-view-sha256') options.expectViewSha256 = rest[++index];
     else if (flag === '--from') options.from = rest[++index];
@@ -1008,6 +1009,8 @@ function parseArgs(argv) {
     if (options.optional || options.sourceSenseId !== null || options.candidateText !== null) throw new Error(`--task cannot be combined with --optional or a source candidate filter\n${USAGE}`);
     options.format = 'compact';
   }
+  if (options.only !== null && !(command === 'read-chunk' && options.taskPlan !== null)) throw new Error(`--only is only valid for read-chunk --task\n${USAGE}`);
+  if (options.only !== null && (!options.only.length || options.only.some((alias) => !/^c[1-9]\d*$/u.test(alias)))) throw new Error(`--only takes c<n>[,c<m>...]\n${USAGE}`);
   options.format ??= 'json';
   if (options.expectViewSha256 !== null && !(command === 'save-chunk' && options.taskPlan !== null)) throw new Error(`--expect-view-sha256 is only valid for save-chunk --task\n${USAGE}`);
   if (command === 'save-chunk' && options.taskPlan !== null && !/^[a-f0-9]{64}$/u.test(options.expectViewSha256 ?? '')) throw new Error(`save-chunk --task requires --expect-view-sha256 <64 hex>\n${USAGE}`);
@@ -1230,7 +1233,7 @@ async function runCommand(options, root, timing) {
     const checkpoint = await readCheckpoint(checkpointPath);
     if (options.taskPlan !== null) {
       const plan = await readTaskPlan(checkpoint, options.taskPlan, repositoryRoot);
-      if (options.command === 'read-chunk') return readTaskChunk(checkpoint, checkpointPath, plan, options.taskId, options.out, repositoryRoot);
+      if (options.command === 'read-chunk') return readTaskChunk(checkpoint, checkpointPath, plan, options.taskId, options.out, repositoryRoot, options.only);
       return saveTaskChunk(checkpoint, checkpointPath, plan, options.taskId, options.input, repositoryRoot, options.expectViewSha256, options.supervisorFallback);
     }
     if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot,
@@ -1592,10 +1595,25 @@ function compactTargetLines(targets) {
   return lines;
 }
 
-function renderCompactChunk(checkpoint, pending) {
+/**
+ * `only` (a list of `c<n>`) renders a correction mini view: just those rows with their S/P/Q context and the
+ * targets they use, keeping the full view's `c<n>`/`T<k>` numbering so a correction answer merges unchanged.
+ */
+function renderCompactChunk(checkpoint, pending, only = null) {
   const model = compactChunkModel(checkpoint, pending);
+  const selected = only === null ? null : new Set(only);
+  if (selected) {
+    const known = new Set(model.candidates.map((row) => row.alias));
+    const unknown = [...selected].filter((alias) => !known.has(alias));
+    if (!selected.size || unknown.length) throw new Error(`--only names no candidate of ${pending.chunk_id}: ${unknown.join(',') || '(empty)'}`);
+  }
+  const keep = (row) => selected === null || selected.has(row.alias);
+  const usedTargets = new Set(model.candidates.filter(keep).flatMap((row) => row.targets));
+  const targets = selected === null ? model.targets
+    : new Map([...model.targets].filter(([, target]) => usedTargets.has(target.alias)));
   const lines = [
-    `# Stage 2 chunk ${pending.chunk_id} · shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · ${pending.candidate_count} candidates`,
+    `# Stage 2 chunk ${pending.chunk_id} · shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · ${pending.candidate_count} candidates`
+      + (selected ? ` · correction view of ${selected.size} (aliases as in the full view)` : ''),
     '# = <lemma>\tone target headword entry; its sense rows T<k> follow',
     '# T<k>\tpos\tfull gloss',
     '# S\tsource_sense_id\tsource_record_id\tlemma\tpos\tfull gloss\tcandidates <start>-<end>/<total>',
@@ -1607,9 +1625,11 @@ function renderCompactChunk(checkpoint, pending) {
       .map((rule) => `# decision: ${rule}`),
     '',
     '## targets',
-    ...compactTargetLines(model.targets),
+    ...compactTargetLines(targets),
   ];
-  for (const { slice, item, rows } of model.sources) {
+  for (const { slice, item, rows: allRows } of model.sources) {
+    const rows = allRows.filter(keep);
+    if (!rows.length) continue;
     lines.push('', compactLine('S', item.sense_id, item.record_id, item.lemma, item.pos, item.reference_gloss === undefined ? item.gloss : `${item.gloss} ⇒ ${item.reference_gloss}`, `candidates ${slice.start + 1}-${slice.end}/${item.candidates.length}`));
     for (const peer of item.approved_peers ?? []) {
       lines.push(compactLine('P', peer.type, peer.relevance, 'text' in peer ? peer.text : `${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`));
@@ -2845,12 +2865,14 @@ const assertTaskNotBlocked = (task, state) => {
   if (state === 'partial') throw new Error(`task ${task.id} is only partly saved; refusing to continue it`);
 };
 
-async function readTaskChunk(checkpoint, checkpointPath, plan, taskId, out, root) {
+async function readTaskChunk(checkpoint, checkpointPath, plan, taskId, out, root, only = null) {
   const { task, pending, state } = await taskContext(checkpoint, checkpointPath, plan, taskId);
   assertTaskNotBlocked(task, state);
   if (state === 'saved') throw new Error(`task ${task.id} is already saved`);
-  const text = renderCompactChunk(checkpoint, pending);
-  const result = { task: task.id, chunk_id: pending.chunk_id, candidate_count: pending.candidate_count, view_sha256: sha256(Buffer.from(text, 'utf8')) };
+  const text = renderCompactChunk(checkpoint, pending, only);
+  // A correction view's own hash is reported but never binds a save: save-chunk --task checks the full view.
+  const result = { task: task.id, chunk_id: pending.chunk_id, candidate_count: only === null ? pending.candidate_count : only.length,
+    view_sha256: sha256(Buffer.from(text, 'utf8')), ...(only === null ? {} : { only }) };
   if (out) {
     await writeTextAtomically(resolveRootPath(root, out), text);
     console.log(JSON.stringify(result));

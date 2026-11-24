@@ -202,6 +202,35 @@ class Argv(unittest.TestCase):
         self.assertFalse(hasattr(a, "cmd"))
 
 
+class ChunkDisabledFeatures(unittest.TestCase):
+    def test_chunks_disable_only_listed_unused_features_after_preflight(self):
+        a = Recording("codex")
+        env = {"WARROOM_STAGE2_CHUNK": "1"}
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            a.start("p", d, env, LAUNCH, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
+            self.assertNotIn("--disable", a.cmd, "no preflight: nothing is guessed")
+            fake = Preflight.Fake(exec_help=Preflight.EXEC + "--disable ")
+            self.assertIsNone(a.preflight(fake, {}, [LAUNCH]))
+            for kind in ("start", "resume"):
+                if kind == "start":
+                    a.start("p", d, env, LAUNCH, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
+                else:
+                    a.resume(THREAD, "p", d, env, LAUNCH, d / "l.log", d / "l.exit", git_dir=GIT_DIR)
+                pairs = [a.cmd[i + 1] for i, x in enumerate(a.cmd) if x == "--disable"]
+                self.assertEqual(pairs, ["apps", "multi_agent"], "only names the CLI lists; shell_tool stays on")
+                self.assertEqual(a.cmd[-1], "p")
+            a.start("p", d, {}, LAUNCH, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
+            self.assertNotIn("--disable", a.cmd, "non-chunk runs keep every feature")
+
+
+class FreshTaskFix(unittest.TestCase):
+    def test_only_codex_corrects_a_task_in_a_new_session(self):
+        # #7827: a Codex resume re-reads the thread mostly uncached; Claude's 5m-cached resume stays cheaper.
+        self.assertTrue(CodexCLIAdapter("codex").fresh_task_fix)
+        self.assertFalse(ClaudeCodeAdapter("claude").fresh_task_fix)
+
+
 class Preflight(unittest.TestCase):
     EXEC = "--json --model -m --config -c --add-dir "
     RESUME = "resume --json --model -m --config -c "
@@ -221,6 +250,8 @@ class Preflight(unittest.TestCase):
                 return Result(0, self.resume_help)
             if argv[1:] == ["login", "status"]:
                 return Result(0, self.login)
+            if argv[1:] == ["features", "list"]:
+                return Result(0, "apps  stable  true\nmulti_agent  deprecated  true\nshell_tool  stable  true\n")
             raise AssertionError(argv)
 
     def test_table(self):

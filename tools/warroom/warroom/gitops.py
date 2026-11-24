@@ -1348,10 +1348,12 @@ class Git:
                                     worktree, "plan-chunks", timeout)
 
     def stage2_task_view(self, worktree: Path, shard: str, batch: str, part: str, plan: str, task: str, out: str,
-                         timeout: int = 900) -> dict:
-        """Render one task's complete compact view to `out`; returns task/chunk_id/candidate_count/view_sha256."""
+                         timeout: int = 900, only: list[str] | None = None) -> dict:
+        """Render one task's complete compact view to `out`; returns task/chunk_id/candidate_count/view_sha256.
+        `only` renders the correction view of just those `c<n>` (full-view aliases); its hash never binds a save."""
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
-        return self._admission_json(["read-chunk", "--checkpoint", checkpoint, "--task", plan, task, "--format",
+        return self._admission_json(["read-chunk", "--checkpoint", checkpoint, "--task", plan, task,
+                                     *(["--only", ",".join(only)] if only else []), "--format",
                                      "compact", "--out", out], worktree, "read-chunk --task", timeout)
 
     def stage2_save_task(self, worktree: Path, shard: str, batch: str, part: str, plan: str, task: str,

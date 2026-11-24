@@ -36,6 +36,8 @@ ALLOWED = {"fix": {"pr", "head", "branch", "shard", "batch", "part", "review_eve
            "s2_chunk": _STAGE2 | {"s2_policy_card"}, "s2_recovery": _STAGE2,
            "s2_task": {"shard", "batch", "part", "branch", "chunk_id", "defect_path", "session_note", "chunk_input",
                        "s2_policy_card"},
+           "s2_task_fix_fresh": {"shard", "batch", "part", "branch", "chunk_id", "defect_path", "problem", "previous_rows",
+                                 "chunk_input", "s2_policy_card"},
            "s2_chunk_resume": {"chunk_id", "relation_direction_rule"},
            "s2_chunk_fix": {"chunk_id", "problem", "relation_direction_rule"},
            "s2_chunk_format_fix": {"chunk_id", "problem", "relation_direction_rule"},
@@ -172,6 +174,20 @@ def stage2_task(b, task_id: str, view: str, defect_path: str, checkpoint: dict |
                   session_note=("중단된 같은 task를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
                                 if resumed else ""))
     return render("s2_task", values, directory)
+
+
+def stage2_task_fix_fresh(b, task_id: str, view: str, defect_path: str, problem: str, previous_rows: list[str],
+                          checkpoint: dict | None = None, directory: Path | None = None) -> str:
+    """A rejected task's correction as a NEW session (adapters whose resume re-reads the whole thread uncached, #7827):
+    the same shared card, the CLI diagnostic, the named rows of the previous answer and a view of only those candidates
+    (full-view aliases), so the answer merges into the preserved decisions exactly like a same-session fix."""
+    values = _stage2_values(b)
+    chunk_input = (f"아래가 수정할 후보만 담은 view다.\n{VIEW_BEGIN}\n{view}"
+                   f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
+    values.update(chunk_id=task_id, defect_path=defect_path, problem=problem, chunk_input=chunk_input,
+                  previous_rows="\n".join(previous_rows) or "(없음 — 지목된 행을 새로 쓴다)",
+                  s2_policy_card=_stage2_policy_card(checkpoint, directory))
+    return render("s2_task_fix_fresh", values, directory)
 
 
 def stage2_links(b, checkpoint: dict, links: str, directory: Path | None = None) -> str:

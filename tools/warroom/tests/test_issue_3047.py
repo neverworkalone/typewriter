@@ -10,11 +10,15 @@ from pathlib import Path
 from tests.fakes import FakeAdapter
 from tests.test_issue_1684 import S2, s2_world
 from warroom.adapters import classify_codex_failure
-from warroom import control, stage2
+from warroom import control, prompts, stage2
 from warroom.config import DEFAULTS, config_problem
 from warroom.store import SCHEMA_VERSION, Store
 
 PREFIX = "001-01-01"
+
+
+def prompts_view_begin():
+    return prompts.VIEW_BEGIN
 
 
 def answer(text):
@@ -141,6 +145,28 @@ class ParallelStage2(Helpers, unittest.TestCase):
         w.tick()
         self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
         self.assertEqual(len(w.adapter.launches), 2)
+
+    def test_fresh_fix_adapter_corrects_in_a_new_session_with_only_the_failing_candidates(self):
+        # #7827: a Codex resume re-reads the whole thread mostly uncached, so its correction is a NEW small session.
+        w = self.world([("s", 3)], target=250)
+        w.adapter.fresh_task_fix = True
+        self.launch(w, 2)
+        w.tick()
+        task = f"{PREFIX}-t01"
+        self.respond(w, task, drop_rows(task, 3, bad=(2,)))
+        w.tick()
+        fix = w.adapter.launches[-1]
+        self.assertEqual((self.tasks(w)[task]["state"], fix["kind"]), ("RUNNING", "start"))
+        self.assertIn((task, ("c2",)), w.git.task_view_calls)
+        view = fix["prompt"].split(prompts_view_begin(), 1)[1]
+        self.assertIn("c2\t", view)
+        self.assertNotIn("c1\t", view)
+        self.assertNotIn("c3\t", view)
+        self.assertIn("c2 D BAD", fix["prompt"], "the previous answer of the named row is supplied")
+        self.respond(w, task, f"chunk {task}\nc2 D e")
+        w.tick()
+        self.assertEqual(self.tasks(w)[task]["state"], "SAVED")
+        self.assertIn("c1 D e\nc2 D e\nc3 D e", w.git.save_calls[-1], "the correction merges into the preserved rows")
 
     def test_single_residual_candidate_after_the_correction_gets_technical_drop(self):
         w = self.world([("s", 3)], target=250)

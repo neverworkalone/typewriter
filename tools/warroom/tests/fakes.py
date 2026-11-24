@@ -452,12 +452,14 @@ class FakeGit:
         body = json.loads((Path(worktree) / plan).read_text("utf-8"))
         return next(t for t in body["tasks"] if t["id"] == task_id)
 
-    def stage2_task_view(self, worktree, shard, batch, part, plan, task, out, timeout=900):
+    def stage2_task_view(self, worktree, shard, batch, part, plan, task, out, timeout=900, only=None):
         import hashlib
-        self.task_view_calls.append(task)
+        self.task_view_calls.append(task if only is None else (task, tuple(only)))
         data = json.loads(self._task_checkpoint_path(worktree, shard, batch, part).read_text("utf-8"))
         planned = self._task_of(worktree, plan, task)
         text = self._task_view(data, planned)
+        if only is not None:   # the correction view keeps only the named rows (and every non-candidate context row)
+            text = "".join(l + "\n" for l in text.splitlines() if not re.match(r"c\d+\t", l) or l.split("\t")[0] in only)
         Path(worktree, out).parent.mkdir(parents=True, exist_ok=True)
         Path(worktree, out).write_text(text, "utf-8")
         return {"task": task, "chunk_id": planned["chunk_id"], "candidate_count": planned["candidate_count"],

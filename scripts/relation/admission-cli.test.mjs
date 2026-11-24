@@ -3523,6 +3523,19 @@ test('Stage 2 task plan splits a Part deterministically and saves tasks in any o
   await assert.rejects(() => readTask('001-01-01-t03'), /already saved/);
 
   const t01 = await readTask('001-01-01-t01');
+  const fullLines = (await readFile(path.join(root, view('001-01-01-t01')), 'utf8')).split('\n');
+  const miniPath = '.warroom-scratch/001-01-01-t01.mini.txt';
+  const mini = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--task', plan, '001-01-01-t01', '--only', 'c2', '--out', miniPath], { root }));
+  assert.deepEqual([mini.candidate_count, mini.only], [1, ['c2']]);
+  const miniLines = (await readFile(path.join(root, miniPath), 'utf8')).split('\n');
+  const c2 = fullLines.find((line) => line.startsWith('c2\t'));
+  assert.ok(miniLines.includes(c2) && !miniLines.some((line) => line.startsWith('c1\t')), 'only the named row, with its full-view alias');
+  assert.ok(miniLines.includes(fullLines.find((line) => line.startsWith('S\t'))), 'the row keeps its source Sense context');
+  const c2Targets = c2.split('\t')[3] === '-' ? [] : c2.split('\t')[3].split(',');
+  assert.deepEqual(miniLines.filter((line) => /^T\d+\t/u.test(line)).map((line) => line.split('\t')[0]), c2Targets, 'only the targets that row uses');
+  for (const alias of c2Targets) assert.ok(miniLines.includes(fullLines.find((line) => line.startsWith(`${alias}\t`))), 'target aliases keep full-view numbers');
+  await assert.rejects(() => quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--task', plan, '001-01-01-t01', '--only', 'c9', '--out', miniPath], { root })), /names no candidate/);
+  await assert.rejects(() => quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--only', 'c1'], { root })), /only valid for read-chunk --task/);
   await saveTask('001-01-01-t01', t01.view_sha256, ['c1 D e', 'c2 D e']);
   const t02 = await readTask('001-01-01-t02');
   assert.match(await readFile(path.join(root, view('001-01-01-t02')), 'utf8'), /^Q\t유일표적\tdrop\te$/mu, 'a later piece sees its earlier piece as Q rows');
