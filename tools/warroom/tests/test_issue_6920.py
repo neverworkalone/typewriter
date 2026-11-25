@@ -222,7 +222,7 @@ class CorrectionInputRejectedTransition(unittest.TestCase):
             saved = []
             sup = SimpleNamespace(
                 _adapter=lambda _p: SimpleNamespace(alive=lambda _pid: False),
-                store=SimpleNamespace(runs=lambda _id: [run], log=lambda *a: None),
+                store=SimpleNamespace(runs=lambda _id: [run], get=lambda _key: None, log=lambda *a: None),
                 _save_stage2_repair_state=lambda *_a: saved.append(True),
                 _fail=lambda *a: self.fail("must not fail"),
                 _stage2_repair_correction=Supervisor._stage2_repair_correction,
@@ -237,3 +237,48 @@ class CorrectionInputRejectedTransition(unittest.TestCase):
             page = sup._stage2_repair_launch_page(current)
             self.assertLess(len(page), 8)
             self.assertEqual(len(page), 3)
+
+
+class RepairUsageLimitRetry(unittest.TestCase):
+    def test_retry_requires_explicit_override_and_unchanged_checkpoint(self):
+        import hashlib
+        import json
+        from types import SimpleNamespace
+        from warroom.supervisor import Supervisor
+        from warroom import stage2
+
+        for override, changed, expected in ((2, False, True), (0, False, False), (2, True, False)):
+            with self.subTest(override=override, changed=changed), tempfile.TemporaryDirectory() as d:
+                root = Path(d)
+                scratch = root / '.warroom-scratch'
+                scratch.mkdir()
+                cp = scratch / 'relation-admission-001-01-01.json'
+                cp.write_bytes(b'checkpoint')
+                log, ex = root / 'run.log', root / 'run.exit'
+                log.write_text('usage limit')
+                ex.write_text('1')
+                attempt = {'cursor': 0, 'attempt': 1, 'status': 'launched', 'target_keys': ['k'],
+                           'fingerprint': 'f', 'prior_run_id': 1, 'run_id': 2,
+                           'spawn': {'log_file': str(log), 'exit_file': str(ex)}}
+                current = {'cursor': 0, 'fingerprint': 'f', 'attempts': 1, 'attempt_log': [attempt]}
+                run = {'id': 2, 'kind': 's2_repair_new', 'log_file': str(log), 'exit_file': str(ex),
+                       'pid': None, 'ended_at': 1, 'exit_status': '1'}
+                b = {'id': 1, 'producer': 'claude', 'pid': None, 'log_file': str(log), 'exit_file': str(ex),
+                     'batch': '01-01', 'shard': '001', 'branch': 'owned', 'worktree': str(root)}
+                baseline = {'branch': 'owned', 'worktree': str(root), 'fingerprint': 'f', 'cursor': 0,
+                            'attempt': 1, 'page_keys': ['k'],
+                            'checkpoint_sha256': hashlib.sha256(b'other' if changed else b'checkpoint').hexdigest()}
+                values = {stage2.repair_run_start_key(1): json.dumps(baseline), 'usage_limit_override_1': str(override)}
+                failures, saves = [], []
+                sup = SimpleNamespace(_adapter=lambda _: SimpleNamespace(alive=lambda _: False),
+                    store=SimpleNamespace(runs=lambda _: [run], get=lambda key: values.get(key), log=lambda *a: None),
+                    _classify_run=lambda *_: 'usage_limit', _save_stage2_repair_state=lambda *a: saves.append(True),
+                    _stage2_repair_input_rejected=lambda *a: False, _fail=lambda *a: failures.append(a))
+                handled = Supervisor._stage2_repair_recover_launched(sup, b, {}, current)
+                self.assertEqual(handled, not expected)
+                self.assertEqual(bool(saves), expected)
+                self.assertEqual(bool(failures), not expected)
+                if expected:
+                    self.assertEqual(current['attempt_log'], [])
+                    self.assertEqual(current['interrupted_runs'][0]['run_id'], 2)
+                    self.assertEqual(current['attempts'], 0)
