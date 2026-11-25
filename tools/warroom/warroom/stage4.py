@@ -41,8 +41,11 @@ def decision_text(answer: str, chunk: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def decision_context(view: dict, chunk: str) -> dict:
-    """The Sense and Relation numbers of the prepared view, in order, with each Relation's direction and Sense."""
+def decision_context(view: dict, chunk: str, record: str | None = None) -> dict:
+    """The Sense and Relation numbers of the prepared view, in order, with each Relation's direction and Sense.
+
+    A record view (#10047, `read-chunk --record`) keeps the chunk's own numbers: they only increase, and every Sense
+    belongs to that record."""
     if (not isinstance(view, dict) or view.get("chunk") != chunk or not isinstance(view.get("senses"), list)
             or type(view.get("relation_count")) is not int or type(view.get("sense_count")) is not int):
         raise RefineError(f"Stage 4 prepared view does not match chunk {chunk}")
@@ -57,8 +60,14 @@ def decision_context(view: dict, chunk: str) -> dict:
                     or relation.get("dir") not in ("F", "X", "R")):
                 raise RefineError(f"Stage 4 prepared view has an invalid Relation in chunk {chunk}")
             relations.append({"n": relation["n"], "dir": relation["dir"], "sense": sense["n"]})
-    if ([s["n"] for s in senses] != list(range(1, len(senses) + 1)) or len(senses) != view["sense_count"]
-            or [r["n"] for r in relations] != list(range(1, len(relations) + 1)) or len(relations) != view["relation_count"]):
+    def numbered(numbers):
+        if record is None:
+            return numbers == list(range(1, len(numbers) + 1))
+        return all(n >= 1 for n in numbers) and all(a < b for a, b in zip(numbers, numbers[1:]))
+    if (not numbered([s["n"] for s in senses]) or len(senses) != view["sense_count"]
+            or not numbered([r["n"] for r in relations]) or len(relations) != view["relation_count"]
+            or (record is not None and (not senses or view.get("record") != record
+                                        or any(s["record_id"] != record for s in senses)))):
         raise RefineError(f"Stage 4 prepared view numbering does not match chunk {chunk}")
     return {"chunk": chunk, "sense_count": len(senses), "relation_count": len(relations), "senses": senses,
             "relations": relations}
@@ -183,4 +192,4 @@ SPEC = refine.register(refine.RefineSpec(
     fix=fixcoord.FixSpec(prefix="s4", label="Stage 4", response=".warroom-scratch/s4-fix-response.json",
                          amend_input=".warroom-scratch/s4-fix-amend.txt",
                          commit_subject="Apply Stage 4 review amendments", amend_header="amend"),
-    cross_shard=True, no_change_complete=True, refusal_keep_all=False, body=prbody.stage4_body))
+    cross_shard=True, no_change_complete=True, refusal_keep_all=False, refusal_records=True, body=prbody.stage4_body))

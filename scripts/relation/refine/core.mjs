@@ -458,14 +458,16 @@ export function createRefineCli(rule) {
     if (Number(chunk) < 1 || Number(chunk) > checkpoint.chunk_total) fail(`${label} chunk ${chunk} is outside 001..${String(checkpoint.chunk_total).padStart(3, '0')}`);
   }
 
-  async function readChunkByNumber(shard, chunk, root) {
+  async function readChunkByNumber(shard, chunk, root, record = null) {
     assertChunkName(chunk);
     const checkpoint = await loadCheckpoint(shard, root);
     assertChunkInRange(chunk, checkpoint);
     const raw = await readRawPreparedView(shard, chunk, root);
-    const stripped = stripInternalRow(raw);
-    return { ...stripped, prompt_view: rule.renderPromptView(stripped), view_sha256: viewDigest(raw),
-      completed: checkpoint.completed_chunks.includes(chunk) };
+    // #10047: one record of the chunk, with the chunk's own Sense/Relation numbers, bound to the whole chunk's digest.
+    const scoped = record === null ? raw : rule.recordView(raw, record);
+    const stripped = stripInternalRow(scoped);
+    return { ...stripped, ...(record === null ? {} : { record }), prompt_view: rule.renderPromptView(stripped),
+      view_sha256: viewDigest(raw), completed: checkpoint.completed_chunks.includes(chunk) };
   }
 
   async function rawNextChunk(shard, root, checkpoint, scope = null) {
@@ -776,15 +778,15 @@ export function createRefineCli(rule) {
     const command = argv[0];
     if (command === '--help' || command === '-h') return { command: 'help' };
     if (!COMMANDS.includes(command)) fail(rule.usage);
-    const options = { command, shard: null, batch: null, part: null, input: null, output: null, chunk: null, expect: null, base: null, senses: null };
+    const options = { command, shard: null, batch: null, part: null, input: null, output: null, chunk: null, expect: null, base: null, senses: null, record: null };
     for (let index = 1; index < argv.length; index += 1) {
       const flag = argv[index];
       const value = argv[index + 1];
-      if (!['--shard', '--batch', '--part', '--in', '--out', '--chunk', '--expect-view-sha256', '--base', '--senses'].includes(flag) || !value || value.startsWith('--')) fail(`invalid arguments\n${rule.usage}`);
+      if (!['--shard', '--batch', '--part', '--in', '--out', '--chunk', '--expect-view-sha256', '--base', '--senses', '--record'].includes(flag) || !value || value.startsWith('--')) fail(`invalid arguments\n${rule.usage}`);
       index += 1;
       const key = flag === '--shard' ? 'shard' : flag === '--batch' ? 'batch' : flag === '--part' ? 'part' : flag === '--in' ? 'input'
         : flag === '--chunk' ? 'chunk' : flag === '--expect-view-sha256' ? 'expect' : flag === '--base' ? 'base'
-          : flag === '--senses' ? 'senses' : 'output';
+          : flag === '--senses' ? 'senses' : flag === '--record' ? 'record' : 'output';
       if (options[key] !== null) fail(`${flag} may be supplied only once`);
       options[key] = value;
     }
@@ -806,6 +808,9 @@ export function createRefineCli(rule) {
       if (!['read-chunk', 'save-chunk'].includes(command)) fail(`--chunk is only valid for read-chunk/save-chunk\n${rule.usage}`);
       if (options.batch !== null) fail(`--chunk cannot be combined with --batch/--part\n${rule.usage}`);
     }
+    if (options.record !== null && (!rule.recordView || command !== 'read-chunk' || options.chunk === null)) {
+      fail(`--record is only valid with read-chunk --chunk of a record-scoped Stage\n${rule.usage}`);
+    }
     if (options.expect !== null && (command !== 'save-chunk' || options.chunk === null)) fail(`--expect-view-sha256 is only valid with save-chunk --chunk\n${rule.usage}`);
     if (command === 'save-chunk' && options.chunk !== null && options.expect === null) fail(`save-chunk --chunk requires --expect-view-sha256\n${rule.usage}`);
     options.scope = options.batch === null ? null : { batch: options.batch, part: options.part };
@@ -826,7 +831,7 @@ export function createRefineCli(rule) {
     }
     let result;
     if (options.command === 'prepare') result = await prepare(options.shard, root, options.scope);
-    else if (options.command === 'read-chunk' && options.chunk !== null) result = await readChunkByNumber(options.shard, options.chunk, root);
+    else if (options.command === 'read-chunk' && options.chunk !== null) result = await readChunkByNumber(options.shard, options.chunk, root, options.record);
     else if (options.command === 'read-chunk') result = await readNextChunk(options.shard, root, options.scope);
     else if (options.command === 'refresh-pending') result = await refreshPendingChunks(options.shard, root, options.scope);
     else if (options.command === 'save-chunk' && options.chunk !== null) result = await saveChunkByNumber(options.shard, options.chunk, options.input, options.expect, root);

@@ -248,7 +248,15 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 - **PR·리뷰 수정:** PR 제목 `[S4/<Model>] SSS`, 본문 `Refs #9929`. `decisions --base`는 base..HEAD의 관계 키 차이에서 PR의 Add/Drop/Set을 복원한다(원장 없음). `amend`는 `A|C <source> <target|"text"> <type> <tier>`, `D|K <source> <target|"text">` delta를 적용해 PR base에서 같은 Polish 계산을 다시 한다. 관계·Drop 조회, 계획, 회계, 검증은 모두 같은 Git base에 결속된다. 같은 논리 편집이면 apply와 같은 bytes가 나온다.
 - **검증:** `verify --shard SSS --base <merge-base>`는 PR 편집이 닿는 샤드(편집된 Sense의 소유 샤드와 생산 샤드)를 계산한다. 그 샤드들에 공식 `admission-cli verify --shard A,B,...`를 한 번의 실행으로 돌린다(Canonical 1회 로드). War Room은 최종화·리뷰 수정·replay 뒤 이 명령을 쓴다. 머지 후 완료 표식 `s4_ok_SSS`는 생산 샤드에만 남긴다.
 - **무변경 완료:** 모든 청크가 정상 판정·저장되고 apply가 `no-change`이면, War Room은 그 HEAD를 위 verify로 확인한다. 그다음 `s4_nochange_SSS`를 기록하고 commit·PR 없이 worktree를 정리한다. 다음 샤드 선택은 마지막 머지 PR 뒤의 연속된 무변경 완료를 이어서 건너뛴다.
-- **실패와 Skip은 다르다:** 정책 거부는 Keep-all로 저장하지 않고(`refusal_keep_all=False`) 일반 실패 경로로 보낸다. 판단이 없는 응답은 응답 누락 경로로 보낸다.
+- **실패와 Skip은 다르다:** 정책 거부는 Keep-all로 저장하지 않는다(`refusal_keep_all=False`). 판단이 없는 응답은 응답 누락 경로로 보낸다.
+- **record 단위 Policy Skip (#10047, `refusal_records`):** provider의 공식 구조화 거부는 실행 view(launch digest로 증명)의 Canonical record에만 결속한다.
+  - record가 하나인 청크는 그 record로 확정된다.
+  - 여러 record인 청크는 거부된 청크에 한해 record마다 독립 task를 **1회** 실행한다. `read-chunk --chunk NNN --record <id>`가 청크 번호와 청크 전체 digest를 그대로 쓰는 하위 view를 준다. 다시 거부된 record만 확정한다. 더 분할·재시도하거나 모델·프롬프트를 바꾸지 않는다.
+  - Supervisor는 정상 record 판정과 `P <record_id...>`를 합성해 기존 `save-chunk --chunk`로 한 번 저장한다. 모두 `none`이면 `none`을 저장한다.
+  - `P`는 record의 모든 Sense를 `policy` 결정으로 남긴다. 그 Sense에서 나온 편집은 없다. 기존 Relation은 그대로 두며, 다른 정상 Sense의 정·역방향 편집은 공통 계약을 따른다.
+  - 없는 record, 중복, 같은 record Sense의 `skip`이나 편집과 함께 쓴 `P`는 저장 전체를 거부한다. AI 답변 문법에는 `P`가 없다.
+  - apply·PR 본문·무변경 로그는 `policy_skipped`를 편집 `skipped`와 따로 센다. 확정 record는 기존 수동 Issue 경로(`[Policy Skip][S4/…]`)에 record ID·표제어·Sense·청크·사유를 남긴다. 별도 blacklist·원장은 없다.
+  - 결속할 수 없는 거부, 판정이나 공식 거부를 얻지 못한 record 실행(실패·누락·중단)은 그 청크를 `HELD`로 미완료 유지한다. 다른 청크는 계속한다. 나머지가 끝나면 `[Policy Hold]` 보고와 함께 최종화하지 않고 멈춘다.
 - **실행:** Stage 3 전체 완료 뒤 War Room 정제 라인이 샤드 001부터 차례로 실행한다(운영 설정은 `tools/warroom/README.md`의 *Stage 4 운영 설정*). 완료한 샤드는 이후 단건 Polish나 다른 샤드의 역방향 편집으로 파일이 바뀌어도 다시 열지 않는다. 첫 샤드 파일럿의 Skip/Polish Sense 수, Add/Drop/Set 수, 처리 시간, 토큰은 PR 본문·무변경 완료 로그의 기존 집계로 확인한다.
 
 ## 5. Polish — 직접 Relation 편집과 동시 변경 (#8784, #8777)

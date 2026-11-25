@@ -1864,7 +1864,7 @@ class Supervisor:
         self.store.set(spec.ok_key(b["shard"]), head)
         senses = result.get("senses") if isinstance(result.get("senses"), dict) else {}
         self.store.log(b["id"], f"{self._stage(b)} 샤드 {b['shard']} 무변경 완료: Sense {senses.get('total')} "
-                       f"(Polish {senses.get('polished')}, Skip {senses.get('skipped')}), "
+                       f"(Polish {senses.get('polished')}, Skip {senses.get('skipped')}, Policy Skip {senses.get('policy_skipped')}), "
                        f"비용 {prbody.run_cost(self.store.runs(b['id'])) or '미측정'}. commit·PR 없이 정리합니다.")
         self.store.update(b["id"], state="CLEANUP", run_kind=None, pid=None)
 

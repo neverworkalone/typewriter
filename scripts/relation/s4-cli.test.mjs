@@ -228,3 +228,32 @@ test('#9928 a shard with only skips and none completes as no-change, and an all-
   assert.deepEqual(applied.changed_files, []);
   assert.equal(git(root, 'status', '--porcelain', '--', 'data'), '');
 });
+
+test('#10047 a record view keeps the chunk numbers and digest; P skips exactly that record and counts apart from Skip', async (t) => {
+  const root = await repository(t);
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  const whole = await cli(root, 'read-chunk', '--shard', '001', '--chunk', '001');
+  const record = await cli(root, 'read-chunk', '--shard', '001', '--chunk', '001', '--record', 'w1');
+  assert.equal(record.view_sha256, whole.view_sha256, 'a record run binds to the whole chunk digest');
+  assert.deepEqual(record.senses.map((entry) => [entry.n, entry.sense_id]),
+    whole.senses.filter((entry) => entry.record_id === 'w1').map((entry) => [entry.n, entry.sense_id]));
+  assert.match(record.prompt_view, new RegExp(`^chunk 001/\\d{3} senses 2 relations ${record.relation_count}\\n`, 'u'));
+  await assert.rejects(cli(root, 'read-chunk', '--shard', '001', '--chunk', '001', '--record', 'w999'), /no record w999/u);
+
+  // An invalid Policy Skip refuses the whole save; nothing is counted twice.
+  await assert.rejects(save(root, '001', () => ['P w999']), /unknown record w999/u);
+  await assert.rejects(save(root, '001', (view) => ['P w1', `skip ${find(view, 'w1-s1', '').sense}`]), /also has a skip or edit/u);
+  await assert.rejects(save(root, '001', () => ['P w1 w1']), /twice/u);
+  const saved = await save(root, '001', (view) => ['P w1', `C ${find(view, 'w3-s1', '고요').relation} mood 2`]);
+  assert.equal(saved.policy_skipped, 2);
+  assert.equal(saved.skipped, 0);
+  await saveNone(root, 2, prepared.chunk_count);
+  const applied = await cli(root, 'apply', '--shard', '001');
+  assert.equal(applied.senses.policy_skipped, 2);
+  assert.equal(applied.senses.skipped, 0);
+  assert.equal(applied.senses.polished, applied.senses.total - 2);
+  // Another Sense's edit of the Policy Skip record's relation follows the common contract; its other rows stay.
+  const own = await relations(root, '001');
+  assert.equal(own.find((row) => row.target_sense_id === 'w3-s1').type, 'mood');
+  assert.ok(own.some((row) => row.target_sense_id === 'w2000-s1') && own.some((row) => row.target_sense_id === FAR));
+});

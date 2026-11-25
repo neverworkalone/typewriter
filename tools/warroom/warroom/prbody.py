@@ -154,7 +154,7 @@ def stage4_body(model: str, shard: str, *, result: dict, cost: str | None = None
         "- Scope: Selective shard Polish (Add / Drop / Set / Skip)",
         f"- Completed Chunks: {'미측정' if done is None or total is None else f'{done}/{total}'}",
         f"- Senses: {_n(_count(senses.get('total')))} (Polish {_n(_count(senses.get('polished')))}, "
-        f"Skip {_n(_count(senses.get('skipped')))})",
+        f"Skip {_n(_count(senses.get('skipped')))}, Policy Skip {_n(_count(senses.get('policy_skipped')))})",
         f"- Decisions: Add {_n(_count(decisions.get('add')))}, Drop {_n(_count(decisions.get('drop')))}, "
         f"Set {_n(_count(decisions.get('set')))}, Rebind {_n(_count(decisions.get('rebind')))}",
         f"- Key Conflicts Resolved: {_n(len(conflicts) if isinstance(conflicts, list) else None)}",

@@ -17,6 +17,17 @@ the real executions are task runs (`runs.task`, `s2_tasks`). Each tick, in this 
 
 Task states: PENDING, RUNNING, RESPONDED (answer preserved, save pending), SAVED, FAILED. Stage 3 has no same-session
 correction loop: a missing answer gets exactly one new session; a strict save rejection never calls the AI again.
+
+Record-bound Policy Skip (#10047, a spec with `refusal_records`, i.e. Stage 4): a provider prompt refusal of a chunk
+whose launched view is proven unchanged binds to that view's Canonical records. The chunk task becomes SPLIT and each
+of its records becomes one record task (`NNN-<record_id>`, chunk_id `NNN`) that runs exactly once on the record view
+(same slots and cap). A record answer is RESPONDED, a record refusal is POLICY; anything else — no judgment, any failure,
+a lost run, a changed view — is HELD, never retried. When every record is settled, the chunk answer is composed (record
+bodies, then `P <refused records>`; all `none` -> `none`), the Policy Skip request is persisted through the existing
+Issue path, the record tasks become MERGED and the chunk is saved by the ordinary single writer. A single-record chunk
+is already bound: its record is POLICY without a new run. A HELD chunk (or a refusal that cannot be bound) stays
+incomplete without blocking other chunks; once nothing else can progress the shard stops (ERROR) with an owner report
+and is never finalized.
 """
 from __future__ import annotations
 
@@ -37,6 +48,20 @@ TRANSIENT = (GhTransient, GitTransient)
 _ERRORS = (GitError, Stage3Error, OSError, ValueError, KeyError, TypeError)
 HARD = ("auth", "usage_limit", "free_quota", "effort", "fast_unavailable")
 MAX_SAVE_FAILURES = 2
+RECORD_DONE = ("RESPONDED", "POLICY", "MERGED")
+
+
+def is_record(row) -> bool:
+    """A record task of a refused chunk (#10047); a chunk task's id is its chunk id."""
+    return row["task"] != row["chunk_id"]
+
+
+def record_of(row) -> str | None:
+    return row["task"][len(row["chunk_id"]) + 1:] if is_record(row) else None
+
+
+def record_task(chunk: str, record: str) -> str:
+    return f"{chunk}-{record}"
 
 
 def is_parallel(store, b) -> bool:
@@ -227,8 +252,10 @@ class ParallelStage3:
         for row in self.store.task_rows(b["id"]):
             if row["state"] == "RUNNING":
                 self._poll_task(b, row, round_)
+        if refine.spec_for(b).refusal_records:
+            self._settle_splits(b)
         for row in self.store.task_rows(b["id"]):
-            if row["state"] == "RESPONDED":
+            if row["state"] == "RESPONDED" and not is_record(row):
                 if self._halted_by_boundary(b, round_):
                     break
                 self._save_task(b, self.store.task_row(b["id"], row["task"]), round_)
@@ -238,22 +265,27 @@ class ParallelStage3:
         rows = {r["task"]: r for r in self.store.task_rows(b["id"])}
         failed = [r for r in rows.values() if r["state"] == "FAILED"]
         if failed:   # before any slot is refilled: nothing new starts, running tasks are still followed and saved
-            if not any(r["state"] in ("RUNNING", "RESPONDED") for r in rows.values()) \
+            # A record task's RESPONDED answer waits for its chunk's composition, not for a save (#10047).
+            if not any(r["state"] == "RUNNING" or (r["state"] == "RESPONDED" and not is_record(r)) for r in rows.values()) \
                     and not taskruns.open_runs(self.store, b["id"]):
                 return self._halt(b, failed)
             return
         if self._all_saved(b, rows):
             return self._finish(b)
+        if self._only_held_left(b, rows):
+            return self._halt_held(b, rows)
         self._fill_slots(b, rows, round_)
 
     def _all_saved(self, b, rows) -> bool:
-        if not rows or any(r["state"] != "SAVED" for r in rows.values()) or taskruns.open_runs(self.store, b["id"]):
+        chunks = [task for task, r in rows.items() if not is_record(r)]
+        if (not chunks or any(r["state"] != ("MERGED" if is_record(r) else "SAVED") for r in rows.values())
+                or taskruns.open_runs(self.store, b["id"])):
             return False
         try:
             state = refine.ops(b).checkpoint(self._wt(b), b["shard"])
         except Stage3Error:
             return False
-        return state is not None and sorted(state["completed_chunks"]) == sorted(rows)
+        return state is not None and sorted(state["completed_chunks"]) == sorted(chunks)
 
     # ---- Git boundary ---------------------------------------------------------------------------------------------------
     def _halted_by_boundary(self, b, round_: _Round) -> bool:
@@ -298,7 +330,7 @@ class ParallelStage3:
         busy = {r["task"] for r in taskruns.open_runs(self.store, b["id"])}
         for row in self.store.task_rows(b["id"]):
             task = row["task"]
-            if row["state"] == "SAVED" or task not in done or task in busy:
+            if is_record(row) or row["state"] == "SAVED" or task not in done or task in busy:
                 continue
             data = _data(row)
             rel = stage3.task_path(task, "decisions.txt")
@@ -335,6 +367,10 @@ class ParallelStage3:
                 remaining.append(task)
                 continue
             data = _data(row)
+            if row["state"] in ("SPLIT", "HELD") or data.get("split"):
+                # #10047: a refused chunk is never submitted again, also not with a new view: the owner decides.
+                self._held(b, row, data, f"[{task}] 정책 거부 청크의 view가 승인된 통합으로 바뀌었습니다. 재제출하지 않고 보류합니다")
+                continue
             old = row["view_sha256"] or "none"
             answer = self._decisions(b, task)
             if answer.exists():
@@ -400,7 +436,9 @@ class ParallelStage3:
         self.store.log(b["id"], f"[{task}] AI 종료 코드 {code}, 분류={cls}", "warn")
         hard = cls in HARD
         # Only a Stage whose spec allows it turns a prompt refusal into Keep-all; Stage 4 keeps editorial Skip and a
-        # refusal apart (#9928), so its refusal takes the ordinary failure path below.
+        # refusal apart (#9928) and binds a refusal to records instead (#10047).
+        if not hard and refine.spec_for(b).refusal_records and self._policy_refusal_records(b, row, data, run):
+            return
         if not hard and refine.spec_for(b).refusal_keep_all and self._policy_refusal_skip(b, row, data, run):
             return
         if not hard:   # a complete current answer with a proven run identity survives an ordinary non-zero exit
@@ -410,6 +448,8 @@ class ParallelStage3:
                     and ad.output_identity_problem(log, taskruns.recorded_spec(run), sid, b["worktree"], self.sup.env) is None:
                 self.store.log(b["id"], f"[{task}] 비정상 종료지만 현재 청크의 완전한 응답과 실행 identity를 확인해 저장 경로로 진행합니다", "warn")
                 return self._accept_answer(b, row, data, run)
+        if is_record(row):   # one record run only (#10047): no transient retry, no PAUSED relaunch
+            return self._held(b, row, data, f"[{task}] record 실행이 판정 없이 종료됐습니다(코드 {code}, {cls}). 재실행하지 않고 보류합니다")
         if hard:
             message = (self.sup._fast_unavailable_message(run["log_file"]) if cls == "fast_unavailable" else
                        f"AI 실행이 {cls}로 실패했습니다 — 자동 전환·재시도 없이 중지합니다.")
@@ -474,22 +514,201 @@ class ParallelStage3:
         self.store.log(b["id"], f"[{task}] Codex 정책 거부: Keep-all `none` 저장 경로로 진행하고 수동 Issue 요청 #{request_id}를 남겼습니다", "warn")
         return True
 
+    # ---- record-bound Policy Skip (#10047) --------------------------------------------------------------------------------
+    def _held(self, b, row, data, message: str) -> None:
+        """Keep a task incomplete without blocking other chunks; its answer files and data stay as they are."""
+        data["error"] = message
+        self._set(b, row["task"], data, state="HELD")
+        self.store.log(b["id"], message, "warn")
+
+    def _policy_refusal_records(self, b, row, data, run) -> bool:
+        """An exact provider refusal of this task's prompt, bound to the Canonical records of its proven launch view.
+        A record task becomes POLICY; a chunk task becomes SPLIT into one-time record tasks (a single record is POLICY at
+        once). A refusal whose launch view cannot be proven holds the task. True when handled."""
+        task, ad = row["task"], self._adapter(b)
+        log = Path(run["log_file"])
+        reason = ad.confirmed_prompt_refusal(log)
+        if not reason:
+            return False
+        sid = run["session_id"] or row["session_id"] or ad.session_id(log)
+        if problem := ad.output_identity_problem(log, taskruns.recorded_spec(run), sid, b["worktree"], self.sup.env):
+            self._task_failed(b, row, data, f"[{task}] 정책 거부 실행의 소유권/핀 확인 실패: {problem[1]}", "ownership")
+            return True
+        chunk, record = row["chunk_id"], record_of(row)
+        try:
+            view, _prompt, sha, completed = refine.ops(b).read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b),
+                                                                               b["shard"], chunk, record)
+        except Stage3Error as error:
+            self._held(b, row, data, f"[{task}] 정책 거부 view를 확인하지 못해 거부 범위를 record에 결속할 수 없습니다: {error}")
+            return True
+        records = list(dict.fromkeys(sense.get("record_id") for sense in view.get("senses") or []))
+        if completed or sha != row["view_sha256"] or not records or not all(isinstance(r, str) for r in records):
+            self._held(b, row, data, f"[{task}] 정책 거부 청크가 이미 저장됐거나 실행 뒤 view가 바뀌어 거부 범위를 record에 결속할 수 없습니다")
+            return True
+        if record is not None:
+            data.pop("error", None)
+            data["policy"] = {"reason": reason, "run_id": run["id"]}
+            self._set(b, task, data, state="POLICY")
+            self.store.log(b["id"], f"[{task}] record 실행도 정책 거부: 이 record만 Policy Skip으로 확정합니다", "warn")
+            return True
+        data.pop("failure_kind", None)
+        data["split"] = {"records": records, "reason": reason, "run_id": run["id"]}
+        self._set(b, task, data, state="SPLIT")
+        self.store.log(b["id"], f"[{task}] 정책 거부: " + ("record 1개 청크라 거부 범위가 그 record로 확정됩니다" if len(records) == 1
+                                                     else f"{len(records)}개 record를 각각 1회 독립 실행합니다"), "warn")
+        self._ensure_split(b, self.store.task_row(b["id"], task))
+        return True
+
+    def _ensure_split(self, b, parent) -> list:
+        """The record task rows of a SPLIT chunk (idempotent; a restart right after SPLIT re-creates them)."""
+        chunk, split = parent["task"], _data(parent).get("split") or {}
+        records = split.get("records") or []
+        self.store.add_tasks(b["id"], [(record_task(chunk, record), chunk) for record in records])
+        kids = [self.store.task_row(b["id"], record_task(chunk, record)) for record in records]
+        if len(kids) == 1 and kids[0]["state"] == "PENDING" and kids[0]["attempts"] == 0 and kids[0]["run_id"] is None:
+            data = _data(kids[0]) | {"policy": {"reason": split.get("reason"), "run_id": split.get("run_id"), "chunk": True}}
+            self._set(b, kids[0]["task"], data, state="POLICY", view_sha256=parent["view_sha256"])
+            kids = [self.store.task_row(b["id"], kids[0]["task"])]
+        return kids
+
+    def _settle_splits(self, b) -> None:
+        """Advance every refused chunk: hold a record that cannot run again, hold the chunk of a held record, compose a
+        fully settled chunk, and finish MERGED after a restart. No step calls the AI."""
+        busy = {r["task"] for r in taskruns.open_runs(self.store, b["id"])}
+        for parent in self.store.task_rows(b["id"]):
+            if is_record(parent) or not _data(parent).get("split"):
+                continue
+            kids = self._ensure_split(b, parent)
+            if parent["state"] in ("RESPONDED", "SAVED"):   # composed: only the MERGED marks may be missing
+                for kid in kids:
+                    if kid["state"] in ("RESPONDED", "POLICY"):
+                        self._set(b, kid["task"], state="MERGED")
+                continue
+            if parent["state"] == "HELD":
+                for kid in kids:
+                    if kid["state"] in ("PENDING", "RESPONDED", "POLICY") and kid["task"] not in busy:
+                        self._set(b, kid["task"], state="HELD")
+                continue
+            if parent["state"] != "SPLIT":
+                continue
+            for kid in kids:
+                if kid["state"] == "PENDING" and kid["attempts"] >= 1 and kid["task"] not in busy:
+                    self._held(b, kid, _data(kid), f"[{kid['task']}] record 실행이 판정 없이 중단됐습니다. 재실행하지 않고 보류합니다")
+            kids = [self.store.task_row(b["id"], kid["task"]) for kid in kids]
+            held = [kid["task"] for kid in kids if kid["state"] == "HELD"]
+            if held:
+                self._held(b, parent, _data(parent), f"[{parent['task']}] 보류된 record({', '.join(held)})가 있어 청크를 합성·저장하지 않습니다")
+                for kid in kids:
+                    if kid["state"] in ("PENDING", "RESPONDED", "POLICY") and kid["task"] not in busy:
+                        self._set(b, kid["task"], state="HELD")
+            elif kids and all(kid["state"] in RECORD_DONE for kid in kids):
+                self._compose(b, parent, kids)
+
+    def _compose(self, b, parent, kids) -> None:
+        """The chunk answer of a SPLIT chunk: each answered record's lines, then `P <refused records>`; only `none`
+        answers make `none`. A Policy Skip request is persisted before the answer becomes saveable."""
+        chunk, data = parent["task"], _data(parent)
+        split = data["split"]
+        try:
+            view, _prompt, sha, completed = refine.ops(b).read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], chunk)
+        except Stage3Error as error:
+            return self._held(b, parent, data, f"[{chunk}] 합성할 청크 view를 확인하지 못했습니다: {error}")
+        if completed or sha != parent["view_sha256"]:
+            return self._held(b, parent, data, f"[{chunk}] 거부된 청크가 이미 저장됐거나 view가 바뀌어 합성하지 않습니다")
+        body, policy = [], []
+        for record, kid in zip(split["records"], kids):
+            if kid["state"] == "POLICY":
+                policy.append((record, (_data(kid).get("policy") or {}).get("reason") or split["reason"]))
+                continue
+            path, response = self._decisions(b, kid["task"]), _data(kid).get("response") or {}
+            try:
+                raw = path.read_bytes()
+            except OSError:
+                raw = b""
+            if not response or hashlib.sha256(raw).hexdigest() != response.get("sha256") or response.get("view_sha256") != sha:
+                return self._held(b, parent, data, f"[{chunk}] record {record}의 보존 응답이 응답 identity와 달라 합성하지 않습니다")
+            lines = [line.strip() for line in raw.decode("utf-8").splitlines() if line.strip()][1:]
+            if lines != ["none"]:
+                body.extend(lines)
+        lines = [f"chunk {chunk}", *body] + ([f"P {' '.join(record for record, _ in policy)}"] if policy else [])
+        text = "\n".join(lines if len(lines) > 1 else [*lines, "none"]) + "\n"
+        if policy:
+            spec = refine.spec_for(b)
+            report = [f"{spec.label} {b['shard']} chunk {chunk}: provider 정책 거부가 record 범위로 확정되어 해당 record의 "
+                      "독립 Polish를 Policy Skip했습니다 (편집 Skip/no-op 아님, 기존 Relation 유지). 나머지 record는 정상 판정·저장됩니다."]
+            for record, reason in policy:
+                senses = [sense for sense in view.get("senses") or [] if sense.get("record_id") == record]
+                report.append(f"{record}	{senses[0].get('lemma') if senses else ''}	Sense {len(senses)}	"
+                              f"{','.join(str(sense.get('sense_id')) for sense in senses)}	{reason}")
+            try:
+                request_id = self.sup.maint.report_issue(f"[Policy Skip][{spec.short}/{b['producer']}] {b['shard']} Chunk {chunk}",
+                                                         "\n".join(report), urgent=False,
+                                                         event_key=f"{spec.id}-policy-skip:{b['shard']}:{b['producer']}:{chunk}")
+            except Exception as error:   # persist the request before the effect; the next tick tries again
+                return self.store.log(b["id"], f"[{chunk}] Policy Skip 수동 Issue 요청을 영속화하지 못해 합성을 미룹니다: {error}", "warn")
+            data["policy_request"] = request_id
+        path = self._decisions(b, chunk)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(text, "utf-8")
+        tmp.replace(path)
+        run = self.store.run(split["run_id"])
+        run = dict(run) if run is not None else {}
+        data["response"] = {"run_id": split["run_id"], "session_id": run.get("session_id"),
+                            "model": run.get("model"), "effort": run.get("effort"),
+                            "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(), "view_sha256": sha, "composed": True}
+        data.pop("error", None)
+        self._set(b, chunk, data, state="RESPONDED")
+        for kid in kids:
+            self._set(b, kid["task"], state="MERGED")
+        self.store.log(b["id"], f"[{chunk}] record 결과를 합성했습니다 (Policy Skip record {len(policy)}개)" +
+                       (f", 수동 Issue 요청 #{data['policy_request']}" if policy else ""), "warn" if policy else "info")
+
+    def _only_held_left(self, b, rows) -> bool:
+        chunks = [r for r in rows.values() if not is_record(r)]
+        return (any(r["state"] == "HELD" for r in chunks) and not taskruns.open_runs(self.store, b["id"])
+                and all(r["state"] in ("SAVED", "HELD") for r in chunks)
+                and all(r["state"] in ("MERGED", "HELD") for r in rows.values() if is_record(r)))
+
+    def _halt_held(self, b, rows) -> None:
+        """Every other chunk is saved: report the held chunks to the owner and stop without finalizing."""
+        spec = refine.spec_for(b)
+        held = [r for r in rows.values() if not is_record(r) and r["state"] == "HELD"]
+        for r in held:
+            data = _data(r)
+            records = (data.get("split") or {}).get("records") or []
+            try:
+                self.sup.maint.report_issue(
+                    f"[Policy Hold][{spec.short}/{b['producer']}] {b['shard']} Chunk {r['task']}",
+                    "\n".join([f"{spec.label} {b['shard']} chunk {r['task']}: 정책 거부 범위를 record로 확정하지 못해 미완료로 보류합니다. "
+                               "재제출·분할 재시도하지 않습니다. 다른 청크의 저장 결과는 보존됩니다 — 오너 결정 필요",
+                               f"사유: {data.get('error') or ''}", f"records: {', '.join(records) or '미확정'}"]),
+                    urgent=False, event_key=f"{spec.id}-policy-hold:{b['shard']}:{b['producer']}:{r['task']}")
+            except Exception as error:
+                self.store.log(b["id"], f"[{r['task']}] 보류 보고 Issue 요청을 영속화하지 못했습니다: {error}", "warn")
+        self.sup._fail(b, "ERROR", f"{self.sup._stage(b)} 정책 거부 범위를 확정하지 못한 청크 "
+                                   f"{', '.join(r['task'] for r in held)}를 보류합니다. 다른 청크는 저장됐고 최종화하지 않습니다 — 오너 결정 필요")
+
     def _accept_answer(self, b, row, data, run) -> None:
         task, ad = row["task"], self._adapter(b)
         final = ad.final_answer(Path(run["log_file"]))
-        if complete_response(final, task) is None:   # no answer / no header / header only: never an implicit `none`
+        if complete_response(final, row["chunk_id"]) is None:   # no answer / no header / header only: never an implicit `none`
             return self._missing_answer(b, row, data, "현재 청크 헤더와 판정 본문이 있는 응답이 없습니다.")
+        chunk, record = row["chunk_id"], record_of(row)
         try:
-            view, _prompt, sha, _completed = refine.ops(b).read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"], task)
+            view, _prompt, sha, _completed = refine.ops(b).read_chunk_by_number(self.sup.runner, self._env(b), self._wt(b), b["shard"],
+                                                                                chunk, record)
             if sha != row["view_sha256"]:
                 return self._task_failed(b, row, data, f"[{task}] 실행 중 청크 view가 바뀌어 응답을 저장하지 않습니다 (응답 보존)", "input_changed")
-            normalized, warnings = refine.spec_for(b).rule.normalize_decisions(final, task, refine.spec_for(b).rule.decision_context(view, task))
+            rule = refine.spec_for(b).rule
+            context = rule.decision_context(view, chunk) if record is None else rule.decision_context(view, chunk, record)
+            normalized, warnings = rule.normalize_decisions(final, chunk, context)
         except refine.NoJudgment as error:   # no usable judgment: the missing-answer path, never Keep-all
             return self._missing_answer(b, row, data, str(error))
         except Stage3Error as error:
             return self._task_failed(b, row, data, f"[{task}] 응답을 정규화하지 못했습니다: {error}", "no_response")
         body = [line.strip() for line in final.strip().splitlines() if line.strip()][1:]
-        if normalized == f"chunk {task}\nnone\n" and body != ["none"]:   # prose or only-invalid proposals: not an explicit Keep-all
+        if normalized == f"chunk {chunk}\nnone\n" and body != ["none"]:   # prose or only-invalid proposals: not an explicit Keep-all
             return self._missing_answer(b, row, data, "유효한 D/L 제안이나 명시적 `none`이 없는 응답입니다.")
         if warnings:
             self.store.log(b["id"], f"[{task}] 판정 정규화: {'; '.join(warnings)}", "warn")
@@ -506,6 +725,8 @@ class ParallelStage3:
 
     def _missing_answer(self, b, row, data, why: str) -> None:
         task = row["task"]
+        if is_record(row):   # one record run only (#10047)
+            return self._held(b, row, data, f"[{task}] record 실행에서 판정을 확보하지 못했습니다 ({why}). 재실행하지 않고 보류합니다")
         if data.get("fresh_retries", 0) < 1:
             data["fresh_retries"] = 1
             self._set(b, task, data, state="PENDING", run_id=None, session_id=None)
@@ -594,6 +815,10 @@ class ParallelStage3:
     def _launch_task(self, b, row, round_: _Round) -> bool:
         task, data, sup = row["task"], _data(row), self.sup
         wt, ad = self._wt(b), self._adapter(b)
+        chunk, record = row["chunk_id"], record_of(row)
+        if record is not None and row["attempts"] >= 1:   # a record runs once (#10047), also across stops/restarts
+            self._held(b, row, data, f"[{task}] record 실행은 1회뿐입니다. 다시 시작하지 않고 보류합니다")
+            return True
         run = round_.run   # proven by this round's preflight (`_start_allowed`), never re-resolved
         if run is None:
             sup._fail(b, "ERROR", "실행 전 확인을 거치지 않은 실행 설정으로 AI를 시작하지 않았습니다")
@@ -606,10 +831,15 @@ class ParallelStage3:
         try:
             env = self._env(b)
             extra = {"git_dir": sup.git.worktree_gitdir(wt)} if getattr(ad, "needs_git_dir", False) else {}
-            view, prompt_view, sha, completed = refine.ops(b).read_chunk_by_number(sup.runner, env, wt, b["shard"], task)
+            view, prompt_view, sha, completed = refine.ops(b).read_chunk_by_number(sup.runner, env, wt, b["shard"], chunk, record)
             if completed:
-                raise prompts.PromptError(f"청크 {task}는 이미 checkpoint에 저장돼 있어 다시 판정하지 않습니다")
-            prompt = prompts.stage3_chunk(b, task, prompt_view)
+                raise prompts.PromptError(f"청크 {chunk}는 이미 checkpoint에 저장돼 있어 다시 판정하지 않습니다")
+            if record is not None:
+                parent = self.store.task_row(b["id"], chunk)
+                if parent is None or parent["state"] != "SPLIT" or sha != parent["view_sha256"]:
+                    self._held(b, row, data, f"[{task}] 거부된 청크 view와 record view의 결속을 증명하지 못해 실행하지 않고 보류합니다")
+                    return True
+            prompt = prompts.stage3_chunk(b, chunk, prompt_view)
             old = self._decisions(b, task)
             if old.exists():   # an earlier attempt's answer is kept aside, never read as this run's answer
                 old.replace(old.with_name(f"previous-{hashlib.sha256(old.read_bytes()).hexdigest()[:12]}.txt"))
@@ -647,6 +877,8 @@ class ParallelStage3:
 
     # ---- failures, operator Retry, halt, finish -------------------------------------------------------------------------------
     def _task_failed(self, b, row, data, message: str, kind: str) -> None:
+        if is_record(row):   # a record task is never FAILED or retried (#10047): no deadlock with its siblings
+            return self._held(b, row, data, message)
         data.update(error=message, failure_kind=kind)
         self._set(b, row["task"], data, state="FAILED")
         self._reconcile_submit_failures(b, row, data)
@@ -716,7 +948,7 @@ class ParallelStage3:
         """Every chunk is SAVED and the checkpoint is complete: persist `closed` first, then finalize."""
         if self.sup._finalization_held(b, "s3_plan_close"):
             return   # Restart STOPPING: nothing is written; the next instance re-enters here from the same facts
-        tasks = self.store.task_rows(b["id"])
+        tasks = [row for row in self.store.task_rows(b["id"]) if not is_record(row)]
         if tasks and all(row["state"] == "SAVED" for row in tasks):
             total = len(tasks)
             self.store.update(b["id"], progress_kind="chunks", progress_done=total, progress_total=total,

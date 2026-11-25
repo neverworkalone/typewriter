@@ -77,6 +77,10 @@ class RefineSpec:
     # A provider prompt refusal may be saved as an explicit Keep-all `none` (Stage 3, #2292); False sends it to the
     # ordinary task failure path, since an editorial Skip and a refusal are different results.
     refusal_keep_all: bool = True
+    # #10047: a prompt refusal binds to Canonical records. A refused multi-record chunk runs each of its records once
+    # as its own task; a refused record (or a refused single-record chunk) is a Policy Skip `P <record_id>`, every
+    # other record keeps its ordinary judgment, and a refusal that cannot be bound holds the chunk (never Keep-all).
+    refusal_records: bool = False
     body: Callable | None = None   # (model, shard, result=..., cost=...) -> PR body; None = the Stage 3 body
 
     def title_for(self, model: str, shard: str) -> str:
@@ -358,17 +362,23 @@ class RefineOps:
             raise RefineError(f"{self.cli_name} report returned an invalid shard report")
         return value
 
-    def read_chunk_by_number(self, runner, env: dict, worktree, shard: str, chunk: str) -> tuple[dict, str, str, bool]:
-        """Explicit chunk read: (unchanged prepared view, validated compact prompt view, view digest, completed)."""
+    def read_chunk_by_number(self, runner, env: dict, worktree, shard: str, chunk: str,
+                             record: str | None = None) -> tuple[dict, str, str, bool]:
+        """Explicit chunk read: (unchanged prepared view, validated compact prompt view, view digest, completed).
+        With `record` (#10047) the view is that record of the chunk, bound to the whole chunk's digest."""
         rule = self.spec.rule
-        result = self.cli(runner, env, worktree, "read-chunk", "--shard", shard, "--chunk", chunk)
+        if record is not None and not self.spec.refusal_records:
+            raise RefineError(f"{self.spec.label} has no record-scoped chunk view")
+        extra = ("--record", record) if record is not None else ()
+        result = self.cli(runner, env, worktree, "read-chunk", "--shard", shard, "--chunk", chunk, *extra)
         state = self.checkpoint(worktree, shard)
         if (not isinstance(result, dict) or result.get("chunk") != chunk or state is None
                 or not isinstance(result.get("view_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", result["view_sha256"])
                 or type(result.get("completed")) is not bool):
             raise RefineError(f"{self.cli_name} read-chunk --chunk {chunk} returned an invalid result")
         view = {key: value for key, value in result.items() if key not in ("prompt_view", "view_sha256", "completed")}
-        rule.validate_prompt_view(result.get("prompt_view"), rule.decision_context(view, chunk), state["chunk_total"])
+        context = rule.decision_context(view, chunk) if record is None else rule.decision_context(view, chunk, record)
+        rule.validate_prompt_view(result.get("prompt_view"), context, state["chunk_total"])
         return view, result["prompt_view"], result["view_sha256"], result["completed"]
 
     def save_chunk_by_number(self, runner, env: dict, worktree, shard: str, chunk: str, input_rel: str,

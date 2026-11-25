@@ -1,5 +1,7 @@
 """Issue #9928: Stage 4 is registered on the shared refinement line by spec, rule and prompts only."""
+import json
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from tests.fakes import World, assign_profiles
@@ -136,7 +138,7 @@ class Stage4Finalize(unittest.TestCase):
         self.assertEqual(w.git.refine_verify_calls[0][1:3], ("scripts/relation/s4-cli.mjs", "001"))
         body = w.gh.created_prs[0]["body"]
         self.assertIn("Refs #9929", body)
-        self.assertIn("- Senses: 9 (Polish 5, Skip 4)", body)
+        self.assertIn("- Senses: 9 (Polish 5, Skip 4, Policy Skip 미측정)", body)
         self.assertIn("- Affected Shards: 001, 007", body)
 
     def test_no_change_shard_completes_without_commit_or_pr_and_resumes_cleanup(self):
@@ -159,6 +161,121 @@ class Stage4Finalize(unittest.TestCase):
         b = self.finalize(lambda *_args: {"status": "no-change", "senses": {}, "affected_shards": ["001"]})
         self.assertEqual(b["state"], "ERROR")
         self.assertIsNone(w.store.get(stage4.SPEC.nochange_key("001")))
+
+
+class Stage4PolicySkip(unittest.TestCase):
+    """#10047: a refusal binds to Canonical records; only a confirmed record is skipped, everything else continues."""
+    MESSAGE = ("Invalid prompt: your prompt was flagged as potentially violating our usage policy. "
+               "Please try again with a different prompt: "
+               "https://platform.openai.com/docs/guides/reasoning#advice-on-prompting")
+
+    def setUp(self):
+        from warroom.adapters import CodexCLIAdapter
+        w = self.w = world(self)
+        w.cfg["refine_max_parallel"] = 16
+        w.adapter.confirmed_prompt_refusal = CodexCLIAdapter().confirmed_prompt_refusal
+        w.runner.s4.chunks = 3
+        w.runner.s4.layout = {"001": ["w1", "w2", "w3"], "002": ["w9"], "003": ["w5"]}
+        path = w.paths.worktrees / "s4-001"
+        path.mkdir(parents=True)
+        w.git.reg[str(path)] = "s4-codex-001"
+        self.bid = w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="001", batch="s4",
+                                        branch="s4-codex-001", worktree=str(path))
+        w.store.set(stage3.mode_key(self.bid), stage3.PARALLEL)
+        w.store.update(self.bid, state="PRODUCING", run_kind=s3parallel.RUN_KIND)
+        w.sup.s3p.poll(w.store.batch(self.bid))
+
+    def tick(self, n=1):
+        for _ in range(n):
+            b = self.w.store.batch(self.bid)
+            if b["state"] == "PRODUCING":
+                self.w.sup.s3p.poll(b)
+
+    def states(self):
+        return {r["task"]: r["state"] for r in self.w.store.task_rows(self.bid)}
+
+    def finish(self, task, text, code=0):
+        w, row = self.w, self.w.store.task_row(self.bid, task)
+        log = Path(w.store.run(row["run_id"])["log_file"])
+        pid = next(x["pid"] for x in w.adapter.launches if w.adapter.running.get(x["pid"], {}).get("log") == log)
+        w.adapter.running[pid].update(code=code, text=text)
+        w.adapter.finish(pid)
+
+    def answer(self, task, text):
+        self.finish(task, json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": text}}) + "\n")
+
+    def refuse(self, task):
+        events = [{"type": "thread.started", "thread_id": "t"}, {"type": "turn.started"},
+                  {"type": "turn.failed", "error": {"message": self.MESSAGE}}]
+        self.finish(task, "".join(json.dumps(e) + "\n" for e in events), code=1)
+
+    def issues(self, kind):
+        return [r for r in self.w.store.issue_requests() if kind in r["title"]]
+
+    def test_a_mixed_chunk_saves_answered_records_and_skips_only_the_refused_record(self):
+        w = self.w
+        self.refuse("001")
+        self.refuse("002")   # a single-record chunk is already bound: no record run
+        self.tick()
+        self.assertEqual(self.states()["001"], "SPLIT")
+        self.assertEqual({t: s for t, s in self.states().items() if t.startswith("001-")},
+                         {"001-w1": "RUNNING", "001-w2": "RUNNING", "001-w3": "RUNNING"})
+        self.answer("001-w1", "chunk 001\nD 1")
+        self.refuse("001-w2")
+        self.answer("001-w3", "chunk 001\nnone")
+        self.answer("003", "chunk 003\nnone")
+        self.tick(2)
+        s4 = w.runner.s4
+        self.assertEqual(s4.saved["001"], "chunk 001\nD 1\nP w2\n")
+        self.assertEqual(s4.saved["002"], "chunk 002\nP w9\n")
+        self.assertEqual(s4.saved["003"], "chunk 003\nnone\n")
+        self.assertEqual({t: s for t, s in self.states().items() if "-" in t},
+                         {"001-w1": "MERGED", "001-w2": "MERGED", "001-w3": "MERGED", "002-w9": "MERGED"})
+        requests = self.issues("Policy Skip")
+        self.assertEqual(sorted(r["title"] for r in requests), ["[Policy Skip][S4/codex] 001 Chunk 001",
+                                                                 "[Policy Skip][S4/codex] 001 Chunk 002"])
+        self.assertIn("w2\t말w2\tSense 1\tw2-s1", next(r["body"] for r in requests if r["title"].endswith("001")))
+        self.assertEqual(len(w.adapter.launches), 6, "three chunks and three record runs, nothing resubmitted")
+
+    def test_all_none_records_save_none_without_an_issue_and_a_composition_restart_is_idempotent(self):
+        w = self.w
+        self.refuse("001")
+        self.tick()
+        for record in ("w1", "w2", "w3"):
+            self.answer(f"001-{record}", "chunk 001\nnone")
+        with mock.patch.object(s3parallel.ParallelStage3, "_save_task"):   # stop right after the composition
+            self.tick()
+        self.assertEqual(self.states()["001"], "RESPONDED")
+        for record in ("w1", "w2"):   # a crash before every MERGED mark was written
+            w.store.update_task(self.bid, f"001-{record}", state="RESPONDED")
+        self.tick()
+        self.assertEqual(w.runner.s4.saved["001"], "chunk 001\nnone\n")
+        self.assertEqual(self.states()["001"], "SAVED")
+        self.assertTrue(all(s == "MERGED" for t, s in self.states().items() if t.startswith("001-")))
+        self.assertEqual(self.issues("Policy Skip"), [])
+        self.assertEqual(len(w.adapter.launches), 6)
+
+    def test_an_unresolved_record_holds_its_chunk_without_a_retry_while_other_chunks_complete(self):
+        w = self.w
+        self.refuse("001")
+        self.tick()
+        self.answer("001-w1", "chunk 001\nD 1")
+        self.finish("001-w2", "plain failure\n", code=1)   # no judgment and no official refusal: HELD, never re-run
+        self.tick()
+        self.assertEqual(self.states()["001-w2"], "HELD")
+        self.assertEqual(self.states()["001"], "HELD")
+        self.answer("001-w3", "chunk 001\nnone")
+        self.answer("002", "chunk 002\nnone")
+        self.answer("003", "chunk 003\nnone")
+        self.tick(3)
+        self.assertEqual(sorted(w.runner.s4.saves), ["002", "003"], "sibling chunks are saved, the held one is not")
+        self.assertTrue(all(s == "HELD" for t, s in self.states().items() if t.startswith("001")))
+        b = w.store.batch(self.bid)
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("001", b["error"])
+        self.assertEqual(len(self.issues("Policy Hold")), 1)
+        self.assertEqual(self.issues("Policy Skip"), [])
+        self.assertEqual(len(w.adapter.launches), 6)
 
 
 if __name__ == "__main__":
