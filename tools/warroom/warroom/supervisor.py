@@ -4503,6 +4503,30 @@ class Supervisor:
             self.store.finish_runs(b["id"], code)
             run = next(row for row in self.store.runs(b["id"]) if row["id"] == run["id"])
         if str(run["exit_status"]) != "0":
+            # An explicit operator Retry authorizes another execution after a usage limit.  Keep the
+            # failed run in the ledger, but release its page reservation only if the checkpoint and
+            # exact launch binding still match.  A restart without Retry must never relaunch it.
+            try:
+                override = int(self.store.get(usage_limit_override_key(b["id"])) or 0)
+                baseline = json.loads(self.store.get(stage2.repair_run_start_key(b["id"])) or "{}")
+                bb, pp = stage2.split_key(b["batch"])
+                cp = Path(b["worktree"]) / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json"
+                retry_limit = (override >= run["id"] and self._classify_run(b["producer"], run["log_file"]) == "usage_limit"
+                               and baseline.get("branch") == b["branch"] and baseline.get("worktree") == str(b["worktree"])
+                               and baseline.get("fingerprint") == attempt.get("fingerprint")
+                               and baseline.get("cursor") == attempt.get("cursor")
+                               and baseline.get("attempt") == attempt.get("attempt")
+                               and baseline.get("page_keys") == attempt.get("target_keys")
+                               and baseline.get("checkpoint_sha256") == hashlib.sha256(cp.read_bytes()).hexdigest())
+            except (OSError, ValueError, TypeError, KeyError):
+                retry_limit = False
+            if retry_limit:
+                current.setdefault("interrupted_runs", []).append(attempt.copy())
+                attempts.pop()
+                current["attempts"] = max(0, current.get("attempts", 1) - 1)
+                self._save_stage2_repair_state(b, state)
+                self.store.log(b["id"], "Stage 2 repair 사용량 한도 실행을 보존하고 운영자 Retry로 같은 페이지를 재개합니다", "warn")
+                return False
             if self._stage2_repair_input_rejected(run, attempt, current):
                 # turn/start refused the oversized page before any model work: drop that attempt so the caller
                 # relaunches the same cursor with the size-budgeted page (guaranteed to be a different, smaller page)
