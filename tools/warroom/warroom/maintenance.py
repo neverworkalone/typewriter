@@ -180,12 +180,21 @@ class Maintenance:
     def _issue_retry_succeeded(self, key: str) -> None:
         self.sup._transient_clear(f"issue:{key}")
 
+    ISSUE_REQUEST_LOOKUP_MARGIN = 3600   # seconds before the request row: tolerates local/GitHub clock skew
+
+    @classmethod
+    def _issue_request_since(cls, request) -> str:
+        """Lower bound for the lost-response lookup: nothing this request created can predate the request row."""
+        from datetime import datetime, timezone
+        at = max(0.0, float(request["created_at"]) - cls.ISSUE_REQUEST_LOOKUP_MARGIN)
+        return datetime.fromtimestamp(at, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     def _find_issue_request(self, request) -> int | None:
         """Find this event's comment marker or temporary title, never an unrelated matching Issue."""
         expected_marker = self._issue_request_marker(request["event_key"])
         prefix = "<!-- warroom-issue-request:"
         temporary_title = self._issue_request_title(request)
-        issues = self.sup.gh.all_issues()
+        issues = self.sup.gh.all_issues(since=self._issue_request_since(request))
         exact = [i for i in issues if not i.get("pull_request")
                  and i.get("title", "") in (request["title"], temporary_title)
                  and i.get("body", "") == request["body"]]
@@ -218,6 +227,10 @@ class Maintenance:
                         raise RuntimeError("CREATED 요청에 GitHub Issue 번호가 없습니다")
                 else:
                     def lookup():
+                        # PENDING is persisted before any GitHub call and becomes CREATING before the create call
+                        # (#2294), so a PENDING request has never asked GitHub for an Issue: nothing to look up.
+                        if request["state"] == "PENDING":
+                            return None, False
                         return self._find_issue_request(request), False
 
                     def persist_attempt():
