@@ -1022,7 +1022,8 @@ class FakeGh:
         return [{"number": n, "state": i["state"], "title": i["title"], "body": i["body"]}
                 for n, i in sorted(self.issues.items()) if "urgent" in i["labels"]]
 
-    def all_issues(self):
+    def all_issues(self, since=None):
+        self.all_issue_calls = getattr(self, "all_issue_calls", []) + [since]
         if self.fail_list:
             raise RuntimeError("issue list failed")
         return [{"number": n, "state": i["state"], "title": i["title"], "body": i["body"],
