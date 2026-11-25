@@ -73,7 +73,13 @@ Stage 4(선별적 Polish)는 Stage 3 다음에 등록된 정제 Stage입니다(`
 
 - **무변경 샤드:** 모든 청크가 정상 판정·저장되고 공식 apply가 변경 없음을 확인하면, 그 HEAD를 shard verify한 뒤 `s4_nochange_SSS`·`s4_ok_SSS`를 기록하고 commit·PR 없이 worktree를 정리합니다. 다음 샤드 선택은 마지막 머지 PR 뒤의 연속된 무변경 완료를 건너뜁니다.
 - **cross-shard PR:** 역방향 관계 편집으로 다른 샤드의 Relation/Drop 파일이 바뀔 수 있습니다. 허용 범위는 공식 CLI가 정합니다(생산 샤드 Sense를 한쪽 끝으로 갖는 관계와 그 회계 변경). 최종화·리뷰 수정·replay 뒤의 verify는 `s4-cli verify --shard SSS --base <merge-base>`가 영향 샤드 전체를 한 번에 검사합니다.
-- **정책 거부·응답 누락:** Stage 4는 편집적 Skip과 기술 실패를 구분합니다. 정책 거부는 Keep-all로 저장되지 않고 일반 실패 경로로, 판정이 하나도 남지 않은 응답은 응답 누락 경로(새 세션 1회)로 갑니다.
+- **응답 누락:** 판정이 하나도 남지 않은 청크 응답은 응답 누락 경로(새 세션 1회)로 갑니다. Keep-all을 만들지 않습니다.
+- **정책 거부 — record 단위 Policy Skip (#10047):** provider의 공식 거부는 그 실행 view의 Canonical record에 결속합니다.
+  - 여러 record인 청크는 `SPLIT`이 되고, record마다 `NNN-<record_id>` task를 **한 번만** 실행합니다. 같은 슬롯·상한을 쓰고, 청크 번호를 그대로 쓰는 `read-chunk --record` view로 실행합니다. 단일 record 청크는 이미 결속되어 있으므로 바로 `POLICY`가 됩니다.
+  - record 응답은 `RESPONDED`, record 거부는 `POLICY`입니다. 그 밖의 결과(판정 없음, 모든 실패, 중단된 실행, view 변경)는 재실행 없이 `HELD`가 됩니다.
+  - 모든 record가 정리되면 응답 본문과 `P <거부 record>`를 합성해 기존 단일 writer로 저장합니다. record task는 `MERGED`가 됩니다. 모두 `none`이면 `none`으로 저장하고 이슈를 만들지 않습니다.
+  - Policy Skip이 있으면 저장 전에 기존 수동 Issue 경로에 `[Policy Skip][S4/<producer>] SSS Chunk NNN`(record ID·표제어·Sense·사유)을 남깁니다.
+  - 결속할 수 없는 거부나 `HELD` record가 있는 청크는 `HELD`로 미완료를 유지합니다. 다른 청크는 계속 진행합니다. 나머지가 모두 저장되면 `[Policy Hold]` 보고를 남기고 최종화 없이 ERROR로 멈춥니다. Retry해도 거부 내용은 재제출되지 않으므로 오너 결정이 필요합니다.
 
 ## Supervisor 재시작과 코드 반영 (#5162)
 

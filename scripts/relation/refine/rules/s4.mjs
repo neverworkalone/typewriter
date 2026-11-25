@@ -28,7 +28,7 @@ export const crossShard = true;
 
 export const usage = `Usage:
   node scripts/relation/s4-cli.mjs prepare --shard SSS
-  node scripts/relation/s4-cli.mjs read-chunk --shard SSS [--chunk NNN] [--out <file>]
+  node scripts/relation/s4-cli.mjs read-chunk --shard SSS [--chunk NNN [--record <record_id>]] [--out <file>]
   node scripts/relation/s4-cli.mjs refresh-pending --shard SSS
   node scripts/relation/s4-cli.mjs lookup --text <form>[,<form>...]        # exact Canonical Senses of a spelling
   node scripts/relation/s4-cli.mjs save-chunk --shard SSS --in <decisions.txt>
@@ -97,6 +97,18 @@ export function renderChunk(groups, index, number, total) {
     relation_count: relationNumber, senses };
 }
 
+/**
+ * One record of a prepared chunk view (#10047): its Senses and Relations with the chunk's own numbers, so a record
+ * answer is already a valid line set of the whole chunk. Used only for the one-time record run after a chunk refusal.
+ */
+export function recordView(view, record) {
+  if (!/^w\d+$/u.test(record ?? '')) fail(`--record must be a Canonical record ID such as w123`);
+  const senses = view.senses.filter((sense) => sense.record_id === record);
+  if (!senses.length) fail(`${label} chunk ${view.chunk} has no record ${record}`);
+  return { ...view, sense_count: senses.length,
+    relation_count: senses.reduce((sum, sense) => sum + sense.relations.length, 0), senses };
+}
+
 /** Compact tab-separated model input: `W` record, `S<j>` Sense, `F/X/R<n>` its Relations (no IDs). */
 export function renderPromptView(chunk) {
   const total = String(chunk.total_chunks).padStart(3, '0');
@@ -124,7 +136,9 @@ export function renderPromptView(chunk) {
  * makes. A rebind is one decision of a drop and an add, so a conflict never applies only one half of it.
  */
 const OP_KEYS = { add: 'op,relevance,source_sense_id,type', set: 'op,relevance,source_sense_id,type', drop: 'op,source_sense_id' };
-const ACTION_OPS = { skip: [], add: ['add'], drop: ['drop'], set: ['set'], rebind: ['drop', 'add'] };
+// `policy` (#10047): a Sense of a record whose own record-scoped run the provider refused — an execution exception,
+// never an editorial Skip; it is written only by the War Room Supervisor as `P <record_id...>`.
+const ACTION_OPS = { skip: [], policy: [], add: ['add'], drop: ['drop'], set: ['set'], rebind: ['drop', 'add'] };
 
 export function assertDecisionShape(decision) {
   if (Object.keys(decision).sort().join(',') !== 'action,chunk,ops,sense' || typeof decision.sense !== 'string'
@@ -147,7 +161,7 @@ const opKey = (op) => keyOf(opRow(op));
 
 export function saveSummary(decisions, view, parsed) {
   const count = (action) => decisions.filter((decision) => decision.action === action).length;
-  return { senses: view.sense_count, skipped: count('skip'), added: count('add'), dropped: count('drop'), set: count('set'),
+  return { senses: view.sense_count, skipped: count('skip'), policy_skipped: count('policy'), added: count('add'), dropped: count('drop'), set: count('set'),
     rebound: count('rebind'), discarded: parsed?.discarded ?? [] };
 }
 
@@ -187,6 +201,8 @@ export async function parseDecisionText(text, view, checkpoint, { explicit = fal
   const needsCanonical = body.some((line) => /^[AB]\s/u.test(line) && line.split(/\s+/u).some((token) => SENSE_ID.test(token)));
   const index = needsCanonical ? (canonical ?? await loadCanonical(root)).index : null;
   const skipped = new Set();
+  const policy = new Set();
+  const policyRecords = new Set();
   const proposals = [];
 
   const tier = (raw) => (/^[1-9]$/u.test(raw ?? '') ? Number(raw) : null);
@@ -220,6 +236,18 @@ export async function parseDecisionText(text, view, checkpoint, { explicit = fal
       ...line.slice(quoted.index + quoted[0].length).trim().split(/\s+/u).filter(Boolean)] : tokens;
     const [verb, ...rest] = args;
     if (line === 'none') { drop(line, 'none mixed with other lines is ignored'); continue; }
+    if (verb === 'P') {
+      // A Policy Skip is never discarded line by line: an invalid one refuses the whole save (#10047).
+      if (!rest.length) fail(`${label} chunk ${view.chunk} has a P line without a record`);
+      for (const record of rest) {
+        const owned = [...senses.values()].filter((sense) => sense.record_id === record);
+        if (!/^w\d+$/u.test(record) || !owned.length) fail(`${label} chunk ${view.chunk} P names unknown record ${record}`);
+        if (policyRecords.has(record)) fail(`${label} chunk ${view.chunk} P names record ${record} twice`);
+        policyRecords.add(record);
+        for (const sense of owned) policy.add(sense.sense_id);
+      }
+      continue;
+    }
     if (verb === 'skip') {
       const numbers = rest.map(Number);
       if (!rest.length || numbers.some((number) => !senses.has(number))) { drop(line, 'unknown Sense number'); continue; }
@@ -295,7 +323,11 @@ export async function parseDecisionText(text, view, checkpoint, { explicit = fal
     drop(line, 'unknown decision; use skip, D, C, A, B, M or none');
   }
 
-  const decisions = [...skipped].sort().map((sense) => ({ chunk: view.chunk, sense, action: 'skip', ops: [] }));
+  const policyConflict = [...skipped].find((sense) => policy.has(sense))
+    ?? proposals.find(({ sense }) => policy.has(sense.sense_id))?.sense.sense_id;
+  if (policyConflict) fail(`${label} chunk ${view.chunk} Policy Skip Sense ${policyConflict} also has a skip or edit`);
+  const decisions = [...[...skipped].sort().map((sense) => ({ chunk: view.chunk, sense, action: 'skip', ops: [] })),
+    ...[...policy].sort().map((sense) => ({ chunk: view.chunk, sense, action: 'policy', ops: [] }))];
   const seen = new Set();
   for (const { line, sense, decision } of proposals) {
     // Skip omits only the judgments made while reviewing that Sense; another Sense may still edit the same Relation.
@@ -319,7 +351,7 @@ export async function parseDecisionText(text, view, checkpoint, { explicit = fal
  * whole, so a rebind never applies only its drop or its add.
  */
 export function resolveDecisions(decisions) {
-  const edits = decisions.filter((decision) => decision.action !== 'skip');
+  const edits = decisions.filter((decision) => decision.ops.length);
   const rank = (decision) => [decision.ops[0].source_sense_id === decision.sense ? 0 : 1, decision.chunk,
     JSON.stringify(decision.ops), decision.sense];
   const compare = (left, right) => {
@@ -463,11 +495,13 @@ export async function applyCheckpoint({ shard, root, checkpoint, readView }) {
   for (let number = 1; number <= checkpoint.chunk_total; number += 1) {
     senseTotal += JSON.parse(await readView(String(number).padStart(3, '0'))).sense_count;
   }
-  const skipped = new Set(checkpoint.decisions.filter((decision) => decision.action === 'skip').map((decision) => decision.sense)).size;
+  const sensesOf = (action) => new Set(checkpoint.decisions.filter((decision) => decision.action === action).map((decision) => decision.sense)).size;
+  const skipped = sensesOf('skip');
+  const policySkipped = sensesOf('policy');
   const status = next.size ? await writePlanned(root, next, expected) : 'no-change';
   return {
     status,
-    senses: { total: senseTotal, skipped, polished: senseTotal - skipped },
+    senses: { total: senseTotal, skipped, policy_skipped: policySkipped, polished: senseTotal - skipped - policySkipped },
     decisions: Object.fromEntries(['add', 'drop', 'set', 'rebind'].map((action) => [action, applied.filter((decision) => decision.action === action).length])),
     edits: counts(ops),
     conflicts,

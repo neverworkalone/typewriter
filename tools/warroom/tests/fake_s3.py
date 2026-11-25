@@ -105,3 +105,63 @@ class FakeEditCli:
         self.saves.append(chunk)
         return Result(0, json.dumps({"shard": shard, "chunk": chunk, "already_saved": False,
                                      "completed_chunks": len(state["completed_chunks"]), "total_chunks": self.chunks}))
+
+
+class FakeS4Cli(FakeEditCli):
+    """Fake `s4-cli.mjs` (#10047): Stage 4 views of whole records and `read-chunk --record`; saves keep the text."""
+
+    def __init__(self):
+        super().__init__()
+        self.layout: dict[str, list[str]] = {}   # chunk -> record IDs (one Sense with one Relation each)
+        self.saved: dict[str, str] = {}
+
+    def view(self, shard: str, chunk: str) -> dict:
+        senses = [{"n": n, "lemma": f"말{record}", "pos": "noun", "gloss": "뜻", "record_id": record,
+                   "sense_id": f"{record}-s1",
+                   "relations": [{"n": n, "dir": "F", "lemma": "글", "pos": "noun", "gloss": "g", "type": "near", "tier": 3}]}
+                  for n, record in enumerate(self.layout.get(chunk, ["w1"]), start=1)]
+        return {"chunk": chunk, "total_chunks": self.chunks, "sense_count": len(senses), "relation_count": len(senses),
+                "senses": senses}
+
+    def prompt_view(self, view: dict) -> str:
+        lines = [f"chunk {view['chunk']}/{self.chunks:03d} senses {view['sense_count']} relations {view['relation_count']}"]
+        for sense in view["senses"]:
+            lines += [f"W\t{sense['lemma']}", f"S{sense['n']}\tnoun\t뜻"] + [
+                f"F{r['n']}\t글\tnoun\tg\tnear\t3" for r in sense["relations"]]
+        return "\n".join(lines)
+
+    @staticmethod
+    def path(cwd, shard):
+        return Path(cwd) / ".warroom-scratch" / f"relation-s4-{shard}.json"
+
+    def run(self, argv, cwd):
+        if argv[2] == "read-chunk" and "--record" in argv:
+            self.calls.append(list(argv))
+            args = dict(zip(argv[3::2], argv[4::2]))
+            shard, chunk, record = args.get("--shard", "001"), args["--chunk"], args["--record"]
+            state = self.load(cwd, shard)
+            whole = self.view(shard, chunk)
+            senses = [sense for sense in whole["senses"] if sense["record_id"] == record]
+            if not senses:
+                return Result(1, "", f"Stage 4 chunk {chunk} has no record {record}")
+            view = {**whole, "record": record, "senses": senses, "sense_count": len(senses), "relation_count": len(senses)}
+            return Result(0, json.dumps({**view, "prompt_view": self.prompt_view(view), "view_sha256": self.digest(shard, chunk),
+                                         "completed": chunk in state["completed_chunks"]}))
+        return super().run(argv, cwd)
+
+    def save(self, cwd, shard, state, args):
+        chunk = args["--chunk"]
+        if args["--expect-view-sha256"] != self.digest(shard, chunk):
+            return Result(1, "", f"Stage 4 chunk {chunk} view changed since it was launched")
+        text = (Path(cwd) / args["--in"]).read_text("utf-8")
+        if chunk in state["completed_chunks"]:
+            if self.saved.get(chunk) != text:
+                return Result(1, "", f"Stage 4 chunk {chunk} is already saved with different decisions")
+            return Result(0, json.dumps({"shard": shard, "chunk": chunk, "already_saved": True,
+                                         "completed_chunks": len(state["completed_chunks"]), "total_chunks": self.chunks}))
+        state["completed_chunks"] = sorted([*state["completed_chunks"], chunk])
+        self.write(cwd, shard, state)
+        self.saved[chunk] = text
+        self.saves.append(chunk)
+        return Result(0, json.dumps({"shard": shard, "chunk": chunk, "already_saved": False,
+                                     "completed_chunks": len(state["completed_chunks"]), "total_chunks": self.chunks}))
