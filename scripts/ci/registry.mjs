@@ -291,6 +291,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/relation/admission-cli.mjs',
           'scripts/relation/admission.mjs',
           'scripts/relation/persisted-jsonl.mjs',
+          'scripts/relation/selection-cli.mjs',
         ]),
       },
       affectedTestCheck('scripts/relation/selection-cli.test.mjs', 'Test common pre-selection view/save/check binding', [

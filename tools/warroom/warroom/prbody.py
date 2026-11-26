@@ -140,9 +140,17 @@ def run_cost(runs) -> str | None:
 
 
 
+def stage4_sense_summary(result: dict) -> str:
+    selection = result.get("selection") if isinstance(result.get("selection"), dict) else {}
+    senses = result.get("senses") if isinstance(result.get("senses"), dict) else {}
+    return (f"Senses: {_n(_count(senses.get('total')))} "
+            f"(input p {_n(_count(selection.get('p')))}, s {_n(_count(selection.get('s')))}, "
+            f"e {_n(_count(selection.get('e')))}; Polish {_n(_count(senses.get('polished')))}, "
+            f"Policy Skip {_n(_count(senses.get('policy_skipped')))})")
+
+
 def stage4_body(model: str, shard: str, *, result: dict, cost: str | None = None) -> str:
     """The Stage 4 PR body from the persisted apply result (#9928); missing members stay unmeasured."""
-    senses = result.get("senses") if isinstance(result.get("senses"), dict) else {}
     decisions = result.get("decisions") if isinstance(result.get("decisions"), dict) else {}
     done, total = _count(result.get("chunks_done")), _count(result.get("chunks_total"))
     shards = result.get("affected_shards") if isinstance(result.get("affected_shards"), list) else None
@@ -151,10 +159,9 @@ def stage4_body(model: str, shard: str, *, result: dict, cost: str | None = None
         "- Method: S4",
         f"- Model: {model}",
         f"- Shard: {shard}",
-        "- Scope: Selective shard Polish (Add / Drop / Set / Skip)",
+        "- Scope: Preselected p Senses (Add / Drop / Set / Rebind)",
         f"- Completed Chunks: {'미측정' if done is None or total is None else f'{done}/{total}'}",
-        f"- Senses: {_n(_count(senses.get('total')))} (Polish {_n(_count(senses.get('polished')))}, "
-        f"Skip {_n(_count(senses.get('skipped')))}, Policy Skip {_n(_count(senses.get('policy_skipped')))})",
+        f"- {stage4_sense_summary(result)}",
         f"- Decisions: Add {_n(_count(decisions.get('add')))}, Drop {_n(_count(decisions.get('drop')))}, "
         f"Set {_n(_count(decisions.get('set')))}, Rebind {_n(_count(decisions.get('rebind')))}",
         f"- Key Conflicts Resolved: {_n(len(conflicts) if isinstance(conflicts, list) else None)}",

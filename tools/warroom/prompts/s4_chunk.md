@@ -1,4 +1,4 @@
-# Relation Factory Stage 4 — one selective Polish chunk
+# Relation Factory Stage 4 — one preselected Polish chunk
 
 {{s3_policy_card}}
 
@@ -18,31 +18,30 @@ Rows are tab-separated; `\\`, `\t`, `\n`, `\r` in a field are escapes. `W` start
 - `F<n>` forward ID Relation (target lemma, POS, gloss, type, tier),
 - `X<n>` text-only Relation (text, type, tier),
 - `R<n>` reverse ID Relation stored from another word (that word's lemma, POS, gloss, type, tier).
-A Sense with no rows has no Relations yet. A Relation between two Senses of this chunk is shown under both.
+A Sense with no rows has no Relations yet and still needs Add judgment. Every displayed `S` is already selected as `p` in the shard's confirmed selection file. Do not classify it again. Counterparts may be `s`; their presence does not make them independent editing targets. A Relation between two displayed Senses is shown under both.
 
 ## Output
 
 ```text
 chunk {{chunk_id}}
-skip 3 7 8
 D 1 5 9
 C 4 mood 3
 A 2 w123-s1 sensory 4
 A 2 "물 뿌린 듯이" scene 5
 B 6 w456-s2
 M 11 12
+M 13 w123-s2
 ```
 
-- `skip <j...>` Skip these Senses as search starts.
 - `D <n...>` Drop these Relations.
 - `C <n> <type> <tier>` Set Type/Tier of Relation n.
 - `A <j> <sense_id|"text"> <type> <tier>` Add a Relation from Sense j: a `sense_id` from `lookup`, or a quoted text when no Canonical Sense fits.
 - `B <n> <sense_id|"text"> [<type> <tier>]` rebind Relation n to another counterpart (keeps Type/Tier unless given).
-- `M <n> <j>` move Relation n to Sense j of the same record (wrong Sense of this word).
-- `none` as the only line when every Sense is Polished with no change and none is skipped.
+- `M <n> <j|sense_id>` move Relation n to another Sense of the same record (wrong Sense of this word). Use `lookup` to obtain an exact sibling Sense ID when that Sense is not displayed. This corrects the existing Relation; it does not start an independent edit of the sibling Sense.
+- `none` as the only line when every displayed Sense has been judged and needs no change.
 
-Write only changes and skips: no Keep rows, no prose, no Markdown fences. Every unlisted Sense is a Polished Sense with no change. The CLI checks numbers, Sense IDs and existing relations and applies everything.
+Write only changes: no `skip`, Keep rows, prose or Markdown fences. Every unlisted Sense is a Polished Sense with no change after your judgment. Never use `none` to hide missing work or a provider refusal. The CLI checks numbers, Sense IDs, the selected scope and existing relations and applies everything.
 
-{{session_note}}This is one record-complete chunk from shard {{shard}}.
+{{session_note}}This is one chunk of preselected Senses from shard {{shard}}, grouped without splitting a record.
 
 {{chunk_input}}

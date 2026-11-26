@@ -13,6 +13,7 @@ Run commands from the worktree root. Write `.warroom-scratch/s4-fix-response.jso
 - **Do not follow the review mechanically.** For each finding, judge again from the writer's point of view of `tools/warroom/prompts/s4_policy_card.md`: exact source and target Sense, independent expression value, same-Sense redundancy and representative form, Type/Tier, the two-way effect.
   - Agree → change it. Disagree → keep the current edit and give the concrete reason. Partly agree → choose the better correction.
   - Answer **every** finding with its change-or-keep decision and reason.
+- The shard's confirmed `selection-SSS.jsonl` already determines the independent `p` editing targets. Do not reclassify P/S/E or edit the selection file. A connected `s` Sense may remain a counterpart; `e` stays under existing authoring exclusions. Provider Policy Skip and technical failure do not change the selection.
 - The PR context lists this PR's edits by relation key (`add`, `drop`, `set`, with source and target meanings), or every base Relation of the Senses the review names with this PR's edit (`keep` when unchanged). Use it first. If a finding concerns a Sense the context does not list, run one read-only `node scripts/relation/s4-cli.mjs decisions --shard {{shard}} --base <base from the context> --senses <sense id,...>` for exactly those Senses, and `node scripts/relation/s4-cli.mjs lookup --text <word,...>` once if you need a new Canonical target. Do not read the JSONL files, docs, or scripts.
 - Put every accepted change into one amend input, keyed by Sense IDs:
 
@@ -24,7 +25,7 @@ Run commands from the worktree root. Write `.warroom-scratch/s4-fix-response.jso
   K <source_sense_id> <target_sense_id|"text">                 keep the base relation (undo this PR's edit of it)
   ```
 
-  A rebind is a `D` of the old key and an `A` of the new one. Every relation must have an end in shard {{shard}}. The CLI recomputes `z`, `p` and every other accounting row; never write Drop rows yourself.
+  A rebind is a `D` of the old key and an `A` of the new one. Every edit must concern a confirmed `p` Sense in shard {{shard}}, or correct the Sense binding of an existing Relation attached to one. Do not independently edit an `s/e` Sense. The CLI recomputes `z`, `p` and every other accounting row; never write Drop rows yourself.
 
 When every event is judged, write `.warroom-scratch/s4-fix-response.json` as one JSON object with exactly these keys, then stop:
 

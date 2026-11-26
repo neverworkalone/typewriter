@@ -346,8 +346,8 @@ export function createRefineCli(rule) {
 
   function assertCleanInputs(root, what) {
     const inputStatus = git(root, ['status', '--porcelain=v1', '--untracked-files=all', '--',
-      'data/canonical', 'data/relation-candidates', 'data/relations', 'data/relation-drops']);
-    if (inputStatus.trim()) fail(`${label} ${what} requires clean Canonical, Candidate, Relation, and Drop inputs`);
+      'data/canonical', 'data/relation-candidates', 'data/relations', 'data/relation-drops', ...(rule.inputPaths ?? [])]);
+    if (inputStatus.trim()) fail(`${label} ${what} requires clean Canonical, Candidate, Relation, and Drop inputs${rule.inputPaths?.length ? ` and ${rule.inputPaths.join(', ')}` : ''}`);
   }
 
   async function renderPreparedViews(shard, root, scope = null) {
@@ -366,8 +366,8 @@ export function createRefineCli(rule) {
       ? partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part, shard).scopeRows
       : context.canonicalRows;
     const scopeSenseIds = scope ? new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id))) : null;
-    // A rule may build its own groups from the same projected context (Stage 4: every Sense, both directions).
-    const groups = rule.senseGroups ? rule.senseGroups(context)
+    // A rule may build its own groups from the same projected context (Stage 4: selected Senses, both directions).
+    const groups = rule.senseGroups ? await rule.senseGroups(context, { root, shard })
       : buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations,
         scopeSenseIds, rowFilter: scope ? rule.scopedRow : null });
     const chunks = chunkSenseGroups(groups, { label });

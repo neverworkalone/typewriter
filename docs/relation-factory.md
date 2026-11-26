@@ -231,33 +231,34 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 **구현 이력·파일럿:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)은 정책·Stage 2 회계/최신 master/reconcile·Stage 3 CLI·War Room 연계의 구현 계획이었다. 파일럿 및 각 샤드의 실제 완료 여부는 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 실행 결과와 **머지된 Stage 3 데이터 PR·검증 상태**로 판단하며, 계획 이슈의 종료만으로 완료 처리하지 않는다. 삭제율 목표는 없다.
 
-### 4-E. Stage 4 — 선별적 Polish (#9928, #9929)
+### 4-E. Stage 4 — 확정 선별 기반 Polish (#9928, #9929, #10174)
 
-**목적:** Stage 3 전체 완료 뒤 샤드마다 작가가 직접 검색할 Sense를 골라 #8777과 같은 기준으로 Add/Drop/Set/재결속을 하고, 나머지 Sense는 Skip한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)의 *Polish and Stage 4* 절, 생산 지시는 [#9929](https://github.com/neverworkalone/typewriter/issues/9929)다.
+**목적:** Stage 3 전체 완료 뒤 해당 샤드의 확정 `data/relation-selection/selection-SSS.jsonl`을 읽고, `d:"p"` Sense만 #8777과 같은 기준으로 Add/Drop/Set/재결속한다. AI가 P/S/E를 다시 선별하지 않는다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)의 *Polish and Stage 4* 절, 생산 지시는 [#9929](https://github.com/neverworkalone/typewriter/issues/9929)다.
 
 - **CLI:** `scripts/relation/s4-cli.mjs`(`pnpm run relation:s4`). Refinement 코어(`createRefineCli`)와 keyed 규칙 `scripts/relation/refine/rules/s4.mjs`로 이루어진다. 결정은 base 행 번호가 아니라 **관계 키**에 묶인다. 데이터 변경은 모두 Polish 쓰기 경로(§5, `polish-cli.mjs apply`)를 거친다. 따라서 `by:"p"`, 실제 고아에만 `z`, 제외 문맥 `p`, 재승인 정산과 영향 샤드 공통 검증이 그대로 적용된다.
-- **청크:** 샤드의 모든 Canonical record를 Sense 단위로 보여 준다. 관계 없는 Sense도 포함한다. 각 Sense 아래에는 자기 정방향·text 관계와, 어느 샤드에 저장되었든 그 Sense를 target으로 갖는 역방향 ID 관계를 둔다. record는 나누지 않고, 관계 수(빈 Sense는 1) 350~500 기준으로 청크를 만든다. 같은 샤드 두 Sense 사이 관계는 양쪽에 모두 보인다.
-- **판정 문법:** `skip <j...>`, `D <n...>`, `C <n> <type> <tier>`, `A <j> <sense_id|"text"> <type> <tier>`, `B <n> <sense_id|"text"> [<type> <tier>]`(상대 끝 재결속), `M <n> <j>`(같은 표제어의 다른 Sense로 이동), 또는 `none`. 정확한 Canonical 대상은 청크당 한 번 묶어 실행하는 `lookup --text a,b`로 찾는다. Add가 없는 청크에는 실행하지 않는다.
-- **save-chunk:** 문법은 맞지만 적용할 수 없는 줄은 그 줄만 폐기하고 보고한다. 해당하는 경우는 모르는 번호·Sense ID, 이미 있는 관계, 자기 record 대상, action 대상 POS, Skip한 Sense를 검토하며 낸 편집이다. 유효한 판단이 하나도 남지 않은 응답은 저장을 거부한다(`none`을 대신 만들지 않는다).
+- **입력:** §5-D의 정확한 전체 Sense ID·전수·순서·필드/값 검사를 재사용한다. 해당 샤드 파일이 없거나 잘못되면 입력 오류로 종료하며 자체 선별 또는 기본값으로 대체하지 않는다. 전체 428개 선별 완료를 추가 선행 조건으로 삼지 않는다.
+- **청크:** 확정 `p` Sense만 record별로 묶어 보여 준다. 관계 없는 `p`도 포함하며, `s/e`는 독립 판단 대상으로 전달하지 않는다. 각 Sense 아래에는 자기 정방향·text 관계와, 어느 샤드에 저장되었든 그 Sense를 target으로 갖는 역방향 ID 관계를 둔다. record는 나누지 않고, 관계 수(빈 Sense는 1) 350~500 기준으로 청크를 만든다. 같은 샤드의 두 `p` Sense 사이 관계는 양쪽에 모두 보인다. 상대 `s`의 뜻과 관계도 `p`의 편집 문맥으로 유지하며, `e`는 기존 authoring 제외 규칙을 따른다.
+- **판정 문법:** `D <n...>`, `C <n> <type> <tier>`, `A <j> <sense_id|"text"> <type> <tier>`, `B <n> <sense_id|"text"> [<type> <tier>]`(상대 끝 재결속), `M <n> <j|sense_id>`(같은 표제어의 다른 Sense로 이동; 표시되지 않은 sibling은 `lookup`의 정확한 ID 사용), 또는 `none`. 정확한 Canonical 대상은 청크당 한 번 묶어 실행하는 `lookup --text a,b`로 찾는다. Add/재결속에 새 Canonical 조회가 필요하지 않은 청크에는 실행하지 않는다. AI의 `skip` 재선별 문법은 사용하지 않는다.
+- **save-chunk:** 문법은 맞지만 적용할 수 없는 줄은 그 줄만 폐기하고 보고한다. 해당하는 경우는 모르는 번호·Sense ID, 이미 있는 관계, 자기 record 대상, action 대상 POS, 선별된 `p`의 독립 편집 범위를 벗어난 판단, `e` Sense로의 Add·재결속·이동이다. `e` 여부는 **상대 Sense가 속한 샤드의 확정 선별 파일**로 판정하며(생산 샤드 선별표만 보지 않는다), apply·amend도 같은 기준으로 거부한다. 참조한 상대 샤드의 선별 파일이 없거나 잘못되면 그 줄만 폐기하지 않고 입력 전체를 입력 오류로 중단한다. 유효한 판단이 하나도 남지 않은 응답은 저장을 거부한다(`none`을 대신 만들지 않는다).
 - **apply:** 모든 청크의 결정을 키 단위로 해결한 뒤 HEAD 기준으로 Polish 계획을 한 번 세우고 바뀐 파일을 원자적으로 쓴다.
   - 같은 편집은 한 번만 적용한다.
   - 같은 키(기존 키와 재결속·Add가 새로 만드는 키 포함)를 다투는 결정은, 저장 source Sense를 검토한 청크의 결정 → 낮은 청크 번호 → 고정 내용 순으로 하나만 남긴다.
   - 재결속(Drop+Add)은 통째로 이기거나 진다. 저장·AI 종료 순서는 결과에 영향을 주지 않는다.
   - 같은 checkpoint로 다시 실행하면 `already-applied`다. 바뀐 것이 없으면 `no-change`다.
-- **편집 범위:** 모든 편집은 생산 샤드의 Sense를 한쪽 끝으로 갖는 관계와 그에 따른 회계 행뿐이다. 이 검사는 apply/amend 공통 함수 하나(`assertScope`)가 맡는다. 역방향만 고쳐 생산 샤드 파일이 바뀌지 않는 PR도 정상이다. Polish 회계 검사는 편집된 Sense를 가진 record로 범위를 좁힌다. 그 밖의 record는 바뀌지 않기 때문이다.
+- **편집 범위:** 모든 편집은 생산 샤드의 확정 `p` Sense에 직접 연결된 관계, 그 관계의 정당한 Sense 재결속과 그에 따른 회계 행뿐이다. 다른 `s/e` Sense의 독립 편집으로 확대하지 않는다. 이 검사는 apply/amend 공통 함수 하나(`assertScope`)가 맡는다. 역방향만 고쳐 생산 샤드 파일이 바뀌지 않는 PR도 정상이다. Polish 회계 검사는 편집된 Sense를 가진 record로 범위를 좁힌다. 그 밖의 record는 바뀌지 않기 때문이다.
 - **PR·리뷰 수정:** PR 제목 `[S4/<Model>] SSS`, 본문 `Refs #9929`. `decisions --base`는 base..HEAD의 관계 키 차이에서 PR의 Add/Drop/Set을 복원한다(원장 없음). `amend`는 `A|C <source> <target|"text"> <type> <tier>`, `D|K <source> <target|"text">` delta를 적용해 PR base에서 같은 Polish 계산을 다시 한다. 관계·Drop 조회, 계획, 회계, 검증은 모두 같은 Git base에 결속된다. 같은 논리 편집이면 apply와 같은 bytes가 나온다.
 - **검증:** `verify --shard SSS --base <merge-base>`는 PR 편집이 닿는 샤드(편집된 Sense의 소유 샤드와 생산 샤드)를 계산한다. 그 샤드들에 공식 `admission-cli verify --shard A,B,...`를 한 번의 실행으로 돌린다(Canonical 1회 로드). War Room은 최종화·리뷰 수정·replay 뒤 이 명령을 쓴다. 머지 후 완료 표식 `s4_ok_SSS`는 생산 샤드에만 남긴다.
-- **무변경 완료:** 모든 청크가 정상 판정·저장되고 apply가 `no-change`이면, War Room은 그 HEAD를 위 verify로 확인한다. 그다음 `s4_nochange_SSS`를 기록하고 commit·PR 없이 worktree를 정리한다. 다음 샤드 선택은 마지막 머지 PR 뒤의 연속된 무변경 완료를 이어서 건너뛴다.
+- **무변경 완료:** `p=0`이면 청크와 AI 호출 없이 apply까지 진행한다. `p`가 있으면 모든 대상 청크가 정상 판정·저장되어야 한다. apply가 `no-change`이면, War Room은 그 HEAD를 위 verify로 확인한다. 그다음 `s4_nochange_SSS`를 기록하고 commit·PR 없이 worktree를 정리한다. 다음 샤드 선택은 마지막 머지 PR 뒤의 연속된 무변경 완료를 이어서 건너뛴다.
 - **실패와 Skip은 다르다:** 정책 거부는 Keep-all로 저장하지 않는다(`refusal_keep_all=False`). 판단이 없는 응답은 응답 누락 경로로 보낸다.
 - **record 단위 Policy Skip (#10047, `refusal_records`):** provider의 공식 구조화 거부는 실행 view(launch digest로 증명)의 Canonical record에만 결속한다.
   - record가 하나인 청크는 그 record로 확정된다.
   - 여러 record인 청크는 거부된 청크에 한해 record마다 독립 task를 **1회** 실행한다. `read-chunk --chunk NNN --record <id>`가 청크 번호와 청크 전체 digest를 그대로 쓰는 하위 view를 준다. 다시 거부된 record만 확정한다. 더 분할·재시도하거나 모델·프롬프트를 바꾸지 않는다.
   - Supervisor는 정상 record 판정과 `P <record_id...>`를 합성해 기존 `save-chunk --chunk`로 한 번 저장한다. 모두 `none`이면 `none`을 저장한다.
-  - `P`는 record의 모든 Sense를 `policy` 결정으로 남긴다. 그 Sense에서 나온 편집은 없다. 기존 Relation은 그대로 두며, 다른 정상 Sense의 정·역방향 편집은 공통 계약을 따른다.
-  - 없는 record, 중복, 같은 record Sense의 `skip`이나 편집과 함께 쓴 `P`는 저장 전체를 거부한다. AI 답변 문법에는 `P`가 없다.
-  - apply·PR 본문·무변경 로그는 `policy_skipped`를 편집 `skipped`와 따로 센다. 확정 record는 기존 수동 Issue 경로(`[Policy Skip][S4/…]`)에 record ID·표제어·Sense·청크·사유를 남긴다. 별도 blacklist·원장은 없다.
+  - `P`는 제공된 record의 대상 `p` Sense를 `policy` 결정으로 남긴다. 선별 파일의 `s/e`를 변경하지 않으며, 그 `p` Sense에서 나온 편집은 없다. 기존 Relation은 그대로 두며, 다른 정상 Sense의 정·역방향 편집은 공통 계약을 따른다.
+  - 없는 record, 중복, 같은 record의 대상 Sense 편집과 함께 쓴 `P`는 저장 전체를 거부한다. AI 답변 문법에는 `P`가 없다.
+  - apply·PR 본문·무변경 로그는 입력 `selection: {p,s,e}`와 실제 처리 `polished`·`policy_skipped`를 구분한다. `skipped`는 입력 `s`, `excluded`는 입력 `e`이며, AI가 새로 판단한 Skip 수가 아니다. 확정 record는 기존 수동 Issue 경로(`[Policy Skip][S4/…]`)에 record ID·표제어·Sense·청크·사유를 남긴다. 별도 blacklist·원장은 없다.
   - 결속할 수 없는 거부, 판정이나 공식 거부를 얻지 못한 record 실행(실패·누락·중단)은 그 청크를 `HELD`로 미완료 유지한다. 다른 청크는 계속한다. 나머지가 끝나면 `[Policy Hold]` 보고와 함께 최종화하지 않고 멈춘다.
-- **실행:** Stage 3 전체 완료 뒤 War Room 정제 라인이 샤드 001부터 차례로 실행한다(운영 설정은 `tools/warroom/README.md`의 *Stage 4 운영 설정*). 완료한 샤드는 이후 단건 Polish나 다른 샤드의 역방향 편집으로 파일이 바뀌어도 다시 열지 않는다. 첫 샤드 파일럿의 Skip/Polish Sense 수, Add/Drop/Set 수, 처리 시간, 토큰은 PR 본문·무변경 완료 로그의 기존 집계로 확인한다.
+- **실행:** Stage 3 전체 완료 뒤 War Room 정제 라인이 샤드 001부터 차례로 실행한다(운영 설정은 `tools/warroom/README.md`의 *Stage 4 운영 설정*). 완료한 샤드는 이후 단건 Polish나 다른 샤드의 역방향 편집으로 파일이 바뀌어도 다시 열지 않는다. 첫 샤드 파일럿의 확정 `p/s/e` 수와 실제 처리 `p` 수, Add/Drop/Set 수, 처리 시간, 토큰은 PR 본문·무변경 완료 로그의 기존 집계로 확인한다.
 
 ## 5. Polish — 직접 Relation 편집과 동시 변경 (#8784, #8777)
 
