@@ -18,10 +18,10 @@ import path from 'node:path';
 
 import { ACTION_TARGET_POS, normalizeCandidate, sameSpellingTargets } from '../../admission.mjs';
 import { ADMISSION_TYPES, exclusionKey, parseRelationJsonl } from '../../persisted-jsonl.mjs';
-import { apply as polishApply, loadCanonical, PolishInputError, scanTouching } from '../../polish-cli.mjs';
+import { apply as polishApply, discardStaged, installStaged, loadCanonical, PolishInputError, scanTouching, stageText } from '../../polish-cli.mjs';
 import { readSelection, SelectionError } from '../../selection-cli.mjs';
 import { escapeField } from './s3.mjs';
-import { fail, gitHead, RefineInputError, writeFilesAtomically } from '../core.mjs';
+import { fail, gitHead, RefineInputError } from '../core.mjs';
 
 export const label = 'Stage 4';
 export const scratch = 'relation-s4';
@@ -51,14 +51,14 @@ const touches = (row, senseIds) => senseIds.has(row.source_sense_id) || (!('text
 
 // ---- view --------------------------------------------------------------------------------------------------------
 
-async function loadSelection(root, shard, records = null) {
+export async function loadSelection(root, shard, records = null, name = label) {
   let selection;
   try { selection = await readSelection(root, shard, records); }
   catch (error) {
-    if (error instanceof SelectionError) throw new RefineInputError(`${label} ${error.message}`);
+    if (error instanceof SelectionError) throw new RefineInputError(`${name} ${error.message}`);
     throw error;
   }
-  if (!selection) throw new RefineInputError(`${label} requires selection-${shard}.jsonl`);
+  if (!selection) throw new RefineInputError(`${name} requires selection-${shard}.jsonl`);
   const { decisions } = selection;
   return { ...selection,
     polished: new Set([...decisions].filter(([, decision]) => decision === 'p').map(([id]) => id)) };
@@ -476,27 +476,27 @@ export function assertScope(ops, selection, shard, canonical, originals = [], de
 }
 
 /** Polish input with a fixed edit order (by relation key), so apply and amend reach the same bytes. */
-function polishInput(ops, shard) {
+function polishInput(ops, reason) {
   return { edits: [...ops].sort((a, b) => opKey(a).localeCompare(opKey(b)))
-    .map((op) => ({ ...op, reason: `Stage 4 shard ${shard}` })) };
+    .map(({ reason: own, ...op }) => ({ ...op, reason: own ?? reason })) };
 }
 
 const RELATION_DATA_FILE = /^data\/relations\/relation-\d{3}\.jsonl$/u;
-const dataStatus = (root) => execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '--', 'data/relations'],
+export const dataStatus = (root) => execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '--', 'data/relations'],
   { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).split('\n').filter(Boolean).map((line) => line.slice(3));
 
-function assertCleanSources(root) {
+export function assertCleanSources(root, name = label) {
   const dirty = execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '--', 'data/canonical', ...inputPaths],
     { cwd: root, encoding: 'utf8' });
-  if (dirty.trim()) fail(`${label} requires clean Canonical and selection inputs`);
+  if (dirty.trim()) fail(`${name} requires clean Canonical and selection inputs`);
 }
 
 /** The PR's changed Relation files. A Stage 4 PR never changes a Drop file: one is a scope error (paths only, no read). */
-function changedBetween(root, base, head) {
+function changedBetween(root, base, head, name = label) {
   const names = (...paths) => execFileSync('git', ['diff', '--name-only', '--no-renames', base, head, '--', ...paths],
     { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).split('\n').filter(Boolean);
   const drops = names('data/relation-drops');
-  if (drops.length) throw new RefineInputError(`${label} is Relation-only; ${base.slice(0, 12)}..${head.slice(0, 12)} changes Drop files: ${drops.slice(0, 5).join(', ')}`);
+  if (drops.length) throw new RefineInputError(`${name} is Relation-only; ${base.slice(0, 12)}..${head.slice(0, 12)} changes Drop files: ${drops.slice(0, 5).join(', ')}`);
   return names('data/relations').filter((file) => RELATION_DATA_FILE.test(file));
 }
 
@@ -507,18 +507,15 @@ function showFile(root, revision, relative) {
 
 /**
  * Reader of every data file at one commit: a file that differs from the working tree (dirty, or changed since that
- * commit) is read from Git; every other file is read from disk, where it already equals that commit.
+ * commit) is read from Git; every other file is read from disk, where it already equals that commit. Nothing is
+ * cached: a whole-shard plan reads every Relation file, and holding them all is what ran out of heap (#10171).
  */
-function revisionReader(root, revision, differing) {
-  const cache = new Map();
-  return async (relative) => {
-    if (!cache.has(relative)) {
-      cache.set(relative, differing.has(relative) ? showFile(root, revision, relative)
-        : existsSync(path.join(root, relative)) ? readFile(path.join(root, relative), 'utf8') : null);
-    }
-    return cache.get(relative);
-  };
+export function revisionReader(root, revision, differing) {
+  return async (relative) => (differing.has(relative) ? showFile(root, revision, relative)
+    : existsSync(path.join(root, relative)) ? readFile(path.join(root, relative), 'utf8') : null);
 }
+
+const sha256 = (text) => (text === null ? null : createHash('sha256').update(text, 'utf8').digest('hex'));
 
 const asInput = async (step) => {
   try { return await step(); } catch (error) {
@@ -529,32 +526,25 @@ const asInput = async (step) => {
   }
 };
 
-/** Plan `ops` against the data at `revision` through Polish; nothing is written. */
-async function planOps({ root, shard, ops, revision, differing, canonical }) {
+/**
+ * Plan `ops` against the data at `revision` through Polish. Each changed file is built, checked and staged one at a
+ * time: the result holds paths, hashes and staged temporaries, never every file's text (#10171). The caller installs
+ * the staged files (`writePlanned`) or discards them.
+ */
+export async function planOps({ root, shard, ops, revision, differing, canonical, reason = `${label} shard ${shard}` }) {
   if (!ops.length) return { files: [], affected_shards: [shard] };
-  const result = await polishApply(polishInput(ops, shard), { root, dryRun: true, returnTexts: true, canonical,
+  const result = await polishApply(polishInput(ops, reason), { root, dryRun: true, stage: true, canonical,
     reader: revisionReader(root, revision, differing), relationsOnly: true });
   return { ...result, affected_shards: [...new Set([shard, ...result.affected_shards])].sort() };
 }
 
 /**
- * Write `next` (relative -> text|null) over files that hold `expected` (relative -> text|null): the same bytes again is
- * `already-applied`; anything else in between fails before writing.
+ * Install staged files ({ path, sha256, temporary }) over files that must still hash to `expected` (relative ->
+ * sha256|null): the same bytes again is `already-applied`; anything else in between fails before writing; a failed
+ * install restores every original. Staged files are always removed.
  */
-async function writePlanned(root, next, expected) {
-  const current = new Map();
-  for (const relative of new Set([...next.keys(), ...expected.keys()])) {
-    const file = path.join(root, relative);
-    current.set(relative, existsSync(file) ? await readFile(file, 'utf8') : null);
-  }
-  const target = (relative) => (next.has(relative) ? next.get(relative) : expected.get(relative) ?? null);
-  if ([...current.keys()].every((relative) => current.get(relative) === target(relative))) return 'already-applied';
-  const mismatch = [...current.keys()].filter((relative) => current.get(relative) !== (expected.get(relative) ?? null));
-  if (mismatch.length) fail(`${label} data files changed from both the baseline and this result; nothing was written: ${mismatch.slice(0, 10).join(', ')}`);
-  const state = (text) => ({ exists: text !== null, text: text ?? '' });
-  await writeFilesAtomically([...next.keys()].filter((relative) => next.get(relative) !== current.get(relative))
-    .map((relative) => ({ file: path.join(root, relative), current: state(current.get(relative)), next: state(next.get(relative)) })));
-  return 'applied';
+export function writePlanned(root, files, expected, name = label) {
+  return installStaged(root, files, expected, { label: name });
 }
 
 const counts = (ops) => ({ add: ops.filter((op) => op.op === 'add').length, drop: ops.filter((op) => op.op === 'drop').length,
@@ -589,14 +579,12 @@ export async function applyCheckpoint({ shard, root, checkpoint, readView }) {
   assertScope(ops, selection, shard, canonical, [...originals.values()], await decisionLookup(root, selection, canonical, opSenseIds(ops)));
   const differing = new Set(dataStatus(root));
   const planned = await planOps({ root, shard, ops, revision: 'HEAD', differing, canonical });
-  const reader = revisionReader(root, 'HEAD', differing);
-  const expected = new Map();
-  for (const file of planned.files) expected.set(file.path, await reader(file.path));
-  const next = new Map(planned.files.map((file) => [file.path, file.text]));
+  const expected = new Map(planned.files.map((file) => [file.path, file.original_sha256]));
+  const changedFiles = planned.files.map((file) => file.path).sort();
   const sensesOf = (action) => new Set(checkpoint.decisions.filter((decision) => decision.action === action).map((decision) => decision.sense)).size;
   const policySkipped = sensesOf('policy');
   const { p, s, e } = selection.counts;
-  const status = next.size ? await writePlanned(root, next, expected) : 'no-change';
+  const status = planned.files.length ? await writePlanned(root, planned.files, expected) : 'no-change';
   return {
     status,
     selection: selection.counts,
@@ -605,38 +593,45 @@ export async function applyCheckpoint({ shard, root, checkpoint, readView }) {
     edits: counts(ops),
     conflicts,
     affected_shards: planned.affected_shards,
-    changed_files: [...next.keys()].sort(),
+    changed_files: changedFiles,
   };
 }
 
 // ---- PR decisions, amend, report ---------------------------------------------------------------------------------
 
-async function relationRowsByKey(read, files) {
-  const rows = new Map();
-  for (const relative of files.filter((file) => file.startsWith('data/relations/'))) {
-    const text = await read(relative);
-    for (const row of text ? parseRelationJsonl(text, relative) : []) rows.set(keyOf(row), row);
-  }
-  return rows;
-}
+const lineSet = (text) => new Set(text ? text.split('\n').filter((line) => line.trim() !== '') : []);
+const parsedLines = (lines, relative) => (lines.length ? parseRelationJsonl(`${lines.join('\n')}\n`, relative) : []);
 
-/** The Polish edits that take the base data files to the head data files, by relation key. */
-async function opsBetween(baseRead, headRead, files) {
-  const [before, after] = await Promise.all([relationRowsByKey(baseRead, files), relationRowsByKey(headRead, files)]);
+/**
+ * The Polish edits that take the base data files to the head data files, by relation key. Rows serialize
+ * deterministically, so only the lines that differ between a file's base and head are parsed (#10171): an unchanged
+ * line is an unchanged row. A key whose line changed, or moved to another file, is compared as rows.
+ */
+export async function opsBetween(baseRead, headRead, files) {
+  const gone = new Map();
+  const arrived = new Map();
   const ops = [];
-  for (const [key, row] of after) {
-    const old = before.get(key);
-    if (!old) ops.push({ op: 'add', source_sense_id: row.source_sense_id, ...rowTarget(row), type: row.type, relevance: row.relevance });
-    else if (old.type !== row.type || old.relevance !== row.relevance) {
+  const compare = (old, row) => {
+    if (old.type !== row.type || old.relevance !== row.relevance) {
       ops.push({ op: 'set', source_sense_id: row.source_sense_id, ...rowTarget(row), type: row.type, relevance: row.relevance });
     }
+  };
+  for (const relative of files.filter((file) => file.startsWith('data/relations/'))) {
+    const before = lineSet(await baseRead(relative));
+    const after = lineSet(await headRead(relative));
+    for (const row of parsedLines([...before].filter((line) => !after.has(line)), relative)) gone.set(keyOf(row), row);
+    for (const row of parsedLines([...after].filter((line) => !before.has(line)), relative)) arrived.set(keyOf(row), row);
   }
-  for (const [key, row] of before) if (!after.has(key)) ops.push({ op: 'drop', source_sense_id: row.source_sense_id, ...rowTarget(row) });
+  for (const [key, row] of arrived) {
+    if (gone.has(key)) { compare(gone.get(key), row); gone.delete(key); }
+    else ops.push({ op: 'add', source_sense_id: row.source_sense_id, ...rowTarget(row), type: row.type, relevance: row.relevance });
+  }
+  for (const row of gone.values()) ops.push({ op: 'drop', source_sense_id: row.source_sense_id, ...rowTarget(row) });
   return ops.sort((a, b) => opKey(a).localeCompare(opKey(b)));
 }
 
-function prState(root, base, head) {
-  const changed = changedBetween(root, base, head);
+export function prState(root, base, head, name = label) {
+  const changed = changedBetween(root, base, head, name);
   const differing = new Set([...changed, ...dataStatus(root)]);
   return { changed, differing, baseRead: revisionReader(root, base, differing), headRead: revisionReader(root, head, new Set(dataStatus(root))) };
 }
@@ -670,7 +665,7 @@ export async function listDecisions({ shard, root, base, head, senses = null }) 
   return result;
 }
 
-function affectedShards(ops, canonical, shard) {
+export function affectedShards(ops, canonical, shard) {
   const shards = new Set([shard]);
   for (const op of ops) {
     for (const senseId of [op.source_sense_id, op.target_sense_id].filter(Boolean)) {
@@ -725,19 +720,30 @@ export async function amendDecisions({ shard, root, base, head, text }) {
   const originals = moved ? (await scanTouching(root, selection.polished, new Map(), { reader: state.baseRead, relationsOnly: true })).relations.map(({ row }) => row) : [];
   assertScope(ops, selection, shard, canonical, originals, await decisionLookup(root, selection, canonical, opSenseIds(ops)));
   const planned = await asInput(() => planOps({ root, shard, ops, revision: base, differing: state.differing, canonical }));
-  // Every file this PR changes or will change: the planned text, or the base text when it no longer changes.
-  const next = new Map();
-  const expected = new Map();
-  const plannedText = new Map(planned.files.map((file) => [file.path, file.text]));
-  for (const relative of new Set([...state.changed, ...plannedText.keys()])) {
-    next.set(relative, plannedText.has(relative) ? plannedText.get(relative) : await state.baseRead(relative));
-    expected.set(relative, await state.headRead(relative));
-  }
-  const status = await writePlanned(root, next, expected);
-  const outputs = Object.fromEntries([...next].map(([relative, value]) => [relative,
-    value === null ? null : createHash('sha256').update(value, 'utf8').digest('hex')]));
+  const { files, expected } = await amendTargets(root, state, planned);
+  const status = await writePlanned(root, files, expected);
   return { shard, base, head, status, decisions: ops.length, counts: counts(ops),
-    affected_shards: planned.affected_shards, outputs };
+    affected_shards: planned.affected_shards, outputs: Object.fromEntries(files.map((file) => [file.path, file.sha256])) };
+}
+
+/**
+ * Every file an amended PR changes or will change: the planned (staged) file, or the base text when it no longer
+ * changes, each expected to still hold its HEAD bytes. One file's text at a time.
+ */
+export async function amendTargets(root, state, planned) {
+  const files = [...planned.files];
+  const expected = new Map();
+  try {
+    const plannedPaths = new Set(files.map((file) => file.path));
+    for (const relative of [...new Set([...state.changed, ...plannedPaths])].sort()) {
+      if (!plannedPaths.has(relative)) files.push(await stageText(root, relative, await state.baseRead(relative)));
+      expected.set(relative, sha256(await state.headRead(relative)));
+    }
+    return { files, expected };
+  } catch (error) {
+    await discardStaged(files);
+    throw error;
+  }
 }
 
 /** Working tree against HEAD, by relation key: what `apply` changed. */

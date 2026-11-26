@@ -133,6 +133,12 @@ export async function writeJsonAtomically(file, value) {
   }
 }
 
+/**
+ * Install `changes` ({ file, current: { exists }, next: { exists, text } | { exists, temporary } }) together: every new
+ * file is staged first (or was already staged by the caller as `next.temporary`), then the originals are moved to
+ * backups and the staged files renamed in; a failure part-way removes what was installed and restores every backup.
+ * Staged files are removed in every case.
+ */
 export async function writeFilesAtomically(changes) {
   const token = randomUUID();
   const staged = [];
@@ -142,6 +148,7 @@ export async function writeFilesAtomically(changes) {
     for (const change of changes) {
       await mkdir(path.dirname(change.file), { recursive: true });
       if (!change.next.exists) continue;
+      if (change.next.temporary) { staged.push({ file: change.file, temporary: change.next.temporary }); continue; }
       const temporary = `${change.file}.${token}.tmp`;
       await writeFile(temporary, change.next.text, { encoding: 'utf8', flag: 'wx' });
       staged.push({ file: change.file, temporary });
@@ -317,6 +324,17 @@ export function createRefineCli(rule) {
     return readCheckpointText(state.text, shard, scope);
   }
 
+  /** The kept checkpoint and prepared views of a `keepDecisions` rule, read only on demand. */
+  function savedDecisions(shard, root) {
+    return {
+      checkpointRelative: path.relative(root, CHECKPOINT_PATH(shard, root)),
+      checkpointText: async () => (await readOptional(CHECKPOINT_PATH(shard, root))).text,
+      loadCheckpoint: () => loadCheckpoint(shard, root),
+      parseCheckpoint: (text) => readCheckpointText(text, shard),
+      readView: (chunk) => readRawPreparedView(shard, chunk, root),
+    };
+  }
+
   async function loadRelationContext(shard, root, { relationText } = {}) {
     const loaded = await loadShard(shard, root, { candidates: false });
     const relationFile = RELATION_PATH(shard, root);
@@ -405,7 +423,8 @@ export function createRefineCli(rule) {
     const groups = rule.senseGroups ? await rule.senseGroups(context, { root, shard })
       : buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations,
         scopeSenseIds, rowFilter: scope ? rule.scopedRow : null });
-    const chunks = chunkSenseGroups(groups, { label });
+    // A rule may set its own chunk bounds in its group weight (D1: about 100 Sense judgments, #10171).
+    const chunks = chunkSenseGroups(groups, { label, ...(rule.chunkBounds ?? {}) });
     const extra = viewPolicy !== null && viewPolicy === rule.viewPolicy && rule.viewContext
       ? await rule.viewContext(context, { root, shard }) : null;
     const views = chunks.map((chunkGroups, index) => rule.renderChunk(chunkGroups, context.index, index + 1, chunks.length, extra));
@@ -630,8 +649,12 @@ export function createRefineCli(rule) {
       // The keyed rule rebuilds every affected data file from HEAD through the shared Polish path (#9928).
       const result = await rule.applyCheckpoint({ shard, root, checkpoint,
         readView: (chunk) => readFile(chunkFile(shard, chunk, root, scope), 'utf8') });
-      await rm(chunkFiles(shard, root, scope), { recursive: true, force: true });
-      await rm(CHECKPOINT_PATH(shard, root, scope), { force: true });
+      // A rule whose PR is described by its judgments (D1, #10171) keeps the checkpoint and the views its decisions
+      // are bound to for report, decisions and amend; the batch's scratch cleanup removes them.
+      if (!rule.keepDecisions) {
+        await rm(chunkFiles(shard, root, scope), { recursive: true, force: true });
+        await rm(CHECKPOINT_PATH(shard, root, scope), { force: true });
+      }
       return { shard, ...result };
     }
     const relationFile = RELATION_PATH(shard, root);
@@ -703,7 +726,7 @@ export function createRefineCli(rule) {
   async function reportEdits(shard, root) {
     assertShard(shard);
     gitHead(root);
-    if (rule.keyed) return { shard, ...await rule.reportWorktree({ shard, root }) };
+    if (rule.keyed) return { shard, ...await rule.reportWorktree({ shard, root, saved: savedDecisions(shard, root) }) };
     const diff = await parseDiffRows(root, shard);
     const { index } = await loadShard(shard, root);
     return { shard, ...rule.report(diff, index) };
@@ -751,7 +774,7 @@ export function createRefineCli(rule) {
   /** The decisions a refinement PR made, recovered from its own Git diff: the PR is its own state, there is no ledger. */
   async function listDecisions(shard, root, base, senses = null) {
     assertShard(shard);
-    if (rule.keyed) return rule.listDecisions({ shard, root, base, head: prRevisions(shard, root, base), senses });
+    if (rule.keyed) return rule.listDecisions({ shard, root, base, head: prRevisions(shard, root, base), senses, saved: savedDecisions(shard, root) });
     const state = prState(shard, root, base);
     const { index } = await loadShard(shard, root);
     const describe = (decision) => rule.describeDecision(decision, state.baseRelations, index);
@@ -775,7 +798,7 @@ export function createRefineCli(rule) {
     if (rule.keyed) {
       const head = prRevisions(shard, root, base);
       const input = path.isAbsolute(inputPath) ? inputPath : path.resolve(root, inputPath);
-      return rule.amendDecisions({ shard, root, base, head, text: await readFile(input, 'utf8') });
+      return rule.amendDecisions({ shard, root, base, head, text: await readFile(input, 'utf8'), saved: savedDecisions(shard, root) });
     }
     const state = prState(shard, root, base);
     assertCleanInputsFor(root, 'amend', shard);
@@ -895,7 +918,8 @@ export function createRefineCli(rule) {
     return referenceRun.run(fullOtherRows === true, () => runCommand(argv, root));
   }
 
-  return { run };
+  // `savedDecisions(shard, root)`: a `keepDecisions` rule's kept checkpoint and views of the worktree `root` (D1 verify).
+  return { run, savedDecisions };
 }
 
 /** Run a Stage CLI module as a script: an amend input refusal is exit 2 with one JSON line, any other failure exit 1. */

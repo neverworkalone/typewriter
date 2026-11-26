@@ -258,7 +258,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
   - 읽는 것: Canonical, 확정 선별, 현재 승인 Relation.
   - 쓰는 것: Relation 파일뿐이다. 새 행의 출처는 `by:"p"`다(선별값 `d:"p"`, Drop 파일의 `p`와 다르다).
   - 하지 않는 것: Stage 1 Candidate·Drop 파일 읽기, 고아 후보 계산, `p`·`z` 추가, Add가 cover하는 기존 Drop 삭제, Candidate 회계(`verifyAccounting`) 비교. 과거 Drop에 같은 연결이 있어도 Add는 Drop 파일을 그대로 둔다.
-  - 유지하는 것: 공통 `validateRelationRows`(정확한 Sense 결속, 중복·역중복, 필드·타입, action POS), `assertScope` 편집 범위, 관계 키 충돌 해결.
+  - 유지하는 것: 공통 `validateRelationRows`(정확한 Sense 결속, 중복·역중복, 필드·타입, action POS — Add·Set이 있는 파일, drop만 있는 파일은 제외, §5-B), `assertScope` 편집 범위, 관계 키 충돌 해결.
   - prepare·refresh·apply·amend·decisions·verify·replay가 같은 계약을 쓴다. Drop 파일을 바꾼 S4 PR은 범위 오류다. S2/S3와 단건 Polish(#8777, `show`의 `p` 문맥 포함)는 기존 회계를 그대로 쓴다.
 - **입력:** §5-D의 정확한 전체 Sense ID·전수·순서·필드/값 검사를 재사용한다. 해당 샤드 파일이 없거나 잘못되면 입력 오류로 종료하며 자체 선별 또는 기본값으로 대체하지 않는다. 전체 428개 선별 완료를 추가 선행 조건으로 삼지 않는다.
 - **청크:** 확정 `p` Sense만 record별로 묶어 보여 준다. 관계 없는 `p`도 포함하며, `s/e`는 독립 판단 대상으로 전달하지 않는다. 각 Sense 아래에는 자기 정방향·text 관계와, 어느 샤드에 저장되었든 그 Sense를 target으로 갖는 역방향 ID 관계를 둔다. record는 나누지 않고, 관계 수(빈 Sense는 1) 350~500 기준으로 청크를 만든다. 같은 샤드의 두 `p` Sense 사이 관계는 양쪽에 모두 보인다. 상대 `s`의 뜻과 관계도 `p`의 편집 문맥으로 유지하며, `e`는 기존 authoring 제외 규칙을 따른다.
@@ -294,6 +294,19 @@ D1([#10171](https://github.com/neverworkalone/typewriter/issues/10171))은 확�
 - **비용:** PR 보고는 기존 apply·판정·verify 결과(대상 샤드, 판정 집계, 실제 삭제한 고유 관계 수, 변경 파일 수, 검증 결과, 미처리 사항)를 재사용하며 전체 Relation diff를 다시 해석하지 않는다. 모든 판정의 상세 `decisions` 목록은 정상 생산·리뷰의 필수 경로가 아니다. 실제 이의 제기·수정 때 해당 Sense만 조회한다. checkpoint/view의 정확한 결속과 amend 보존 계약은 유지한다. 리뷰용 검증 재실행, 원장·해시·영수증은 만들지 않는다.
 - **수정·재실행:** 확인된 오류는 해당 Sense의 뜻풀이·범주·판정만 조회해 기존 amend/FIXING으로 고친다. 다른 D 끝점의 삭제 효력과 동시 변경은 공통 관계 키 계약대로 보존한다. amend/replay로 실제 변경이 달라지면 삭제 verify만 다시 하고 새 HEAD를 좁게 재리뷰한다. 완료한 배치는 후속 정상 편집 때문에 다시 열지 않는다. 같은 오류가 반복되면 공통 프롬프트·규칙·코드 작업에서 고친다.
 - **남는 위험:** 범주 밖 Sense를 D로 잘못 분류하는 의미 오류는 verify나 빌드가 잡지 않는다. 명확한 범주만 D로 고르고 애매한 것은 남기는 작성 원칙으로 줄이며, 매 PR 의미 재심사로 보완하지 않는다.
+
+### 4-G. D1 — CLI와 실행 계약 (#10171)
+
+**목적:** 확정 선별의 `d:"s"` Sense가 [#10171](https://github.com/neverworkalone/typewriter/issues/10171) §3.2의 11개 전체 Drop 범주에 명확히 해당하는지만 판정하고, 해당 Sense에 직접 닿는 승인 Relation을 모두 지운다. 관계별 일부 Drop·잔여 판단은 D2(#10244)다. S3 전체 완료 뒤 시작하며 같은 샤드의 S4 선행은 요구하지 않는다.
+
+- **CLI:** `scripts/relation/d1-cli.mjs`(`pnpm run relation:d1`). Refinement 코어와 keyed 규칙 `scripts/relation/refine/rules/d1.mjs`로 이루어진다. 쓰기·검증·replay는 S4와 같은 Relation 전용 경로(§4-E, §5)다. Candidate·Drop은 읽지도 쓰지도 않는다.
+- **청크:** 확정 `s` Sense 중 승인 Relation이 하나라도 닿는(정·역·text, 어느 샤드에 저장되었든) Sense만 record별로 묶는다. Relation이 없는 `s`는 지울 것이 없어 판정하지 않고 보고에 `no_relations`로 남긴다. 청크는 약 100 Sense(90~100, record는 나누지 않음)다. 모델에는 표제어·동형어 번호·품사·뜻풀이만 보인다(`W <표제어> <동형어 번호|->`, `S<n> <품사> <뜻풀이>`). 관계 목록은 보이지 않는다.
+- **판정 문법:** `chunk NNN` 다음에 보인 모든 Sense마다 정확히 한 판정을 쓴다. `D <n> <1-11>`(전체 Drop과 범주 번호), `N <n...>`(비대상), `H <n...>`(판단 보류 — D2로 남긴다).
+- **save-chunk는 엄격하다:** 빠진 Sense, 중복·상충 판정, 없는 번호·범주·줄은 응답 전체를 거부하고 checkpoint를 바꾸지 않는다. 빠진 판정을 `N`·`H`·`P`로 채우지 않는다. 제공자 거부는 S4와 같은 record 단위 Policy Skip `P <record_id...>`(#10047)이며 그 Sense의 관계는 그대로 둔다.
+- **apply:** 실행 시점의 현재 승인 Relation에서 `D` Sense에 닿는 키를 모아 한 번씩 Relation 전용 Polish drop으로 지운다. 양 끝이 모두 `D`인 관계도 한 번이다. 다른 샤드 파일도 바뀔 수 있다. 지울 것이 없으면 `no-change`이고 기존 무변경 완료를 쓴다.
+- **판정 보존:** D1 PR은 Sense 판정이 내용이다. Relation diff만으로는 어느 Sense가 어떤 범주로 `D`였는지, `N`·`H`·`P` 구분을 복원할 수 없다. 그래서 apply 뒤에도 checkpoint와 그 판정이 결속된 prepared view(`.warroom-scratch/relation-d1-SSS*`, 커밋하지 않음)를 지우지 않는다(`keepDecisions`). 각 판정은 자기 청크 view의 digest를 가진다. report·decisions·amend는 이 자료를 읽고, view가 digest와 다르거나 판정과 맞지 않으면 fail closed한다. 새 worktree로 옮길 때는 최신 checkpoint와 원래 view를 함께 옮긴다. 현재 Relation으로 view를 다시 만들어 옛 번호를 붙이지 않는다. 배치 정리가 이 scratch를 지운다. 별도 원장·커밋되는 판정 파일은 없다.
+- **PR·리뷰 수정:** PR 제목 `[D1/<Model>] SSS`, 본문 `Refs #10171`. `report`와 `decisions --base`는 Sense별 판정·범주, 집계(검토 Sense, D/N/H/P, 범주별 D, `no_relations`), 지운 고유 관계 수, 변경 파일·diff 줄 수·바이트를 준다. `--senses`는 그 Sense의 base 관계와 이 PR의 drop/keep을 붙인다. `amend`는 `D <sense_id> <1-11>`, `N <sense_id>`, `H <sense_id>`로 보존된 판정을 고친다(`P`는 고치지 않는다). 새 판정은 메모리에서 먼저 계산하고, 그 전체 `D` 집합으로 PR base에서 결과를 다시 만든다. 한 끝의 `D`를 철회해도 다른 끝이 `D`이면 그 관계는 계속 지워지고, 되살아나는 관계는 base 행 그대로 돌아온다. Relation 파일과 checkpoint는 한 번의 설치·복원 단위로 함께 쓰여, 실패하면 둘 다 이전 상태다.
+- **검증 (§4-F의 삭제 verify):** `verify --shard SSS --base <merge-base> [--judgments <worktree>]`는 보존된 판정과 base..HEAD의 관계 키 diff만 비교한다. (1) base에서 `D` Sense에 닿던 승인 Relation이 모두 삭제됐는가, (2) 그 밖의 변경이 없는가(Relation 파일만, drop만, 삭제된 키는 모두 `D` Sense에 닿음)를 보고, 위반을 한 번에 `d1-scope`로 보고한다. 샤드마다 전체 Relation 무결성을 다시 검사하지 않는다. 사전 전체의 구조적 무결성은 빌드와 Deep CI가 맡는다. 판정은 배치 worktree에 있으므로, 깨끗한 검증 checkout에서는 `--judgments`로 그 worktree를 가리킨다. S4와 공통 Relation 검증기는 바꾸지 않는다.
 
 ## 5. Polish — 직접 Relation 편집과 동시 변경 (#8784, #8777)
 
@@ -336,6 +349,7 @@ node scripts/relation/polish-cli.mjs apply --input edits.json [--dry-run]
     - 편집 전후 Candidate 회계 비교: **새 문제가 하나도 없어야** 한다. 원래 있던 미완성 shard의 `missing`은 막지 않는다.
     - action 대상 POS
   - 변경 파일은 한꺼번에 원자적으로 저장한다. 같은 입력의 재실행은 no-op이다.
+  - **Relation 전용 모드(S4·D1)의 메모리 (#10171):** 편집된 관계 키의 행만 문맥으로 읽는다. 편집은 키로 행을 찾고, 바뀐 파일이 새로 얻을 수 있는 중복은 추가된 키뿐이기 때문이다. 바뀐 파일은 한 개씩 읽어 만들고, Add·Set이 있는 파일은 `validateRelationRows`로 검사한 뒤 임시 파일로 스테이징하고 해제한다. drop만 있는 파일은 다시 검사하지 않는다. 줄을 지우는 것으로는 남은(바뀌지 않은) 행에 새 문제가 생기지 않으며, 사전 전체의 구조적 무결성은 빌드·Deep CI가 맡는다. 설치는 해시로 기대 상태를 확인한 뒤 원본을 백업하고, 도중 실패 시 모두 복원한다(`writeFilesAtomically`). 파일 전체 원문·결과를 한꺼번에 들고 있지 않는다.
 - AI는 Drop/Add/Set과 이유만 판단한다. 조회·회계·다른 샤드 영향·저장·검증은 CLI가 맡는다. 원격 파일 반복 다운로드, 다중 모델 탐색, 과거 batch 전체 재검사는 하지 않는다. 정본은 현재 JSONL이다.
 - **지원 없는 JSONL 손편집이나 `verify --relations-only`만 통과한 변경은 정식 성공이 아니다.**
 

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
 import { prepareShard, loadShard, loadTouchingExclusions, verifyAccounting } from './admission.mjs';
-import { apply, PolishInputError, show } from './polish-cli.mjs';
+import { apply, installStaged, PolishInputError, show, stageText } from './polish-cli.mjs';
 import { parseDropJsonl, parseRelationJsonl } from './persisted-jsonl.mjs';
 
 const jsonl = (rows) => rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length ? '\n' : '');
@@ -213,4 +213,70 @@ test('#9929 Relation-only Polish apply and replay read no Candidate or Drop file
   await assert.rejects(replay({ base, ours: withDrop, theirs, relationsOnly: true }, root), ReplayInputError);
   await assert.rejects(replay({ base, ours, theirs, relationsOnly: true, paths: ['data/relation-drops/drop-002.jsonl'] }, root), ReplayInputError);
   assert.equal(await read(root, 'data/relations/relation-001.jsonl'), before);
+});
+
+test('#10171 Relation-only apply builds, checks and stages one file at a time; a failed install restores every file', async (t) => {
+  const root = await repository(t);
+  await rm(path.join(root, 'data/relation-candidates'), { recursive: true, force: true });
+  await rm(path.join(root, 'data/relation-drops'), { recursive: true, force: true });
+  const R_SKY = { id: 'w2000', sid: 'w2000-s1', tid: 'w4', tsid: 'w4-s1', tp: 'near', rv: 2, ver: 1, fm: ['흐르다'], rfm: [] };
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), jsonl([R_SKY]));
+  const files = ['data/relations/relation-001.jsonl', 'data/relations/relation-002.jsonl'];
+  const snapshot = async () => Promise.all(files.map((relative) => read(root, relative)));
+  const leftovers = async () => (await readdir(path.join(root, 'data/relations'))).filter((name) => /\.(?:tmp|bak)$/u.test(name));
+  const original = await snapshot();
+  const edits = [
+    { op: 'drop', source_sense_id: 'w1-s1', target_sense_id: 'w3-s1', reason: 'D1' },
+    { op: 'set', source_sense_id: 'w2000-s1', target_sense_id: 'w4-s1', type: 'mood', relevance: 4, reason: 'S4' },
+    { op: 'add', source_sense_id: 'w2000-s1', target_sense_id: 'w3-s1', type: 'scene', relevance: 3, reason: 'S4' },
+  ];
+
+  // A dry run reports each changed file's hash and its base hash; a real run writes exactly those bytes, both files.
+  const planned = await apply({ edits }, { root, relationsOnly: true, dryRun: true });
+  assert.deepEqual(planned.files.map((file) => file.path), files);
+  assert.deepEqual(await snapshot(), original);
+  const applied = await apply({ edits }, { root, relationsOnly: true });
+  assert.equal(applied.status, 'applied');
+  const { createHash } = await import('node:crypto');
+  const hash = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
+  assert.deepEqual(planned.files.map((file) => [file.sha256, file.original_sha256]), (await snapshot()).map((text, index) => [hash(text), hash(original[index])]));
+  assert.deepEqual(parseRelationJsonl(await read(root, files[0])).map((row) => row.target_sense_id), ['w2000-s1']);
+  assert.deepEqual(parseRelationJsonl(await read(root, files[1])).map((row) => [row.target_sense_id, row.type, row.relevance]),
+    [['w4-s1', 'mood', 4], ['w3-s1', 'scene', 3]]);
+  assert.deepEqual(await leftovers(), []);
+  await writeFile(path.join(root, files[0]), original[0]);
+  await writeFile(path.join(root, files[1]), original[1]);
+
+  // A row the shared validator refuses stops the run before any file changes, leaving no staged file behind.
+  await assert.rejects(apply({ edits: [edits[0], { op: 'add', source_sense_id: 'w2000-s1', text: '별빛', type: 'mood', relevance: 3, reason: 'x' }] },
+    { root, relationsOnly: true }));
+  assert.deepEqual(await snapshot(), original);
+  assert.deepEqual(await leftovers(), []);
+
+  // A drop-only file is not re-checked (its other rows are unchanged); a file that gains a row is, in full.
+  const broken = { ...R_SKY, tsid: 'w4-s9' };
+  await writeFile(path.join(root, files[1]), jsonl([R_SKY, broken]));
+  assert.equal((await apply({ edits: [{ op: 'drop', source_sense_id: 'w2000-s1', target_sense_id: 'w4-s1', reason: 'D1' }] },
+    { root, relationsOnly: true, dryRun: true })).status, 'planned');
+  await assert.rejects(apply({ edits: [edits[2]] }, { root, relationsOnly: true, dryRun: true }), /w4-s9 is not a sense of w4/u);
+  await writeFile(path.join(root, files[1]), original[1]);
+
+  // Staged files whose base changed before the install are refused, and nothing is written.
+  const staged = await apply({ edits }, { root, relationsOnly: true, dryRun: true, stage: true });
+  assert.ok(staged.files.every((file) => file.temporary));
+  await writeFile(path.join(root, files[1]), `${original[1]}`.replace('"rv":2', '"rv":5'));
+  const moved = await snapshot();
+  await assert.rejects(installStaged(root, staged.files, new Map(staged.files.map((file) => [file.path, file.original_sha256]))),
+    /changed from both the baseline/u);
+  assert.deepEqual(await snapshot(), moved);
+  assert.deepEqual(await leftovers(), []);
+  await writeFile(path.join(root, files[1]), original[1]);
+
+  // A failure while installing the later file puts the earlier, already installed file back.
+  const first = await stageText(root, files[0], 'first\n');
+  const second = await stageText(root, files[1], 'second\n');
+  await rm(second.temporary);
+  await assert.rejects(installStaged(root, [first, second], new Map(files.map((relative, index) => [relative, hash(original[index])]))));
+  assert.deepEqual(await snapshot(), original);
+  assert.deepEqual(await leftovers(), []);
 });
