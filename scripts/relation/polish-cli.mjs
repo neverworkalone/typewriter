@@ -15,7 +15,9 @@
  * `relationsOnly` (Stage 4 onward, #9929/#10171) is the Relation-only mode of the same editor: it reads Canonical and
  * the approved Relations only, writes only Relation files and validates them with the shared row validator. It reads
  * no Candidate or Drop file, computes no orphan, writes no `p`/`z`, removes no Drop an Add covers and runs no Candidate
- * accounting. The default mode (single-word Polish, #8777) is unchanged.
+ * accounting. The default mode (single-word Polish, #8777) is unchanged. A whole-shard edit list (S4, D1 #10171) stays
+ * in bounded memory: only the rows of the edited keys are read as context, and each changed file is built, validated
+ * and staged one at a time before all of them are installed together (`installStaged`).
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -44,6 +46,7 @@ import {
   deserializeDropRow, deserializeRelationRow, exclusionKey, isExclusionRow, parseDropExclusionJsonlLinesMatching,
   parseDropJsonlLinesMatching, parseRelationJsonlLinesMatching, serializeDropRow, serializeRelationRow,
 } from './persisted-jsonl.mjs';
+import { writeFilesAtomically } from './refine/core.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RELATION_FILE = (shard) => `data/relations/relation-${shard}.jsonl`;
@@ -91,9 +94,10 @@ const SCAN_FAMILIES = [['data/relations', /^relation-(\d{3})\.jsonl$/u, 'relatio
 
 /**
  * Every persisted row of all Relation and Drop files that names one of `senseIds`, with its file and line.
- * `relationsOnly` scans the Relation files only: no Drop file is read.
+ * `relationsOnly` scans the Relation files only: no Drop file is read. `keys` (a Set of relation keys) keeps only the
+ * Relation rows of those keys.
  */
-export async function scanTouching(root, senseIds, overrides = new Map(), { only = null, reader = null, relationsOnly = false } = {}) {
+export async function scanTouching(root, senseIds, overrides = new Map(), { only = null, reader = null, relationsOnly = false, keys = null } = {}) {
   const pattern = senseTokenPattern(senseIds);
   const relations = [];
   const drops = [];
@@ -110,7 +114,7 @@ export async function scanTouching(root, senseIds, overrides = new Map(), { only
       const shard = namePattern.exec(name)[1];
       if (family === 'relation') {
         for (const { row, position } of parseRelationJsonlLinesMatching(text, relative, pattern)) {
-          if (relationTouchesSenses(row, senseIds)) relations.push({ shard, file: relative, line: position + 1, row });
+          if (relationTouchesSenses(row, senseIds) && (!keys || keys.has(relationKey(row)))) relations.push({ shard, file: relative, line: position + 1, row });
         }
         continue;
       }
@@ -273,11 +277,12 @@ export function accountingProblems(args) {
 
 /** File-level plan: per relative path, the original text and the edited line list. */
 class FilePlan {
-  constructor(reader) { this.files = new Map(); this.reader = reader; }
+  // A `lazy` plan (Relation-only mode) holds only each file's edits; its text is read once, when the file is built.
+  constructor(reader, { lazy = false } = {}) { this.files = new Map(); this.reader = reader; this.lazy = lazy; }
   async open(root, relative) {
     if (!this.files.has(relative)) {
-      const text = await this.reader(relative);
-      this.files.set(relative, { original: text, lines: linesOf(text), removed: new Set(), replaced: new Map(), appended: [] });
+      const text = this.lazy ? undefined : await this.reader(relative);
+      this.files.set(relative, { original: text, lines: this.lazy ? null : linesOf(text), removed: new Set(), replaced: new Map(), appended: [] });
     }
     return this.files.get(relative);
   }
@@ -291,6 +296,52 @@ class FilePlan {
   changed() { return [...this.files.keys()].filter((relative) => (this.text(relative) ?? null) !== file(this, relative).original); }
 }
 const file = (plan, relative) => plan.files.get(relative);
+
+/** The text of `original` with one plan file's edits applied (`null`: a file that never existed and gains no row). */
+function editedText(original, edits) {
+  const lines = [...linesOf(original).flatMap((line, position) => (edits.removed.has(position + 1) ? [] : [edits.replaced.get(position + 1) ?? line])), ...edits.appended];
+  return lines.length ? `${lines.join('\n')}\n` : (original === null ? null : '');
+}
+
+/** Remove staged temporaries (an installed one is already gone). */
+export async function discardStaged(files) {
+  await Promise.all(files.filter((entry) => entry.temporary).map((entry) => rm(entry.temporary, { force: true })));
+}
+
+/** Stage `text` next to `relative` as a temporary file; `null` (remove the file) stages nothing. */
+export async function stageText(root, relative, text) {
+  if (text === null) return { path: relative, sha256: null, temporary: null };
+  const temporary = `${path.join(root, relative)}.${randomUUID()}.tmp`;
+  await writeFile(temporary, text, { encoding: 'utf8', flag: 'wx' });
+  return { path: relative, sha256: sha256(text), temporary };
+}
+
+/**
+ * Install staged files ({ path, sha256, temporary }) over working-tree files whose content must still hash to
+ * `expected` (path -> sha256 | null). Same bytes everywhere already is `already-applied`; any other difference fails
+ * before writing. One file at a time is read to hash it; the install backs up and restores (`writeFilesAtomically`).
+ * Every staged temporary is gone afterwards, whatever happens.
+ */
+export async function installStaged(root, files, expected, { label = 'Polish apply' } = {}) {
+  try {
+    const current = new Map();
+    for (const relative of new Set([...files.map((entry) => entry.path), ...expected.keys()])) {
+      const absolute = path.join(root, relative);
+      current.set(relative, existsSync(absolute) ? sha256(await readFile(absolute, 'utf8')) : null);
+    }
+    const target = new Map(files.map((entry) => [entry.path, entry.sha256]));
+    const wanted = (relative) => (target.has(relative) ? target.get(relative) : expected.get(relative) ?? null);
+    if ([...current.keys()].every((relative) => current.get(relative) === wanted(relative))) return 'already-applied';
+    const mismatch = [...current.keys()].filter((relative) => current.get(relative) !== (expected.get(relative) ?? null));
+    if (mismatch.length) throw new Error(`${label} data files changed from both the baseline and this result; nothing was written: ${mismatch.slice(0, 10).join(', ')}`);
+    await writeFilesAtomically(files.filter((entry) => entry.sha256 !== current.get(entry.path)).map((entry) => ({
+      file: path.join(root, entry.path), current: { exists: current.get(entry.path) !== null },
+      next: { exists: entry.sha256 !== null, temporary: entry.temporary } })));
+    return 'applied';
+  } finally {
+    await discardStaged(files);
+  }
+}
 
 async function writeAll(root, plan, changed, read) {
   for (const relative of changed) {
@@ -323,7 +374,8 @@ async function writeAll(root, plan, changed, read) {
  * each changed file's planned text to a dry run, so the caller can write it itself.
  */
 export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false, reader = null, canonical = null,
-  returnTexts = false, relationsOnly = false } = {}) {
+  returnTexts = false, relationsOnly = false, stage = false } = {}) {
+  if (stage && !(relationsOnly && dryRun)) throw new Error('Polish apply stages files only in a Relation-only dry run');
   const read = reader ?? ((relative) => readText(root, relative));
   const { index, shardOfSense, rowsByShard } = canonical ?? await loadCanonical(root);
   const edits = parseEdits(input, index);
@@ -338,12 +390,16 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
     scopeRecordsByShard.get(shard).push(record);
   }
   const scopeSenses = new Set([...scopeRecordsByShard.values()].flat().flatMap((record) => record.senses.map((sense) => sense.id)));
-  // Relation-only mode has no record-wide accounting: the rows touching the edited Senses are the whole context.
+  // Relation-only mode has no record-wide accounting, and its context is only the rows of the edited keys: an edit
+  // finds its row by key, and a changed file can gain a duplicate only of an added key (no other row changes key). All
+  // rows touching the edited Senses would be millions for a whole-shard edit list (#10171).
   const scanSenses = relationsOnly ? editSenses : scopeSenses;
-  const beforeAll = await scanTouching(root, scanSenses, new Map(), { reader: read, relationsOnly });
+  const beforeAll = await scanTouching(root, scanSenses, new Map(), { reader: read, relationsOnly,
+    keys: relationsOnly ? new Set(edits.map((edit) => edit.key)) : null });
   const touchesEdit = (entry) => editSenses.has(entry.row.source_sense_id) || editSenses.has(entry.row.target_sense_id);
   const before = { relations: beforeAll.relations.filter(touchesEdit), drops: beforeAll.drops.filter(touchesEdit) };
-  const plan = new FilePlan(read);
+  const plan = new FilePlan(read, { lazy: relationsOnly });
+  const replacedRows = new Map();   // `${file}\u0000${line}` -> the row a Set writes there (Relation-only settlement)
   const results = [];
   const removedRows = [];
   const addedRows = [];
@@ -389,6 +445,7 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
       }
       const row = { ...existing.row, type: edit.type, relevance: edit.relevance, ...('text' in existing.row ? {} : { reverse_type: edit.type, reverse_relevance: edit.relevance }) };
       relationFile.replaced.set(existing.line, JSON.stringify(serializeRelationRow(row)));
+      replacedRows.set(`${existing.file}\u0000${existing.line}`, row);
       results.push({ op: 'set', key: edit.key.replaceAll('\u0000', '|'), stored: `${existing.file}:${existing.line}`, reason: edit.reason,
         before: { type: existing.row.type, relevance: existing.row.relevance }, after: { type: edit.type, relevance: edit.relevance } });
       continue;
@@ -409,23 +466,8 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
       exclusion: exclusions.length ? `${exclusions[0].file}:${exclusions[0].line}` : dropRelative, reason: edit.reason });
   }
 
-  if (relationsOnly) {
-    // Relation-only settlement: each changed Relation file passes the shared row validator, with the rows touching
-    // the edited records as duplicate context. No Candidate, Drop, orphan or accounting step.
-    const afterAll = await rescan(root, scanSenses, beforeAll, plan, { relationsOnly: true });
-    const others = afterAll.relations;
-    for (const relative of plan.changed()) {
-      const shard = /^data\/relations\/relation-(\d{3})\.jsonl$/u.exec(relative)?.[1];
-      if (!shard) throw new Error(`Relation-only Polish apply planned a non-Relation file ${relative}`);
-      const canonicalRows = rowsByShard.get(shard) ?? [];
-      const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-      const text = plan.text(relative) ?? '';
-      const ownRows = linesOf(text).map((line, position) => deserializeRelationRow(JSON.parse(line), `${relative}:${position + 1}`));
-      validateRelationRows({ relationRows: ownRows, index, shardSenseIds,
-        otherRelationRows: others.filter((entry) => entry.file !== relative).map(({ row }) => row) });
-    }
-    return finish({ root, plan, read, dryRun, returnTexts, results, sideEffects: {}, affectedShards });
-  }
+  if (relationsOnly) return settleRelationsOnly({ root, plan, read, index, rowsByShard, before, replacedRows, addedRows,
+    shardOfSense, dryRun, returnTexts, stage, results, affectedShards });
 
   // Every Relation edit is planned. Each affected shard is now settled once, in turn, and its Candidate data released:
   // Drops an Add now covers go, real orphans get `z`, then its changed files pass the shared row validator and its
@@ -510,6 +552,50 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
     if (introduced.length) throw new Error(`Polish edit would introduce Candidate accounting problems in shard ${shard}:\n${introduced.slice(0, 20).map((problem) => `- ${problem}`).join('\n')}`);
   }
   return finish({ root, plan, read, dryRun, returnTexts, results, sideEffects, affectedShards });
+}
+
+/**
+ * Relation-only settlement (#9929, #10171): each changed Relation file is read once, built, checked with the shared
+ * row validator and released before the next one — no file's text outlives its turn, so memory stays near one file
+ * plus the rows touching the edited Senses. Those rows after the edits (the duplicate context of every file) come from
+ * the scan and the planned edits, without re-reading. A dry run returns hashes (and the text with `returnTexts`, or a
+ * staged temporary with `stage`); a real run stages every file and installs them together (`installStaged`).
+ */
+async function settleRelationsOnly({ root, plan, read, index, rowsByShard, before, replacedRows, addedRows, shardOfSense,
+  dryRun, returnTexts, stage, results, affectedShards }) {
+  const after = [];
+  for (const entry of before.relations) {
+    const edits = plan.files.get(entry.file);
+    if (edits?.removed.has(entry.line)) continue;
+    after.push({ file: entry.file, row: replacedRows.get(`${entry.file}\u0000${entry.line}`) ?? entry.row });
+  }
+  for (const row of addedRows) after.push({ file: RELATION_FILE(shardOfSense.get(row.source_sense_id)), row });
+  const files = [];
+  const expected = new Map();
+  try {
+    for (const relative of [...plan.files.keys()].sort()) {
+      const shard = /^data\/relations\/relation-(\d{3})\.jsonl$/u.exec(relative)?.[1];
+      if (!shard) throw new Error(`Relation-only Polish apply planned a non-Relation file ${relative}`);
+      const original = await read(relative);
+      const text = editedText(original, plan.files.get(relative));
+      if ((text ?? null) === original) continue;
+      const canonicalRows = rowsByShard.get(shard) ?? [];
+      const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+      const ownRows = linesOf(text).map((line, position) => deserializeRelationRow(JSON.parse(line), `${relative}:${position + 1}`));
+      validateRelationRows({ relationRows: ownRows, index, shardSenseIds,
+        otherRelationRows: after.filter((entry) => entry.file !== relative).map(({ row }) => row) });
+      expected.set(relative, original === null ? null : sha256(original));
+      const entry = stage || !dryRun ? await stageText(root, relative, text) : { path: relative, sha256: text === null ? null : sha256(text) };
+      files.push({ ...entry, original_sha256: expected.get(relative), ...(returnTexts ? { text } : {}) });
+    }
+    const status = files.length ? (dryRun ? 'planned' : 'applied') : 'no-op';
+    if (files.length && !dryRun) await installStaged(root, files, expected);
+    return { version: 1, ok: true, dry_run: dryRun, status, edits: results,
+      files: files.map(({ temporary, ...entry }) => (stage ? { ...entry, temporary } : entry)), affected_shards: affectedShards };
+  } catch (error) {
+    await discardStaged(files);
+    throw error;
+  }
 }
 
 async function finish({ root, plan, read, dryRun, returnTexts, results, sideEffects, affectedShards }) {
