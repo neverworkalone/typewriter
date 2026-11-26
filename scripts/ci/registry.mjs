@@ -293,6 +293,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/relation/persisted-jsonl.mjs',
         ]),
       },
+      affectedTestCheck('scripts/relation/selection-cli.test.mjs', 'Test common pre-selection view/save/check binding', [
+        'scripts/relation/selection-cli.mjs',
+        'scripts/relation/selection-run.mjs',
+      ]),
       affectedTestCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance contract', [
         'scripts/build/dictionary.mjs',
         'scripts/build/query.mjs',
