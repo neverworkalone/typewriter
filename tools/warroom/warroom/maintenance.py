@@ -2311,6 +2311,8 @@ class Maintenance:
                     and self.store.get(stage3.parallel_start_key(b["id"])) is None
                     and self.store.get(stage3.run_start_key(b["id"])) is None):
                 return "s3_prepare"
+            if k == "s3_finalize" and b["paused_from"] == "PRODUCING" and not b["pr_number"]:
+                return "s3_finalize"   # finalize stopped before its data commit/push: see _s3_finalize_boundary
             return "s3_chunk" if k.startswith("s3_chunk_") else None
         return None
 
@@ -2318,6 +2320,13 @@ class Maintenance:
         """The FIRST recorded HEAD of the batch's current baseline chain (never rewritten by this module)."""
         if kind == "s2_finalize":
             return self.store.get(f"s2_finalize_base_{b['id']}")
+        if kind == "s3_finalize":
+            key = stage3.parallel_start_key if self.store.get(stage3.mode_key(b["id"])) == stage3.PARALLEL \
+                else stage3.run_start_key
+            try:
+                return json.loads(self.store.get(key(b["id"])) or "null")["head"]
+            except (ValueError, KeyError, TypeError):
+                return None
         key = {"s2_links": stage2.links_start_key, "s2_repair": stage2.repair_run_start_key,
                "s3_chunk": stage3.run_start_key}.get(kind, stage2.run_start_key)(b["id"])
         try:
@@ -2337,6 +2346,44 @@ class Maintenance:
         if kind == "s3_chunk":
             return sup._stage3_chunk_boundary_problem(b, base)
         return "사전 실행할 guard가 없습니다"
+
+    def _s3_finalize_inputs(self, b) -> set[str]:
+        return {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"}
+
+    def _s3_finalize_boundary(self, b, old_first: str, head: str | None = None) -> str | None:
+        """A Stage 3 finalize may continue at a Maintainer-integrated HEAD only while it stopped BEFORE its data commit:
+        every chunk is saved in the local checkpoint, nothing was committed, pushed or opened as a PR, and the owned
+        worktree is clean at the shard's recorded start HEAD. After integration (`head` given), the integration must not
+        have touched the shard's Stage 3 inputs, so the saved chunk judgments still describe exactly the same rows."""
+        wt = Path(b["worktree"])
+        try:
+            if (self.store.get(f"s3_commit_head_{b['id']}") is not None
+                    or self.store.get(f"s3_commit_remote_head_{b['id']}") is not None
+                    or self.store.get(f"s3_finalize_released_head_{b['id']}") is not None
+                    or b["pr_number"] is not None or b["head_sha"] is not None or b["pid"] is not None
+                    or (self.store.get(stage3.mode_key(b["id"])) == stage3.PARALLEL
+                        and self.store.get(stage3.plan_key(b["id"])) != "closed")):
+                return "S3 finalize가 데이터 commit 이전 단계임을 증명할 수 없습니다"
+            checkpoint = refine.ops(b).checkpoint(wt, b["shard"])
+            if (not isinstance(checkpoint, dict) or not checkpoint.get("chunk_total")
+                    or len(checkpoint.get("completed_chunks") or []) != checkpoint["chunk_total"]):
+                return "S3 finalize의 완료된 청크 checkpoint를 확인할 수 없습니다"
+            if (self.sup.git.registered(wt) != b["branch"] or self.sup.git.dirty(wt).strip()
+                    or self.sup.git.remote_head(b["branch"]) is not None or self._workers_running(b)):
+                return "S3 finalize 소유 경계를 증명할 수 없습니다"
+            current = self.sup.git.head(wt)
+            if head is None:
+                return None if current == old_first else "S3 finalize HEAD가 기록된 시작 HEAD가 아닙니다"
+            if current != head:
+                return "S3 finalize 통합 후 HEAD가 변경되었습니다"
+            touched = set(self.sup.git.changed_between(old_first, head)) & self._s3_finalize_inputs(b)
+            if touched:
+                return f"수정 통합이 S3 입력 파일을 바꿔 저장된 판정을 그대로 쓸 수 없습니다: {sorted(touched)}"
+            return None
+        except GitTransient:
+            raise
+        except (KeyError, TypeError, ValueError, OSError, GitError):
+            return "S3 finalize 기준 증거가 손상되었습니다"
 
     def _s3_prepare_boundary(self, d, b, env, head: str | None = None) -> str | None:
         """Only an untouched Stage 3 shard whose parallel plan preparation failed (no baseline, checkpoint, task or
@@ -2436,6 +2483,9 @@ class Maintenance:
         if kind in ("s2_prepare", "s3_prepare"):
             if why := (self._s2_prepare_boundary if kind == "s2_prepare" else self._s3_prepare_boundary)(d, b, env):
                 return self._hold_unprovable(d, b, why)
+        if kind == "s3_finalize":
+            if why := self._s3_finalize_boundary(b, old_first):
+                return self._hold_unprovable(d, b, why)
         finalize_remote = None
         if kind == "s2_finalize":
             # Finalization has no in-flight AI run to retarget. Require its own HEAD, completed
@@ -2498,6 +2548,10 @@ class Maintenance:
                         or self._workers_running(b)):
                     return self._hold_unprovable(d, b, "S2 finalize 통합 후 소유 경계가 변경되었습니다")
                 pairs = [(f"s2_finalize_base_{b['id']}", head)]
+            elif kind == "s3_finalize":
+                if why := self._s3_finalize_boundary(b, old_first, head):
+                    return self._hold_unprovable(d, b, why)
+                pairs = [(f"s3_finalize_released_head_{b['id']}", head)]
             else:
                 moved = self._retargeted_run_start(b, head)
                 if moved is None:
