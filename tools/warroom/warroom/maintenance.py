@@ -2347,11 +2347,8 @@ class Maintenance:
             return sup._stage3_chunk_boundary_problem(b, base)
         return "사전 실행할 guard가 없습니다"
 
-    def _s3_finalize_inputs(self, b) -> set[str]:
-        return {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"}
-
     def _s3_finalize_boundary(self, b, old_first: str, head: str | None = None) -> str | None:
-        """A Stage 3 finalize may continue at a Maintainer-integrated HEAD only while it stopped BEFORE its data commit:
+        """A refinement Stage (S3, S4, ...: one `s3` line, run_kind `s3_finalize`) finalize may continue at a Maintainer-integrated HEAD only while it stopped BEFORE its data commit:
         every chunk is saved in the local checkpoint, nothing was committed, pushed or opened as a PR, and the owned
         worktree is clean at the shard's recorded start HEAD. After integration (`head` given), the integration must not
         have touched the shard's Stage 3 inputs, so the saved chunk judgments still describe exactly the same rows."""
@@ -2376,7 +2373,10 @@ class Maintenance:
                 return None if current == old_first else "S3 finalize HEAD가 기록된 시작 HEAD가 아닙니다"
             if current != head:
                 return "S3 finalize 통합 후 HEAD가 변경되었습니다"
-            touched = set(self.sup.git.changed_between(old_first, head)) & self._s3_finalize_inputs(b)
+            # The Stage's own edit scope is its input: a cross-shard Stage (S4 onward, #9928) judged relations stored in
+            # any shard, so an integration touching ANY shard data file invalidates the saved judgments.
+            changed = set(self.sup.git.changed_between(old_first, head))
+            touched = changed & refine.spec_for(b).scope(b["shard"], changed)
             if touched:
                 return f"수정 통합이 S3 입력 파일을 바꿔 저장된 판정을 그대로 쓸 수 없습니다: {sorted(touched)}"
             return None
