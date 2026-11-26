@@ -35,6 +35,7 @@
     "relation:relink": "node scripts/relation/relink-cli.mjs",
     "relation:polish": "node scripts/relation/polish-cli.mjs",
     "relation:s4": "node scripts/relation/s4-cli.mjs",
+    "relation:select": "node scripts/relation/selection-cli.mjs",
     "relation:replay": "node scripts/relation/replay-cli.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",

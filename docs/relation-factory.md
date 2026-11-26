@@ -342,6 +342,16 @@ node scripts/relation/polish-cli.mjs apply --input edits.json [--dry-run]
   - 지금 반영할 변경의 키별 3-way 확인은 필수다. 그러나 이것은 과거 완료의 재검사와 다르다.
   - 다음 Stage는 Polish가 반영된 **현재 승인 Relations**를 입력으로 읽는다.
 
+### 5-D. 공통 사전 선별 (#10174)
+
+S4(`p`)와 D1(`s`, #10171)이 함께 읽는 Sense별 판정 한 벌. 기준은 #10174 §2, 모델 카드는 `scripts/relation/selection-card.md`.
+
+- **저장:** `data/relation-selection/selection-SSS.jsonl`(001~428). 한 줄 = compact `{"id":"w001-s1","d":"s"}`, `d` ∈ `p`(Polish)·`s`(Skip)·`e`(Exclude). Canonical record/Sense 순서, 모든 Sense 전수. 다른 필드·통계·모델명 없음.
+- **입력/출력 계약:** `pnpm run relation:select view --shard SSS --chunk N`은 샤드 파일 하나만 읽어 record를 나누지 않고(인접 동형어 함께) 뜻풀이 약 12k자 단위로 자른다. 모델 입력은 `<샤드 내 record 번호> <표제어><동형어 번호>`와 Sense별 ` <순번> <품사 약어> <전체 뜻풀이>`이고, Sense ID는 넣지 않는다. 출력은 record마다 `<번호> <p|s|e 문자열>` 한 줄(글자 수 = Sense 수).
+- **결합:** `save --shard SSS --dir <답변>`은 같은 샤드 파일·같은 청크 함수로 얻은 **동일한 record 배열**에서 record 번호 n, 글자 k를 `records[n-1].senses[k-1].id`에 결합한다. 순서 재구성·ID 추정·해시·원장 없음. 모든 청크가 유효할 때만 1회 쓴다.
+- **확인:** `check --shard SSS[-SSS]`는 정확한 Sense ID·중복·누락·필드 `id`,`d`·값·Canonical 순서만 보고 `p/s/e` 수를 낸다.
+- **실행:** `node scripts/relation/selection-run.mjs --shards A-B --effort <오너 프로필> [--jobs N] [--model opus]`. 청크마다 답변 전용 `claude -p` 1회(`--tools ""`, 지원 시 `--strict-mcp-config`·`--disable-slash-commands`, API 키가 이미 있을 때만 `--bare`, 카드는 `--system-prompt`). 정상 답변은 보존되어 재실행 시 미완료 청크만 돈다. 번호·글자 수 오류가 있는 실제 판정만 같은 세션에서 1회 형식 교정한다. 거부·기술 실패·판정 없는 자유문은 각각 기록하고 그 샤드를 저장하지 않는다(`s`/`e`로 채우지 않음). usage는 최종 `result`만, `tools/warroom/warroom/usage.py`와 같은 의미로 기록한다.
+
 ## 6. Build와 검증 경계
 
 `pnpm run build`는 **Canonical JSONL + 승인된 Relations JSONL**을 읽어 Full/Lite SQLite를 결정적으로 생성한다. **Candidate 파일을 직접 읽어 DB를 만들지 않는다.** STDICT 원본 및 공식 `direct/antonym`은 보존하고, text-only/양방향 관계/방향별 Tier/UI 그룹·정렬을 공통 검증한다.
