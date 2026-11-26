@@ -40,7 +40,7 @@ from .gitops import GitError, GitTransient
 from .launch_gate import LaunchDenied, task_launch_scope
 from .github import GhTransient
 from .stage3 import Stage3Error
-from .store import STAGE3_METHOD
+from .store import REFINE_METHODS, STAGE3_METHOD
 
 RUN_KIND = "s3_parallel"
 RUN_RECORD_KIND = "s3_chunk_new"
@@ -65,7 +65,7 @@ def record_task(chunk: str, record: str) -> str:
 
 
 def is_parallel(store, b) -> bool:
-    return b["method"] == STAGE3_METHOD and store.get(stage3.mode_key(b["id"])) == stage3.PARALLEL
+    return b["method"] in REFINE_METHODS and store.get(stage3.mode_key(b["id"])) == stage3.PARALLEL
 
 
 def plan_state(store, b) -> str | None:

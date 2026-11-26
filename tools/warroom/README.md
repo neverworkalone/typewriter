@@ -41,7 +41,7 @@ Stage 3는 `b.method='s3'`로 바꿔 shard 단위로 조회합니다. 과거 Sta
 
 설정 변경은 `tools/warroom/.local/config.json` 수정 후 TUI의 `r`로 리로드합니다. 기존 AI run의 프로필·세션은 바뀌지 않습니다. 새 모델에 따른 TUI 열 구성은 TUI를 다시 열어야 반영될 수 있습니다.
 
-지원 adapter는 `claude`와 `codex`뿐이며 단계별 프로필은 `assignments.stage2`, 등록된 정제 Stage마다 `assignments.<role>`(현재 `assignments.stage3`, `assignments.stage4`) 및 `maintainer`로 지정합니다(`tools/warroom/config.example.json`). 정제 Stage는 **자기 role의 배정만** 사용합니다. 배정이 없으면 다른 Stage 프로필이나 producer 직접 핀으로 대신하지 않고, 그 Stage의 샤드 선정 시점에 정제 라인만 `BLOCKED`(사유 `assignments.<role>`)로 멈춥니다. Stage 2와 Maintainer는 계속 동작합니다. 이전 Stage 1·DeepSeek/OpenCode 설정(`methods`, `assignments.stage1*`, `adapter: "opencode"`인 모델·프로필, `opencode_bin`, `free_model_pattern`, 인덱스 경로 등)이 남아 있으면 기동과 리로드 때 경고만 남기고 무시합니다. 그 밖의 잘못된 값(알 수 없는 adapter, 오타, 없는 프로필 참조)은 이전처럼 거부합니다. **설정 리로드는 Python 코드 재시작이 아닙니다.**
+지원 adapter는 `claude`와 `codex`뿐이며 단계별 프로필은 `assignments.stage2`, 등록된 정제 Stage마다 `assignments.<role>`(현재 `assignments.stage3`, `assignments.stage4`, Drop 라인의 `assignments.d1`) 및 `maintainer`로 지정합니다(`tools/warroom/config.example.json`). 정제 Stage는 **자기 role의 배정만** 사용합니다. 배정이 없으면 다른 Stage 프로필이나 producer 직접 핀으로 대신하지 않고, 그 Stage의 샤드 선정 시점에 정제 라인만 `BLOCKED`(사유 `assignments.<role>`)로 멈춥니다. Stage 2와 Maintainer는 계속 동작합니다. 이전 Stage 1·DeepSeek/OpenCode 설정(`methods`, `assignments.stage1*`, `adapter: "opencode"`인 모델·프로필, `opencode_bin`, `free_model_pattern`, 인덱스 경로 등)이 남아 있으면 기동과 리로드 때 경고만 남기고 무시합니다. 그 밖의 잘못된 값(알 수 없는 adapter, 오타, 없는 프로필 참조)은 이전처럼 거부합니다. **설정 리로드는 Python 코드 재시작이 아닙니다.**
 
 ### 설정 전환 (#9934)
 
@@ -57,6 +57,18 @@ Stage 3는 `b.method='s3'`로 바꿔 shard 단위로 조회합니다. 과거 Sta
 2. 등록 진입점 `tools/warroom/warroom/refine.py`의 `STAGE_MODULES`에 모듈 이름을 실행 순서대로 한 줄 추가합니다(예: `("stage3", "<name>")`). 자동 탐색은 없습니다.
 3. 프롬프트 `tools/warroom/prompts/<chunk_prompt>.md`·`<fix_prompt>.md`·`<policy_card>.md`와, `scripts/relation/refine/core.mjs` 기반 Stage CLI(`prepare`·`read-chunk`·`save-chunk`·`apply`·`report`·`amend`)를 둡니다.
 4. 운영 설정에 `assignments.<role>`을 추가합니다.
+
+### Drop 라인 — D1 운영 설정 (#10171)
+
+D1(확정 Skip Sense 전체 Drop)은 정제 엔진의 **두 번째 라인**(`DROP_METHOD = "drop"`, Board의 Refinement 아래 `Drop` 칸)에서 돕니다(`stage_d1.py`, CLI `scripts/relation/d1-cli.mjs`, 프롬프트 `d1_chunk`·`d1_fix`·`d1_policy_card`, 범주 카드는 공통 `whole_drop_card`). 병렬 청크·최종화·Review FIXING·replay는 Refinement 라인과 같은 엔진이며, 생산 지시는 #10171, 리뷰 경계는 #10274(`docs/review/prompts/d1.md`)입니다.
+
+- **착수:** 001–428 전체의 Stage 3 완료 기록(`s3_ok_SSS`)이 있어야 시작합니다. 같은 샤드의 S4 선행은 요구하지 않습니다. 배정은 `assignments.d1`이며 모델·effort는 오너가 지정합니다(예: `"assignments": { "d1": { "codex": "sol" } }`).
+- **병행과 점유:** Drop 라인은 자기 라인 안에서만 한 번에 한 샤드를 점유합니다. Refinement 라인(S4)의 배치·PR은 Drop 라인을 막지 않고, 반대도 같습니다. 정상적인 다른 라인의 Relation 전용 PR(제목·이슈 링크·Relation 파일만)은 점유로 보지 않으며, 실제 키 충돌은 `replay-cli --relations-only`가 처리합니다. 같은 라인의 열린 생산 PR은 로컬 배치가 없어도 그 샤드를 점유합니다. 파일 목록을 알 수 없는 PR은 점유 없음으로 처리하지 않습니다.
+- **열린 PR 조회:** `open_prs()`는 PR 메타데이터만 가져오고, 파일 목록은 점유 판단에 필요할 때 PR마다 한 번 페이지 단위로 조회합니다. 조회 실패는 그 PR 번호와 함께 오류로 남습니다.
+- **판정 보존과 verify:** D1 CLI는 apply 뒤에도 checkpoint와 view를 배치 worktree에 남깁니다. 최종화·리뷰 수정·replay 뒤의 exact-commit verify는 `d1-cli verify --shard SSS --base <merge-base> --judgments <배치 worktree>`로, D Sense의 관계가 빠짐없이 지워졌고 그 밖의 변경이 없는지만 봅니다.
+- **무변경 샤드:** 지울 관계가 없으면 `d1_nochange_SSS`·`d1_ok_SSS`를 기록하고 commit·PR 없이 정리합니다.
+- **PR:** 제목 `[D1/<Model>] SSS`, 본문 `Refs #10171`. 본문은 apply 결과의 판정 집계(검토 Sense, D/N/H/Policy Skip, 범주별 D), 삭제한 고유 관계 수, 변경 파일·샤드 수, 비용을 씁니다.
+- **리뷰 수정:** 리뷰가 지목한 Sense의 보존 판정(과 그 base 관계)만 PR context로 줍니다. 수정은 `d1-cli amend`의 `D <sense_id> <1-11>` / `N` / `H`입니다.
 
 ### Stage 4 운영 설정 (#9928, #9929)
 

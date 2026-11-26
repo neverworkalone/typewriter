@@ -38,7 +38,7 @@ from .lanes import Lanes
 from .launch_gate import LaunchDenied, LaunchGate
 from . import maintenance as maint_results
 from .maintenance import Maintenance
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
+from .store import DROP_METHOD, MAINTENANCE_METHOD, STAGE2_METHOD, REFINE_METHODS, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
 
 
 # A failed *query* asking again can fix. It is never a verdict: callers re-raise it past every broad `except`.
@@ -671,7 +671,7 @@ class Supervisor:
 
     def _saved_chunk_for_run(self, b) -> bool:
         """Exact active-chunk evidence for output-producing exits, bound to this run's start baseline."""
-        if b["method"] == STAGE3_METHOD and str(b["run_kind"] or "").startswith("s3_chunk_"):
+        if b["method"] in REFINE_METHODS and str(b["run_kind"] or "").startswith("s3_chunk_"):
             return self._stage3_chunk_saved(b)
         if self._s2_chunk_run(b):
             return self._stage2_chunk_saved(b)
@@ -683,7 +683,7 @@ class Supervisor:
                                           b["worktree"], self.env)
 
     def _stage3_chunk_run(self, b) -> bool:
-        return b["method"] == STAGE3_METHOD and isinstance(b["run_kind"], str) \
+        return b["method"] in REFINE_METHODS and isinstance(b["run_kind"], str) \
             and b["run_kind"].startswith("s3_chunk_")
 
     def _stage3_answer_only(self, b) -> bool:
@@ -1104,7 +1104,7 @@ class Supervisor:
             raise RecoveryBlocked(f"PR #{number}의 head 브랜치가 배치 소유 브랜치와 다릅니다")
         if b["method"] != MAINTENANCE_METHOD:
             files = self.gh.pull_files(number)
-            if b["method"] == STAGE3_METHOD:
+            if b["method"] in REFINE_METHODS:
                 try:
                     shard = refine.ops(b).validate_pr(info, files)
                 except stage3.Stage3Error as error:
@@ -1115,7 +1115,7 @@ class Supervisor:
             expected = batches.expected_claim(b)
             # A no-op Stage 3 PR has no files; a cross-shard Stage's PR claims every shard it edits (#9928), its
             # scope already proven by `validate_pr` above.
-            stage3_empty_diff = b["method"] == STAGE3_METHOD and (files == [] or refine.spec_for(b).cross_shard)
+            stage3_empty_diff = b["method"] in REFINE_METHODS and (files == [] or refine.spec_for(b).cross_shard)
             foreign_stage2 = b["method"] == STAGE2_METHOD and candidates.count(expected) == 1 and len(candidates) > 1
             if foreign_stage2:
                 self._stage2_foreign_paths(b, info, files)
@@ -1302,7 +1302,7 @@ class Supervisor:
             return self._blocked(ln, "시작 차단: " + registry_problems(self.cfg)[model])
         if method == STAGE2_METHOD and (why := stage2_problem(self.cfg, model)):   # fail closed here too, not only in Start
             return self._blocked(ln, "시작 차단: " + why)
-        if method == STAGE3_METHOD and (why := refine_problem(self.cfg, model)):
+        if method in REFINE_METHODS and (why := refine_problem(self.cfg, model)):
             return self._blocked(ln, "시작 차단: " + why)
         # The Stage 2 profile is proven here; a refinement shard's Stage (and so its `assignments.<role>`) is known only
         # once it is selected, and is proven there before any batch exists.
@@ -1328,7 +1328,7 @@ class Supervisor:
             return   # STOPPING landed while this Line was being checked: no Git work and no claim start after it
         if method == STAGE2_METHOD:
             return self._prepare_new_stage2(ln)
-        if method == STAGE3_METHOD:
+        if method in REFINE_METHODS:
             return self._prepare_new_stage3(ln)
         return self._blocked(ln, f"시작 차단: 지원하지 않는 Line {method!r} (#9933)")
 
@@ -1337,24 +1337,26 @@ class Supervisor:
 
         Refinement Stages (S3, then S4, ...) share this line and run in order: a Stage starts only once every shard of
         the Stage before it is done, and each shard is gated on the previous Stage exactly as Stage 3 is on Stage 2."""
-        model, method = ln["model"], STAGE3_METHOD
+        # The Drop line (D1, ... #10171) is a second line of the same engine: it selects among its own Stages and sees
+        # only its own batches, so it runs beside the Refinement line.
+        model, method = ln["model"], ln["method"]
         base, line = self.cfg["base_branch"], f"{model}/{method}"
         key = f"line:{model}:{method}:prepare"
-        wait_key, poll_key = f"s3_wait_{model}", f"s3_poll_{model}"
+        wait_key, poll_key = f"{method}_wait_{model}", f"{method}_poll_{model}"
         if self.store.get(wait_key) and self.clock() - float(self.store.get(poll_key, "0")) < self.cfg["poll_seconds"]:
             return
         if not self._transient_due(key):
             return
         all_batches = self.store.all_batches()
-        s3_batches = [b for b in all_batches if b["method"] == STAGE3_METHOD]
+        s3_batches = [b for b in all_batches if b["method"] == method]   # this line's batches only
         occupied = next((b for b in s3_batches if b["state"] != "COMPLETE"), None)
-        spec = refine.spec_for(occupied) if occupied else refine.stages()[0]
+        spec = refine.spec_for(occupied) if occupied else refine.stages(method)[0]
         try:
             if occupied:
                 choice = refine.Choice("wait", note=f"{spec.label} 샤드 {occupied['shard']} 작업 점유")
             else:
                 sha = None
-                for spec in refine.stages():
+                for spec in refine.stages(method):
                     latest = self.gh.latest_refine_production(base, spec)
                     sha = sha or self.git.fetch_base(base)
                     if latest and not self.git.is_ancestor(latest["merge_commit_sha"], sha):
@@ -1492,7 +1494,7 @@ class Supervisor:
         """(the RunSpec this batch's next session runs with, why it must not start). The one resolution every launch
         path (serial, review FIXING, Retry/Resume, parallel chunks) uses: the batch's own Stage role (`role_for`),
         proven by preflight on exactly the returned RunSpec, which is then the one spawned."""
-        if b["method"] == STAGE3_METHOD and (problem := refine_problem(self.cfg, b["producer"])):
+        if b["method"] in REFINE_METHODS and (problem := refine_problem(self.cfg, b["producer"])):
             return None, problem
         try:
             run = self._run(b)
@@ -1515,7 +1517,7 @@ class Supervisor:
             env["WARROOM_STAGE2_REPAIR"] = "1"
         # Chunk runs suppress auto-loaded AGENTS.md and web lookup. Execution rules stay adapter-specific; Codex keeps
         # the operator's configured permission profile, while answer-only results are judged by their output contract.
-        if (b["method"] in (STAGE2_METHOD, STAGE3_METHOD) and isinstance(kind, str) and
+        if (b["method"] in (STAGE2_METHOD, *REFINE_METHODS) and isinstance(kind, str) and
                 kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "s3_chunk_"))):
             env["WARROOM_STAGE2_CHUNK"] = "1"
             git_executables = set()
@@ -1557,7 +1559,7 @@ class Supervisor:
             if self._stage2_reconcile_task(b):
                 return self._stage2_reconcile_finalize(b)
             return self._launch_stage2_next(b)
-        if b["method"] == STAGE3_METHOD:
+        if b["method"] in REFINE_METHODS:
             return self._launch_stage3_next(b)
         self._launch(b, "produce")
 
@@ -1839,8 +1841,10 @@ class Supervisor:
             return (lambda: self.git.verify_stage2_outcome(head, "shard", b["shard"], None, None),
                     f"node scripts/relation/admission-cli.mjs verify --shard {b['shard']} --json")
         base = self.git.merge_base(Path(b["worktree"]), head, f"origin/{self.cfg['base_branch']}")
-        return (lambda: self.git.verify_refine_outcome(head, spec.cli, b["shard"], base),
-                f"node {spec.cli} verify --shard {b['shard']} --base {base}")
+        judgments = Path(b["worktree"]) if spec.verify_judgments else None   # D1: its kept judgments (#10171)
+        return (lambda: self.git.verify_refine_outcome(head, spec.cli, b["shard"], base, judgments=judgments),
+                f"node {spec.cli} verify --shard {b['shard']} --base {base}"
+                + (f" --judgments {judgments}" if judgments else ""))
 
     def _refine_verify(self, b, head: str) -> tuple[bool, str]:
         """(ok, tail) of the exact-commit verify: Stage 3 keeps its shard `verify_stage2`."""
@@ -1862,7 +1866,7 @@ class Supervisor:
             raise GitError(verify)
         self.store.set(spec.nochange_key(b["shard"]), head)
         self.store.set(spec.ok_key(b["shard"]), head)
-        self.store.log(b["id"], f"{self._stage(b)} 샤드 {b['shard']} 무변경 완료: {prbody.stage4_sense_summary(result)}, "
+        self.store.log(b["id"], f"{self._stage(b)} 샤드 {b['shard']} 무변경 완료: {(prbody.d1_sense_summary if spec.method == DROP_METHOD else prbody.stage4_sense_summary)(result)}, "
                        f"비용 {prbody.run_cost(self.store.runs(b['id'])) or '미측정'}. commit·PR 없이 정리합니다.")
         self.store.update(b["id"], state="CLEANUP", run_kind=None, pid=None)
 
@@ -2003,7 +2007,7 @@ class Supervisor:
             if remote != head:
                 raise GitError(f"push 뒤 {self._stage(b)} 원격 HEAD가 다릅니다 ({remote} / {head})")
             open_prs = self.gh.open_prs()
-            occupied = set().union(*(batches.pr_stage3_shards(pr) for pr in open_prs)) if open_prs else set()
+            occupied = set().union(*(batches.pr_line_shards(pr, b["method"]) for pr in open_prs)) if open_prs else set()
             if b["shard"] in occupied:
                 raise stage3.Stage3Error(f"샤드 {b['shard']} Relation/Drop을 점유한 다른 PR이 열려 있습니다")
             info = self._find_recovery_pr(b)
@@ -2063,7 +2067,7 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        if b["method"] == STAGE3_METHOD and kind.endswith("_resume"):
+        if b["method"] in REFINE_METHODS and kind.endswith("_resume"):
             recorded = self._recorded_run(b)
             stage = refine.spec_for(b).label
             if recorded is None:
@@ -2079,10 +2083,10 @@ class Supervisor:
                     f"permission_profile={run.permission_profile or '(기본)'}, fast={run.fast}). "
                     "worktree와 세션을 보존합니다.",
                 )
-        if kind.startswith("fix") and b["method"] in (STAGE3_METHOD, MAINTENANCE_METHOD) and not events:
+        if kind.startswith("fix") and b["method"] in (*REFINE_METHODS, MAINTENANCE_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven), on exactly the RunSpec it spawns.
-        if b["method"] == STAGE3_METHOD and (problem := refine_problem(self.cfg, b["producer"])):
+        if b["method"] in REFINE_METHODS and (problem := refine_problem(self.cfg, b["producer"])):
             return self._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
         problem = self._preflight_run(b["producer"], run)
         if problem and problem.startswith(PREFLIGHT_PENDING):
@@ -2125,7 +2129,7 @@ class Supervisor:
             remote = "?"
             if isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "s3_chunk_")):
                 remote = self.git.remote_head(b["branch"])   # the one remote read, before any view/page/decision write
-            if b["method"] == STAGE3_METHOD and kind.startswith("s3_chunk_"):
+            if b["method"] in REFINE_METHODS and kind.startswith("s3_chunk_"):
                 checkpoint = refine.ops(b).checkpoint(wt, b["shard"])
                 if checkpoint is None:
                     checkpoint = refine.ops(b).prepare(self.runner, run_env, wt, b["shard"])
@@ -2312,7 +2316,7 @@ class Supervisor:
             else:  # fix_new
                 context = ""
                 checkpoint = None
-                if b["method"] == STAGE3_METHOD:
+                if b["method"] in REFINE_METHODS:
                     head = self.git.head(Path(wt))
                     base = self.git.merge_base(Path(wt), head, f"origin/{self.cfg['base_branch']}")
                     context = self._s3_fix_context(b, events or [], base, head)
@@ -2377,7 +2381,7 @@ class Supervisor:
             keys = [e["key"] for e in events]
             if preclaimed_run_id is not None:
                 pass  # Maintainer assignment was durably recorded before starting the process.
-            elif b["method"] == STAGE3_METHOD and kind.startswith("fix"):
+            elif b["method"] in REFINE_METHODS and kind.startswith("fix"):
                 self.store.claim_events(b["id"], b["pr_number"], b["head_sha"], keys, run_id)
                 self.store.set(f"fix_claim_{b['id']}", json.dumps({
                     "pr": b["pr_number"], "head_sha": b["head_sha"], "event_keys": keys,
@@ -2454,10 +2458,10 @@ class Supervisor:
     def _relaunch_do(self, b) -> None:
         if self._retry_denied_success(b):
             return
-        if b["method"] == STAGE3_METHOD and not b["pr_number"] and s3parallel.is_parallel(self.store, b) \
+        if b["method"] in REFINE_METHODS and not b["pr_number"] and s3parallel.is_parallel(self.store, b) \
                 and b["run_kind"] in ("s3_chunk_new", s3parallel.RUN_KIND):
             return self._launch_stage3_next(b)   # a parallel shard never takes the serial chunk relaunch (#3149)
-        if b["method"] == STAGE3_METHOD and not b["pr_number"]:
+        if b["method"] in REFINE_METHODS and not b["pr_number"]:
             if b["run_kind"] == "s3_finalize":
                 self.maint.adopt_released_baseline(b)
                 return self._stage3_finalize(b)
@@ -2573,7 +2577,7 @@ class Supervisor:
             if b["method"] == STAGE2_METHOD and self._verified_fix_exit(b) and \
                     (baseline := self._stage2_supervised_fix(b)) is not None and self._stage2_apply_fix(b, baseline):
                 return   # resumed the Supervisor's own idempotent application
-            if b["method"] == STAGE3_METHOD and self._verified_fix_exit(b) and \
+            if b["method"] in REFINE_METHODS and self._verified_fix_exit(b) and \
                     (baseline := self._refine_fix(b).baseline(b)) is not None and self._refine_fix(b).apply(b, baseline):
                 return
             if self._verified_fix_exit(b):
@@ -2589,7 +2593,7 @@ class Supervisor:
                         if problem := self._stage2_fix_result_problem(b, info):
                             return self._fail(b, "ERROR", problem)
                         self.store.delete(f"s2_fix_start_{b['id']}")
-                    elif b["method"] == STAGE3_METHOD:
+                    elif b["method"] in REFINE_METHODS:
                         if problem := self._stage3_fix_completion_problem(b, info):
                             return self._fail(b, "ERROR", problem)
                     elif b["method"] == MAINTENANCE_METHOD:
@@ -2607,7 +2611,7 @@ class Supervisor:
                                                  + self._maintainer_run_facts(b), "fix")
             if b["method"] == STAGE2_METHOD and b["run_kind"] == "fix_resume" and self.store.get(f"s2_unpushed_fix_resume_{b['id']}"):
                 return self._fail(b, "ERROR", "Stage 2 리뷰 수정 재개 결과가 확인되지 않아 새 세션을 시작하지 않습니다. worktree와 PR을 보존합니다.")
-            if b["method"] == STAGE3_METHOD:
+            if b["method"] in REFINE_METHODS:
                 return self._retry_producer_fix(b)
             return self._launch(b, self._fix_kind(b), self._events(b)[1])
         if not b["pr_number"]:
@@ -2952,7 +2956,7 @@ class Supervisor:
 
     def _task_report_files(self, b) -> list[str]:
         """Worktree-relative shared-defect report path of every task of a parallel Stage 2 Part."""
-        if b["method"] == STAGE3_METHOD:
+        if b["method"] in REFINE_METHODS:
             return []   # answer-only chunks: no per-task shared-defect file (#3149)
         return [stage2.task_path(row["task"], "shared-defect.json") for row in self.store.task_rows(b["id"])]
 
@@ -3023,7 +3027,7 @@ class Supervisor:
 
     def _record_progress(self, b) -> None:
         """Observed progress of the current worktree only: Stage 3 checkpoint chunks or Stage 2 saved candidates."""
-        if b["method"] == STAGE3_METHOD:
+        if b["method"] in REFINE_METHODS:
             try:
                 done, total = stage3.progress(refine.ops(b).checkpoint(b["worktree"], b["shard"]))
             except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):
@@ -3048,7 +3052,7 @@ class Supervisor:
         if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
             return self._run_ok_stage2_chunk(b)
-        if b["method"] == STAGE3_METHOD and b["state"] == "PRODUCING" and \
+        if b["method"] in REFINE_METHODS and b["state"] == "PRODUCING" and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s3_chunk_"):
             return self._run_ok_stage3_chunk(b)
         if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and b["run_kind"] in ("s2_links_new", "s2_links_fix"):
@@ -3058,7 +3062,7 @@ class Supervisor:
         if b["state"] == "FIXING" and b["method"] == STAGE2_METHOD and \
                 (baseline := self._stage2_supervised_fix(b)) is not None and self._stage2_apply_fix(b, baseline):
             return
-        if b["state"] == "FIXING" and b["method"] == STAGE3_METHOD and \
+        if b["state"] == "FIXING" and b["method"] in REFINE_METHODS and \
                 (baseline := self._refine_fix(b).baseline(b)) is not None and self._refine_fix(b).apply(b, baseline):
             return
         try:
@@ -3104,7 +3108,7 @@ class Supervisor:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)
                 self.store.delete(f"s2_fix_start_{b['id']}")
-            elif b["method"] == STAGE3_METHOD:
+            elif b["method"] in REFINE_METHODS:
                 if problem := self._stage3_fix_completion_problem(b, info):
                     return self._fail(b, "ERROR", problem)
             elif info["head_sha"] == b["head_sha"]:
@@ -3236,6 +3240,20 @@ class Supervisor:
             # the review events stay unanswered (#6599 review).
             raise prompts.PromptError(f"{self._stage(b)} 리뷰 수정 PR context(edit-cli decisions)를 만들지 못했습니다: {e}. "
                                       "PR과 리뷰 이벤트를 보존합니다") from e
+        if isinstance(listed.get("senses"), dict) and refine.spec_for(b).verify_judgments:
+            # D1 (#10171): the PR is its kept Sense verdicts. Show those of the named Senses (with their base Relations),
+            # or only the verdict counts when the review names none; never the whole verdict list or Relation diff.
+            verdicts = [row for row in listed["decisions"] if row.get("sense") in set(named)]
+            lines = [f"base {base}; PR HEAD {head}; verdicts {json.dumps(listed['senses'], ensure_ascii=False)}; "
+                     f"this PR removes {listed.get('removed_relations')} relations in {len(listed.get('changed_files') or [])} files."]
+            if named:
+                lines.append(f"Verdicts of the named Senses {', '.join(named)}:")
+                lines += [json.dumps(row, ensure_ascii=False, separators=(",", ":")) for row in verdicts]
+                rows = listed.get("rows") or []
+                if rows:
+                    lines.append(f"Their base Relations with this PR's drop/keep{f' (first {S3_FIX_CONTEXT_ROWS} of {len(rows)})' if len(rows) > S3_FIX_CONTEXT_ROWS else ''}:")
+                    lines += [json.dumps(row, ensure_ascii=False, separators=(",", ":")) for row in rows[:S3_FIX_CONTEXT_ROWS]]
+            return "\n".join(lines)
         rows = listed.get("rows") or []
         scope = f"every base row of the named Senses {', '.join(named)}"
         if not rows:
@@ -7178,7 +7196,7 @@ class Supervisor:
 
     def _fix_kind(self, b) -> str:
         """Stage 2/3 review fixes start a bounded fresh session; the Maintainer resumes its own session when it has one."""
-        if b["method"] in (STAGE2_METHOD, STAGE3_METHOD):
+        if b["method"] in (STAGE2_METHOD, *REFINE_METHODS):
             return "fix_new"
         return "fix_resume" if b["session_id"] else "fix_new"
 
@@ -7457,7 +7475,7 @@ class Supervisor:
                 if not protected:
                     raise FastForwardBlocked(f"PR #{info['number']}에 보호할 Stage 2 산출물이 없습니다")
                 return protected
-            if b["method"] == STAGE3_METHOD:
+            if b["method"] in REFINE_METHODS:
                 claim = batches.expected_claim(b)
                 found = batches.pr_claims(b, {"number": info["number"], "files": files})
                 expected = [] if not files else [claim]
@@ -7687,7 +7705,7 @@ class Supervisor:
                         and self._stage2_record_fix_reply(b, supervised, info["head_sha"])):
                     return self._fail(b, "ERROR", problem)
                 self.store.delete(f"s2_fix_start_{b['id']}")
-            elif b["method"] == STAGE3_METHOD:
+            elif b["method"] in REFINE_METHODS:
                 if problem := self._stage3_fix_completion_problem(b, info):
                     return self._fail(b, "ERROR", problem)
             self._to_review(b, info)
@@ -7990,7 +8008,7 @@ class Supervisor:
                     synced = True
                     continue   # re-read PR HEAD and review events after the FF; never act on a stale snapshot
                 self._transient_clear(f"b{b['id']}:branch_sync", b["id"])
-                if b["method"] in (STAGE3_METHOD, MAINTENANCE_METHOD) and not live:
+                if b["method"] in (*REFINE_METHODS, MAINTENANCE_METHOD) and not live:
                     # Older versions marked an event handled when the fix process STARTED, not when the
                     # reply was confirmed. A safe Update branch can return that failed run to REVIEW.
                     # Likewise, a stranded CLAIMED event must not launch again without operator Retry.
@@ -8047,7 +8065,7 @@ class Supervisor:
                             self._clear_dead_amend_lock(b)
                         self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
                         self._launch(b, self._fix_kind(b), fresh)
-                elif (b["method"] in (STAGE2_METHOD, STAGE3_METHOD) and not live and info.get("mergeable") is False
+                elif (b["method"] in (STAGE2_METHOD, *REFINE_METHODS) and not live and info.get("mergeable") is False
                       and not (b["method"] == STAGE2_METHOD and self._stage2_reconcile_task(b))):
                     self._replay_relation_pr(b, info)
                 return
@@ -8081,13 +8099,13 @@ class Supervisor:
             self.store.set(key, attempt)
             owned = (refine.spec_for(b).scope(b["shard"], {f.get("path") for f in self.gh.pull_files(number)}
                                               if refine.spec_for(b).cross_shard else ())
-                     if b["method"] == STAGE3_METHOD else
+                     if b["method"] in REFINE_METHODS else
                      {f"data/relations/relation-{b['shard']}.jsonl", f"data/relation-drops/drop-{b['shard']}.jsonl"})
             checkpoint = None
             if b["method"] == STAGE2_METHOD:
                 bb, pp = stage2.split_key(b["batch"])
                 checkpoint = f".warroom-scratch/relation-admission-{b['shard']}-{bb}-{pp}.json"
-            relations_only = b["method"] == STAGE3_METHOD and refine.spec_for(b).relations_only   # #9929
+            relations_only = b["method"] in REFINE_METHODS and refine.spec_for(b).relations_only   # #9929
             new_head, report = self.git.replay_relation_merge(wt, b["branch"], base_ref, base_sha, owned, checkpoint,
                                                               relations_only=relations_only)
             if b["method"] == STAGE2_METHOD:
@@ -8203,7 +8221,7 @@ class Supervisor:
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])
             return self.store.log(b["id"], "남은 AI 프로세스 정지 요청, 종료 확인 대기")
-        if b["method"] == STAGE3_METHOD and not b["pr_number"]:
+        if b["method"] in REFINE_METHODS and not b["pr_number"]:
             return self._cleanup_no_change(b, key)
         try:
             info = self.gh.pull(b["pr_number"])
@@ -8213,7 +8231,7 @@ class Supervisor:
                 return self._fail(b, "ERROR", "merged=true 아님 — 정리하지 않음")
             if b["method"] == STAGE2_METHOD and not self._stage2_merged_verify(b, info):
                 return
-            if b["method"] == STAGE3_METHOD:
+            if b["method"] in REFINE_METHODS:
                 try:
                     if refine.ops(b).validate_pr(info, self.gh.pull_files(b["pr_number"])) != b["shard"]:
                         return self._fail(b, "ERROR", f"머지 {self._stage(b)} PR 파일 범위가 소유 샤드와 다릅니다. worktree를 보존합니다.")
@@ -8285,7 +8303,7 @@ class Supervisor:
             self.store.delete(f"s2_reconcile_commit_{b['id']}")
             self.store.delete(f"s2_relation_change_point_{b['id']}")
             self.store.delete(f"s2_stage3_change_point_{b['id']}")
-        if b["method"] == STAGE3_METHOD:
+        if b["method"] in REFINE_METHODS:
             self.store.delete(stage3.run_start_key(b["id"]))
             self.store.delete(f"s3_apply_ready_{b['id']}")
             self.store.delete(f"s3_apply_result_{b['id']}")

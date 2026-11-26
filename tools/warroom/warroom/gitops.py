@@ -1780,14 +1780,18 @@ class Git:
         return res.ok, tail
 
     @_locked("verify_lock")
-    def verify_refine_outcome(self, sha: str, cli: str, shard: str, base: str, timeout: int = 1800) -> VerifyOutcome:
+    def verify_refine_outcome(self, sha: str, cli: str, shard: str, base: str, timeout: int = 1800,
+                              judgments: Path | None = None) -> VerifyOutcome:
         """A cross-shard refinement PR (#9928): its Stage CLI `verify` runs the official whole-shard admission verify over
         every shard its base..`sha` edits affect, in one run, on the exact commit. Same failure contract as
         `verify_stage2_outcome`."""
         if not re.fullmatch(r"\d{3}", shard or "") or not re.fullmatch(r"[a-f0-9]{40}", base or ""):
             raise GitError(f"잘못된 정제 verify 범위: {shard} {base}")
         path = self._verify_checkout(sha)
-        res = self.r.run(["node", cli, "verify", "--shard", shard, "--base", base], cwd=path, env=self.env, timeout=timeout)
+        # D1 (#10171): the verify checkout has no scratch; the kept judgments are read from the batch worktree.
+        extra = ["--judgments", str(self._owned(judgments))] if judgments is not None else []
+        res = self.r.run(["node", cli, "verify", "--shard", shard, "--base", base, *extra], cwd=path, env=self.env,
+                         timeout=timeout)
         if res.ok:
             return VerifyOutcome(True, "", code=res.code)
         failure = parse_verify_failure(res.code, res.out)

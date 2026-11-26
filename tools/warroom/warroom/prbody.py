@@ -15,6 +15,9 @@ S3_TITLE = re.compile(r"^(?:\[Relation Stage 3\]|\[S3/[^\]/\s]+\]) (\d{3})$")
 S4_ISSUE = 9929   # the Stage 4 standing production Issue (#9928 implements it)
 S4_TITLE = re.compile(r"^\[S4/[^\]/\s]+\] (\d{3})$")
 S4_ISSUE_LINK = re.compile(rf"(?:#{S4_ISSUE}|issues/{S4_ISSUE})(?!\d)")
+D1_ISSUE = 10171   # the D1 standing production Issue: whole Drop of confirmed Skip Senses
+D1_TITLE = re.compile(r"^\[D1/[^\]/\s]+\] (\d{3})$")
+D1_ISSUE_LINK = re.compile(rf"(?:#{D1_ISSUE}|issues/{D1_ISSUE})(?!\d)")
 S3_ISSUE_LINK = re.compile(rf"(?:#(?:{S3_ISSUE}|{S3_LEGACY_ISSUE})|issues/(?:{S3_ISSUE}|{S3_LEGACY_ISSUE}))(?!\d)")
 
 _COUNT_KEYS = ("unique", "skipped_existing", "reverse_covered", "merged_duplicates", "raw", "missing")
@@ -172,3 +175,37 @@ def stage4_body(model: str, shard: str, *, result: dict, cost: str | None = None
     if cost:
         lines.append(f"- Token Cost / Duration: {cost}")
     return "\n".join(lines + ["", f"Refs #{S4_ISSUE}"]) + "\n"
+
+
+def d1_sense_summary(result: dict) -> str:
+    """The D1 judgment counts of an apply result (#10171): judged `s` Senses and their verdicts."""
+    senses = result.get("senses") if isinstance(result.get("senses"), dict) else {}
+    return (f"Skip Senses: {_n(_count(senses.get('skip_senses')))} (judged {_n(_count(senses.get('judged')))}, "
+            f"no Relation {_n(_count(senses.get('no_relations')))}; D {_n(_count(senses.get('dropped')))}, "
+            f"N {_n(_count(senses.get('not_target')))}, H {_n(_count(senses.get('held')))}, "
+            f"Policy Skip {_n(_count(senses.get('policy_skipped')))})")
+
+
+def d1_body(model: str, shard: str, *, result: dict, cost: str | None = None) -> str:
+    """The D1 PR body from the persisted apply result (#10171 §5); missing members stay unmeasured."""
+    senses = result.get("senses") if isinstance(result.get("senses"), dict) else {}
+    categories = senses.get("by_category") if isinstance(senses.get("by_category"), dict) else None
+    done, total = _count(result.get("chunks_done")), _count(result.get("chunks_total"))
+    files = result.get("changed_files") if isinstance(result.get("changed_files"), list) else None
+    shards = sorted({m.group(1) for path in files or [] if (m := re.search(r"relation-(\d{3})\.jsonl$", str(path)))})
+    lines = [
+        "- Method: D1",
+        f"- Model: {model}",
+        f"- Shard: {shard}",
+        "- Scope: Confirmed s Senses, whole Drop by the #10171 categories (Relation files only)",
+        f"- Completed Chunks: {'미측정' if done is None or total is None else f'{done}/{total}'}",
+        f"- {d1_sense_summary(result)}",
+        f"- D by Category: {', '.join(f'{k}: {v}' for k, v in categories.items()) if categories else '없음' if categories == {} else '미측정'}",
+        f"- Removed Relations: {_n(_count(result.get('removed_relations')))}",
+        f"- Changed Files: {_n(len(files) if files is not None else None)} ({len(shards)} shards)",
+        "- Edit Apply: PASS",
+        "- D1 Deletion Verify: PASS",
+    ]
+    if cost:
+        lines.append(f"- Token Cost / Duration: {cost}")
+    return "\n".join(lines + ["", f"Refs #{D1_ISSUE}"]) + "\n"

@@ -56,8 +56,45 @@ def pr_stage3_shards(pr: dict) -> set[str]:
     return pr_stage2_shards(pr)
 
 
+_RELATION_FILE = re.compile(r"data/relations/relation-(\d{3})\.jsonl")
+
+
+def relation_only_line(pr: dict):
+    """(line method, shard) of a well-formed Relation-only refinement Stage PR (S4, D1, ...): its title and Issue link
+    match a registered Relation-only Stage and it changes only Relation files. None for any other PR. The title is
+    checked first, so other PRs' file lists are not fetched for this."""
+    from . import refine
+    for spec in refine.stages():
+        if not spec.relations_only:
+            continue
+        shard = refine.ops_for(spec).shard_pr(pr)
+        if shard is None:
+            continue
+        files = pr.get("files")
+        if isinstance(files, list) and files and all(_RELATION_FILE.fullmatch((f or {}).get("path", "")) for f in files):
+            return spec.method, shard
+    return None
+
+
+def pr_line_shards(pr: dict, method: str) -> set[str]:
+    """Shards an open PR occupies for the refinement line `method` (#10171).
+
+    A well-formed Relation-only Stage PR of **another** line occupies none: the Refinement and Drop lines edit by
+    relation key and meet in replay. A PR of **this** line keeps its file claims and also claims its title shard, so a
+    line never re-selects a shard whose production PR is still open, even without a local batch. Every other PR keeps
+    the Stage 2/3 file rule; an unknown file list is never "no files"."""
+    line = relation_only_line(pr)
+    if line is not None and line[0] != method:
+        return set()
+    shards = pr_stage3_shards(pr)
+    return shards | {line[1]} if line is not None else shards
+
+
 def pr_claims(b, pr: dict) -> list:
-    """What an open PR claims, in the shape `expected_claim(b)` uses: Stage 2/3 shard keys."""
+    """What an open PR claims, in the shape `expected_claim(b)` uses: Stage 2/3 (and refinement line) shard keys."""
+    from .store import REFINE_METHODS
+    if b["method"] in REFINE_METHODS:
+        return [(b["method"], s) for s in sorted(pr_line_shards(pr, b["method"]))]
     return [(b["method"], s) for s in sorted(pr_stage2_shards(pr) if b["method"] == STAGE2_METHOD else pr_stage3_shards(pr))]
 
 

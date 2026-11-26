@@ -145,6 +145,15 @@ MAINTENANCE_DIAGNOSIS_HOLD_PREFIX = "증거 검증 차단으로 HELD 인계"
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
 STAGE2_METHOD = "s2"       # Stage 2 Relation Admission: ONE Part at a time across all models, not a Stage 1 queue method
 STAGE3_METHOD = "s3"       # Stage 3 editorial pass: one owned shard and one PR at a time
+# #10171: the Drop line (D1, later D2) runs the same refinement engine beside the Refinement line, in parallel with it.
+# Not "d": that is the retired Stage 1 method D, whose rows stay in the DB.
+DROP_METHOD = "drop"
+REFINE_METHODS = (STAGE3_METHOD, DROP_METHOD)   # every line the shared refinement engine runs
+
+
+def refine_line_name(method: str) -> str:
+    """The name a refinement line's messages use: `Stage 3` (the historical Refinement line) or `Drop`."""
+    return "Drop" if method == DROP_METHOD else "Stage 3"
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR", "CLEARING")
@@ -385,18 +394,21 @@ class Store:
                                "AND state!='COMPLETE'", (STAGE3_METHOD, f["shard"])).fetchone()
                 if s3:
                     raise LineBusy(f"Stage 3가 샤드 {f['shard']}를 점유 중입니다 ({s3['producer']}/{s3['state']}).")
-            if f["method"] == STAGE3_METHOD:
+            if f["method"] in REFINE_METHODS:
+                # One shard at a time per refinement line (#10171): the Refinement and Drop lines do not occupy each
+                # other; their concurrent edits meet by relation key (replay).
+                name = refine_line_name(f["method"])
                 held = c.execute("SELECT producer, shard, state FROM batches WHERE method=? AND state!='COMPLETE'",
-                                 (STAGE3_METHOD,)).fetchone()
+                                 (f["method"],)).fetchone()
                 if held:
-                    raise LineBusy(f"Stage 3는 한 번에 한 샤드만 점유합니다: {held['producer']}가 "
+                    raise LineBusy(f"{name}는 한 번에 한 샤드만 점유합니다: {held['producer']}가 "
                                    f"샤드 {held['shard']}({held['state']})를 소유 중입니다.")
                 # A completed shard blocks a repeat of the same refinement Stage only (`batch` is the Stage tag,
                 # #6555): the next Stage runs exactly on the shards the previous one completed.
                 prior = c.execute("SELECT producer, state FROM batches WHERE method=? AND shard=? AND batch=? "
-                                  "AND state='COMPLETE' AND merged=1", (STAGE3_METHOD, f["shard"], f["batch"])).fetchone()
+                                  "AND state='COMPLETE' AND merged=1", (f["method"], f["shard"], f["batch"])).fetchone()
                 if prior:
-                    raise LineBusy(f"Stage 3 샤드 {f['shard']}는 이미 {prior['producer']}의 완료 기록이 있습니다.")
+                    raise LineBusy(f"{name} 샤드 {f['shard']}는 이미 {prior['producer']}의 완료 기록이 있습니다.")
                 s2 = c.execute("SELECT producer, batch, state FROM batches WHERE method=? AND shard=? "
                                "AND state!='COMPLETE'", (STAGE2_METHOD, f["shard"])).fetchone()
                 if s2:
@@ -561,7 +573,7 @@ class Store:
                     or b is None or b["state"] != "PAUSED" or b["pause_reason"] != "shared_defect"
                     or b["defect_id"] != defect_id or b["paused_from"] != "PRODUCING"
                     or b["error_seq"] != approval.get("source_error_seq")
-                    or b["method"] not in ("s2", "s3") or b["pid"] is not None
+                    or b["method"] not in ("s2", *REFINE_METHODS) or b["pid"] is not None
                     or m is None or m["state"] != "PRODUCING" or m["batch"] != str(issue)
                     or m["pr_number"] is not None or m["merged"]
                     or maint is None or maint["state"] != "ACTIVE"
@@ -945,29 +957,33 @@ class Store:
             return c.execute("SELECT 1 FROM batches WHERE method=? AND shard=? AND batch=? "
                              "AND merged=1 AND state='COMPLETE' LIMIT 1", (STAGE2_METHOD, shard, batch)).fetchone() is not None
 
-    def start_stage3(self, model: str, mode: str) -> tuple[bool, str]:
-        """Reserve one shared Stage 3 run; same-shard Stage 2 ownership is checked again at batch creation."""
+    def start_stage3(self, model: str, mode: str, method: str = STAGE3_METHOD) -> tuple[bool, str]:
+        """Reserve one shared run of a refinement line (the Refinement line `s3` or the Drop line `d`, #10171); same-shard
+        Stage 2 ownership is checked again at batch creation."""
+        if method not in REFINE_METHODS:
+            return False, f"정제 라인이 아닙니다: {method!r}"
+        name = refine_line_name(method)
         now = time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             held = c.execute("SELECT producer, shard, state FROM batches WHERE method=? AND state!='COMPLETE'",
-                             (STAGE3_METHOD,)).fetchone()
+                             (method,)).fetchone()
             if held:
-                return False, (f"Stage 3는 전체에서 한 샤드만 점유합니다: {held['producer']}가 "
+                return False, (f"{name}는 전체에서 한 샤드만 점유합니다: {held['producer']}가 "
                                f"샤드 {held['shard']}({held['state']})를 소유 중입니다. "
                                "같은 모델로 Retry하거나 Batch Detail에서 Clear하세요.")
             other = c.execute("SELECT model FROM lines WHERE method=? AND run=1 AND model!=?",
-                              (STAGE3_METHOD, model)).fetchone()
+                              (method, model)).fetchone()
             if other:
-                return False, f"Stage 3는 이미 {other['model']}가 시작 예약 중입니다."
-            ln = c.execute("SELECT drain FROM lines WHERE model=? AND method=?", (model, STAGE3_METHOD)).fetchone()
+                return False, f"{name}는 이미 {other['model']}가 시작 예약 중입니다."
+            ln = c.execute("SELECT drain FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
             if ln is not None and ln["drain"]:
-                return False, f"{model}/S3 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
-            c.execute("DELETE FROM kv WHERE key IN (?, ?)", (f"s3_wait_{model}", f"s3_poll_{model}"))
-            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, STAGE3_METHOD, now))
+                return False, f"{model}/{method.upper()} 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
+            c.execute("DELETE FROM kv WHERE key IN (?, ?)", (f"{method}_wait_{model}", f"{method}_poll_{model}"))
+            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
             c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, shard_pin='', updated_at=? "
                       "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single", now,
-                                                       model, STAGE3_METHOD))
+                                                       model, method))
         return True, ""
 
     def request_drain_all(self, lines) -> int:
@@ -1609,7 +1625,7 @@ class Store:
     def intake_candidates(self):
         """ERROR batches of the autonomous-recovery methods that carry an incident number and no incident row yet."""
         with self._conn() as c:
-            rows = c.execute("SELECT * FROM batches WHERE state='ERROR' AND error_seq>0 AND method IN ('s2','s3') "
+            rows = c.execute("SELECT * FROM batches WHERE state='ERROR' AND error_seq>0 AND method IN ('s2','s3','drop') "
                              "AND COALESCE(paused_from,'')!='CLEARING' ORDER BY id").fetchall()
             done = {r["event_key"] for r in c.execute("SELECT event_key FROM defects WHERE source='incident'")}
         return [r for r in rows if f"incident:{r['id']}:e{r['error_seq']}" not in done]
@@ -1617,7 +1633,7 @@ class Store:
     def legacy_errors(self):
         with self._conn() as c:
             return c.execute("SELECT id, method, shard, batch FROM batches WHERE state='ERROR' AND error_seq=0 "
-                             "AND method IN ('s2','s3') ORDER BY id").fetchall()
+                             "AND method IN ('s2','s3','drop') ORDER BY id").fetchall()
 
     def defect(self, defect_id: int):
         with self._conn() as c:

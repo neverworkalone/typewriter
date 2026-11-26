@@ -23,7 +23,9 @@ from pathlib import Path
 from typing import Callable
 
 SHARDS = 428
-STAGE_MODULES = ("stage3", "stage4")   # refinement Stage modules in run order — the single registration entry point
+# Refinement Stage modules in run order — the single registration entry point. Each Stage names its line
+# (`RefineSpec.method`): the Refinement line runs S3, S4, ...; the Drop line (#10171) runs D1, ...
+STAGE_MODULES = ("stage3", "stage4", "stage_d1")
 RESERVED_ROLES = ("stage2", "maintainer")   # assignment roles that are not refinement Stages
 
 
@@ -87,6 +89,12 @@ class RefineSpec:
     # The same scope serves PR validation, finalize and replay (`--relations-only`).
     relations_only: bool = False
     body: Callable | None = None   # (model, shard, result=..., cost=...) -> PR body; None = the Stage 3 body
+    # #10171: the War Room line (`batches.method`) this Stage runs on: the Refinement line `s3` or the Drop line `drop`.
+    # Stages of one line run in order; the two lines run beside each other.
+    method: str = "s3"
+    # #10171: the Stage CLI keeps its judgments (checkpoint + views) in the batch worktree after apply, and its `verify`
+    # checks the PR against them: the exact-commit verify checkout reads them with `--judgments <batch worktree>`.
+    verify_judgments: bool = False
 
     def title_for(self, model: str, shard: str) -> str:
         return f"[{self.short}/{model}] {shard}"
@@ -122,6 +130,9 @@ _OPS: dict[str, object] = {}
 
 
 def register(spec: RefineSpec) -> RefineSpec:
+    from .store import REFINE_METHODS
+    if spec.method not in REFINE_METHODS:
+        raise ValueError(f"refinement Stage {spec.id} names an unknown line {spec.method!r}")
     if any(existing.id == spec.id or existing.tag == spec.tag or existing.role == spec.role
            for existing in _REGISTRY):
         raise ValueError(f"refinement Stage {spec.id} is registered twice (id, tag or role {spec.role!r})")
@@ -131,16 +142,17 @@ def register(spec: RefineSpec) -> RefineSpec:
     return spec
 
 
-def stages() -> list[RefineSpec]:
-    """Every refinement Stage in run order: the `STAGE_MODULES` order (Stage 3 first)."""
+def stages(method: str | None = None) -> list[RefineSpec]:
+    """Every refinement Stage in run order (the `STAGE_MODULES` order, Stage 3 first); with `method`, only the Stages of
+    that line (#10171)."""
     for name in STAGE_MODULES:
         importlib.import_module(f".{name}", __package__)
-    return list(_REGISTRY)
+    return [spec for spec in _REGISTRY if method is None or spec.method == method]
 
 
-def roles() -> tuple[str, ...]:
-    """The `assignments` role of every registered refinement Stage, in run order."""
-    return tuple(spec.role for spec in stages())
+def roles(method: str | None = None) -> tuple[str, ...]:
+    """The `assignments` role of every registered refinement Stage (of one line with `method`), in run order."""
+    return tuple(spec.role for spec in stages(method))
 
 
 def spec_for_role(role: str) -> RefineSpec | None:
@@ -269,7 +281,7 @@ class RefineOps:
         if any(row["shard"] == shard and row["state"] == "COMPLETE" and row["merged"] for row in own):
             return Choice("wait", note=f"샤드 {shard} 완료의 GitHub 검색 반영 대기")
         if (any(row["shard"] == shard and row["state"] != "COMPLETE" for row in stage2_batches + stage3_batches)
-                or any(shard in batches.pr_stage2_shards(pr) for pr in open_prs)):
+                or any(shard in batches.pr_line_shards(pr, spec.method) for pr in open_prs)):
             return Choice("wait", note=f"샤드 {shard} 작업·PR 점유")
         if not spec.gate(kv, shard):
             return Choice("unready", note=f"다음 샤드 {shard} {spec.gate_label} 미완료 / 실행 종료")

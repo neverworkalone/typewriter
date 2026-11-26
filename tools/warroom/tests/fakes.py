@@ -278,10 +278,11 @@ class FakeGit:
         return {"version": 1, "ok": True, "shard": shard, "batch": batch, "part": part,
                 "added": self.reconcile_added, "dry_run": dry_run, "candidates": []}
 
-    def verify_refine_outcome(self, sha, cli, shard, base, timeout=1800):
+    def verify_refine_outcome(self, sha, cli, shard, base, timeout=1800, judgments=None):
         """#9928: a cross-shard Stage's CLI verify; success unless `refine_verify_fail` names this shard."""
         from warroom.gitops import VerifyOutcome
         self.__dict__.setdefault("refine_verify_calls", []).append((sha, cli, shard, base))
+        self.__dict__.setdefault("refine_verify_judgments", []).append(judgments)
         failed = shard in self.__dict__.get("refine_verify_fail", ())
         return VerifyOutcome(not failed, "accounting 1건: missing" if failed else "", code=1 if failed else 0)
 

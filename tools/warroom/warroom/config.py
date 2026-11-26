@@ -254,10 +254,11 @@ def registry(cfg: dict) -> dict[str, dict]:
 STAGE2, MAINTAINER = "stage2", "maintainer"
 
 
-def refine_roles() -> tuple[str, ...]:
-    """The `assignments` roles of the registered refinement Stages (`refine.RefineSpec.role`), in run order."""
+def refine_roles(method: str | None = None) -> tuple[str, ...]:
+    """The `assignments` roles of the registered refinement Stages (`refine.RefineSpec.role`), in run order; with
+    `method`, only that line's Stages (#10171)."""
     from . import refine
-    return refine.roles()
+    return refine.roles(method)
 
 
 def assignment_roles() -> tuple[str, ...]:
@@ -282,7 +283,7 @@ def role_for(b) -> str:
     '' for a retired method: it resolves to no profile. A refinement batch whose Stage is not registered raises."""
     from . import refine
     method = b["method"]
-    if method == "s3":
+    if method in ("s3", "drop"):   # the Refinement and Drop lines (#10171)
         return refine.spec_for(b).role
     return {"s2": STAGE2, "m": MAINTAINER}.get(method, "")
 

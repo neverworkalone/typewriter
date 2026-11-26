@@ -8,7 +8,7 @@ import unicodedata
 from . import control, stage2
 from .config import (MAINTAINER, STAGE2, adapter_label, ordered_models, refine_models, refine_roles, registry,
                      role_for, role_label, role_view, stage2_models)
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
+from .store import MAINTENANCE_METHOD, REFINE_METHODS, STAGE2_METHOD, STAGE3_METHOD
 from .timing import elapsed_seconds
 
 
@@ -70,13 +70,14 @@ def refine_column(cfg: dict) -> str | None:
     return role_column(cfg, "codex") or next(iter(refine_models(cfg)), None)
 
 
-def refine_display_model(store, cfg: dict, statuses: dict | None = None) -> str | None:
-    """Choose the current/last refinement line owner for its single shared board card (every registered Stage)."""
+def refine_display_model(store, cfg: dict, statuses: dict | None = None, method: str = STAGE3_METHOD) -> str | None:
+    """Choose the current/last owner of a refinement line (Refinement `s3` or Drop `drop`, #10171) for its single
+    shared board card (every Stage of that line)."""
     models = refine_models(cfg)
     if not models:
         return None
     if statuses is None:
-        statuses = {model: control.line_status(store, model, STAGE3_METHOD) for model in models}
+        statuses = {model: control.line_status(store, model, method) for model in models}
 
     active = next((model for model in models if statuses[model]["batch"] is not None), None)
     if active:
@@ -87,7 +88,7 @@ def refine_display_model(store, cfg: dict, statuses: dict | None = None) -> str 
 
     latest = []
     for model in models:
-        runs = store.line_runs(model, STAGE3_METHOD, limit=1)
+        runs = store.line_runs(model, method, limit=1)
         if runs:
             latest.append((runs[0]["started_at"], runs[0]["id"], model))
     if latest:
@@ -200,7 +201,7 @@ def card_text(st: dict, width: int = CARD_W) -> str:
     """
     m = control.method_label(st["method"])
     is_stage2 = st["method"] == STAGE2_METHOD
-    is_stage3 = st["method"] == STAGE3_METHOD
+    is_stage3 = st["method"] in REFINE_METHODS
     owner = st.get("display_owner") or st["model"]
     if st["batch"] is None:
         return _idle_card(st, m, width)
@@ -362,7 +363,7 @@ def pin_view(store, cfg: dict, model: str, method: str) -> dict:
     if runs:
         return _recorded_pin(reg, runs[0], "마지막 실행 기록")
     roles = ((MAINTAINER,) if method == MAINTENANCE_METHOD else (STAGE2,) if method == STAGE2_METHOD
-             else refine_roles() if method == STAGE3_METHOD else ())
+             else refine_roles(method) if method in REFINE_METHODS else ())
     if len(roles) == 1:
         return {**role_view(cfg, model, roles[0]), "source": f"{role_label(roles[0])} 배정"}
     return {**reg, "stages": [(role_label(role), role_view(cfg, model, role)) for role in roles]}

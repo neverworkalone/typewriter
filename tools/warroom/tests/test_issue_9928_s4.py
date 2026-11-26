@@ -48,7 +48,7 @@ class Stage4Registration(unittest.TestCase):
 
     def test_stage4_follows_stage3_per_shard_on_its_own_profile_and_continues_over_no_change_shards(self):
         w = self.w
-        self.assertEqual([spec.id for spec in refine.stages()], ["s3", "s4"])
+        self.assertEqual([spec.id for spec in refine.stages(STAGE3_METHOD)], ["s3", "s4"])   # the Refinement line
         w.gh.merged_stage3_prs = [{"title": "[S3/Sol] 427", "merge_commit_sha": w.git.base_sha}]
         w.store.set(stage3.ok_key("001"), w.git.base_sha)
         self.start()
