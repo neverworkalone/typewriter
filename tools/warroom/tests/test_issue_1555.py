@@ -1689,7 +1689,8 @@ class IncidentRecoveryProof(unittest.TestCase):
 
     def test_a_run_kind_without_a_pre_runnable_guard_is_held_before_any_integration(self):
         w = self.w
-        b = make_batch(w, "s3", "claude", "004", "00", "s3_finalize")
+        # s3_finalize before its data commit has its own proof (test_s3_finalize_fix_release); s3_parallel has none.
+        b = make_batch(w, "s3", "claude", "004", "00", "s3_parallel")
         w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="boom")
         w.git.changed[MERGE] = ["scripts/relation/edit-cli.mjs"]
         w.tick(2)
