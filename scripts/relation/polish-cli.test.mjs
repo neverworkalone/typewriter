@@ -253,6 +253,14 @@ test('#10171 Relation-only apply builds, checks and stages one file at a time; a
   assert.deepEqual(await snapshot(), original);
   assert.deepEqual(await leftovers(), []);
 
+  // A drop-only file is not re-checked (its other rows are unchanged); a file that gains a row is, in full.
+  const broken = { ...R_SKY, tsid: 'w4-s9' };
+  await writeFile(path.join(root, files[1]), jsonl([R_SKY, broken]));
+  assert.equal((await apply({ edits: [{ op: 'drop', source_sense_id: 'w2000-s1', target_sense_id: 'w4-s1', reason: 'D1' }] },
+    { root, relationsOnly: true, dryRun: true })).status, 'planned');
+  await assert.rejects(apply({ edits: [edits[2]] }, { root, relationsOnly: true, dryRun: true }), /w4-s9 is not a sense of w4/u);
+  await writeFile(path.join(root, files[1]), original[1]);
+
   // Staged files whose base changed before the install are refused, and nothing is written.
   const staged = await apply({ edits }, { root, relationsOnly: true, dryRun: true, stage: true });
   assert.ok(staged.files.every((file) => file.temporary));

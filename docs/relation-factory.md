@@ -258,7 +258,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
   - 읽는 것: Canonical, 확정 선별, 현재 승인 Relation.
   - 쓰는 것: Relation 파일뿐이다. 새 행의 출처는 `by:"p"`다(선별값 `d:"p"`, Drop 파일의 `p`와 다르다).
   - 하지 않는 것: Stage 1 Candidate·Drop 파일 읽기, 고아 후보 계산, `p`·`z` 추가, Add가 cover하는 기존 Drop 삭제, Candidate 회계(`verifyAccounting`) 비교. 과거 Drop에 같은 연결이 있어도 Add는 Drop 파일을 그대로 둔다.
-  - 유지하는 것: 공통 `validateRelationRows`(정확한 Sense 결속, 중복·역중복, 필드·타입, action POS), `assertScope` 편집 범위, 관계 키 충돌 해결.
+  - 유지하는 것: 공통 `validateRelationRows`(정확한 Sense 결속, 중복·역중복, 필드·타입, action POS — Add·Set이 있는 파일, drop만 있는 파일은 제외, §5-B), `assertScope` 편집 범위, 관계 키 충돌 해결.
   - prepare·refresh·apply·amend·decisions·verify·replay가 같은 계약을 쓴다. Drop 파일을 바꾼 S4 PR은 범위 오류다. S2/S3와 단건 Polish(#8777, `show`의 `p` 문맥 포함)는 기존 회계를 그대로 쓴다.
 - **입력:** §5-D의 정확한 전체 Sense ID·전수·순서·필드/값 검사를 재사용한다. 해당 샤드 파일이 없거나 잘못되면 입력 오류로 종료하며 자체 선별 또는 기본값으로 대체하지 않는다. 전체 428개 선별 완료를 추가 선행 조건으로 삼지 않는다.
 - **청크:** 확정 `p` Sense만 record별로 묶어 보여 준다. 관계 없는 `p`도 포함하며, `s/e`는 독립 판단 대상으로 전달하지 않는다. 각 Sense 아래에는 자기 정방향·text 관계와, 어느 샤드에 저장되었든 그 Sense를 target으로 갖는 역방향 ID 관계를 둔다. record는 나누지 않고, 관계 수(빈 Sense는 1) 350~500 기준으로 청크를 만든다. 같은 샤드의 두 `p` Sense 사이 관계는 양쪽에 모두 보인다. 상대 `s`의 뜻과 관계도 `p`의 편집 문맥으로 유지하며, `e`는 기존 authoring 제외 규칙을 따른다.
@@ -349,7 +349,7 @@ node scripts/relation/polish-cli.mjs apply --input edits.json [--dry-run]
     - 편집 전후 Candidate 회계 비교: **새 문제가 하나도 없어야** 한다. 원래 있던 미완성 shard의 `missing`은 막지 않는다.
     - action 대상 POS
   - 변경 파일은 한꺼번에 원자적으로 저장한다. 같은 입력의 재실행은 no-op이다.
-  - **Relation 전용 모드(S4·D1)의 메모리 (#10171):** 편집된 관계 키의 행만 문맥으로 읽는다. 편집은 키로 행을 찾고, 바뀐 파일이 새로 얻을 수 있는 중복은 추가된 키뿐이기 때문이다. 바뀐 파일은 한 개씩 읽어 만들고 `validateRelationRows`로 검사한 뒤 임시 파일로 스테이징하고 해제한다. 설치는 해시로 기대 상태를 확인한 뒤 원본을 백업하고, 도중 실패 시 모두 복원한다(`writeFilesAtomically`). 파일 전체 원문·결과를 한꺼번에 들고 있지 않는다.
+  - **Relation 전용 모드(S4·D1)의 메모리 (#10171):** 편집된 관계 키의 행만 문맥으로 읽는다. 편집은 키로 행을 찾고, 바뀐 파일이 새로 얻을 수 있는 중복은 추가된 키뿐이기 때문이다. 바뀐 파일은 한 개씩 읽어 만들고, Add·Set이 있는 파일은 `validateRelationRows`로 검사한 뒤 임시 파일로 스테이징하고 해제한다. drop만 있는 파일은 다시 검사하지 않는다. 줄을 지우는 것으로는 남은(바뀌지 않은) 행에 새 문제가 생기지 않으며, 사전 전체의 구조적 무결성은 빌드·Deep CI가 맡는다. 설치는 해시로 기대 상태를 확인한 뒤 원본을 백업하고, 도중 실패 시 모두 복원한다(`writeFilesAtomically`). 파일 전체 원문·결과를 한꺼번에 들고 있지 않는다.
 - AI는 Drop/Add/Set과 이유만 판단한다. 조회·회계·다른 샤드 영향·저장·검증은 CLI가 맡는다. 원격 파일 반복 다운로드, 다중 모델 탐색, 과거 batch 전체 재검사는 하지 않는다. 정본은 현재 JSONL이다.
 - **지원 없는 JSONL 손편집이나 `verify --relations-only`만 통과한 변경은 정식 성공이 아니다.**
 

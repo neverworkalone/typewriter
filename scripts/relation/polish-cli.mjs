@@ -13,7 +13,8 @@
  *   saves all changed files together. No change is a no-op.
  *
  * `relationsOnly` (Stage 4 onward, #9929/#10171) is the Relation-only mode of the same editor: it reads Canonical and
- * the approved Relations only, writes only Relation files and validates them with the shared row validator. It reads
+ * the approved Relations only, writes only Relation files and validates each changed file that gains or retypes a row
+ * with the shared row validator (a drop-only file is not re-checked). It reads
  * no Candidate or Drop file, computes no orphan, writes no `p`/`z`, removes no Drop an Add covers and runs no Candidate
  * accounting. The default mode (single-word Polish, #8777) is unchanged. A whole-shard edit list (S4, D1 #10171) stays
  * in bounded memory: only the rows of the edited keys are read as context, and each changed file is built, validated
@@ -557,19 +558,26 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
 /**
  * Relation-only settlement (#9929, #10171): each changed Relation file is read once, built, checked with the shared
  * row validator and released before the next one — no file's text outlives its turn, so memory stays near one file
- * plus the rows touching the edited Senses. Those rows after the edits (the duplicate context of every file) come from
- * the scan and the planned edits, without re-reading. A dry run returns hashes (and the text with `returnTexts`, or a
+ * plus the rows of the edited keys. Those rows after the edits (the duplicate context of every file) come from the scan
+ * and the planned edits, without re-reading. A file whose only edits are drops is not re-checked: removing lines
+ * cannot give its remaining, unchanged rows a new problem (whole-dictionary integrity stays with the build and Deep CI). A dry run returns hashes (and the text with `returnTexts`, or a
  * staged temporary with `stage`); a real run stages every file and installs them together (`installStaged`).
  */
 async function settleRelationsOnly({ root, plan, read, index, rowsByShard, before, replacedRows, addedRows, shardOfSense,
   dryRun, returnTexts, stage, results, affectedShards }) {
-  const after = [];
-  for (const entry of before.relations) {
-    const edits = plan.files.get(entry.file);
-    if (edits?.removed.has(entry.line)) continue;
-    after.push({ file: entry.file, row: replacedRows.get(`${entry.file}\u0000${entry.line}`) ?? entry.row });
-  }
-  for (const row of addedRows) after.push({ file: RELATION_FILE(shardOfSense.get(row.source_sense_id)), row });
+  const dropsOnly = (edits) => edits.replaced.size === 0 && edits.appended.length === 0;
+  let after = null;   // built only if some changed file gains or retypes a row
+  const context = () => {
+    if (after) return after;
+    after = [];
+    for (const entry of before.relations) {
+      const edits = plan.files.get(entry.file);
+      if (edits?.removed.has(entry.line)) continue;
+      after.push({ file: entry.file, row: replacedRows.get(`${entry.file}\u0000${entry.line}`) ?? entry.row });
+    }
+    for (const row of addedRows) after.push({ file: RELATION_FILE(shardOfSense.get(row.source_sense_id)), row });
+    return after;
+  };
   const files = [];
   const expected = new Map();
   try {
@@ -577,13 +585,16 @@ async function settleRelationsOnly({ root, plan, read, index, rowsByShard, befor
       const shard = /^data\/relations\/relation-(\d{3})\.jsonl$/u.exec(relative)?.[1];
       if (!shard) throw new Error(`Relation-only Polish apply planned a non-Relation file ${relative}`);
       const original = await read(relative);
-      const text = editedText(original, plan.files.get(relative));
+      const edits = plan.files.get(relative);
+      const text = editedText(original, edits);
       if ((text ?? null) === original) continue;
-      const canonicalRows = rowsByShard.get(shard) ?? [];
-      const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-      const ownRows = linesOf(text).map((line, position) => deserializeRelationRow(JSON.parse(line), `${relative}:${position + 1}`));
-      validateRelationRows({ relationRows: ownRows, index, shardSenseIds,
-        otherRelationRows: after.filter((entry) => entry.file !== relative).map(({ row }) => row) });
+      if (!dropsOnly(edits)) {
+        const canonicalRows = rowsByShard.get(shard) ?? [];
+        const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+        const ownRows = linesOf(text).map((line, position) => deserializeRelationRow(JSON.parse(line), `${relative}:${position + 1}`));
+        validateRelationRows({ relationRows: ownRows, index, shardSenseIds,
+          otherRelationRows: context().filter((entry) => entry.file !== relative).map(({ row }) => row) });
+      }
       expected.set(relative, original === null ? null : sha256(original));
       const entry = stage || !dryRun ? await stageText(root, relative, text) : { path: relative, sha256: text === null ? null : sha256(text) };
       files.push({ ...entry, original_sha256: expected.get(relative), ...(returnTexts ? { text } : {}) });

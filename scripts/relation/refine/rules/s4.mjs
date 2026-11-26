@@ -599,14 +599,13 @@ export async function applyCheckpoint({ shard, root, checkpoint, readView }) {
 
 // ---- PR decisions, amend, report ---------------------------------------------------------------------------------
 
-const relationRows = async (read, relative) => {
-  const text = await read(relative);
-  return new Map((text ? parseRelationJsonl(text, relative) : []).map((row) => [keyOf(row), row]));
-};
+const lineSet = (text) => new Set(text ? text.split('\n').filter((line) => line.trim() !== '') : []);
+const parsedLines = (lines, relative) => (lines.length ? parseRelationJsonl(`${lines.join('\n')}\n`, relative) : []);
 
 /**
- * The Polish edits that take the base data files to the head data files, by relation key. One file's base and head
- * rows are held at a time (#10171); a key whose row left one file and reached another is compared across files.
+ * The Polish edits that take the base data files to the head data files, by relation key. Rows serialize
+ * deterministically, so only the lines that differ between a file's base and head are parsed (#10171): an unchanged
+ * line is an unchanged row. A key whose line changed, or moved to another file, is compared as rows.
  */
 export async function opsBetween(baseRead, headRead, files) {
   const gone = new Map();
@@ -618,14 +617,10 @@ export async function opsBetween(baseRead, headRead, files) {
     }
   };
   for (const relative of files.filter((file) => file.startsWith('data/relations/'))) {
-    const before = await relationRows(baseRead, relative);
-    const after = await relationRows(headRead, relative);
-    for (const [key, row] of after) {
-      const old = before.get(key);
-      if (old) compare(old, row);
-      else arrived.set(key, row);
-    }
-    for (const [key, row] of before) if (!after.has(key)) gone.set(key, row);
+    const before = lineSet(await baseRead(relative));
+    const after = lineSet(await headRead(relative));
+    for (const row of parsedLines([...before].filter((line) => !after.has(line)), relative)) gone.set(keyOf(row), row);
+    for (const row of parsedLines([...after].filter((line) => !before.has(line)), relative)) arrived.set(keyOf(row), row);
   }
   for (const [key, row] of arrived) {
     if (gone.has(key)) { compare(gone.get(key), row); gone.delete(key); }

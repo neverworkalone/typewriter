@@ -15,7 +15,7 @@ import { exclusionKey } from '../../persisted-jsonl.mjs';
 import { fail, gitHead, RefineInputError, viewDigest } from '../core.mjs';
 import { escapeField } from './s3.mjs';
 import {
-  affectedShards, amendTargets, assertCleanSources, dataStatus, loadSelection, opsBetween, planOps, prState, revisionReader,
+  amendTargets, assertCleanSources, dataStatus, loadSelection, opsBetween, planOps, prState, revisionReader,
   writePlanned,
 } from './s4.mjs';
 
@@ -216,6 +216,15 @@ async function boundDecisions(checkpoint, readView, skipped) {
   return { decisions: checkpoint.decisions, senses };
 }
 
+/** A decision with its Sense as the prepared view showed it (no Canonical load). */
+const describe = (decision, senses) => {
+  const shown = senses.get(decision.sense);
+  return { sense: decision.sense, verdict: decision.verdict, category: decision.category, chunk: decision.chunk,
+    lemma: shown.lemma, homograph: shown.homograph, pos: shown.pos, gloss: shown.gloss };
+};
+
+const shardsOf = (files) => [...new Set(files.map((file) => /relation-(\d{3})\.jsonl$/u.exec(file)?.[1]).filter(Boolean))].sort();
+
 function summarize(decisions, skipped) {
   const count = (verdict) => decisions.filter((decision) => decision.verdict === verdict).length;
   const byCategory = {};
@@ -248,12 +257,6 @@ function diffSize(root, args) {
     deletions: numstat.reduce((sum, [, removed]) => sum + Number(removed), 0), bytes };
 }
 
-function describe(decision, index) {
-  const found = index.senses.get(decision.sense);
-  return { sense: decision.sense, verdict: decision.verdict, category: decision.category, chunk: decision.chunk,
-    ...(found ? { lemma: found.record.lemma, homograph: found.record.homograph_no ?? null, pos: found.sense.pos, gloss: found.sense.gloss } : { missing: true }) };
-}
-
 // ---- apply, report, decisions, amend --------------------------------------------------------------------------
 
 /** `apply`: every approved Relation touching a `D` Sense in the current data, dropped through one Polish plan. */
@@ -275,27 +278,25 @@ export async function applyCheckpoint({ shard, root, checkpoint, readView }) {
 
 /** Working tree against HEAD: the kept judgments and what `apply` changed. */
 export async function reportWorktree({ shard, root, saved }) {
-  const canonical = await loadCanonical(root);
-  const skipped = skipSenses(await loadSelection(root, shard, canonical.rowsByShard.get(shard), label));
-  const { decisions } = await boundDecisions(await saved.loadCheckpoint(), saved.readView, skipped);
+  const skipped = skipSenses(await loadSelection(root, shard, null, label));
+  const { decisions, senses } = await boundDecisions(await saved.loadCheckpoint(), saved.readView, skipped);
   const dirty = dataStatus(root).sort();
   const ops = await opsBetween(revisionReader(root, 'HEAD', new Set(dirty)), revisionReader(root, 'HEAD', new Set()), dirty);
-  return { senses: summarize(decisions, skipped), decisions: decisions.map((decision) => describe(decision, canonical.index)),
+  return { senses: summarize(decisions, skipped), decisions: decisions.map((decision) => describe(decision, senses)),
     removed_relations: ops.filter((op) => op.op === 'drop').length, other_edits: ops.filter((op) => op.op !== 'drop').length,
-    changed_files: dirty, diff: diffSize(root, []), affected_shards: affectedShards(ops, canonical, shard) };
+    changed_files: dirty, changed_shards: shardsOf(dirty), diff: diffSize(root, []) };
 }
 
 /** The PR's kept judgments; with `senses`, every base Relation touching them and whether this PR drops it. */
 export async function listDecisions({ shard, root, base, head, senses = null, saved }) {
-  const canonical = await loadCanonical(root);
-  const skipped = skipSenses(await loadSelection(root, shard, canonical.rowsByShard.get(shard), label));
-  const { decisions } = await boundDecisions(await saved.loadCheckpoint(), saved.readView, skipped);
+  const skipped = skipSenses(await loadSelection(root, shard, null, label));
+  const { decisions, senses: shown } = await boundDecisions(await saved.loadCheckpoint(), saved.readView, skipped);
   const state = prState(root, base, head, label);
   const ops = await opsBetween(state.baseRead, state.headRead, state.changed);
   const result = { shard, base, head, senses: summarize(decisions, skipped),
-    decisions: decisions.map((decision) => describe(decision, canonical.index)),
+    decisions: decisions.map((decision) => describe(decision, shown)),
     removed_relations: ops.filter((op) => op.op === 'drop').length, other_edits: ops.filter((op) => op.op !== 'drop').length,
-    changed_files: state.changed, diff: diffSize(root, [base, head]), affected_shards: affectedShards(ops, canonical, shard) };
+    changed_files: state.changed, changed_shards: shardsOf(state.changed), diff: diffSize(root, [base, head]) };
   if (senses) {
     const dropped = new Set(ops.filter((op) => op.op === 'drop').map((op) => keyOf(op)));
     const { relations } = await scanTouching(root, senses, new Map(), { reader: state.baseRead, relationsOnly: true });
