@@ -60,7 +60,7 @@ def _refine_templates(b):
     spec = refine.spec_for(b)
     ALLOWED.setdefault(spec.chunk_prompt, _STAGE3)
     ALLOWED.setdefault(spec.fix_prompt, _STAGE3_FIX)
-    ALLOWED.setdefault(spec.policy_card, set())
+    ALLOWED.setdefault(spec.policy_card, {"whole_drop_rule"})   # every card may embed the shared #10171 card
     return spec
 
 
@@ -280,7 +280,7 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
         if retry_note:
             note += (" The Supervisor could not apply the previous submission and wrote nothing: "
                      f"{retry_note} Correct the judgment and write the response file again.")
-    elif b["method"] == "s3":
+    elif b["method"] in ("s3", "drop"):
         spec = _refine_templates(b)
         template = spec.fix_prompt
         note = (f"This continues the same {spec.label} review-fix session. Use the review events and PR context already "
@@ -300,7 +300,7 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
                                  if b["method"] == STAGE2_METHOD else "")}
     if b["method"] == MAINTENANCE_METHOD:
         values["issue"] = b["batch"]
-    if b["method"] == "s3":
+    if b["method"] in ("s3", "drop"):
         values.update(relation_path=f"data/relations/relation-{b['shard']}.jsonl",
                       drop_path=f"data/relation-drops/drop-{b['shard']}.jsonl")
     return render(template, values, directory)

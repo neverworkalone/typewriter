@@ -12,7 +12,7 @@ from datetime import datetime, time as wall_time, timedelta
 from . import refine, stage2
 from .config import (maintainer_id, maintainer_problem, ordered_models, refine_models, refine_problem,
                      stage2_models, stage2_problem)
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
+from .store import DROP_METHOD, MAINTENANCE_METHOD, REFINE_METHODS, STAGE2_METHOD, STAGE3_METHOD, Store
 from .timing import elapsed_seconds
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
@@ -21,7 +21,7 @@ MODES = {"single": "Single", "continuous": "Continuous"}   # Continuous = sequen
 
 # #9933: War Room runs only Stage 2, the refinement line (Stage 3, ...) and the Maintainer, on Claude/Codex. Historical Stage 1 (A/B/C/D) and
 # DeepSeek/OpenCode rows stay in the DB for viewing; this one rule keeps them out of every execution path.
-LIVE_METHODS = frozenset({STAGE2_METHOD, STAGE3_METHOD, MAINTENANCE_METHOD})
+LIVE_METHODS = frozenset({STAGE2_METHOD, *REFINE_METHODS, MAINTENANCE_METHOD})
 RETIRED_REFUSAL = "지원 종료된 Line입니다 (Stage 1·DeepSeek/OpenCode, #9933): 조회만 가능하고 실행 명령은 받지 않습니다."
 
 
@@ -51,7 +51,7 @@ def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = N
     if method == STAGE2_METHOD:
         problem = "설정을 확인할 수 없어 Stage 2를 시작하지 않습니다" if cfg is None else stage2_problem(cfg, model)
         return (False, problem) if problem else store.start_stage2(model, mode)
-    if method == STAGE3_METHOD:
+    if method in REFINE_METHODS:
         if cfg is None:
             return False, "설정을 확인할 수 없어 정제 Stage를 시작하지 않습니다"
         b = store.latest_batch(model, method)
@@ -61,7 +61,7 @@ def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = N
             return False, str(error)
         if why := refine_problem(cfg, model, role):
             return False, why
-        return store.start_stage3(model, mode)
+        return store.start_stage3(model, mode, method)
     return False, RETIRED_REFUSAL
 
 
@@ -117,21 +117,23 @@ def board_line_keys(store: Store, cfg: dict) -> list[tuple[str, str]]:
     models += sorted({ln["model"] for ln in store.lines()} - known)
     keys = [(model, STAGE2_METHOD) for model in models if model in stage2_models(cfg)]
     keys += [(model, STAGE3_METHOD) for model in refine_models(cfg)]
+    keys += [(model, DROP_METHOD) for model in refine_models(cfg)]   # #10171: the Drop line below Refinement
     return [(model, method) for model, method in keys if not retired_line(model, method, cfg)]
 
 
 REFINE_LABEL = "Refinement"   # the one shared refinement line; its batches show their own Stage label
+DROP_LABEL = "Drop"           # #10171: the second line of the refinement engine (D1, ...), beside Refinement
 
 
 def method_label(method: str) -> str:
     """Board/Detail name of a Line's method: `Stage 2`, `Refinement` or `Maintainer` (a retired method: its letter)."""
     return ("Stage 2" if method == STAGE2_METHOD else REFINE_LABEL if method == STAGE3_METHOD
-            else "Maintainer" if method == MAINTENANCE_METHOD else method.upper())
+            else DROP_LABEL if method == DROP_METHOD else "Maintainer" if method == MAINTENANCE_METHOD else method.upper())
 
 
 def stage_label(b) -> str | None:
     """The registered Stage label of a refinement batch ("Stage 3"); None for another method or an unknown tag."""
-    if b is None or b["method"] != STAGE3_METHOD:
+    if b is None or b["method"] not in REFINE_METHODS:
         return None
     try:
         return refine.spec_for(b).label
@@ -289,8 +291,8 @@ def line_status(store: Store, model: str, method: str) -> dict:
            "elapsed": None, "stage2": None, "wait": "", "stage_label": None}
     if method == STAGE2_METHOD:
         out["wait"] = store.get(f"s2_wait_{model}") or ""
-    elif method == STAGE3_METHOD:
-        out["wait"] = store.get(f"s3_wait_{model}") or ""
+    elif method in REFINE_METHODS:
+        out["wait"] = store.get(f"{method}_wait_{model}") or ""
     out["drain"] = out["line_drain"]
     keys = [f"tw_line:{model}:{method}:prepare"]
     if b is not None and b["state"] != "COMPLETE":
@@ -314,7 +316,7 @@ def line_status(store: Store, model: str, method: str) -> dict:
                 count = lambda *states: sum(1 for t in tasks if t["state"] in states)
                 out["stage2"]["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING", "FIXQ", "RESPONDED"),
                                           "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
-        if method == STAGE3_METHOD:   # parallel refinement chunks: running / queued / responded / saved / failed
+        if method in REFINE_METHODS:   # parallel refinement chunks: running / queued / responded / saved / failed
             out["stage_label"] = stage_label(b)
             tasks = store.task_rows(b["id"])
             if tasks:

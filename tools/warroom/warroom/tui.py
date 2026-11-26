@@ -26,7 +26,7 @@ from .views import (CARD_W, _hhmm, _when, control_columns, select_width, card_te
                     model_title, board_footer, detail_meta, scheduled_at, usage_text,
                     refine_display_model, pin_view)
 from .logtail import LogTail, redact
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
+from .store import DROP_METHOD, MAINTENANCE_METHOD, REFINE_METHODS, STAGE2_METHOD, STAGE3_METHOD, Store
 
 TMUX_SUP = "warroom-supervisor"
 SUPERVISOR_STARTUP_GRACE_SECONDS = 20
@@ -182,12 +182,12 @@ class Card(Static, can_focus=True):
     BINDINGS = [("enter", "open", "Open"), ("left", "move(0,-1)", ""), ("right", "move(0,1)", ""),
                 ("up", "move(-1,0)", ""), ("down", "move(1,0)", "")]
 
-    ROW = 0   # board row: Stage 2 (and the Maintainer) 0, Refinement 1
+    ROW = 0   # board row: Stage 2 (and the Maintainer) 0, Refinement 1, Drop 2
 
     def __init__(self, model: str, method: str, card_id: str | None = None, column: str | None = None):
         # Stage 2/3 cards start neutral: colour belongs to a task that exists, never to an idle slot.
         super().__init__("", id=card_id or f"card-{model}-{method}",
-                         classes="card empty" if method in (STAGE2_METHOD, STAGE3_METHOD) else "card")
+                         classes="card empty" if method in (STAGE2_METHOD, *REFINE_METHODS) else "card")
         self.model, self.method = model, method
         self.column = column or model   # the (first) board column this card sits in
         self.span = 1                   # board columns it covers
@@ -249,16 +249,27 @@ class RefineCard(Card):
     is named inside; its detail target follows that owner."""
 
     ROW = 1
+    LINE = STAGE3_METHOD
+    CARD_ID = "card-refine"
 
     def __init__(self, column_model: str, span: int):
-        super().__init__(column_model, STAGE3_METHOD, card_id="card-refine")
+        super().__init__(column_model, self.LINE, card_id=self.CARD_ID)
         self.owner_model = column_model
         self.span = span
         self.text_width = CARD_W + (span - 1) * BOARD_COLUMN_W   # one column's content + each further full column
         self.styles.column_span = span
 
     def action_open(self) -> None:
-        self.app.push_screen(LineDetail(self.owner_model, STAGE3_METHOD))
+        self.app.push_screen(LineDetail(self.owner_model, self.LINE))
+
+
+class DropCard(RefineCard):
+    """The one Drop card (#10171: D1, ...), board row 3 under Refinement, spanning the same columns. The Drop line is
+    the refinement engine's second line and runs beside Refinement; the card shows its own owner and Stage label."""
+
+    ROW = 2
+    LINE = DROP_METHOD
+    CARD_ID = "card-drop"
 
 
 class MaintainerCard(Card):
@@ -654,7 +665,7 @@ class WarRoom(App):
     .card.empty { border: round #444444; color: #777777; }
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
-    #board Stage2Card, #board RefineCard { height: auto; min-height: 7; }   /* beats `.card { height: 7 }` */
+    #board Stage2Card, #board RefineCard, #board DropCard { height: auto; min-height: 7; }   /* beats `.card { height: 7 }` */
     .spacer { height: 1; }
     .card.ghost { visibility: hidden; }
     #info { border: round $accent; padding: 0 1; height: auto; }
@@ -747,9 +758,10 @@ class WarRoom(App):
                         yield Static("", classes="spacer")
                 refine = [model for model in lines[:2] if model in self.refine_capable]
                 if refine:
-                    yield RefineCard(refine[0], span=len(refine))
-                    for _ in range(len(columns) - len(refine)):
-                        yield Static("", classes="spacer")
+                    for card in (RefineCard, DropCard):
+                        yield card(refine[0], span=len(refine))
+                        for _ in range(len(columns) - len(refine)):
+                            yield Static("", classes="spacer")
         yield Static(id="banner")
         yield Static(id="drain-note")
         yield BoardFooter(show_command_palette=False)
@@ -830,6 +842,7 @@ class WarRoom(App):
             opts.append(("Stage 2", STAGE2_METHOD))
         if model in refine_models(self.cfg):
             opts.append((control.REFINE_LABEL, STAGE3_METHOD))
+            opts.append((control.DROP_LABEL, DROP_METHOD))
         return opts
 
     def _sync_method_select(self, adapter: str, model: str | None = None) -> None:
@@ -936,7 +949,7 @@ class WarRoom(App):
         statuses = {}
         for model, me in self._line_keys():
             st = statuses[(model, me)] = control.line_status(store, model, me)
-            if me in (STAGE2_METHOD, STAGE3_METHOD):
+            if me in (STAGE2_METHOD, *REFINE_METHODS):
                 continue   # Stage 2/3 lines remain independent; each Board role card is shared
             try:
                 card = root.query_one(f"#card-{model}-{me}", Card)
@@ -950,13 +963,17 @@ class WarRoom(App):
             card.owner_model = card.column
             card.show(Text(card_text({**st, "display_owner": label})),
                       "card " + (st["state"] if st["batch"] else "empty"), True)
-        owner = refine_display_model(store, self.cfg, {
-            model: statuses[(model, STAGE3_METHOD)] for model in self.refine_capable
-        })
-        if owner:
-            st = statuses[(owner, STAGE3_METHOD)]
+        for line in REFINE_METHODS:   # Refinement, then Drop (#10171): each a shared card across the Claude/Codex columns
+            line_statuses = {model: statuses.get((model, line)) or control.line_status(store, model, line)
+                             for model in self.refine_capable}
+            owner = refine_display_model(store, self.cfg, line_statuses, line)
+            if not owner:
+                continue
+            st = line_statuses[owner]
             owner_label = adapter_label(registry(self.cfg)[owner]["adapter"])
-            for card in root.query(RefineCard):   # the line below Stage 2, across the Claude and Codex columns
+            for card in root.query(RefineCard):
+                if card.LINE != line:
+                    continue
                 card.owner_model = owner
                 card.show(Text(card_text({**st, "display_owner": owner_label}, card.text_width)),
                           "card " + (st["state"] if st["batch"] else "empty"), True)

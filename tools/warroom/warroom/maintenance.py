@@ -25,7 +25,7 @@ from . import auth, control, defects, progress, refine, stage2, stage3
 from .config import maintainer_id, maintainer_problem
 from .github import GhTransient
 from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked, ResourceFenced
-from .store import MAINTENANCE_DIAGNOSIS_HOLD_PREFIX, MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
+from .store import MAINTENANCE_DIAGNOSIS_HOLD_PREFIX, MAINTENANCE_METHOD, STAGE2_METHOD, REFINE_METHODS, STAGE3_METHOD
 
 _NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` regression files wherever they live (AGENTS.md)
 _PY_TEST = re.compile(r"tools/warroom/tests/test_[^/]+\.py")
@@ -723,7 +723,7 @@ class Maintenance:
             return   # the resolved report could not be set aside: never resume into a stale stop signal
         if run_start is None:
             run_start = self._retargeted_run_start(b, head)
-        if run_start is None and ((b["method"] == STAGE3_METHOD
+        if run_start is None and ((b["method"] in REFINE_METHODS
                 and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] in ("s3_finalize", "s3_parallel")))):
             self._hold(d, b, "원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
                               "checkpoint/view/commit과 소유 worktree를 보존하고 자동 재개하지 않습니다.")
@@ -791,7 +791,7 @@ class Maintenance:
         same branch/worktree. The old HEAD must be an ancestor (a plain forward merge). An in-flight run also requires
         its original remote boundary; a completed Stage 3 PR may instead rebind at its exact current owner PR HEAD.
         """
-        if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
+        if b["method"] in REFINE_METHODS and b["run_kind"] == "s3_finalize":
             commit_key = f"s3_commit_head_{b['id']}"
             committed = self.store.get(commit_key)
             remote_key = f"s3_commit_remote_head_{b['id']}"
@@ -819,9 +819,9 @@ class Maintenance:
             except Exception:
                 return None
             return f"s3_finalize_released_head_{b['id']}", new_head
-        if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_parallel":
+        if b["method"] in REFINE_METHODS and b["run_kind"] == "s3_parallel":
             return self._retargeted_s3_parallel(b, new_head)
-        if b["method"] == STAGE3_METHOD and isinstance(b["run_kind"], str) \
+        if b["method"] in REFINE_METHODS and isinstance(b["run_kind"], str) \
                 and b["run_kind"].startswith("s3_chunk_"):
             key = stage3.run_start_key(b["id"])
         elif b["method"] == STAGE2_METHOD:   # each Stage 2 step checks its OWN baseline key
@@ -843,7 +843,7 @@ class Maintenance:
             if self.sup.git.head(wt) != new_head or not self.sup.git.contains(wt, base["head"]) \
                     or self.sup.git.remote_head(b["branch"]) != base["remote_head"]:
                 return None
-            if b["method"] == STAGE3_METHOD:
+            if b["method"] in REFINE_METHODS:
                 checkpoint = base.get("checkpoint")
                 chunk = base.get("chunk")
                 if (not isinstance(checkpoint, dict) or checkpoint.get("shard") != b["shard"]
@@ -915,12 +915,12 @@ class Maintenance:
         """Recover a released Stage 2/3 baseline only at this batch's verified Maintainer integration HEAD."""
         if b["method"] == STAGE2_METHOD:
             key = stage2.run_start_key(b["id"])
-        elif b["method"] == STAGE3_METHOD and isinstance(b["run_kind"], str) \
+        elif b["method"] in REFINE_METHODS and isinstance(b["run_kind"], str) \
                 and b["run_kind"].startswith("s3_chunk_"):
             key = stage3.run_start_key(b["id"])
-        elif b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_parallel":
+        elif b["method"] in REFINE_METHODS and b["run_kind"] == "s3_parallel":
             key = stage3.parallel_start_key(b["id"])
-        elif b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
+        elif b["method"] in REFINE_METHODS and b["run_kind"] == "s3_finalize":
             key = f"s3_finalize_released_head_{b['id']}"
         else:
             return
@@ -1174,7 +1174,7 @@ class Maintenance:
 
     def _progress_snapshot(self, b) -> dict | None:
         try:
-            if b["method"] == STAGE3_METHOD:
+            if b["method"] in REFINE_METHODS:
                 done, total = stage3.progress(refine.ops(b).checkpoint(b["worktree"], b["shard"]))
                 return {"kind": "chunks", "done": done, "total": total}
             observed = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
@@ -1514,7 +1514,7 @@ class Maintenance:
     def _batch_investigation_scope(source, tasks) -> bool:
         batch_steps = {(STAGE2_METHOD, "fix_new"), (STAGE2_METHOD, "fix_resume"),
                        (STAGE2_METHOD, "s2_repair_new"), (STAGE2_METHOD, "s2_deterministic_finalize"),
-                       (STAGE3_METHOD, "s3_finalize")}
+                       *((method, "s3_finalize") for method in REFINE_METHODS)}
         return (not tasks or ((source["method"], source["run_kind"]) in batch_steps
                               and all(isinstance(t, dict) and t.get("state") == "SAVED" for t in tasks)))
 
@@ -1812,7 +1812,7 @@ class Maintenance:
             if source["method"] == STAGE2_METHOD and str(source["run_kind"] or "").startswith("s2_chunk_"):
                 state = stage2.checkpoint(wt, source["shard"], source["batch"])
                 return bool(state is not None and state.get("pending_chunk") == chunk)
-            if source["method"] == STAGE3_METHOD and str(source["run_kind"] or "").startswith("s3_chunk_"):
+            if source["method"] in REFINE_METHODS and str(source["run_kind"] or "").startswith("s3_chunk_"):
                 state = refine.ops(source).checkpoint(wt, source["shard"])
                 return bool(state is not None and stage3.next_chunk(state) == chunk)
         except (stage3.Stage3Error, OSError, ValueError, KeyError, TypeError):
@@ -2136,7 +2136,7 @@ class Maintenance:
             return True
         try:
             chunk = proof["chunk"]
-            if batch["method"] == STAGE3_METHOD:
+            if batch["method"] in REFINE_METHODS:
                 checkpoint = refine.ops(batch).checkpoint(batch["worktree"], batch["shard"])
                 return checkpoint is not None and chunk in checkpoint["completed_chunks"]
             before = proof.get("baseline_progress")
@@ -2305,7 +2305,7 @@ class Maintenance:
                 return "s2_prepare"
             return ("s2_chunk" if k.startswith("s2_chunk_") else "s2_links" if k in ("s2_links_new", "s2_links_fix")
                     else "s2_repair" if k == "s2_repair_new" else "s2_finalize" if k == "s2_deterministic_finalize" else None)
-        if m == STAGE3_METHOD:
+        if m in REFINE_METHODS:
             if (b["paused_from"] == "PREPARE" and k in ("", "s3_chunk_new")
                     and self.store.get(stage3.mode_key(b["id"])) == stage3.PARALLEL
                     and self.store.get(stage3.parallel_start_key(b["id"])) is None
@@ -2750,7 +2750,7 @@ class Maintenance:
                 raise
             except (FastForwardBlocked, GitError) as e:
                 raise IntegrationBlocked(f"기존 PR의 보호 산출물 소유권을 확인할 수 없습니다: {e}") from e
-            if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
+            if b["method"] in REFINE_METHODS and b["run_kind"] == "s3_finalize":
                 run_start = self._retargeted_run_start(b, head, completed_pr_head=initial_pr["head_sha"])
                 if run_start is None:
                     raise IntegrationBlocked(f"완료된 {self.sup._stage(b)} PR의 원래 finalize 기준을 승인된 최신 PR HEAD에 "

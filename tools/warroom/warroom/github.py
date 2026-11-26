@@ -16,6 +16,33 @@ class GhTransient(GhError):
     """The gh call failed on the API/network side (any HTTP status incl. 404/401/403/422, timeout, DNS, TLS); nothing was decided."""
 
 
+class OpenPr(dict):
+    """An open PR from the list query (#10171). Its `files` are fetched on first use through `pull_files` (paginated),
+    once per PR: listing every open PR with all of its files is what a big Relation PR makes slow. A failed lookup
+    raises a `GhError` naming the PR; it never becomes an empty list."""
+
+    def __init__(self, data: dict, fetch):
+        super().__init__(data)
+        self._fetch = fetch
+
+    def _files(self):
+        if not dict.__contains__(self, "files"):
+            number = dict.get(self, "number")
+            try:
+                dict.__setitem__(self, "files", self._fetch(number))
+            except GhTransient as error:
+                raise GhTransient(f"열린 PR #{number} 파일 목록 조회 실패: {error}") from error
+            except GhError as error:
+                raise GhError(f"열린 PR #{number} 파일 목록 조회 실패: {error}") from error
+        return dict.__getitem__(self, "files")
+
+    def __getitem__(self, key):
+        return self._files() if key == "files" else super().__getitem__(key)
+
+    def get(self, key, default=None):
+        return self._files() if key == "files" else super().get(key, default)
+
+
 class GhClient:
     def __init__(self, runner: Runner, env: dict, repo: str):
         self.runner, self.env, self.repo = runner, env, repo
@@ -39,12 +66,13 @@ class GhClient:
         return data
 
     def open_prs(self) -> list[dict]:
+        """Every open PR's metadata (no file lists: each `OpenPr` fetches its own `files` when first read)."""
         r = self.runner.run(["gh", "pr", "list", "--repo", self.repo, "--state", "open",
-                             "--limit", "300", "--json", "number,headRefName,baseRefName,files,title,body"],
+                             "--limit", "300", "--json", "number,headRefName,baseRefName,title,body"],
                             env=self.env, timeout=60)
         if not r.ok:
-            raise self._fail("gh pr list", r)
-        return json.loads(r.out or "[]")
+            raise self._fail("gh pr list (열린 PR 목록)", r)
+        return [OpenPr(pr, self.pull_files) for pr in json.loads(r.out or "[]")]
 
     def latest_stage2_production(self, base: str) -> dict | None:
         """Search contiguous UTC windows, newest first, without trusting Search ordering."""

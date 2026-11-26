@@ -221,7 +221,7 @@ def parse_incident(text: str) -> dict:
             raise ReportProblem(f"incident envelope 필수 항목이 없습니다: {k}")
     if d["state"] != "ERROR" or type(d["batch_id"]) is not int or type(d["error_seq"]) is not int or d["error_seq"] < 1:
         raise ReportProblem("incident envelope의 상태/사건 번호가 올바르지 않습니다.")
-    if d["method"] not in ("c", "d", "s2", "s3") or d["defect_class"] != incident_class(d["method"], d["batch_id"], d["error_seq"]):
+    if d["method"] not in ("c", "d", "s2", "s3", "drop") or d["defect_class"] != incident_class(d["method"], d["batch_id"], d["error_seq"]):
         raise ReportProblem("incident envelope의 method/분류가 사건 번호와 모순됩니다.")
     obs = d.get("observed")
     if not isinstance(obs, dict) or set(obs) != set(OBSERVATIONS) or not all(
