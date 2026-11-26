@@ -128,7 +128,9 @@ For each exact Sense and its full gloss:
 - **Polish (#8777):** one owner-named word, run after its shard's Stage 3 (the latest owner decision in #8777). Default model Opus Medium. It actively strengthens the expressions the owner points to. Every Sense of the word is edited.
 - **Stage 4 (#9929):** one shard per production PR, after every shard's Stage 3. Model Codex Sol Medium. The confirmed `data/relation-selection/selection-SSS.jsonl` (#10174) determines the exact `d:"p"` independent editing targets. Production and review do not select Polish/Skip again. Judge Add/Drop/Set/rebind for every supplied `p` Sense, including one without existing Relations; no change is a normal judgment. Do not independently explore or audit `s/e` Senses. An `s` expression may still be an Add target or counterpart, and its Relation may be edited under a `p` Sense. Existing authoring exclusions apply to `e`. Missing selection, technical failure and provider Policy Skip are distinct from the fixed `s/e` input; none changes the selection file. Selection criteria live in #10174, and the editing card is `tools/warroom/prompts/s4_policy_card.md`.
 
-Both write through the same Polish path (`by:"p"` rows, `z` only for real orphans, `p` exclusions, relation-key concurrency) described in `docs/relation-factory.md` §5.
+Both write `by:"p"` Relation rows through the Polish path with relation-key concurrency (`docs/relation-factory.md` §5). Single-word Polish also writes `z` only for real orphans and `p` exclusions. Stage 4 is Relation-only (#9929, §4-E): it writes no `p`/`z` and reads no Candidate or Drop.
+
+**Stage 4 review boundary (#10268):** the Stage 4 committer applies the editorial standard above and owns expression value, Add/Drop, redundancy and the representative form, the semantic choice of Sense, and Type/Tier fit. Stage 4 PR review is format and technical only (allowed paths and scope, relation-key application, stored integrity, exact ID binding, allowed values and existing constraints) and does not re-judge that content; see `docs/review/prompts/s4.md`. The general review gates below do not apply to Stage 4 PR review.
 
 ## Different goals, different review gates
 
@@ -246,4 +248,4 @@ relative order, nor mechanically score or test subjective usefulness.
 
 ## PR review reference
 
-PR review procedures, blocker thresholds, evidence and re-review duties are in the root [`REVIEW.md`](../REVIEW.md) and the applicable [review card](review/prompts/s2.md). This document remains the **product and editorial policy** for both producers and reviewers; the review card does not override its Type/Tier, Drop, source-Sense or ID-link contracts.
+PR review procedures, blocker thresholds, evidence and re-review duties are in the root [`REVIEW.md`](../REVIEW.md) and the applicable [review card](review/prompts/s2.md). This document remains the **product and editorial policy** for both producers and reviewers; the review card does not override its Type/Tier, Drop, source-Sense or ID-link contracts. For Stage 4, the editorial policy binds the committer, and the [S4 review card](review/prompts/s4.md) limits PR review to the technical contract.

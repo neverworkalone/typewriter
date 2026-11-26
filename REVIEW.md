@@ -50,7 +50,7 @@ For **technical Stage 1**: after reading this root file at the exact PR HEAD, de
 - **Candidate-only A/B/C/D:** if all material changes are the selected method's `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl` production data, load `candidate.md` plus **exactly one** of `a.md`, `b.md`, `c.md`, `d.md` matching title and file. Do not load S2/S3 or generic code guides for a routine data batch.
 - **S2 Admission-only:** `[S2/<model>]` Part PR with expected Relation/Drop data and no implementation changes → `s2.md`.
 - **S3 Editorial-only:** `[S3/<model>]` shard PR with expected Relation/Drop data and no implementation changes → `s3.md`.
-- **S4 Selective Polish-only:** `[S4/<model>]` shard PR (`Refs #9929`) whose changes are only shard Relation data files, possibly of other shards, and no implementation changes → `s4.md`.
+- **S4 Selective Polish-only:** `[S4/<model>]` shard PR (`Refs #9929`) whose changes are only shard Relation data files, possibly of other shards, and no implementation changes → `s4.md`. **S4 review is format/technical only (#10268):** the committer owns expression value, Add/Drop, redundancy, semantic Sense choice and Type/Tier fit; the reviewer does not re-judge that content.
 - **Other lexical/Canonical/STDICT data-only:** `data.md`.
 - **Implementation, CI, schema, mixed or unclassified PR:** `code.md`. Open its **relevant specialist card(s) only when touched**: `search.md`, `toolchain.md`, `extension.md`, `licensing.md`, `data.md`.
 
