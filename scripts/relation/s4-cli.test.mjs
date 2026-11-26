@@ -34,6 +34,8 @@ const idRow = (source, target, type, relevance, extra = {}) => ({
 
 // Shard 001: 고요 (two Senses), 물결, 흐르다, an idiom 물 뿌린 듯이 and 쓸쓸하다 with no Relation; shard 002: 별빛, 반짝이다.
 const FAR = 'w10990-s1';   // a shard 001 filler in a later chunk, linked from 고요 s1
+const EXCLUDED = 'w10994-s1';
+const selection = (id) => id === 'w5-s1' ? 's' : id === EXCLUDED ? 'e' : 'p';
 const RELATIONS_001 = [
   idRow('w1-s1', 'w3-s1', 'scene', 4, { candidate_assignment_version: 1, candidate_forms: ['물결'], reverse_candidate_forms: [] }),
   idRow('w1-s1', 'w2000-s1', 'mood', 3, { candidate_assignment_version: 1, candidate_forms: ['별빛'], reverse_candidate_forms: ['고요'] }),
@@ -43,7 +45,7 @@ const RELATIONS_001 = [
 ];
 const RELATIONS_002 = [idRow('w2001-s1', 'w1-s2', 'sensory', 5, { polish: true })];
 
-async function repository(t) {
+async function repository(t, { select = selection } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-s4-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const own = [
@@ -60,11 +62,13 @@ async function repository(t) {
       ...filler(2, 0, 498)],
   };
   const candidates = { 'w1-s1': ['물결', '별빛'], 'w2000-s1': ['고요'] };
-  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relation-candidates/002', 'data/relations', 'data/relation-drops']) {
+  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relation-candidates/002', 'data/relations', 'data/relation-drops', 'data/relation-selection']) {
     await mkdir(path.join(root, directory), { recursive: true });
   }
   for (const [shard, records] of Object.entries(shards)) {
     await writeFile(path.join(root, `data/canonical/stdict-0${shard}.jsonl`), jsonl(records));
+    await writeFile(path.join(root, `data/relation-selection/selection-${shard}.jsonl`), jsonl(records.flatMap((record) =>
+      record.senses.map((item) => ({ id: item.id, d: select(item.id) })))));
     const producers = shard === '001' ? ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'] : ['a_codex'];
     for (const batch of shard === '001' ? ['01', '02'] : ['01']) {
       const rows = records.slice((Number(batch) - 1) * 500, Number(batch) * 500);
@@ -106,7 +110,7 @@ async function saveNone(root, from, total) {
   for (let number = from; number <= total; number += 1) await save(root, String(number).padStart(3, '0'), () => ['none']);
 }
 
-test('#9928 Stage 4 shows every Sense in both directions and applies Add/Drop/Set/Skip across shards through Polish', async (t) => {
+test('Stage 4 shows selected Polish Senses in both directions and applies Add/Drop/Set across shards through Polish', async (t) => {
   const root = await repository(t);
   const prepared = await cli(root, 'prepare', '--shard', '001');
   assert.ok(prepared.chunk_count >= 2);
@@ -114,7 +118,9 @@ test('#9928 Stage 4 shows every Sense in both directions and applies Add/Drop/Se
   const first = await cli(root, 'read-chunk', '--shard', '001', '--chunk', '001');
   const lines = first.prompt_view.split('\n');
   assert.match(lines[0], new RegExp(`^chunk 001/${String(prepared.chunk_count).padStart(3, '0')} senses \\d+ relations \\d+$`));
-  assert.ok(lines.includes('W\t고요') && lines.includes('S6\tadjective\t외롭고 적적하다.'), 'every Sense, also one without Relations');
+  assert.ok(lines.includes('W\t고요') && lines.includes('S5\tadjective\t외롭고 적적하다.'), 'selected Senses include one without Relations');
+  assert.ok(!first.senses.some((entry) => entry.sense_id === 'w5-s1' || entry.sense_id === EXCLUDED));
+  assert.ok(!lines.includes('W\t물 뿌린 듯이'));
   assert.ok(lines.some((line) => /^R\d+\t반짝이다\tverb\t/u.test(line)), 'the reverse row stored in shard 002 is shown');
   assert.ok(!first.prompt_view.includes('w2001'), 'no IDs in the model view');
   const lookup = await cli(root, 'lookup', '--text', '반짝이다');
@@ -124,27 +130,26 @@ test('#9928 Stage 4 shows every Sense in both directions and applies Add/Drop/Se
     const star = find(view, 'w1-s1', '별빛');
     const wave = find(view, 'w1-s1', '물결');
     const shine = find(view, 'w1-s2', '반짝이다');
-    const idiom = find(view, 'w5-s1', '흐르다');
     const flow = find(view, 'w4-s1', '물 뿌린 듯이');
     return [
-      `skip ${idiom.sense}`,
       `D ${star.relation} ${shine.relation}`,                    // a forward cross-shard row and a reverse-only row
       `C ${wave.relation} mood 2`,
       `A ${find(view, 'w6-s1', '').sense} "적적함" mood 3`,        // a Sense without any Relation
       `A ${star.sense} w2001-s1 action 4`,
-      `D ${idiom.relation}`,                                      // reviewed under the skipped idiom: discarded
       `C ${flow.relation} action 7`,                              // the same row reviewed under 흐르다: kept
       `A ${star.sense} w1-s2 near 2`,                             // own record: discarded
       'D 9999',
     ];
   });
-  assert.equal(saved.skipped, 1);
-  assert.equal(saved.discarded.length, 3);
+  assert.equal(saved.skipped, 0);
+  assert.equal(saved.discarded.length, 2);
   await saveNone(root, 2, prepared.chunk_count);
 
   const applied = await cli(root, 'apply', '--shard', '001');
   assert.equal(applied.status, 'applied');
   assert.deepEqual(applied.senses.skipped, 1);
+  assert.equal(applied.senses.excluded, 1);
+  assert.deepEqual(applied.selection, { p: 999, s: 1, e: 1 });
   assert.deepEqual(applied.affected_shards, ['001', '002']);
   assert.deepEqual(applied.changed_files, ['data/relation-drops/drop-001.jsonl', 'data/relation-drops/drop-002.jsonl',
     'data/relations/relation-001.jsonl', 'data/relations/relation-002.jsonl']);
@@ -217,43 +222,93 @@ test('#9928 conflicting chunk decisions resolve by key, whole decisions, indepen
   assert.equal((await cli(root, 'apply', '--shard', '001')).status, 'already-applied');
 });
 
-test('#9928 a shard with only skips and none completes as no-change, and an all-invalid answer is not a judgment', async (t) => {
+test('selected Polish Senses can complete with no change, but skip and all-invalid answers cannot complete them', async (t) => {
   const root = await repository(t);
   const prepared = await cli(root, 'prepare', '--shard', '001');
   await assert.rejects(save(root, '001', () => ['D 9999', 'A 1 w999999-s1 near 3']), /no valid judgment/u);
-  await save(root, '001', (view) => [`skip ${view.senses.map((entry) => entry.n).join(' ')}`]);
-  await saveNone(root, 2, prepared.chunk_count);
+  await assert.rejects(save(root, '001', () => ['skip 1']), /fixed selection decisions/u);
+  await assert.rejects(save(root, '001', (view) => ['skip 1', `D ${find(view, 'w1-s1', '별빛').relation}`]), RefineInputError);
+  await saveNone(root, 1, prepared.chunk_count);
   const applied = await cli(root, 'apply', '--shard', '001');
   assert.equal(applied.status, 'no-change');
   assert.deepEqual(applied.changed_files, []);
   assert.equal(git(root, 'status', '--porcelain', '--', 'data'), '');
 });
 
-test('#10047 a record view keeps the chunk numbers and digest; P skips exactly that record and counts apart from Skip', async (t) => {
-  const root = await repository(t);
+test('#10047 a record Policy Skip covers only its selected Polish Senses and counts apart from fixed selection', async (t) => {
+  const root = await repository(t, { select: (id) => id === 'w1-s2' ? 's' : selection(id) });
   const prepared = await cli(root, 'prepare', '--shard', '001');
   const whole = await cli(root, 'read-chunk', '--shard', '001', '--chunk', '001');
   const record = await cli(root, 'read-chunk', '--shard', '001', '--chunk', '001', '--record', 'w1');
   assert.equal(record.view_sha256, whole.view_sha256, 'a record run binds to the whole chunk digest');
   assert.deepEqual(record.senses.map((entry) => [entry.n, entry.sense_id]),
     whole.senses.filter((entry) => entry.record_id === 'w1').map((entry) => [entry.n, entry.sense_id]));
-  assert.match(record.prompt_view, new RegExp(`^chunk 001/\\d{3} senses 2 relations ${record.relation_count}\\n`, 'u'));
+  assert.match(record.prompt_view, new RegExp(`^chunk 001/\\d{3} senses 1 relations ${record.relation_count}\\n`, 'u'));
   await assert.rejects(cli(root, 'read-chunk', '--shard', '001', '--chunk', '001', '--record', 'w999'), /no record w999/u);
 
   // An invalid Policy Skip refuses the whole save; nothing is counted twice.
   await assert.rejects(save(root, '001', () => ['P w999']), /unknown record w999/u);
-  await assert.rejects(save(root, '001', (view) => ['P w1', `skip ${find(view, 'w1-s1', '').sense}`]), /also has a skip or edit/u);
+  await assert.rejects(save(root, '001', (view) => ['P w1', `D ${find(view, 'w1-s1', '별빛').relation}`]), /also has an edit/u);
   await assert.rejects(save(root, '001', () => ['P w1 w1']), /twice/u);
   const saved = await save(root, '001', (view) => ['P w1', `C ${find(view, 'w3-s1', '고요').relation} mood 2`]);
-  assert.equal(saved.policy_skipped, 2);
+  assert.equal(saved.policy_skipped, 1);
   assert.equal(saved.skipped, 0);
   await saveNone(root, 2, prepared.chunk_count);
   const applied = await cli(root, 'apply', '--shard', '001');
-  assert.equal(applied.senses.policy_skipped, 2);
-  assert.equal(applied.senses.skipped, 0);
-  assert.equal(applied.senses.polished, applied.senses.total - 2);
+  assert.equal(applied.senses.policy_skipped, 1);
+  assert.equal(applied.senses.skipped, 2);
+  assert.equal(applied.senses.polished, applied.selection.p - 1);
   // Another Sense's edit of the Policy Skip record's relation follows the common contract; its other rows stay.
   const own = await relations(root, '001');
   assert.equal(own.find((row) => row.target_sense_id === 'w3-s1').type, 'mood');
   assert.ok(own.some((row) => row.target_sense_id === 'w2000-s1') && own.some((row) => row.target_sense_id === FAR));
+});
+
+test('a shard without Polish Senses has no AI chunks and uses the existing no-change path', async (t) => {
+  const root = await repository(t, { select: (id) => id === EXCLUDED ? 'e' : 's' });
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  assert.equal(prepared.chunk_count, 0);
+  assert.deepEqual(await cli(root, 'read-chunk', '--shard', '001'), { shard: '001', complete: true, remaining_chunks: 0 });
+  const applied = await cli(root, 'apply', '--shard', '001');
+  assert.equal(applied.status, 'no-change');
+  assert.deepEqual(applied.selection, { p: 0, s: 1000, e: 1 });
+  assert.equal(applied.senses.polished, 0);
+  assert.deepEqual(applied.changed_files, []);
+  assert.equal(git(root, 'status', '--porcelain', '--', 'data'), '');
+});
+
+test('missing or invalid fixed selection refuses preparation without an AI selection fallback', async (t) => {
+  const root = await repository(t);
+  const file = path.join(root, 'data/relation-selection/selection-001.jsonl');
+  const original = await readFile(file, 'utf8');
+  await rm(file);
+  git(root, 'add', 'data');
+  git(root, 'commit', '-qm', 'Missing selection');
+  await assert.rejects(cli(root, 'prepare', '--shard', '001'), /requires selection-001\.jsonl/u);
+  await writeFile(file, original.replace('"d":"p"', '"d":"invalid"'));
+  git(root, 'add', 'data');
+  git(root, 'commit', '-qm', 'Invalid selection');
+  await assert.rejects(cli(root, 'prepare', '--shard', '001'), /invalid selection-001\.jsonl/u);
+});
+
+test('a selected Relation can move to an unselected sibling Sense without authorizing independent Skip edits', async (t) => {
+  const root = await repository(t, { select: (id) => id === 'w1-s2' ? 's' : selection(id) });
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  const first = await cli(root, 'read-chunk', '--shard', '001', '--chunk', '001');
+  assert.ok(!first.senses.some((entry) => entry.sense_id === 'w1-s2'));
+  await save(root, '001', (view) => [`M ${find(view, 'w1-s1', '별빛').relation} w1-s2`]);
+  await saveNone(root, 2, prepared.chunk_count);
+  const applied = await cli(root, 'apply', '--shard', '001');
+  assert.equal(applied.status, 'applied');
+  const own = await relations(root, '001');
+  assert.ok(!own.some((row) => row.source_sense_id === 'w1-s1' && row.target_sense_id === 'w2000-s1'));
+  assert.ok(own.some((row) => row.source_sense_id === 'w1-s2' && row.target_sense_id === 'w2000-s1'));
+  const base = git(root, 'rev-parse', 'HEAD');
+  git(root, 'add', 'data');
+  git(root, 'commit', '-qm', 'Move selected relation');
+  const delta = path.join(root, '.warroom-scratch', 'delta.txt');
+  await writeFile(delta, 'amend\nK w6-s1 "없는말"\n');
+  assert.equal((await cli(root, 'amend', '--shard', '001', '--base', base, '--in', delta)).status, 'already-applied');
+  await writeFile(delta, 'amend\nA w5-s1 "독립편집" near 3\n');
+  await assert.rejects(cli(root, 'amend', '--shard', '001', '--base', base, '--in', delta), /neither end is a selected Polish Sense/u);
 });

@@ -94,12 +94,22 @@ class Stage4Registration(unittest.TestCase):
 
         context = stage4.decision_context(view([("w1", ["F", "R"]), ("w1", ["X"]), ("w2", [])]), "001")
         normalized, warnings = stage4.normalize_decisions(
-            "chunk 001\nskip 3 9\nD 1 7\nC 2 mood 4\nC 2 scene 4\nA 3 \"적적함\" mood 3\nM 3 1\nM 2 3\nprose", "001", context)
-        self.assertEqual(normalized, "chunk 001\nskip 3\nA 3 \"적적함\" mood 3\nD 1\nM 3 1\n")
-        self.assertEqual(len(warnings), 5)
+            "chunk 001\nD 1 7\nC 2 mood 4\nC 2 scene 4\nA 3 \"적적함\" mood 3\nM 3 1\nM 2 3\nprose", "001", context)
+        self.assertEqual(normalized, "chunk 001\nA 3 \"적적함\" mood 3\nD 1\nM 3 1\n")
+        self.assertEqual(len(warnings), 4)
         with self.assertRaises(refine.NoJudgment):   # nothing usable is never an implicit Keep-all
             stage4.normalize_decisions("chunk 001\nD 99\nprose", "001", context)
+        with self.assertRaises(refine.NoJudgment):
+            stage4.normalize_decisions("chunk 001\nskip 1 2 3", "001", context)
+        with self.assertRaises(refine.NoJudgment):
+            stage4.normalize_decisions("chunk 001\nskip 3\nD 1", "001", context)
+        with self.assertRaises(refine.RefineError):
+            stage4.decision_text("chunk 001\nskip 1", "001")
         self.assertEqual(stage4.normalize_decisions("chunk 001\nnone", "001", context)[0], "chunk 001\nnone\n")
+        normalized, warnings = stage4.normalize_decisions("chunk 001\nM 3 w1-s4\nM 2 w2-s1", "001", context)
+        self.assertEqual(normalized, "chunk 001\nM 3 w1-s4\n")
+        self.assertEqual(len(warnings), 1)
+        self.assertEqual(stage4.decision_text(normalized, "001"), normalized)
 
 
 class Stage4Finalize(unittest.TestCase):
@@ -128,7 +138,8 @@ class Stage4Finalize(unittest.TestCase):
 
         def applied(*_args):
             w.git.dirty_text = f" M {OTHER}\n"   # a reverse-only edit: the produced shard's files are unchanged
-            return {"status": "applied", "senses": {"total": 9, "skipped": 4, "polished": 5},
+            return {"status": "applied", "selection": {"p": 5, "s": 3, "e": 1},
+                    "senses": {"total": 9, "skipped": 3, "excluded": 1, "polished": 4, "policy_skipped": 1},
                     "decisions": {"add": 0, "drop": 1, "set": 0, "rebind": 0}, "affected_shards": ["001", "007"],
                     "conflicts": [], "z_added": 0}
         b = self.finalize(applied)
@@ -138,14 +149,22 @@ class Stage4Finalize(unittest.TestCase):
         self.assertEqual(w.git.refine_verify_calls[0][1:3], ("scripts/relation/s4-cli.mjs", "001"))
         body = w.gh.created_prs[0]["body"]
         self.assertIn("Refs #9929", body)
-        self.assertIn("- Senses: 9 (Polish 5, Skip 4, Policy Skip 미측정)", body)
+        self.assertIn("- Senses: 9 (input p 5, s 3, e 1; Polish 4, Policy Skip 1)", body)
         self.assertIn("- Affected Shards: 001, 007", body)
 
-    def test_no_change_shard_completes_without_commit_or_pr_and_resumes_cleanup(self):
+    def test_zero_chunk_shard_completes_without_ai_commit_or_pr_and_resumes_cleanup(self):
         w = self.w
-        b = self.finalize(lambda *_args: {"status": "no-change", "senses": {"total": 9, "skipped": 9, "polished": 0},
-                                          "affected_shards": ["001"], "changed_files": []})
+        w.runner.s4.chunks = 0
+        applied = {"status": "no-change", "selection": {"p": 0, "s": 8, "e": 1},
+                   "senses": {"total": 9, "skipped": 8, "excluded": 1, "polished": 0, "policy_skipped": 0},
+                   "affected_shards": ["001"], "changed_files": []}
+        with mock.patch.object(self.ops, "apply", return_value=applied), \
+                mock.patch.object(self.ops, "report", return_value={"shard": "001"}):
+            w.sup.s3p.begin(self.b)
+        b = w.store.batch(self.b["id"])
         self.assertEqual(b["state"], "CLEANUP", b["error"])
+        self.assertEqual(w.adapter.launches, [])
+        self.assertEqual(w.store.task_rows(b["id"]), [])
         self.assertEqual((getattr(w.git, "commits", []), getattr(w.gh, "created_prs", [])), ([], []))
         head = w.git.local_head
         self.assertEqual(w.store.get(stage4.SPEC.nochange_key("001")), head)

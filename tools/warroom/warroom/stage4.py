@@ -18,12 +18,11 @@ TYPES = ("near", "mood", "scene", "sensory", "action", "association")
 _SENSE_ID = r"w\d+-s\d+"
 _TARGET = rf'(?:{_SENSE_ID}|"[^"]+")'
 _LINE = {
-    "skip": re.compile(r"skip((?:\s+\d+)+)"),
     "D": re.compile(r"D((?:\s+\d+)+)"),
     "C": re.compile(rf"C\s+(\d+)\s+({'|'.join(TYPES)})\s+([1-9])"),
     "A": re.compile(rf"A\s+(\d+)\s+({_TARGET})\s+({'|'.join(TYPES)})\s+([1-9])"),
     "B": re.compile(rf"B\s+(\d+)\s+({_TARGET})(?:\s+({'|'.join(TYPES)})\s+([1-9]))?"),
-    "M": re.compile(r"M\s+(\d+)\s+(\d+)"),
+    "M": re.compile(rf"M\s+(\d+)\s+(\d+|{_SENSE_ID})"),
 }
 
 
@@ -37,7 +36,7 @@ def decision_text(answer: str, chunk: str) -> str:
     if lines[1:] == ["none"]:
         return "\n".join(lines) + "\n"
     if len(lines) < 2 or any(not any(pattern.fullmatch(line) for pattern in _LINE.values()) for line in lines[1:]):
-        raise RefineError("Stage 4 answer must contain only skip, D, C, A, B, M lines or none")
+        raise RefineError("Stage 4 answer must contain only D, C, A, B, M lines or none")
     return "\n".join(lines) + "\n"
 
 
@@ -131,6 +130,8 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
         return f"chunk {chunk}\nnone\n", []
     accepted, warnings, edited = [], [], {}
     for line in body:
+        if re.match(r"skip(?:\s|$)", line):
+            raise NoJudgment("Stage 4 selection is fixed; skip cannot complete a prepared p Sense")
         if line == "none":
             warnings.append("다른 판정과 섞인 none 줄 폐기")
             continue
@@ -138,14 +139,6 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
         match = _LINE[kind].fullmatch(line) if kind else None
         if kind is None:
             warnings.append(f"형식이 잘못된 판정 줄 폐기: {line[:100]}")
-            continue
-        if kind == "skip":
-            numbers = [int(value) for value in match.group(1).split()]
-            known = [number for number in numbers if number in senses]
-            if len(known) != len(numbers):
-                warnings.append(f"존재하지 않는 Sense 번호의 skip 폐기: {line[:100]}")
-            if known:
-                accepted.append("skip " + " ".join(map(str, known)))
             continue
         if kind == "D":
             numbers = [int(value) for value in match.group(1).split()]
@@ -166,9 +159,14 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
             warnings.append(f"Relation {number}: 존재하지 않는 번호의 {kind} 폐기")
             continue
         if kind == "M":
-            target = senses.get(int(match.group(2)))
             source = senses[relations[number]["sense"]]
-            if target is None or target["record_id"] != source["record_id"] or target["n"] == source["n"]:
+            target_ref = match.group(2)
+            if target_ref.isdecimal():
+                target = senses.get(int(target_ref))
+                valid = target is not None and target["record_id"] == source["record_id"] and target["n"] != source["n"]
+            else:
+                valid = target_ref.rsplit("-s", 1)[0] == source["record_id"]
+            if not valid:
                 warnings.append(f"Relation {number}: 같은 표제어의 다른 Sense가 아닌 M 폐기")
                 continue
         edited.setdefault(number, []).append(line)
@@ -178,7 +176,7 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
             continue
         accepted.append(proposals[0])
     if not accepted:
-        raise NoJudgment("유효한 skip/D/C/A/B/M 판정이나 명시적 none이 없는 응답입니다")
+        raise NoJudgment("유효한 D/C/A/B/M 판정이나 명시적 none이 없는 응답입니다")
     return "\n".join([f"chunk {chunk}", *accepted]) + "\n", warnings
 
 

@@ -4,19 +4,15 @@ You are a **vocabulary editor choosing expressions from a novelist's point of vi
 
 > 내가 소설에 이 단어를 썼는데 너무 여러 번 써서 다른 표현으로 바꾸고 싶다. 혹은 이 단어와 유사한 결을 가진 말을 떠올리고 싶다.
 
-## 1. Skip or Polish — value as a search start
+## 1. Confirmed selection — edit only the supplied `p` Senses
 
-First ask, for each Sense: **would a writer search this word directly to find an alternative or a word of similar texture?** Writers search ordinary headwords and their inflected forms. Finding `물 뿌린 듯이` from `고요하다` is valuable; editing `물 뿌린 듯이` as a search start is not.
+The independent editing targets were already decided by #10174. The CLI reads `data/relation-selection/selection-SSS.jsonl` and supplies only exact Senses with `d:"p"`. **Do not choose Polish or Skip again.**
 
-- **Polish first:** ordinary main verbs, adjectives, adverbs and interjections, especially emotion, action, state, sensation and description. Rare native words, archaic or dialect words and onomatopoeia/mimetic words are not excluded for that reason. A valuable search word with no Relation yet still gets Add judgment.
-- **Nouns:** search for *expression* → Polish; search for *information* → Skip.
-  - Polish first: emotion/mind (고독, 애련, 비통), character/attitude (야성미, 위엄), action/state/situation/relationships (부침, 흉계, 갈등), general abstractions (현실, 운명, 여운), sensation/nature/landscape (그늘, 노을, 말소리). Academic technical concepts are Skip even when abstract.
-  - Judge: ordinary concrete things, body parts, people (창문, 아랫배, 큰형) — Polish only when a writer would search them for description or metaphor; when unclear, use your discretion.
-  - Skip first: names that identify a specific object (박공지붕, 교통카드), specific foods, plants and animals (육개장, 가는쑥부쟁이). Appearing in a scene is not enough.
-- **Determiners:** Polish those that change quality, degree, attitude or descriptive texture (새, 헌, 온갖, 갖은, 네까짓, and `-적` forms such as 구시대적·단도직입적). Skip pure quantity/order/designation Senses (각, the ordinal Sense of 셋째).
-- **Always Skip as a search start:** idioms and proverbs; technical terms, specific classification names, proper nouns, units, and purely grammatical Senses (also for verbs/adjectives). `expression` POS also includes other compound expressions: judge their meaning and use.
-- Judge polysemy and homonyms **per Sense**. These examples are directions, not word lists. There is no Skip quota or target ratio.
-- **Skip** omits Add, Drop and Set/rebind **for judgments made while reviewing that Sense**. It is a normal result, never a cover for a failure. A skipped Sense's Relations may still be edited while reviewing another, Polished Sense, and a skipped expression (including an idiom) may be an Add target or a kept Relation of a Polished Sense.
+- Judge Add, Drop, Set and rebind for every displayed Sense, including one with no existing Relation. No change is a normal judgment; low perceived search value is not permission to skip the supplied Sense.
+- `s` and `e` are not independent targets. Keep the shown forward/reverse Relations and their exact counterpart meanings as context. An `s` expression may be a valid target or kept Relation of a `p` Sense; its selection alone is not a deletion rule. Existing proper-name and other authoring exclusions still apply to `e`.
+- Correcting a wrong binding of a supplied Sense's existing Relation may require another Sense of the same record. This does not authorize independent exploration of that other Sense.
+- Provider Policy Skip is handled by the Supervisor under #10047. It never changes a selection to `s/e`. Technical failures and missing judgment are not no-change.
+- Do not modify the selection file, invent a selection quota or expand into D1's independent `s` cleanup.
 
 ## 2. Polish — Add, Drop, Set, rebind
 
