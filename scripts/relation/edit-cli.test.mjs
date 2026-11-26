@@ -344,6 +344,11 @@ test('Sense grouping targets 350–500 Relation rows without splitting any sourc
 
 test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and Git-diff report compose', async (t) => {
   const root = await repository(t);
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  const exclusion = '{"id":"w1","sid":"w1-s1","tt":"먼 풍경","by":"p"}\n';
+  await writeFile(dropPath, exclusion + await readFile(dropPath, 'utf8'));
+  git(root, 'add', 'data/relation-drops/drop-001.jsonl');
+  git(root, 'commit', '-qm', 'Add Polish exclusion');
   const prepared = await quiet(() => run(['prepare', '--shard', '001'], { root }));
   assert.deepEqual(prepared, { shard: '001', chunk_count: 1, relation_count: 4, resumed: false });
   const checkpointPath = path.join(root, '.warroom-scratch/relation-edit-001.json');
@@ -387,7 +392,8 @@ test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and G
   assert.deepEqual(outputDrops.map((row) => [row.source_sense_id, row.candidate, row.reason]), [
     ['w3-s2', '차분하다', 'z'], ['w1-s1', '반짝', 'z'], ['w2-s1', '차분하다', 'z'],
   ]);
-  assert.equal(beforeDropBytes.split('\n').filter(Boolean).length, 1);
+  assert.equal(beforeDropBytes.split('\n').filter(Boolean).length, 2);
+  assert.ok((await readFile(dropPath, 'utf8')).startsWith(exclusion), 'apply preserves the exclusion byte for byte');
 
   // Simulate a process stopping after the two data files were written but before apply removed its checkpoint.
   await writeFile(checkpointPath, completedCheckpoint);
