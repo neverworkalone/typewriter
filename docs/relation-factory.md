@@ -235,7 +235,13 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 **목적:** Stage 3 전체 완료 뒤 해당 샤드의 확정 `data/relation-selection/selection-SSS.jsonl`을 읽고, `d:"p"` Sense만 #8777과 같은 기준으로 Add/Drop/Set/재결속한다. AI가 P/S/E를 다시 선별하지 않는다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)의 *Polish and Stage 4* 절, 생산 지시는 [#9929](https://github.com/neverworkalone/typewriter/issues/9929)다.
 
-- **CLI:** `scripts/relation/s4-cli.mjs`(`pnpm run relation:s4`). Refinement 코어(`createRefineCli`)와 keyed 규칙 `scripts/relation/refine/rules/s4.mjs`로 이루어진다. 결정은 base 행 번호가 아니라 **관계 키**에 묶인다. 데이터 변경은 모두 Polish 쓰기 경로(§5, `polish-cli.mjs apply`)를 거친다. 따라서 `by:"p"`, 실제 고아에만 `z`, 제외 문맥 `p`, 재승인 정산과 영향 샤드 공통 검증이 그대로 적용된다.
+- **CLI:** `scripts/relation/s4-cli.mjs`(`pnpm run relation:s4`). Refinement 코어(`createRefineCli`)와 keyed 규칙 `scripts/relation/refine/rules/s4.mjs`로 이루어진다. 결정은 base 행 번호가 아니라 **관계 키**에 묶인다. 데이터 변경은 모두 Polish 쓰기 경로(§5, `polish-cli.mjs apply`)의 **Relation 전용 모드**를 거친다.
+- **Relation 전용 (#9929):** Candidate·Drop 회계는 Stage 3까지이고, S4부터는 Relation만 다룬다. S3 전체 완료가 S4의 착수 조건이므로 별도 전환 설정은 없다.
+  - 읽는 것: Canonical, 확정 선별, 현재 승인 Relation.
+  - 쓰는 것: Relation 파일뿐이다. 새 행의 출처는 `by:"p"`다(선별값 `d:"p"`, Drop 파일의 `p`와 다르다).
+  - 하지 않는 것: Stage 1 Candidate·Drop 파일 읽기, 고아 후보 계산, `p`·`z` 추가, Add가 cover하는 기존 Drop 삭제, Candidate 회계(`verifyAccounting`) 비교. 과거 Drop에 같은 연결이 있어도 Add는 Drop 파일을 그대로 둔다.
+  - 유지하는 것: 공통 `validateRelationRows`(정확한 Sense 결속, 중복·역중복, 필드·타입, action POS), `assertScope` 편집 범위, 관계 키 충돌 해결.
+  - prepare·refresh·apply·amend·decisions·verify·replay가 같은 계약을 쓴다. Drop 파일을 바꾼 S4 PR은 범위 오류다. S2/S3와 단건 Polish(#8777, `show`의 `p` 문맥 포함)는 기존 회계를 그대로 쓴다.
 - **입력:** §5-D의 정확한 전체 Sense ID·전수·순서·필드/값 검사를 재사용한다. 해당 샤드 파일이 없거나 잘못되면 입력 오류로 종료하며 자체 선별 또는 기본값으로 대체하지 않는다. 전체 428개 선별 완료를 추가 선행 조건으로 삼지 않는다.
 - **청크:** 확정 `p` Sense만 record별로 묶어 보여 준다. 관계 없는 `p`도 포함하며, `s/e`는 독립 판단 대상으로 전달하지 않는다. 각 Sense 아래에는 자기 정방향·text 관계와, 어느 샤드에 저장되었든 그 Sense를 target으로 갖는 역방향 ID 관계를 둔다. record는 나누지 않고, 관계 수(빈 Sense는 1) 350~500 기준으로 청크를 만든다. 같은 샤드의 두 `p` Sense 사이 관계는 양쪽에 모두 보인다. 상대 `s`의 뜻과 관계도 `p`의 편집 문맥으로 유지하며, `e`는 기존 authoring 제외 규칙을 따른다.
 - **판정 문법:** `D <n...>`, `C <n> <type> <tier>`, `A <j> <sense_id|"text"> <type> <tier>`, `B <n> <sense_id|"text"> [<type> <tier>]`(상대 끝 재결속), `M <n> <j|sense_id>`(같은 표제어의 다른 Sense로 이동; 표시되지 않은 sibling은 `lookup`의 정확한 ID 사용), 또는 `none`. 정확한 Canonical 대상은 청크당 한 번 묶어 실행하는 `lookup --text a,b`로 찾는다. Add/재결속에 새 Canonical 조회가 필요하지 않은 청크에는 실행하지 않는다. AI의 `skip` 재선별 문법은 사용하지 않는다.
@@ -245,9 +251,9 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
   - 같은 키(기존 키와 재결속·Add가 새로 만드는 키 포함)를 다투는 결정은, 저장 source Sense를 검토한 청크의 결정 → 낮은 청크 번호 → 고정 내용 순으로 하나만 남긴다.
   - 재결속(Drop+Add)은 통째로 이기거나 진다. 저장·AI 종료 순서는 결과에 영향을 주지 않는다.
   - 같은 checkpoint로 다시 실행하면 `already-applied`다. 바뀐 것이 없으면 `no-change`다.
-- **편집 범위:** 모든 편집은 생산 샤드의 확정 `p` Sense에 직접 연결된 관계, 그 관계의 정당한 Sense 재결속과 그에 따른 회계 행뿐이다. 다른 `s/e` Sense의 독립 편집으로 확대하지 않는다. 이 검사는 apply/amend 공통 함수 하나(`assertScope`)가 맡는다. 역방향만 고쳐 생산 샤드 파일이 바뀌지 않는 PR도 정상이다. Polish 회계 검사는 편집된 Sense를 가진 record로 범위를 좁힌다. 그 밖의 record는 바뀌지 않기 때문이다.
-- **PR·리뷰 수정:** PR 제목 `[S4/<Model>] SSS`, 본문 `Refs #9929`. `decisions --base`는 base..HEAD의 관계 키 차이에서 PR의 Add/Drop/Set을 복원한다(원장 없음). `amend`는 `A|C <source> <target|"text"> <type> <tier>`, `D|K <source> <target|"text">` delta를 적용해 PR base에서 같은 Polish 계산을 다시 한다. 관계·Drop 조회, 계획, 회계, 검증은 모두 같은 Git base에 결속된다. 같은 논리 편집이면 apply와 같은 bytes가 나온다.
-- **검증:** `verify --shard SSS --base <merge-base>`는 PR 편집이 닿는 샤드(편집된 Sense의 소유 샤드와 생산 샤드)를 계산한다. 그 샤드들에 공식 `admission-cli verify --shard A,B,...`를 한 번의 실행으로 돌린다(Canonical 1회 로드). War Room은 최종화·리뷰 수정·replay 뒤 이 명령을 쓴다. 머지 후 완료 표식 `s4_ok_SSS`는 생산 샤드에만 남긴다.
+- **편집 범위:** 모든 편집은 생산 샤드의 확정 `p` Sense에 직접 연결된 관계와, 그 관계의 정당한 Sense 재결속뿐이다. 다른 `s/e` Sense의 독립 편집으로 확대하지 않는다. 이 검사는 apply/amend 공통 함수 하나(`assertScope`)가 맡는다. 역방향만 고쳐 생산 샤드 파일이 바뀌지 않는 PR도 정상이다. 바뀌는 파일은 어느 샤드든 `data/relations/` 아래 Relation 파일뿐이다.
+- **PR·리뷰 수정:** PR 제목 `[S4/<Model>] SSS`, 본문 `Refs #9929`. `decisions --base`는 base..HEAD의 관계 키 차이에서 PR의 Add/Drop/Set을 복원한다(원장 없음). `amend`는 `A|C <source> <target|"text"> <type> <tier>`, `D|K <source> <target|"text">` delta를 적용해 PR base에서 같은 Relation 전용 Polish 계산을 다시 한다. 관계 조회, 계획, 검증은 모두 같은 Git base에 결속된다. 같은 논리 편집이면 apply와 같은 bytes가 나온다.
+- **검증:** `verify --shard SSS --base <merge-base>`는 PR 편집이 닿는 샤드(편집된 Sense의 소유 샤드와 생산 샤드)를 계산한다. 그 샤드들의 Relation 무결성(`verifyRelationIntegrity`, 공통 `validateRelationRows`)을 한 번의 실행으로 검사한다(Canonical 1회 로드, Candidate·Drop 미로드). War Room은 최종화·리뷰 수정·replay 뒤 이 명령을 쓴다. 충돌 replay는 `replay-cli --relations-only`다(§5-C). 머지 후 완료 표식 `s4_ok_SSS`는 생산 샤드에만 남긴다.
 - **무변경 완료:** `p=0`이면 청크와 AI 호출 없이 apply까지 진행한다. `p`가 있으면 모든 대상 청크가 정상 판정·저장되어야 한다. apply가 `no-change`이면, War Room은 그 HEAD를 위 verify로 확인한다. 그다음 `s4_nochange_SSS`를 기록하고 commit·PR 없이 worktree를 정리한다. 다음 샤드 선택은 마지막 머지 PR 뒤의 연속된 무변경 완료를 이어서 건너뛴다.
 - **실패와 Skip은 다르다:** 정책 거부는 Keep-all로 저장하지 않는다(`refusal_keep_all=False`). 판단이 없는 응답은 응답 누락 경로로 보낸다.
 - **record 단위 Policy Skip (#10047, `refusal_records`):** provider의 공식 구조화 거부는 실행 view(launch digest로 증명)의 Canonical record에만 결속한다.
@@ -277,6 +283,7 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
 
 - **Polish Relation `by:"p"`**는 출처 표식이다. Candidate 할당 버전 `ver`/`fm`/`rfm`과 함께 쓸 수 없다. Polish가 존재하지 않는 Candidate 귀속을 주장하지 않는다는 뜻이다. 빌드는 미표식 행과 같은 제품 관계로 투영한다. ID 행은 한 행에서 정·역방향에 같은 `tp/rv`를 쓰고, text-only는 역방향이 없다. 기존 legacy·`ver:0`·`ver:1` 행의 해석과 바이트는 바뀌지 않는다.
 - **후보 회계:** `by:"p"` 행은 Stage 1 claim을 만들지 않는다. source Sense의 Stage 1 후보와 대상 표기(정서법·큐레이션 검색형)가 **정확히 같을 때만** 그 후보를 기존 승인 관계처럼 cover한다. 같은 샤드, 다른 샤드, 역방향 모두 같다. cover되지 않은 후보의 `missing`, 이미 cover된 후보에 대한 별도 Drop 같은 이중 처리, 중복·역중복 ID 쌍은 계속 차단한다.
+- **`z`와 `p`는 Stage 3까지와 단건 Polish의 회계다.** S4 Relation 전용 모드(§4-E)는 둘 다 쓰지 않는다. `p`를 읽는 곳은 Stage 2 `prepare`/compact 뷰와 단건 Polish `show`다.
 - **`z`와 `p`는 다르다.** Polish Drop이 실제 Stage 1 후보의 마지막 cover를 지우면, 그 후보의 소유 샤드(다른 샤드 `drop-TTT` 포함)에 기존 형식 `by:"z"`를 추가한다. 다른 Relation·역방향 cover·Drop이 남아 있으면 추가하지 않는다. 이와 별도로 `p`는 "Polish가 이 정확한 Sense 쌍/text 연결을 제외했다"는 편집 이력이다. 후보가 아직 없는 범위에도 기록하고, Candidate 회계에는 들어가지 않는다. Stage 2 `prepare`/compact 뷰는 해당 후보 아래 `X` 행으로 이 문맥을 보여 주지만 승인을 하드 거부하지 않는다. 같은 쌍·text를 다시 승인하면 공통 쓰기 경로가 그 `p`를 지운다. 새 관계가 실제로 cover하는 후보의 기존 Drop(`z` 포함)도 함께 지운다. 영구 블랙리스트는 없다.
 
 ### 5-B. 공식 도구 — `pnpm run relation:polish`
@@ -323,6 +330,7 @@ node scripts/relation/polish-cli.mjs apply --input edits.json [--dry-run]
     - PR이 바꾼 모든 shard 데이터 파일을 다시 만든다.
     - 영향 shard의 공통 검증과 "새 Candidate 회계 문제 없음"을 확인한 뒤에만 쓴다.
     - Stage 3 PR은 이후 `decisions/amend --base <새 master>`로 같은 행 기반 결정을 계속 다룬다.
+    - **Relation 전용 Stage PR(S4, #9929):** 같은 명령에 `--relations-only`를 붙인다. Relation 파일만 다시 만들고 공통 Relation 검증만 한다. Candidate·Drop은 읽지 않는다. PR 쪽(`base → ours`)에서 Drop 파일이 바뀌었거나 `--path`로 Drop 파일을 지정하면, 쓰기 전에 범위 오류로 거부한다. 최신 쪽에만 있는 Drop 변경은 PR이 바꾸지 않은 파일이므로 Git에 맡긴다. War Room은 spec의 `relations_only`를 보고 이 플래그를 넘긴다.
   - **Stage 2 Part:** `node scripts/relation/admission-cli.mjs replay --checkpoint <cp> --theirs <최신 master>`
     - 최신 데이터를 checkpoint `premerge.replay` 스냅숏으로 한 번 기록한다.
     - 이후 merge·checkpoint verify·amend의 기대값은 `premerge → materialize(checkpoint) → replay`의 3-way다.

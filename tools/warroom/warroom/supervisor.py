@@ -8087,7 +8087,9 @@ class Supervisor:
             if b["method"] == STAGE2_METHOD:
                 bb, pp = stage2.split_key(b["batch"])
                 checkpoint = f".warroom-scratch/relation-admission-{b['shard']}-{bb}-{pp}.json"
-            new_head, report = self.git.replay_relation_merge(wt, b["branch"], base_ref, base_sha, owned, checkpoint)
+            relations_only = b["method"] == STAGE3_METHOD and refine.spec_for(b).relations_only   # #9929
+            new_head, report = self.git.replay_relation_merge(wt, b["branch"], base_ref, base_sha, owned, checkpoint,
+                                                              relations_only=relations_only)
             if b["method"] == STAGE2_METHOD:
                 ok, detail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=True)
             else:

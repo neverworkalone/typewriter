@@ -6,6 +6,10 @@
  * to decisions. This core owns everything else — the projected shard context, Sense-group chunking, prepared views and
  * their digests, the compact checkpoint, the atomic two-file apply, orphan `z` Drop accounting, the existing row
  * validators, and the `decisions`/`amend` path that recomputes a whole PR from its base commit.
+ *
+ * A rule with `relationsOnly` (Stage 4 onward, #9929) is Relation-only: its context is Canonical plus the approved
+ * Relations, validated by the shared row validator. No Stage 1 Candidate or Drop file is an input, and no Candidate
+ * accounting runs. Stage 3 keeps the Candidate/Drop contract.
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
@@ -43,6 +47,7 @@ export const RELATION_PATH = (shard, root) => path.join(root, RELATION_RELATIVE(
 export const DROP_PATH = (shard, root) => path.join(root, DROP_RELATIVE(shard));
 const MIN_CHUNK_RELATIONS = 350;
 export const SHARD_DATA_FILE = /^data\/(?:relations\/relation|relation-drops\/drop)-\d{3}\.jsonl$/u;
+export const RELATION_DATA_FILE = /^data\/relations\/relation-\d{3}\.jsonl$/u;
 const MAX_CHUNK_RELATIONS = 500;
 
 const compactRows = (contents) => contents.split(/\r?\n/u).filter((line) => line.trim() !== '');
@@ -308,7 +313,21 @@ export function createRefineCli(rule) {
     return readCheckpointText(state.text, shard, scope);
   }
 
+  async function loadRelationContext(shard, root, { relationText } = {}) {
+    const loaded = await loadShard(shard, root, { candidates: false });
+    const relationFile = RELATION_PATH(shard, root);
+    const ownRelations = relationText === undefined ? await loadOptionalRelationJsonl(relationFile)
+      : parseRelationJsonl(relationText, path.basename(relationFile));
+    const shardSenseIds = senseIdsOf(loaded.canonicalRows);
+    const otherRelations = referenceRun.getStore() === true
+      ? await loadApprovedRelations(root, { exceptShard: shard })
+      : await loadShardTouchingRelations(root, { exceptShard: shard, senseIds: shardSenseIds });
+    validateRelationRows({ relationRows: ownRelations, index: loaded.index, shardSenseIds, otherRelationRows: otherRelations });
+    return { ...loaded, ownRelations, otherRelations, shardSenseIds };
+  }
+
   async function loadContext(shard, root, { relationText, dropText } = {}) {
+    if (rule.relationsOnly) return loadRelationContext(shard, root, { relationText });
     const loaded = await loadShard(shard, root);
     if (loaded.inventory.missing.length) {
       fail(`${label} requires complete Stage 1 inputs; missing ${loaded.inventory.missing.join(', ')}`);
@@ -345,23 +364,31 @@ export function createRefineCli(rule) {
   }
 
   function assertCleanInputs(root, what) {
-    const inputStatus = git(root, ['status', '--porcelain=v1', '--untracked-files=all', '--',
-      'data/canonical', 'data/relation-candidates', 'data/relations', 'data/relation-drops', ...(rule.inputPaths ?? [])]);
-    if (inputStatus.trim()) fail(`${label} ${what} requires clean Canonical, Candidate, Relation, and Drop inputs${rule.inputPaths?.length ? ` and ${rule.inputPaths.join(', ')}` : ''}`);
+    const dataPaths = rule.relationsOnly ? ['data/canonical', 'data/relations']
+      : ['data/canonical', 'data/relation-candidates', 'data/relations', 'data/relation-drops'];
+    const inputStatus = git(root, ['status', '--porcelain=v1', '--untracked-files=all', '--', ...dataPaths, ...(rule.inputPaths ?? [])]);
+    const named = rule.relationsOnly ? 'Canonical and Relation' : 'Canonical, Candidate, Relation, and Drop';
+    if (inputStatus.trim()) fail(`${label} ${what} requires clean ${named} inputs${rule.inputPaths?.length ? ` and ${rule.inputPaths.join(', ')}` : ''}`);
   }
 
   async function renderPreparedViews(shard, root, scope = null) {
     gitHead(root);
     const relationFile = RELATION_PATH(shard, root);
     const dropFile = DROP_PATH(shard, root);
-    const [relationState, dropState] = await Promise.all([readOptional(relationFile), readOptional(dropFile)]);
     const relationBase = readHeadFile(root, relationFile);
-    const dropBase = readHeadFile(root, dropFile);
-    if (!sameFileState(relationState, relationBase) || !sameFileState(dropState, dropBase)) {
-      fail(`${label} prepare requires clean shard ${shard} Relation/Drop files so decisions bind to the Git baseline`);
+    if (rule.relationsOnly) {
+      if (!sameFileState(await readOptional(relationFile), relationBase)) {
+        fail(`${label} prepare requires a clean shard ${shard} Relation file so decisions bind to the Git baseline`);
+      }
+    } else {
+      const [relationState, dropState] = await Promise.all([readOptional(relationFile), readOptional(dropFile)]);
+      if (!sameFileState(relationState, relationBase) || !sameFileState(dropState, readHeadFile(root, dropFile))) {
+        fail(`${label} prepare requires clean shard ${shard} Relation/Drop files so decisions bind to the Git baseline`);
+      }
     }
     assertCleanInputs(root, 'view refresh');
-    const context = await loadContext(shard, root, { relationText: relationBase.text, dropText: dropBase.text });
+    const context = rule.relationsOnly ? await loadContext(shard, root, { relationText: relationBase.text })
+      : await loadContext(shard, root, { relationText: relationBase.text, dropText: readHeadFile(root, dropFile).text });
     const scopeRows = scope
       ? partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part, shard).scopeRows
       : context.canonicalRows;
@@ -679,10 +706,12 @@ export function createRefineCli(rule) {
     if (git(root, ['merge-base', '--is-ancestor', base, head], { allowMissing: true }) === null) {
       fail(`base commit ${base} is not an ancestor of HEAD ${head}`);
     }
-    const allowed = new Set([RELATION_RELATIVE(shard), DROP_RELATIVE(shard)]);
+    const allowed = new Set(rule.relationsOnly ? [RELATION_RELATIVE(shard)] : [RELATION_RELATIVE(shard), DROP_RELATIVE(shard)]);
     const changed = git(root, ['diff', '--name-only', '--no-renames', base, head]).split('\n').filter(Boolean);
     // A cross-shard rule (#9928) may change any shard's data files; its CLI bounds which relations it may edit.
-    const permitted = (file) => allowed.has(file) || (rule.crossShard === true && SHARD_DATA_FILE.test(file));
+    // A Relation-only rule (#9929) may change Relation files only: a Drop file is outside its scope.
+    const shardFile = rule.relationsOnly ? RELATION_DATA_FILE : SHARD_DATA_FILE;
+    const permitted = (file) => allowed.has(file) || (rule.crossShard === true && shardFile.test(file));
     const outside = changed.filter((file) => !permitted(file));
     if (outside.length) fail(`${label} PR changes files outside shard ${shard} since ${base}: ${outside.join(', ')}`);
     return head;

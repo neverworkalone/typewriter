@@ -83,12 +83,16 @@ class Stage4Registration(unittest.TestCase):
 
     def test_scope_prompts_and_answer_rule(self):
         spec = stage4.SPEC
-        self.assertEqual(spec.scope("001", [OTHER, "README.md"]), {S4_RELATION, S4_DROP, OTHER})
+        other_drop = "data/relation-drops/drop-007.jsonl"
+        # #9929: Relation-only — any shard's Relation file, never a Drop file.
+        self.assertTrue(spec.relations_only)
+        self.assertEqual(spec.scope("001", [OTHER, other_drop, S4_DROP, "README.md"]), {S4_RELATION, OTHER})
         self.assertEqual(stage3.SPEC.scope("001", [OTHER]), {S4_RELATION, S4_DROP}, "Stage 3 keeps its two files")
         pr = {"number": 5, "title": "[S4/Sol] 001", "body": "Refs #9929", "base_ref": "master"}
         self.assertEqual(refine.ops_for(spec).validate_pr(pr, [{"path": OTHER}]), "001", "a reverse-only PR is valid")
-        with self.assertRaises(refine.RefineError):
-            refine.ops_for(spec).validate_pr(pr, [{"path": "README.md"}])
+        for path in ("README.md", S4_DROP, other_drop):
+            with self.assertRaises(refine.RefineError):
+                refine.ops_for(spec).validate_pr(pr, [{"path": S4_RELATION}, {"path": path}])
         for name in ("s4_chunk", "s4_fix", "s4_policy_card"):
             self.assertTrue((prompts.PROMPT_DIR / f"{name}.md").read_text("utf-8").strip())
 
@@ -141,7 +145,7 @@ class Stage4Finalize(unittest.TestCase):
             return {"status": "applied", "selection": {"p": 5, "s": 3, "e": 1},
                     "senses": {"total": 9, "skipped": 3, "excluded": 1, "polished": 4, "policy_skipped": 1},
                     "decisions": {"add": 0, "drop": 1, "set": 0, "rebind": 0}, "affected_shards": ["001", "007"],
-                    "conflicts": [], "z_added": 0}
+                    "conflicts": []}
         b = self.finalize(applied)
         self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
         self.assertEqual(w.git.commits, [([OTHER], "[S4/Sol] 001")])
@@ -180,6 +184,42 @@ class Stage4Finalize(unittest.TestCase):
         b = self.finalize(lambda *_args: {"status": "no-change", "senses": {}, "affected_shards": ["001"]})
         self.assertEqual(b["state"], "ERROR")
         self.assertIsNone(w.store.get(stage4.SPEC.nochange_key("001")))
+
+
+class Stage4RelationReplay(unittest.TestCase):
+    """#9929: a conflicting S4 PR is replayed Relation-only; Stage 3 keeps the Candidate/Drop replay."""
+
+    def replay(self, tag):
+        w = world(self)
+        path = w.paths.worktrees / f"{tag}-001"
+        path.mkdir(parents=True)
+        branch = f"{tag}-codex-001"
+        w.git.reg[str(path)] = branch
+        head, w.git.base_sha = "a" * 40, "b" * 40
+        w.git.local_head, w.git.remote[branch] = head, head
+        bid = w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="001", batch=tag, branch=branch,
+                                   worktree=str(path))
+        w.store.update(bid, state="WAITING_REVIEW", pr_number=60, head_sha=head)
+        w.gh.prs[60] = {"number": 60, "head_sha": head, "head_ref": branch, "state": "open", "merged": False,
+                        "base_ref": w.cfg["base_branch"], "base_sha": w.git.base_sha}
+        w.gh.files[60] = [{"path": S4_RELATION}, {"path": OTHER}]
+        info = {"base_ref": w.cfg["base_branch"], "base_sha": w.git.base_sha, "head_sha": head}
+        merged = mock.Mock(return_value=("c" * 40, {"ok": True, "files": []}))
+        with mock.patch.object(w.git, "replay_relation_merge", merged, create=True), \
+                mock.patch.object(w.sup, "_refine_verify", return_value=(True, "")):
+            w.sup._replay_relation_pr(w.store.batch(bid), info)
+        self.assertEqual(w.store.batch(bid)["error"] or "", "")
+        return merged.call_args
+
+    def test_stage4_passes_relations_only_and_owns_relation_files_only(self):
+        call = self.replay("s4")
+        self.assertIs(call.kwargs["relations_only"], True)
+        self.assertEqual(call.args[4], {S4_RELATION, OTHER})
+
+    def test_stage3_keeps_the_default_replay(self):
+        call = self.replay("all")
+        self.assertIs(call.kwargs["relations_only"], False)
+        self.assertEqual(call.args[4], {S4_RELATION, S4_DROP})
 
 
 class Stage4PolicySkip(unittest.TestCase):

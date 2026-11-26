@@ -1,8 +1,9 @@
 """Stage 4 (#9928): selective whole-shard Polish — its spec and its chunk answer rule.
 
 Stage 4 runs on the shared refinement line like Stage 3 (`refine.RefineOps`, the parallel chunk engine, finalize, the
-Review FIXING Coordinator). Its CLI (`scripts/relation/s4-cli.mjs`) is keyed and cross-shard: decisions name relation
-keys, the Polish write path (#8784) applies them, and the CLI bounds them to relations with an end in the shard. This
+Review FIXING Coordinator). Its CLI (`scripts/relation/s4-cli.mjs`) is keyed, cross-shard and Relation-only (#9929):
+decisions name relation keys, the Relation-only Polish write path (#8784) applies them, the CLI bounds them to relations
+with an end in the shard, and its PRs change Relation files only (no Candidate or Drop file is read or written). This
 module only checks the compact answer grammar against the prepared view; Canonical facts (Sense IDs, POS, existing
 keys) are checked by the CLI's save.
 """
@@ -190,4 +191,5 @@ SPEC = refine.register(refine.RefineSpec(
     fix=fixcoord.FixSpec(prefix="s4", label="Stage 4", response=".warroom-scratch/s4-fix-response.json",
                          amend_input=".warroom-scratch/s4-fix-amend.txt",
                          commit_subject="Apply Stage 4 review amendments", amend_header="amend"),
-    cross_shard=True, no_change_complete=True, refusal_keep_all=False, refusal_records=True, body=prbody.stage4_body))
+    cross_shard=True, no_change_complete=True, refusal_keep_all=False, refusal_records=True, relations_only=True,
+    body=prbody.stage4_body))

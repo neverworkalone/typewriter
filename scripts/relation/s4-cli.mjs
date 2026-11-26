@@ -1,11 +1,12 @@
 // Stage 4 CLI (#9928): selective whole-shard Polish — the Refinement Engine core with the keyed Stage 4 rule, whose
-// data changes go through the Polish write path. `lookup` and `verify` are the two Stage-specific read-only commands.
+// data changes go through the Relation-only Polish write path (#9929). `lookup` and `verify` are the two
+// Stage-specific read-only commands; `verify` checks Relation integrity only (no Candidate or Drop file is read).
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { run as admissionRun } from './admission-cli.mjs';
-import { AdmissionVerifyError, assertShard } from './admission.mjs';
+import { AdmissionVerifyError, assertShard, verifyRelationIntegrity } from './admission.mjs';
+import { loadCanonical } from './polish-cli.mjs';
 import { createRefineCli, fail, gitHead, REPOSITORY_DIRECTORY, RefineInputError, runAsScript } from './refine/core.mjs';
 import * as stage4 from './refine/rules/s4.mjs';
 
@@ -26,20 +27,20 @@ export async function run(argv, { root = REPOSITORY_DIRECTORY, fullOtherRows = f
     return output;
   }
   if (argv[0] === 'verify') {
-    // The official whole-shard admission verify, over every shard this PR's edits affect, in one run.
+    // Relation integrity of every shard this PR's edits affect, in one run: Canonical is loaded once; no Candidate or
+    // Drop file is read and no Candidate accounting runs (#9929).
     const shard = option(argv, '--shard');
     const base = option(argv, '--base');
     if (argv.length !== 5 || !shard || !/^[a-f0-9]{40}$/u.test(base ?? '')) fail(`verify requires --shard SSS --base <sha>\n${stage4.usage}`);
     assertShard(shard);
     const shards = await stage4.verifyShards({ shard, root, base, head: gitHead(root) });
-    // One output line: the combined success, or (thrown) the first failing shard's `--json` failure.
-    const log = console.log;
-    console.log = () => {};
-    let results;
-    try { results = await admissionRun(['verify', '--shard', shards.join(','), '--json'], { root }); }
-    finally { console.log = log; }
-    const payload = { version: 1, ok: true, shards, counts: Object.fromEntries(shards.map((name, index) =>
-      [name, (Array.isArray(results) ? results[index] : results)?.counts ?? null])) };
+    const { index, rowsByShard } = await loadCanonical(root);
+    const counts = {};
+    for (const name of shards) {
+      // One output line: the combined success, or (thrown) the first failing shard's `--json` failure.
+      counts[name] = (await verifyRelationIntegrity({ shard: name, root, canonicalRows: rowsByShard.get(name) ?? [], index })).counts;
+    }
+    const payload = { version: 1, ok: true, shards, counts };
     console.log(JSON.stringify(payload));
     return payload;
   }

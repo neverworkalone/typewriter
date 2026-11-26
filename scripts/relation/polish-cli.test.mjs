@@ -149,3 +149,68 @@ test('#8784 replay merges concurrent Polish/batch deltas by relation key; the la
   git('commit', '-qm', 'replay');
   assert.deepEqual((await replay({ base: theirs, ours: 'HEAD', theirs }, root)).files, []);
 });
+
+// #9929: the Relation-only mode (Stage 4 onward) reads and writes Relation files only, and replays them the same way.
+test('#9929 Relation-only Polish apply and replay read no Candidate or Drop file and write Relation files only', async (t) => {
+  const root = await repository(t);
+  await rm(path.join(root, 'data/relation-candidates'), { recursive: true, force: true });
+  await rm(path.join(root, 'data/relation-drops'), { recursive: true, force: true });
+  const { execFileSync } = await import('node:child_process');
+  const { replay, ReplayInputError } = await import('./replay-cli.mjs');
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', ...args], { cwd: root, encoding: 'utf8' }).trim();
+  const changed = (from, to) => git('diff', '--name-only', from, to).split('\n').filter(Boolean);
+  git('init', '-q', '-b', 'master');
+  git('add', '-A');
+  git('commit', '-qm', 'base');
+  const base = git('rev-parse', 'HEAD');
+  const commitEdits = async (edits) => {
+    const result = await apply({ edits }, { root, relationsOnly: true });
+    git('add', '-A');
+    git('commit', '-qm', 'edit');
+    return { result, sha: git('rev-parse', 'HEAD') };
+  };
+
+  // A Drop has no `p` and orphans no `z`; an Add has nothing to settle. Only Relation files change.
+  git('switch', '-qc', 'stage4');
+  const { result: dropped, sha: ours } = await commitEdits([
+    { op: 'drop', source_sense_id: 'w1-s1', target_sense_id: 'w3-s1', reason: 'S4' },
+    { op: 'drop', source_sense_id: 'w2000-s1', target_sense_id: 'w1-s1', reason: 'S4' },
+    { op: 'add', source_sense_id: 'w1-s1', target_sense_id: 'w4-s1', type: 'action', relevance: 5, reason: 'S4' },
+  ]);
+  assert.equal(dropped.status, 'applied');
+  assert.ok(!('z_added' in dropped) && !('drops_removed' in dropped));
+  assert.ok(dropped.edits.every((edit) => !('exclusion' in edit) && !('cleared_exclusions' in edit)));
+  assert.deepEqual(changed(base, ours), ['data/relations/relation-001.jsonl']);
+  // An existing relation is still refused, so the shared row validator keeps reverse duplicates out.
+  await assert.rejects(apply({ edits: [{ op: 'add', source_sense_id: 'w4-s1', target_sense_id: 'w1-s1', type: 'near', relevance: 2, reason: 'x' }] },
+    { root, relationsOnly: true, dryRun: true }), PolishInputError);
+
+  // The latest data retypes 고요↔별빛 and, independently, adds a Drop file: the replay keeps both.
+  git('switch', '-q', 'master');
+  await commitEdits([{ op: 'set', source_sense_id: 'w1-s1', target_sense_id: 'w2000-s1', type: 'scene', relevance: 2, reason: 'Polish' }]);
+  await mkdir(path.join(root, 'data/relation-drops'), { recursive: true });
+  await writeFile(path.join(root, 'data/relation-drops/drop-002.jsonl'), '{"id":"w2000","sid":"w2000-s1","cd":"고요","by":"x"}\n');
+  git('add', '-A');
+  git('commit', '-qm', 'theirs');
+  const theirs = git('rev-parse', 'HEAD');
+  git('switch', '-q', 'stage4');
+  assert.throws(() => git('merge', '-q', '--no-edit', theirs), /conflict|CONFLICT|Command failed/u);
+  const result = await replay({ base, ours, theirs, relationsOnly: true }, root);
+  assert.deepEqual(result.files.map((file) => [file.path, file.conflicts]), [['data/relations/relation-001.jsonl', ['R|i|w1-s1|w2000-s1']]]);
+  // The shared key keeps the latest retype; the PR's other edits are replayed.
+  assert.deepEqual(parseRelationJsonl(await read(root, 'data/relations/relation-001.jsonl')).map((row) => [row.target_sense_id, row.type, row.relevance]),
+    [['w2000-s1', 'scene', 2], ['w4-s1', 'action', 5]]);
+  assert.equal(await read(root, 'data/relation-drops/drop-002.jsonl'), '{"id":"w2000","sid":"w2000-s1","cd":"고요","by":"x"}\n');
+  git('merge', '--abort');
+
+  // A PR-side Drop change, or a named Drop path, is a scope error before anything is written.
+  const before = await read(root, 'data/relations/relation-001.jsonl');
+  await mkdir(path.join(root, 'data/relation-drops'), { recursive: true });
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), '{"id":"w1","sid":"w1-s1","cd":"물결","by":"x"}\n');
+  git('add', '-A');
+  git('commit', '-qm', 'drop side effect');
+  const withDrop = git('rev-parse', 'HEAD');
+  await assert.rejects(replay({ base, ours: withDrop, theirs, relationsOnly: true }, root), ReplayInputError);
+  await assert.rejects(replay({ base, ours, theirs, relationsOnly: true, paths: ['data/relation-drops/drop-002.jsonl'] }, root), ReplayInputError);
+  assert.equal(await read(root, 'data/relations/relation-001.jsonl'), before);
+});

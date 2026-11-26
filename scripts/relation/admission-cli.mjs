@@ -44,6 +44,7 @@ import {
   ACTION_TARGET_POS,
   validateRelationRows,
   verifyAccounting,
+  verifyRelationIntegrity,
   AdmissionVerifyError,
 } from './admission.mjs';
 import { parseCandidateJsonl } from './candidate-contract.mjs';
@@ -1301,16 +1302,13 @@ async function runCommand(options, root, timing) {
   timing?.end();
   const { canonicalRows, index } = loaded;
   if (options.relationsOnly) {
-    const [relationRows, dropRows, exclusionRows, otherRelationRows] = await Promise.all([
-      loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot)),
+    const [dropRows, exclusionRows, otherRelationRows] = await Promise.all([
       loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot)),
       loadOptionalExclusionJsonl(shardDropPath(options.shard, repositoryRoot)),
       loadApprovedRelations(repositoryRoot, { exceptShard: options.shard }),
     ]);
-    const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-    validateRelationRows({ relationRows, dropRows, exclusionRows, index, shardSenseIds, otherRelationRows });
-    const payload = { version: 1, ok: true, scope: 'relation-integrity', shard: options.shard,
-      counts: { relations: relationRows.length, drops: dropRows.length } };
+    const payload = await verifyRelationIntegrity({ shard: options.shard, root: repositoryRoot, canonicalRows, index,
+      dropRows, exclusionRows, otherRelationRows });
     console.log(JSON.stringify(payload));
     return payload;
   }

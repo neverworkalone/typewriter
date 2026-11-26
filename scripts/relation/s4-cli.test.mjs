@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { parseDropExclusionJsonl, parseDropJsonl, parseRelationJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
+import { AdmissionVerifyError } from './admission.mjs';
+import { parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 import { RefineInputError } from './refine/core.mjs';
 import { run } from './s4-cli.mjs';
 
@@ -45,7 +46,7 @@ const RELATIONS_001 = [
 ];
 const RELATIONS_002 = [idRow('w2001-s1', 'w1-s2', 'sensory', 5, { polish: true })];
 
-async function repository(t, { select = selection } = {}) {
+async function repository(t, { select = selection, candidates: withCandidates = true, drops = {} } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-s4-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const own = [
@@ -62,14 +63,16 @@ async function repository(t, { select = selection } = {}) {
       ...filler(2, 0, 498)],
   };
   const candidates = { 'w1-s1': ['물결', '별빛'], 'w2000-s1': ['고요'] };
-  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relation-candidates/002', 'data/relations', 'data/relation-drops', 'data/relation-selection']) {
+  // #9929: Stage 4 is Relation-only, so a repository without Candidate or Drop files is a valid input.
+  const directories = withCandidates ? ['data/relation-candidates/001', 'data/relation-candidates/002', 'data/relation-drops'] : [];
+  for (const directory of ['data/canonical', 'data/relations', 'data/relation-selection', ...directories]) {
     await mkdir(path.join(root, directory), { recursive: true });
   }
   for (const [shard, records] of Object.entries(shards)) {
     await writeFile(path.join(root, `data/canonical/stdict-0${shard}.jsonl`), jsonl(records));
     await writeFile(path.join(root, `data/relation-selection/selection-${shard}.jsonl`), jsonl(records.flatMap((record) =>
       record.senses.map((item) => ({ id: item.id, d: select(item.id) })))));
-    const producers = shard === '001' ? ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'] : ['a_codex'];
+    const producers = !withCandidates ? [] : shard === '001' ? ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'] : ['a_codex'];
     for (const batch of shard === '001' ? ['01', '02'] : ['01']) {
       const rows = records.slice((Number(batch) - 1) * 500, Number(batch) * 500);
       for (const producer of producers) {
@@ -82,6 +85,7 @@ async function repository(t, { select = selection } = {}) {
   }
   await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl(RELATIONS_001));
   await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl(RELATIONS_002));
+  for (const [shard, text] of Object.entries(drops)) await writeFile(path.join(root, `data/relation-drops/drop-${shard}.jsonl`), text);
   git(root, 'init', '-q', '--initial-branch=master');
   git(root, 'config', 'user.name', 'Typewriter Test');
   git(root, 'config', 'user.email', 'test@example.invalid');
@@ -151,8 +155,7 @@ test('Stage 4 shows selected Polish Senses in both directions and applies Add/Dr
   assert.equal(applied.senses.excluded, 1);
   assert.deepEqual(applied.selection, { p: 999, s: 1, e: 1 });
   assert.deepEqual(applied.affected_shards, ['001', '002']);
-  assert.deepEqual(applied.changed_files, ['data/relation-drops/drop-001.jsonl', 'data/relation-drops/drop-002.jsonl',
-    'data/relations/relation-001.jsonl', 'data/relations/relation-002.jsonl']);
+  assert.deepEqual(applied.changed_files, ['data/relations/relation-001.jsonl', 'data/relations/relation-002.jsonl']);
   const own = await relations(root, '001');
   assert.equal(own.find((row) => row.target_sense_id === 'w3-s1').type, 'mood');
   assert.ok(!own.some((row) => row.target_sense_id === 'w2000-s1'));
@@ -160,15 +163,17 @@ test('Stage 4 shows selected Polish Senses in both directions and applies Add/Dr
   assert.ok(own.some((row) => row.text === '적적함' && row.polish === true));
   assert.ok(own.some((row) => row.target_sense_id === 'w2001-s1' && row.polish === true && !('candidate_forms' in row)));
   assert.deepEqual(await relations(root, '002'), [], 'the reverse-only Drop edits the owning shard file');
-  // Orphaned Candidates get `z` in their own shards, Polish exclusions `p` where the rows were stored.
-  assert.deepEqual(parseDropJsonl(await read(root, 'data/relation-drops/drop-001.jsonl')).map((row) => [row.candidate, row.reason]), [['별빛', 'z']]);
-  assert.deepEqual(parseDropJsonl(await read(root, 'data/relation-drops/drop-002.jsonl')).map((row) => [row.candidate, row.reason]), [['고요', 'z']]);
-  assert.equal(parseDropExclusionJsonl(await read(root, 'data/relation-drops/drop-002.jsonl')).length, 1);
+  // #9929: Relation-only — orphaned Candidates get no `z` and dropped Relations no `p`; no Drop file is written.
+  assert.equal(git(root, 'status', '--porcelain', '--', 'data/relation-drops'), '');
+  assert.deepEqual(await readdir(path.join(root, 'data/relation-drops')), []);
 
   // The PR is its own state: decisions recover the edits, an unchanged amend reproduces the bytes, a K undoes one.
   const base = git(root, 'rev-parse', 'HEAD');
   git(root, 'add', 'data');
   git(root, 'commit', '-qm', '[S4/Sol] 001');
+  const verified = await cli(root, 'verify', '--shard', '001', '--base', base);
+  assert.deepEqual(verified.shards, ['001', '002']);
+  assert.equal(verified.counts['002'].relations, 0);
   const listed = await cli(root, 'decisions', '--shard', '001', '--base', base, '--senses', 'w1-s2');
   assert.deepEqual(listed.counts, { add: 2, drop: 2, set: 2 });
   assert.deepEqual(listed.rows.map((row) => row.op), ['drop']);
@@ -376,4 +381,80 @@ test('a selected Relation can move to an unselected sibling Sense without author
   assert.equal((await cli(root, 'amend', '--shard', '001', '--base', base, '--in', delta)).status, 'already-applied');
   await writeFile(delta, 'amend\nA w5-s1 "독립편집" near 3\n');
   await assert.rejects(cli(root, 'amend', '--shard', '001', '--base', base, '--in', delta), /neither end is a selected Polish Sense/u);
+});
+
+// ---- #9929: Relation-only Stage 4 -------------------------------------------------------------------------------
+
+const head = (root) => git(root, 'rev-parse', 'HEAD');
+const commitAll = (root, message) => { git(root, 'add', '-A', 'data'); git(root, 'commit', '-qm', message); return head(root); };
+
+test('#9929 Stage 4 prepares, saves every chunk, applies and verifies without any Candidate or Drop file', async (t) => {
+  const root = await repository(t, { candidates: false });
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  await save(root, '001', (view) => [`D ${find(view, 'w1-s1', '별빛').relation}`,
+    `A ${find(view, 'w6-s1', '').sense} "적적함" mood 3`]);
+  await saveNone(root, 2, prepared.chunk_count);
+  const applied = await cli(root, 'apply', '--shard', '001');
+  assert.equal(applied.status, 'applied');
+  assert.deepEqual(applied.changed_files, ['data/relations/relation-001.jsonl']);
+  const base = head(root);
+  commitAll(root, '[S4/Sol] 001');
+  assert.deepEqual((await cli(root, 'verify', '--shard', '001', '--base', base)).shards, ['001', '002']);
+  assert.ok(!git(root, 'ls-files', 'data').split('\n').some((file) => file.startsWith('data/relation-')
+    && !file.startsWith('data/relation-selection/')), 'only Canonical, selection and Relation files exist');
+});
+
+test('#9929 a Stage 4 Add keeps an earlier Drop of the same connection unchanged', async (t) => {
+  // The Candidate 적적함 of 쓸쓸하다 was dropped as `x`, and 고요↔반짝이다 was removed by an earlier Polish (`p`).
+  const drops = serializeDropJsonl([
+    { source_record_id: 'w6', source_sense_id: 'w6-s1', candidate: '적적함', reason: 'x' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2001', target_sense_id: 'w2001-s1', reason: 'p' },
+  ]);
+  const root = await repository(t, { drops: { '001': drops } });
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  await save(root, '001', (view) => [`A ${find(view, 'w6-s1', '').sense} "적적함" mood 3`,
+    `A ${find(view, 'w1-s1', '별빛').sense} w2001-s1 action 4`]);
+  await saveNone(root, 2, prepared.chunk_count);
+  const applied = await cli(root, 'apply', '--shard', '001');
+  assert.deepEqual(applied.edits, { add: 2, drop: 0, set: 0 });
+  assert.deepEqual(applied.changed_files, ['data/relations/relation-001.jsonl']);
+  assert.equal(await read(root, 'data/relation-drops/drop-001.jsonl'), drops, 'the Drop file is byte-for-byte unchanged');
+});
+
+test('#9929 a Relation removed without `z` does not block later Stage 4 prepare or verify on Candidate accounting', async (t) => {
+  const root = await repository(t);
+  // 고요→별빛 answered the Candidate 별빛 of 고요 s1 (shard 001) and 고요 of 별빛 (shard 002); remove it with no `z`.
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'),
+    serializeRelationJsonl(RELATIONS_001.filter((row) => row.target_sense_id !== 'w2000-s1')));
+  const base = commitAll(root, 'earlier Stage 4 drop');
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  await save(root, '001', (view) => [`C ${find(view, 'w1-s1', '물결').relation} mood 2`]);
+  await saveNone(root, 2, prepared.chunk_count);
+  assert.equal((await cli(root, 'apply', '--shard', '001')).status, 'applied');
+  commitAll(root, '[S4/Sol] 001');
+  assert.deepEqual((await cli(root, 'verify', '--shard', '001', '--base', base)).shards, ['001']);
+});
+
+test('#9929 Stage 4 verify still rejects Relation duplicates and wrong Sense bindings, and any Drop change', async (t) => {
+  const root = await repository(t);
+  const base = head(root);
+  // A reverse duplicate stored in shard 002 of the approved 고요→별빛.
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([...RELATIONS_002,
+    idRow('w2000-s1', 'w1-s1', 'near', 2, { polish: true })]));
+  commitAll(root, 'reverse duplicate');
+  await assert.rejects(cli(root, 'verify', '--shard', '001', '--base', base), (error) => error instanceof AdmissionVerifyError
+    && /reverse-duplicate/u.test(error.message));
+  git(root, 'reset', '-q', '--hard', base);
+  // A target Sense bound to the wrong record.
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([...RELATIONS_001,
+    { ...idRow('w6-s1', 'w1-s2', 'mood', 3, { polish: true }), target_record_id: 'w3' }]));
+  commitAll(root, 'wrong binding');
+  await assert.rejects(cli(root, 'verify', '--shard', '001', '--base', base), /is not a sense of w3/u);
+  git(root, 'reset', '-q', '--hard', base);
+  // A Drop file change is outside a Relation-only Stage 4 PR, wherever it is stored.
+  await writeFile(path.join(root, 'data/relation-drops/drop-002.jsonl'), serializeDropJsonl([
+    { source_record_id: 'w2000', source_sense_id: 'w2000-s1', candidate: '고요', reason: 'z' }]));
+  commitAll(root, 'drop side effect');
+  await assert.rejects(cli(root, 'verify', '--shard', '001', '--base', base), /Relation-only/u);
+  await assert.rejects(cli(root, 'decisions', '--shard', '001', '--base', base), /outside shard 001|Relation-only/u);
 });
