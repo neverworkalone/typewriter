@@ -343,6 +343,52 @@ class Stage2RepairCandidateProblems(unittest.TestCase):
     def state(self, w, batch):
         return json.loads(w.store.get(stage2.repair_state_key(batch["id"])))["current"]
 
+    def test_rejected_gloss_unresolved_replays_and_corrects_before_proven_fallback(self):
+        from warroom.supervisor import Stage2RepairUnresolvedError
+        report = ordinary_report(FP, self.NAMES)
+        group = report["problems"][0]
+        group["conflicts"] = []
+        group["drop_gloss"] = ["gloss diagnostic"]
+        group["candidates"][0]["decision"] = {"disposition": "drop", "reason": "x"}
+        w, batch = start_repair(self, [report, clean_report("5" * 64)], candidate_count=3)
+        w.git.stage2_repair_checker = marker_checker(lambda d: ("decision.reason", "gloss_named")
+                                                     if d.get("reason") == "x" else None)
+        unresolved = {"source_sense_id": "source-sense", "candidate": self.NAMES[0], "reason": "particle ambiguity"}
+        rows = [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD} for name in self.NAMES[1:]]
+        response = f"repair @{FP}\n" + json.dumps({"decisions": rows, "peer_adjustments": [], "unresolved": [unresolved]})
+        with patch.object(w.sup, "_stage2_repair_validate_response", side_effect=Stage2RepairUnresolvedError("unresolved: particle ambiguity")):
+            self.run_text(w, response)
+        batch = w.store.batch(batch["id"])
+        state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+        self.assertIsNone(w.sup._stage2_repair_replay_missing_response(batch, state))
+        correction = state["current"]["response_correction"]
+        self.assertEqual(correction["requested_keys"], ["source-sense\u0000candidate-0"])
+        self.assertIn("particle ambiguity", correction["diagnostics"][0]["message"])
+        self.assertEqual([r["candidate"] for r in correction["accepted_answer"]["decisions"]], self.NAMES[1:])
+        self.assertEqual(w.git.stage2_repair_calls, [])
+        w.sup._launch_stage2_repair_page(batch)
+        self.run_text(w, ordinary_text(FP, {self.NAMES[0]: {"disposition": "drop", "reason": "x"}}))
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW", w.store.batch(batch["id"])["error"])
+        repair = w.git.stage2_repair_calls[0]
+        self.assertEqual(repair["decisions"][0]["decision"]["reason"], "f")
+        self.assertEqual(repair["supervisor_fallback"][0]["evidence"]["prior_request"]["problem"],
+                         {"field_path": "decision.reason", "condition": "gloss_named"})
+        self.assertEqual([r["decision"] for r in repair["decisions"][1:]], [GOOD, GOOD])
+
+    def test_unresolved_gloss_probe_cannot_be_saved_when_official_diagnostic_disappears(self):
+        report = ordinary_report(FP, self.NAMES)
+        group = report["problems"][0]
+        group["conflicts"] = []
+        group["drop_gloss"] = ["stale gloss diagnostic"]
+        group["candidates"][0]["decision"] = {"disposition": "drop", "reason": "x"}
+        w, batch = start_repair(self, [report], candidate_count=3)
+        w.git.stage2_repair_checker = marker_checker(lambda decision: None)
+        rows = [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD} for name in self.NAMES[1:]]
+        unresolved = [{"source_sense_id": "source-sense", "candidate": self.NAMES[0], "reason": "uncertain"}]
+        self.run_text(w, f"repair @{FP}\n" + json.dumps({"decisions": rows, "peer_adjustments": [], "unresolved": unresolved}))
+        self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+        self.assertEqual(w.git.stage2_repair_calls, [])
+
     def test_unprojected_duplicate_requests_independent_judgment_and_preserves_other_rows(self):
         w, batch = self.start(lambda decision: None)
         initial = {"decisions": [{"source_sense_id": "source-sense", "candidate": name, "decision": GOOD}
