@@ -14,7 +14,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  answerPath, chunkShard, parseAnswer, parseShards, readShardRecords, renderChunk, REPOSITORY_DIRECTORY, save, selectionPath,
+  answerPath, chunkShard, errorRecords, mergeRepair, parseAnswer, parseShards, readShardRecords, renderChunk, REPOSITORY_DIRECTORY, save, selectionPath,
 } from './selection-cli.mjs';
 
 const CARD_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'selection-card.md');
@@ -106,6 +106,8 @@ async function runChunk({ records, chunk, index, dir, base, card, flags, model, 
   let status;
   let note;
   let attempt = first;
+  let previous = null;
+  let bad = [];
   for (let fix = 0; ; fix += 1) {
     const r = attempt.result;
     if (!r || r.is_error || r.subtype !== 'success') {
@@ -113,19 +115,23 @@ async function runChunk({ records, chunk, index, dir, base, card, flags, model, 
       note = r ? `${r.subtype ?? 'error'}${r.result ? `: ${String(r.result).slice(0, 200)}` : ''}` : `exit ${attempt.code}, no result event`;
       break;
     }
-    const parsed = parseAnswer(r.result, records, chunk);
-    if (!parsed.errors.length) { await writeFile(answerFile, r.result); status = 'ok'; break; }
+    const text = fix ? mergeRepair(previous, r.result, bad) : r.result;
+    const parsed = parseAnswer(text, records, chunk);
+    if (!parsed.errors.length) { await writeFile(answerFile, text); status = 'ok'; break; }
     if (!parsed.lines) {
       status = attempt.refusal ? 'refusal' : 'unparsed';
       await writeFile(path.join(dir, `${tag}.unparsed.txt`), r.result ?? '');
       break;
     }
-    if (fix >= 1 || !r.session_id) { status = 'format'; note = parsed.errors.slice(0, 10).join('; '); await writeFile(path.join(dir, `${tag}.format.txt`), r.result); break; }
-    // Format repair only: a real decision answer with structural errors, resumed once in the same session.
+    if (fix >= 1 || !r.session_id) { status = 'format'; note = parsed.errors.slice(0, 10).join('; '); await writeFile(path.join(dir, `${tag}.format.txt`), text); break; }
+    // Format repair only: a real decision answer with structural errors, resumed once in the same session; only the
+    // records with errors are asked again and merged over the previous answer's valid lines.
+    previous = r.result;
+    bad = errorRecords(parsed.errors);
     attempt = await callClaude({
       cwd, env, logFile: path.join(dir, `${tag}.fix.log`),
       args: [...pins, '--resume', r.session_id, ...(flags.systemPrompt ? ['--system-prompt', card] : [])],
-      prompt: `형식 오류: ${parsed.errors.slice(0, 30).join('; ')}\n이 청크의 모든 record를 출력 형식대로 처음부터 다시 출력하라.`,
+      prompt: `형식 오류: ${parsed.errors.join('; ')}\n위 record(${bad.join(', ')})만 [Sense 수]에 맞춰 출력 형식대로 다시 출력하라. 다른 record는 출력하지 않는다.`,
     });
     usage = addUsage(usage, claudeUsage(attempt.result?.usage));
   }
