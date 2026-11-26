@@ -63,9 +63,32 @@ async function loadSelection(root, shard, records = null) {
     const row = JSON.parse(line);
     return [row.id, row.d];
   }));
-  return { counts: checked.counts, decisions,
+  return { shard, counts: checked.counts, decisions,
     polished: new Set([...decisions].filter(([, decision]) => decision === 'p').map(([id]) => id)) };
 }
+
+/**
+ * Exact-ID selection decision of any Sense, read from its owning shard's confirmed file (#10174): a counterpart in
+ * another shard is checked against that shard's selection, not the producing shard's. Each needed file is read and
+ * checked once before the synchronous lookups; a missing or invalid file stops the whole input (RefineInputError).
+ */
+async function decisionLookup(root, own, canonical, ids) {
+  const files = new Map([[own.shard, own]]);
+  const shardOf = (id) => canonical?.shardOfSense.get(id);
+  for (const id of ids) {
+    const shard = own.decisions.has(id) ? own.shard : shardOf(id);
+    if (shard && !files.has(shard)) files.set(shard, await loadSelection(root, shard, canonical.rowsByShard.get(shard)));
+  }
+  return (id) => {
+    if (own.decisions.has(id)) return own.decisions.get(id);
+    const shard = shardOf(id);
+    if (!shard) return undefined; // not a Canonical Sense: rejected by the unknown-Sense checks
+    if (!files.has(shard)) throw new Error(`${label} selection of ${id} (shard ${shard}) was not loaded`);
+    return files.get(shard).decisions.get(id);
+  };
+}
+
+const opSenseIds = (ops) => ops.flatMap((op) => [op.source_sense_id, op.target_sense_id]).filter(Boolean);
 
 function assertSelectedView(view, selection) {
   for (const sense of view.senses) {
@@ -229,8 +252,19 @@ export async function parseDecisionText(text, view, checkpoint, { explicit = fal
   const { senses, relations, keysBySense } = viewIndex(view);
   const discarded = [];
   const drop = (line, why) => discarded.push(`${line.slice(0, 120)}: ${why}`);
-  const needsCanonical = body.some((line) => /^[ABM]\s/u.test(line) && line.split(/\s+/u).some((token) => SENSE_ID.test(token)));
-  const index = needsCanonical ? (canonical ?? await loadCanonical(root)).index : null;
+  // A rebind (B/M) keeps the stored other end, which may be a Sense of another shard even without an ID token.
+  const needsCanonical = body.some((line) => /^[BM]\s/u.test(line)
+    || (/^A\s/u.test(line) && line.split(/\s+/u).some((token) => SENSE_ID.test(token))));
+  const canon = needsCanonical ? (canonical ?? await loadCanonical(root)) : null;
+  const index = canon?.index ?? null;
+  const named = body.flatMap((line) => {
+    const tokens = line.split(/\s+/u);
+    const ids = tokens.filter((token) => SENSE_ID.test(token));
+    const relation = /^[BM]$/u.test(tokens[0]) ? relations.get(Number(tokens[1]))?.relation : null;
+    if (relation) { const old = storedRow(relation); ids.push(old.source_sense_id, old.target_sense_id); }
+    return ids.filter(Boolean);
+  });
+  const decisionOf = await decisionLookup(root, selection, canon, named);
   const policy = new Set();
   const policyRecords = new Set();
   const proposals = [];
@@ -250,7 +284,7 @@ export async function parseDecisionText(text, view, checkpoint, { explicit = fal
     } else {
       const found = index?.senses.get(counterpart.target_sense_id);
       if (!found) return `unknown Canonical Sense ${counterpart.target_sense_id}`;
-      if (selection.decisions.get(counterpart.target_sense_id) === 'e') return 'target Sense is excluded';
+      if (decisionOf(counterpart.target_sense_id) === 'e') return 'target Sense is excluded';
       if (found.record.id === source.record_id) return 'a Relation cannot target its own record';
       if (type === 'action' && !ACTION_TARGET_POS.includes(found.sense.pos)) return `action must target a ${ACTION_TARGET_POS.join(' or ')} Sense`;
     }
@@ -340,7 +374,7 @@ export async function parseDecisionText(text, view, checkpoint, { explicit = fal
           drop(line, 'use M <n> <Sense n|sense_id of the same record>');
           continue;
         }
-        if (selection.decisions.get(source.sense_id) === 'e') { drop(line, 'destination Sense is excluded'); continue; }
+        if (decisionOf(source.sense_id) === 'e') { drop(line, 'destination Sense is excluded'); continue; }
         // The other end stays: a reverse row's source, or the forward row's target/text.
         const old = storedRow(relation);
         counterpart = relation.dir === 'R' ? { target_sense_id: old.source_sense_id }
@@ -412,7 +446,7 @@ export function resolveDecisions(decisions) {
   return { applied, conflicts };
 }
 
-function movesSelectedRelation(op, original, selection, index) {
+function movesSelectedRelation(op, original, selection, index, decisionOf) {
   if (op.op !== 'add') return false;
   for (const previous of [original.source_sense_id, original.target_sense_id].filter((id) => selection.polished.has(id))) {
     let moved;
@@ -423,23 +457,23 @@ function movesSelectedRelation(op, original, selection, index) {
       if (op.target_sense_id === counterpart) moved = op.source_sense_id;
       else if (op.source_sense_id === counterpart) moved = op.target_sense_id;
     }
-    if (moved && moved !== previous && selection.decisions.get(moved) !== 'e'
+    if (moved && moved !== previous && decisionOf(moved) !== 'e'
         && index.senses.get(moved)?.record.id === index.senses.get(previous)?.record.id) return true;
   }
   return false;
 }
 
 /** Independent edits touch a selected Sense; a paired rebind may move that original Relation to its sibling Sense. */
-export function assertScope(ops, selection, shard, canonical, originals = []) {
+export function assertScope(ops, selection, shard, canonical, originals = [], decisionOf = (id) => selection.decisions.get(id)) {
   const originalByKey = new Map(originals.map((row) => [keyOf(row), row]));
   const movedFrom = ops.filter((op) => op.op === 'drop' && touches(opRow(op), selection.polished))
     .map((op) => originalByKey.get(opKey(op))).filter(Boolean);
   for (const op of ops) {
-    if (op.op === 'add' && [op.source_sense_id, op.target_sense_id].some((id) => selection.decisions.get(id) === 'e')) {
+    if (op.op === 'add' && [op.source_sense_id, op.target_sense_id].filter(Boolean).some((id) => decisionOf(id) === 'e')) {
       throw new RefineInputError(`${label} may not add a Relation to an excluded Sense`);
     }
     if (touches(opRow(op), selection.polished)) continue;
-    if (movedFrom.some((original) => movesSelectedRelation(op, original, selection, canonical.index))) continue;
+    if (movedFrom.some((original) => movesSelectedRelation(op, original, selection, canonical.index, decisionOf))) continue;
     throw new RefineInputError(`${label} shard ${shard} may not independently edit ${keyText(opKey(op))}: neither end is a selected Polish Sense`);
   }
 }
@@ -549,7 +583,7 @@ export async function applyCheckpoint({ shard, root, checkpoint, readView }) {
   }
   const { applied, conflicts } = resolveDecisions(checkpoint.decisions);
   const ops = applied.flatMap((decision) => decision.ops);
-  assertScope(ops, selection, shard, canonical, [...originals.values()]);
+  assertScope(ops, selection, shard, canonical, [...originals.values()], await decisionLookup(root, selection, canonical, opSenseIds(ops)));
   const differing = new Set(dataStatus(root));
   const planned = await planOps({ root, shard, ops, revision: 'HEAD', differing, canonical });
   const reader = revisionReader(root, 'HEAD', differing);
@@ -688,7 +722,7 @@ export async function amendDecisions({ shard, root, base, head, text }) {
   const ops = [...byKey.values()];
   const moved = ops.some((op) => !touches(opRow(op), selection.polished));
   const originals = moved ? (await scanTouching(root, selection.polished, new Map(), { reader: state.baseRead })).relations.map(({ row }) => row) : [];
-  assertScope(ops, selection, shard, canonical, originals);
+  assertScope(ops, selection, shard, canonical, originals, await decisionLookup(root, selection, canonical, opSenseIds(ops)));
   const planned = await asInput(() => planOps({ root, shard, ops, revision: base, differing: state.differing, canonical }));
   // Every file this PR changes or will change: the planned text, or the base text when it no longer changes.
   const next = new Map();

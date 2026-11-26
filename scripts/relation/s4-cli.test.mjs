@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -289,6 +289,71 @@ test('missing or invalid fixed selection refuses preparation without an AI selec
   git(root, 'add', 'data');
   git(root, 'commit', '-qm', 'Invalid selection');
   await assert.rejects(cli(root, 'prepare', '--shard', '001'), /invalid selection-001\.jsonl/u);
+});
+
+test('#10174 an excluded Sense of another shard is checked against its own shard selection in save, apply and amend', async (t) => {
+  // 반짝이다 (shard 002) is `e`, a shard 002 filler is `s`; shard 001 selection does not list either.
+  const OTHER_S = 'w20005-s1';
+  const root = await repository(t, { select: (id) => id === 'w2001-s1' ? 'e' : id === OTHER_S ? 's' : selection(id) });
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  const saved = await save(root, '001', (view) => {
+    const star = find(view, 'w1-s1', '별빛');
+    return [
+      `A ${star.sense} w2001-s1 action 4`,                  // other-shard e: discarded
+      `B ${star.relation} w2001-s1 mood 3`,                 // rebind onto other-shard e: discarded
+      `A ${star.sense} ${OTHER_S} near 4`,                  // other-shard s: a valid counterpart
+      `A ${star.sense} "고요한 밤" scene 5`,                  // text-only Add needs no selection lookup
+    ];
+  });
+  assert.deepEqual(saved.discarded.map((line) => line.replace(/^.*: /u, '')), ['target Sense is excluded', 'target Sense is excluded']);
+  await saveNone(root, 2, prepared.chunk_count);
+
+  // A submitted Add to the other-shard e is refused by apply itself, not only by save.
+  const scratch = path.join(root, '.warroom-scratch');
+  const [name] = (await readdir(scratch)).filter((file) => file.endsWith('.json') && file.includes('001'));
+  const checkpoint = JSON.parse(await readFile(path.join(scratch, name), 'utf8'));
+  const tampered = structuredClone(checkpoint);
+  tampered.decisions.flatMap((decision) => decision.ops).find((op) => op.target_sense_id === OTHER_S).target_sense_id = 'w2001-s1';
+  await writeFile(path.join(scratch, name), JSON.stringify(tampered));
+  await assert.rejects(cli(root, 'apply', '--shard', '001'), /may not add a Relation to an excluded Sense/u);
+  await writeFile(path.join(scratch, name), JSON.stringify(checkpoint));
+
+  const applied = await cli(root, 'apply', '--shard', '001');
+  assert.equal(applied.status, 'applied');
+  const own = await relations(root, '001');
+  assert.ok(own.some((row) => row.source_sense_id === 'w1-s1' && row.target_sense_id === OTHER_S));
+  assert.ok(own.some((row) => row.source_sense_id === 'w1-s1' && row.text === '고요한 밤'));
+  assert.ok(!own.some((row) => row.target_sense_id === 'w2001-s1' && row.source_sense_id === 'w1-s1'));
+
+  const base = git(root, 'rev-parse', 'HEAD');
+  git(root, 'add', 'data');
+  git(root, 'commit', '-qm', '[S4/Sol] 001');
+  const delta = path.join(scratch, 'delta.txt');
+  await writeFile(delta, 'amend\nA w1-s1 w2001-s1 near 3\n');
+  await assert.rejects(cli(root, 'amend', '--shard', '001', '--base', base, '--in', delta), /may not add a Relation to an excluded Sense/u);
+  await writeFile(delta, `amend\nA w1-s2 ${OTHER_S} near 3\n`);
+  assert.equal((await cli(root, 'amend', '--shard', '001', '--base', base, '--in', delta)).status, 'applied');
+});
+
+test('#10174 M moves only to a sibling Sense that is not excluded', async (t) => {
+  const root = await repository(t, { select: (id) => id === 'w1-s2' ? 'e' : selection(id) });
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  await assert.rejects(save(root, '001', (view) => [`M ${find(view, 'w1-s1', '별빛').relation} w1-s2`]), /no valid judgment/u);
+  const saved = await save(root, '001', (view) => [`M ${find(view, 'w1-s1', '별빛').relation} w1-s2`, `C ${find(view, 'w1-s1', '물결').relation} mood 2`]);
+  assert.deepEqual(saved.discarded.map((line) => line.replace(/^.*: /u, '')), ['destination Sense is excluded']);
+  await saveNone(root, 2, prepared.chunk_count);
+});
+
+test('#10174 a missing or invalid selection of a referenced other shard stops the answer', async (t) => {
+  const root = await repository(t);
+  await cli(root, 'prepare', '--shard', '001');
+  const answer = (view) => [`A ${find(view, 'w1-s1', '별빛').sense} w2001-s1 action 4`];
+  const file = path.join(root, 'data/relation-selection/selection-002.jsonl');
+  const original = await readFile(file, 'utf8');
+  await rm(file);
+  await assert.rejects(save(root, '001', answer), (error) => error instanceof RefineInputError && /requires selection-002\.jsonl/u.test(error.message));
+  await writeFile(file, original.replace('"d":"p"', '"d":"x"'));
+  await assert.rejects(save(root, '001', answer), (error) => error instanceof RefineInputError && /invalid selection-002\.jsonl/u.test(error.message));
 });
 
 test('a selected Relation can move to an unselected sibling Sense without authorizing independent Skip edits', async (t) => {
