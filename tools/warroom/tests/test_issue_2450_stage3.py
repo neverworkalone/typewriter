@@ -143,6 +143,22 @@ class Stage3PromptView(unittest.TestCase):
     def test_valid_view_passes_including_unusual_fields_and_zero_target_text_relation(self):
         stage3.validate_prompt_view(self.PROMPT, self.context(), 12)
 
+    def test_confirmed_skip_markers_are_accepted_only_as_trailing_s_on_sense_and_id_rows(self):
+        # #10265: `s` after a Sense row or a full ID row marks a confirmed Skip Sense; nothing else is a marker.
+        marked = self.PROMPT.replace("S\t가\tnoun\t탭\\t줄\\n\n", "S\t가\tnoun\t탭\\t줄\\n\ts\n").replace(
+            "I3\t마\tscene\t3\tnoun\t모호", "I3\t마\tscene\t3\tnoun\t모호\ts")
+        self.assertNotEqual(marked, self.PROMPT)
+        stage3.validate_prompt_view(marked, self.context(), 12)
+        for name, value in {
+            "other Sense marker": marked.replace("줄\\n\ts", "줄\\n\tp"),
+            "other ID marker": marked.replace("모호\ts", "모호\tp"),
+            "marker on short ID row": self.PROMPT.replace("I1\t나\tnear\t1", "I1\t나\tnear\t1\ts"),
+            "marker on text row": self.PROMPT.replace("X4\t바\taction\t9", "X4\t바\taction\t9\ts"),
+            "marker on target row": self.PROMPT.replace("T2\t다\tverb\tg2", "T2\t다\tverb\tg2\ts"),
+        }.items():
+            with self.subTest(name), self.assertRaises(stage3.Stage3Error):
+                stage3.validate_prompt_view(value, self.context(), 12)
+
     def test_prompt_view_fails_closed_when_it_does_not_bind_to_the_json_view(self):
         p = self.PROMPT
         cases = {
@@ -604,3 +620,30 @@ class Stage3SupervisorFlow(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WholeDropCategoryPrompts(unittest.TestCase):
+    """#10265: every S2/S3 judgment prompt that can admit or keep a Relation carries the #10171 categories and bounds."""
+
+    REQUIRED = ("Confirmed Skip whole-Drop categories", "Made product / facility kind", "Proverb or idiom",
+                "Reference-only sense", "부합 `w432385-s2`", "유제 `w261298-s1`", "`s` alone is **never** a Drop")
+
+    def test_s2_primary_task_links_and_s3_chunk_prompts_render_the_whole_drop_rule(self):
+        s2 = {"method": "s2", "shard": "001", "batch": "01-01", "branch": "s2-001"}
+        checkpoint = {"type_tier_policy": "source-mirror-v1", "pending_chunk": "001-01-01-001",
+                      "next_chunk_number": 1, "decided": 0, "total": 1}
+        rendered = {
+            "s2_chunk": prompts.stage2(s2, "chunk", checkpoint, view="# decision: c<n> D x|e\n"),
+            "s2_task": prompts.stage2_task(s2, "t01", "S\tw1-s1\n", ".warroom-scratch/d.txt", checkpoint),
+            "s2_links": prompts.stage2_links(s2, checkpoint, "links @digest\n"),
+            "s3_chunk": prompts.stage3_chunk({"shard": "001", "batch": "all", "branch": "s3-001"}, "001", "chunk 001/001"),
+        }
+        for name, text in rendered.items():
+            for phrase in self.REQUIRED:
+                with self.subTest(prompt=name, phrase=phrase):
+                    self.assertIn(phrase, text)
+        self.assertIn("answer `D e` for **every** candidate", rendered["s2_chunk"])
+        self.assertIn("answer `c<n> skip`", rendered["s2_links"])
+        self.assertIn("never `D e` here", rendered["s2_links"])
+        self.assertIn("`D` **every** displayed Relation", rendered["s3_chunk"])
+        self.assertIn("trailing `s` field on an `S` or `I` row", rendered["s3_chunk"])

@@ -5,7 +5,7 @@
 // The model sees shard-local record numbers (1-based index into that file's records) and Sense order numbers only;
 // `save` joins each answer letter k of record n to `records[n-1].senses[k-1].id` of that same array. No ID is
 // reconstructed or guessed, and no hash/receipt/mapping ledger exists.
-import { readFile, rename, writeFile, mkdir } from 'node:fs/promises';
+import { readdir, readFile, rename, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -181,6 +181,61 @@ export function checkRows(records, text) {
   });
   if (lines.length < expected.length) errors.push(`missing ${expected.length - lines.length} Sense(s) from ${expected[lines.length]}`);
   return { errors, counts: counts(rows.filter((row) => DECISIONS.includes(row.d))) };
+}
+
+/**
+ * The confirmed decisions of one shard as `Map<sense id, d>`, checked once by `checkRows` against that shard's Canonical
+ * records. An absent file is `null` (the caller decides whether that is an error); a present invalid file throws.
+ */
+export async function readSelection(root, shard, records = null) {
+  let text;
+  try { text = await readFile(selectionPath(root, shard), 'utf8'); }
+  catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+  const checked = checkRows(records ?? await readShardRecords(root, shard), text);
+  if (checked.errors.length) throw new SelectionError(`invalid selection-${shard}.jsonl: ${checked.errors.slice(0, 20).join('; ')}`);
+  const decisions = new Map(text.split('\n').filter(Boolean).map((line) => {
+    const row = JSON.parse(line);
+    return [row.id, row.d];
+  }));
+  return { shard, counts: checked.counts, decisions };
+}
+
+/** Owning Canonical shard of every Sense and each shard's records, from one pass over `data/canonical`. */
+export async function canonicalShards(root) {
+  const directory = path.join(root, 'data/canonical');
+  const shardOfSense = new Map();
+  const rowsByShard = new Map();
+  for (const name of (await readdir(directory)).filter((item) => /^stdict-\d{4}\.jsonl$/u.test(item)).sort()) {
+    const shard = name.slice('stdict-0'.length, -'.jsonl'.length);
+    const records = parseShardRecords(await readFile(path.join(directory, name), 'utf8'), name);
+    rowsByShard.set(shard, records);
+    for (const record of records) for (const sense of record.senses) shardOfSense.set(sense.id, shard);
+  }
+  return { shardOfSense, rowsByShard };
+}
+
+/**
+ * #10265: the confirmed Skip (`d:"s"`) Senses among `senseIds`, each judged by its owning shard's selection file. A
+ * shard without a selection file contributes nothing (production continues unchanged there); an invalid file throws.
+ * Each needed file is read and checked once.
+ */
+export async function skipSenseIds(root, senseIds, canonical = null) {
+  const { shardOfSense, rowsByShard } = canonical ?? await canonicalShards(root);
+  const byShard = new Map();
+  for (const id of senseIds) {
+    const shard = shardOfSense.get(id);
+    if (shard) byShard.set(shard, [...(byShard.get(shard) ?? []), id]);
+  }
+  const skip = new Set();
+  for (const [shard, ids] of [...byShard].sort(([left], [right]) => left.localeCompare(right))) {
+    const selection = await readSelection(root, shard, rowsByShard.get(shard));
+    if (!selection) continue;
+    for (const id of ids) if (selection.decisions.get(id) === 's') skip.add(id);
+  }
+  return skip;
 }
 
 export function parseShards(spec) {

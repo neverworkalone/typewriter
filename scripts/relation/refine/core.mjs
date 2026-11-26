@@ -274,9 +274,13 @@ export function createRefineCli(rule) {
   function readCheckpointText(text, shard, scope = null) {
     let checkpoint;
     try { checkpoint = JSON.parse(text); } catch (error) { fail(`${label} checkpoint is not valid JSON: ${error.message}`); }
-    const expectedKeys = scope ? 'chunk_total,completed_chunks,decisions,scope,shard,version' : 'chunk_total,completed_chunks,decisions,shard,version';
+    // `view_policy` (#10265) names the rule's view policy a formal prepare used; absent = prepared before it.
+    const expectedKeys = [...(scope ? ['chunk_total', 'completed_chunks', 'decisions', 'scope', 'shard', 'version']
+      : ['chunk_total', 'completed_chunks', 'decisions', 'shard', 'version']),
+    ...(checkpoint?.view_policy === undefined ? [] : ['view_policy'])].sort().join(',');
     if (!checkpoint || Array.isArray(checkpoint) || typeof checkpoint !== 'object'
         || Object.keys(checkpoint).sort().join(',') !== expectedKeys
+        || (checkpoint.view_policy !== undefined && (scope || !rule.viewPolicy || checkpoint.view_policy !== rule.viewPolicy))
         || checkpoint.version !== 1 || checkpoint.shard !== shard
         || (scope && (checkpoint.scope?.batch !== scope.batch || checkpoint.scope?.part !== scope.part
           || Object.keys(checkpoint.scope).sort().join(',') !== 'batch,part'))
@@ -371,7 +375,11 @@ export function createRefineCli(rule) {
     if (inputStatus.trim()) fail(`${label} ${what} requires clean ${named} inputs${rule.inputPaths?.length ? ` and ${rule.inputPaths.join(', ')}` : ''}`);
   }
 
-  async function renderPreparedViews(shard, root, scope = null) {
+  /**
+   * `viewPolicy` is the checkpoint's `view_policy`: a rule's `viewContext` (#10265) feeds `renderChunk` only for a
+   * checkpoint prepared under that policy, so a refresh of an older checkpoint renders exactly its original views.
+   */
+  async function renderPreparedViews(shard, root, scope = null, viewPolicy = null) {
     gitHead(root);
     const relationFile = RELATION_PATH(shard, root);
     const dropFile = DROP_PATH(shard, root);
@@ -398,7 +406,9 @@ export function createRefineCli(rule) {
       : buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations,
         scopeSenseIds, rowFilter: scope ? rule.scopedRow : null });
     const chunks = chunkSenseGroups(groups, { label });
-    const views = chunks.map((chunkGroups, index) => rule.renderChunk(chunkGroups, context.index, index + 1, chunks.length));
+    const extra = viewPolicy !== null && viewPolicy === rule.viewPolicy && rule.viewContext
+      ? await rule.viewContext(context, { root, shard }) : null;
+    const views = chunks.map((chunkGroups, index) => rule.renderChunk(chunkGroups, context.index, index + 1, chunks.length, extra));
     return { context, views, scope_record_count: scopeRows.length };
   }
 
@@ -410,7 +420,9 @@ export function createRefineCli(rule) {
       return { shard, ...(scope ? { batch: scope.batch, part: scope.part } : {}),
         chunk_count: checkpoint.chunk_total, completed_chunks: checkpoint.completed_chunks.length, resumed: true };
     }
-    const { views, scope_record_count } = await renderPreparedViews(shard, root, scope);
+    // A new formal (unscoped) prepare adopts the rule's current view policy; scoped Link Repair keeps none.
+    const viewPolicy = !scope && rule.viewPolicy ? rule.viewPolicy : null;
+    const { views, scope_record_count } = await renderPreparedViews(shard, root, scope, viewPolicy);
     const directory = chunkFiles(shard, root, scope);
     await rm(directory, { recursive: true, force: true });
     await mkdir(directory, { recursive: true });
@@ -419,7 +431,7 @@ export function createRefineCli(rule) {
       await writeFile(path.join(directory, `chunk-${view.chunk}.json`), `${JSON.stringify(view)}\n`, 'utf8');
     }
     const checkpoint = { version: 1, shard, ...(scope ? { scope: { batch: scope.batch, part: scope.part } } : {}),
-      chunk_total: views.length, completed_chunks: [], decisions: [] };
+      chunk_total: views.length, completed_chunks: [], decisions: [], ...(viewPolicy ? { view_policy: viewPolicy } : {}) };
     await writeJsonAtomically(checkpointPath, checkpoint);
     return { shard, ...(scope ? { batch: scope.batch, part: scope.part, source_record_count: scope_record_count } : {}),
       chunk_count: views.length, relation_count: views.reduce((sum, view) => sum + view.relation_count, 0), resumed: false };
@@ -435,7 +447,7 @@ export function createRefineCli(rule) {
 
   async function refreshPendingChunks(shard, root, scope = null) {
     const checkpoint = await loadCheckpoint(shard, root, scope);
-    const { views } = await renderPreparedViews(shard, root, scope);
+    const { views } = await renderPreparedViews(shard, root, scope, checkpoint.view_policy ?? null);
     if (views.length !== checkpoint.chunk_total) {
       fail(`${label} refresh changed shard ${shard} chunk count; completed decisions cannot be rebound safely`);
     }

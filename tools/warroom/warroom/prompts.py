@@ -31,7 +31,7 @@ ALLOWED = {"fix": {"pr", "head", "branch", "shard", "batch", "part", "review_eve
                    "s2_policy_card"},
            "s3_fix": _STAGE3_FIX,
            "m_fix": {"issue", "pr", "head", "branch", "review_events", "session_note"},
-           "s2_policy_card": {"relation_direction_rule"},
+           "s2_policy_card": {"relation_direction_rule", "whole_drop_rule"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2,
            "s2_chunk": _STAGE2 | {"s2_policy_card"}, "s2_recovery": _STAGE2,
            "s2_task": {"shard", "batch", "part", "branch", "chunk_id", "defect_path", "session_note", "chunk_input",
@@ -41,10 +41,10 @@ ALLOWED = {"fix": {"pr", "head", "branch", "shard", "batch", "part", "review_eve
            "s2_chunk_resume": {"chunk_id", "relation_direction_rule"},
            "s2_chunk_fix": {"chunk_id", "problem", "relation_direction_rule"},
            "s2_chunk_format_fix": {"chunk_id", "problem", "relation_direction_rule"},
-           "s2_links": _STAGE2 | {"link_input"},
+           "s2_links": _STAGE2 | {"link_input", "whole_drop_rule"},
            "s2_links_fix": {"digest", "problem", "relation_direction_rule"},
            "s2_repair": _STAGE2 | {"repair_input", "round_info", "format_feedback"},
-           "s3_policy_card": set(), "s3_chunk": _STAGE3}
+           "s3_policy_card": {"whole_drop_rule"}, "s3_chunk": _STAGE3, "whole_drop_card": set()}
 MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
 CHUNK_VIEW = ".warroom-scratch/active-chunk.txt"
@@ -110,9 +110,15 @@ def _relation_direction_rule(checkpoint: dict | None = None) -> str:
     raise PromptError("Stage 2 checkpoint has an unsupported Type/Tier direction policy")
 
 
+def _whole_drop_rule(directory: Path | None = None) -> str:
+    """The #10171 whole-Drop categories for `s`-marked Senses (#10265), shared by S2 primary/links and S3 cards."""
+    return render("whole_drop_card", {}, directory).rstrip("\n")
+
+
 def _stage2_policy_card(checkpoint: dict | None = None, directory: Path | None = None) -> str:
     """Render the shared judgment card first; `render` intentionally performs one substitution pass."""
-    return render("s2_policy_card", {"relation_direction_rule": _relation_direction_rule(checkpoint)}, directory).rstrip("\n")
+    return render("s2_policy_card", {"relation_direction_rule": _relation_direction_rule(checkpoint),
+                                     "whole_drop_rule": _whole_drop_rule(directory)}, directory).rstrip("\n")
 
 
 def produce(b, directory: Path | None = None) -> str:
@@ -194,7 +200,8 @@ def stage2_links(b, checkpoint: dict, links: str, directory: Path | None = None)
     values = _stage2_values(b)
     values.update(checkpoint=(f"{checkpoint['decided']}/{checkpoint['total']} primary decisions; optional links pending"),
                   relation_direction_rule=_relation_direction_rule(checkpoint),
-                  session_note="새 optional-link 세션이다. primary 판정은 변경하지 않는다.\n", link_input=links)
+                  session_note="새 optional-link 세션이다. primary 판정은 변경하지 않는다.\n", link_input=links,
+                  whole_drop_rule=_whole_drop_rule(directory))
     return render("s2_links", values, directory)
 
 
@@ -234,7 +241,9 @@ def stage3_chunk(b, chunk_id: str, view: str, *, resumed: bool = False,
                                       "chunk_input": chunk_input,
                                       "session_note": "중단된 같은 청크를 다시 본다. checkpoint에 완료된 청크는 건드리지 않는다.\n"
                                       if resumed else "새 AI 세션으로 현재 청크만 편집한다.\n",
-                                      "s3_policy_card": render(spec.policy_card, {}, directory).rstrip()}, directory)
+                                      "s3_policy_card": render(spec.policy_card,
+                                                               {"whole_drop_rule": _whole_drop_rule(directory)},
+                                                               directory).rstrip()}, directory)
 
 
 def stage2_chunk_fix(chunk_id: str, problem: str, checkpoint: dict | None = None,

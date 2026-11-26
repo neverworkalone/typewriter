@@ -199,7 +199,7 @@ test('CLI entrypoint prepares a Part without an injected repository root', async
   ]) {
     await mkdir(directory, { recursive: true });
   }
-  for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs', 'persisted-jsonl.mjs', 'relation-delta.mjs']) {
+  for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs', 'persisted-jsonl.mjs', 'relation-delta.mjs', 'selection-cli.mjs']) {
     await copyFile(path.join(REPOSITORY_DIRECTORY, 'scripts/relation', file), path.join(relationScriptDirectory, file));
   }
   await mkdir(path.join(root, 'config'), { recursive: true });
@@ -2525,7 +2525,7 @@ async function spawnedVerifyRepository(t, { candidates = () => [], relations = [
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const [from, to] of [
     ['scripts/relation/admission-cli.mjs'], ['scripts/relation/admission.mjs'], ['scripts/relation/candidate-contract.mjs'], ['scripts/relation/persisted-jsonl.mjs'],
-    ['scripts/relation/relation-delta.mjs'], ['scripts/build/gloss-arrow-reference.mjs'], ['src/runtime/dictionary-contract.js'], ['config/stage2-part-layout.json'],
+    ['scripts/relation/relation-delta.mjs'], ['scripts/relation/selection-cli.mjs'], ['scripts/build/gloss-arrow-reference.mjs'], ['src/runtime/dictionary-contract.js'], ['config/stage2-part-layout.json'],
   ]) {
     await mkdir(path.dirname(path.join(root, from)), { recursive: true });
     await copyFile(path.join(REPOSITORY_DIRECTORY, from), path.join(root, to ?? from));
@@ -3737,4 +3737,114 @@ test('#8784 replay keeps the latest Polish answer, drops only the superseded Par
   await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', '.warroom-scratch/replay-amend.txt'], { root }));
   assert.equal(await readFile(dropPath, 'utf8'), '{"id":"w1","sid":"w1-s1","cd":"푸른 기척","by":"e"}\n');
   assert.equal((await verify()).missing, 0);
+});
+
+/** #10265: a confirmed selection for every Canonical Sense of shard 001; `skip` lists the `d:"s"` Senses. */
+async function writeSelection(root, skip = [], { corrupt = false } = {}) {
+  const records = (await readFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const rows = records.flatMap((record) => record.senses.map((sense) => ({ id: sense.id, d: skip.includes(sense.id) ? 's' : 'p' })));
+  if (corrupt) rows.pop();
+  await mkdir(path.join(root, 'data/relation-selection'), { recursive: true });
+  await writeFile(path.join(root, 'data/relation-selection/selection-001.jsonl'), jsonl(rows));
+}
+
+const compactPrimary = async (root, checkpoint) =>
+  (await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }))).text.split('\n');
+
+test('#10265 new Parts mark confirmed Skip sources and exact targets; no selection, invalid selection and old checkpoints', async (t) => {
+  const { root } = await chunkRepository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const prepare = () => quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const reset = () => rm(path.join(root, checkpoint), { force: true });
+
+  // No selection file: production continues unchanged, nothing is marked and the Part still completes.
+  const none = await prepare();
+  assert.deepEqual(none.skip_sense_ids, []);
+  assert.ok((await compactPrimary(root, checkpoint)).every((line) => !line.endsWith('\ts')), 'no selection, no marker');
+
+  // An `s` source: its S line is marked; same-spelling targets keep their own (here `p`) decisions.
+  await reset();
+  await writeSelection(root, ['w1-s1']);
+  assert.deepEqual((await prepare()).skip_sense_ids, ['w1-s1']);
+  let lines = await compactPrimary(root, checkpoint);
+  assert.ok(lines.some((line) => line.startsWith('S\tw1-s1\t') && line.endsWith('\ts')));
+  assert.ok(lines.some((line) => line.startsWith('# s\t')), 'the legend explains the marker');
+  assert.ok(lines.filter((line) => /^T\d+\t/u.test(line)).every((line) => !line.endsWith('\ts')));
+
+  // A `p` source with one `s` target Sense: only that exact Sense is marked, not its same-spelling sibling or homographs.
+  await reset();
+  await writeSelection(root, ['w501-s1']);
+  await prepare();
+  const json = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const source = json.items.find((item) => item.sense_id === 'w1-s1');
+  assert.equal(source.skip, undefined);
+  const senses = source.candidates.flatMap((candidate) => candidate.same_spelling_targets.flatMap((target) => target.senses));
+  assert.deepEqual(senses.filter((sense) => sense.skip).map((sense) => sense.sense_id), ['w501-s1']);
+  lines = await compactPrimary(root, checkpoint);
+  const marked = lines.filter((line) => /^T\d+\t/u.test(line) && line.endsWith('\ts'));
+  assert.equal(marked.length, 1);
+  assert.ok(marked[0].includes('후보의 정확한 뜻'), 'the marked T line is w501-s1');
+  assert.ok(lines.some((line) => line.startsWith('S\tw1-s1\t') && !line.endsWith('\ts')));
+
+  // A present but invalid selection file is an input error, never treated as absent.
+  await reset();
+  await writeSelection(root, [], { corrupt: true });
+  await assert.rejects(prepare, /invalid selection-001\.jsonl/u);
+
+  // A checkpoint prepared before #10265 has no field: it stays valid and its views carry no marker.
+  await writeSelection(root, ['w1-s1']);
+  const legacy = await prepare();
+  delete legacy.skip_sense_ids;
+  await writeFile(path.join(root, checkpoint), `${JSON.stringify(legacy)}\n`);
+  lines = await compactPrimary(root, checkpoint);
+  assert.ok(lines.every((line) => !line.endsWith('\ts') && !line.startsWith('# s\t')));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  await mergeForTest(root, checkpoint);
+  assert.equal((await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }))).missing, 0);
+});
+
+async function optionalSkipRepository(t, skip) {
+  const { root } = await chunkRepository(t);
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonical = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  canonical.find((record) => record.id === 'w501').senses.push({ id: 'w501-s3', pos: 'noun', gloss: '표기가 같은 세 번째 뜻' });
+  await writeFile(canonicalPath, jsonl(canonical));
+  const prior = (await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl')))[0];
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([prior, {
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w501', target_sense_id: 'w501-s1',
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+  }]));
+  await writeSelection(root, skip);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  const view = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional'], { root }));
+  const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional', '--format', 'compact'], { root }));
+  const save = async (rows) => {
+    const input = '.warroom-scratch/optional-input.txt';
+    await writeFile(path.join(root, input), `links @${view.digest}\n${rows}\n`);
+    return quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root }));
+  };
+  return { root, checkpoint, text: compact.text, save };
+}
+
+test('#10265 optional links mark only the Skip target Sense; another valid target links with the existing R grammar', async (t) => {
+  const { root, checkpoint, text, save } = await optionalSkipRepository(t, ['w501-s2']);
+  assert.match(text, /^T2\tw501-s2\t[^\n]*\ts$/mu);
+  assert.match(text, /^T3\tw501-s3\t[^\n]*\t표기가 같은 세 번째 뜻$/mu, 'the sibling Sense is not marked');
+  assert.match(text, /^# s\t/mu);
+  const saved = await save('c1 R mood 4 T3');
+  assert.deepEqual([saved.optional_review_complete, saved.optional_links_saved], [true, 1]);
+  const checkpointData = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  const candidate = checkpointData.items.find((item) => item.sense_id === 'w1-s1').candidates.find((row) => row.text === '유일표적');
+  assert.deepEqual(candidate.additional_relations.map((relation) => relation.target_sense_id), ['w501-s3']);
+});
+
+test('#10265 optional links with every target Skip use the existing skip answer, never the primary D e', async (t) => {
+  const { text, save } = await optionalSkipRepository(t, ['w501-s2', 'w501-s3']);
+  assert.match(text, /^T2\tw501-s2\t[^\n]*\ts$/mu);
+  assert.match(text, /^T3\tw501-s3\t[^\n]*\ts$/mu);
+  await assert.rejects(() => save('c1 D e'), /optional links not saved/u);
+  const saved = await save('c1 skip');
+  assert.deepEqual([saved.optional_review_complete, saved.optional_links_saved], [true, 0]);
 });

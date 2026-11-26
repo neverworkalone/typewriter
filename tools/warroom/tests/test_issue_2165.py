@@ -59,7 +59,7 @@ class Stage2Finalization(unittest.TestCase):
         for kind in ("fix_new", "fix_resume"):
             w.store.update(b["id"], run_kind=kind, paused_from="FIXING", pr_number=7)
             row = w.store.batch(b["id"])
-            self.assertEqual(w.sup.resume_prompt_names(row), {"fix", "s2_policy_card"})
+            self.assertEqual(w.sup.resume_prompt_names(row), {"fix", "s2_policy_card", "whole_drop_card"})
         w.store.update(b["id"], paused_from="PRODUCING")
         self.assertIsNone(w.sup.resume_prompt_names(w.store.batch(b["id"])))
         w.store.update(b["id"], paused_from="FIXING", pr_number=None)

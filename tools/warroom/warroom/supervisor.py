@@ -498,7 +498,7 @@ class Supervisor:
                 and b["paused_from"] == "FIXING" and b["pr_number"]):
             # Every Stage 2 review-fix launch renders these templates, whether it starts a fresh
             # session or resumes the verified unpushed fix. Other gates may still prevent launch.
-            return {"fix", "s2_policy_card"}
+            return {"fix", "s2_policy_card", "whole_drop_card"}
         if (b["method"] == STAGE2_METHOD and b["run_kind"] == "s2_repair_new"
                 and b["paused_from"] == "PRODUCING" and not b["pr_number"]):
             try:

@@ -59,6 +59,10 @@ source and scope:
   candidate or target, whether by ID or as text-only (such names, including
   the example above, are no longer admissible); see
   [relation-factory.md](relation-factory.md#고유명사-양방향-제외-5745).
+  **Confirmed Skip whole-Drop (#10265):** in new S2 Parts and new formal S3
+  shards, a confirmed Skip Sense that clearly fits a #10171 whole-Drop
+  category is neither admitted nor kept as a source or exact ID target; see
+  [relation-factory.md](relation-factory.md#확정-skip-전체-drop-선제-적용-10265).
 - **ID↔ID bidirectional exploration.** Authored exact links remain available both ways. Under #2446, every persisted ID row uses one source `tp`/`rv` judgment in both directions, including previously approved rows; **equal reverse values are required, not review defects**. Do not independently re-score reverse links or exempt historical approvals from the current storage contract. Preserve historical review evidence and STDICT relations; text-only has no reverse.
 - **Headword-promotion candidates** are collected separately, never in the
   relation rows: `data/headword-candidates/pr-<PR number>.jsonl` in the

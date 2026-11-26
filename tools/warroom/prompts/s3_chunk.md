@@ -15,6 +15,7 @@ Use `none` as the only decision line when all rows are kept. The CLI validates t
 Input rows are tab-separated; `\\`, `\t`, `\n`, `\r` in a field are escapes. Keep is implicit.
 `S` starts a Source Sense (lemma, POS, gloss); its relation rows follow until the next `S`.
 `I<n>` is an ID Relation (target, type, tier, target POS, target gloss); `X<n>` is a text-only Relation (text, type, tier).
+A trailing `s` field on an `S` or `I` row marks a confirmed Skip Sense (source or exact target); apply the whole-Drop categories of the policy card to it.
 The `T<k>` rows right after an `X` are that text's candidate targets (lemma, POS, gloss); `D`/`L` use the printed `n` and `T<k>` as is.
 
 {{session_note}}This is one source-Sense-complete chunk from shard {{shard}}. Judge its full relation sets together.

@@ -354,7 +354,8 @@ test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and G
   const checkpointPath = path.join(root, '.warroom-scratch/relation-edit-001.json');
   const checkpointBefore = await readFile(checkpointPath, 'utf8');
   const checkpoint = JSON.parse(checkpointBefore);
-  assert.deepEqual(Object.keys(checkpoint).sort(), ['chunk_total', 'completed_chunks', 'decisions', 'shard', 'version']);
+  assert.deepEqual(Object.keys(checkpoint).sort(), ['chunk_total', 'completed_chunks', 'decisions', 'shard', 'version', 'view_policy']);
+  assert.equal(checkpoint.view_policy, 'skip-sense-v1');
 
   const view = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
   assert.equal(view.relation_count, 4);
@@ -822,7 +823,8 @@ const judgmentView = (view) => ({
     ? { n: relation.n, text: relation.text, type: relation.type, tier: relation.tier,
       targets: relation.targets.map(({ alias, lemma, pos, gloss }) => ({ alias, lemma, pos, gloss })) }
     : { n: relation.n, target: relation.target, type: relation.type, tier: relation.tier,
-      ...('target_pos' in relation ? { target_pos: relation.target_pos, target_gloss: relation.target_gloss } : {}) }) })),
+      ...('target_pos' in relation ? { target_pos: relation.target_pos, target_gloss: relation.target_gloss } : {}),
+      ...(relation.target_skip === true ? { target_skip: true } : {}) }) })),
 });
 
 test('compact prompt view round-trips every judgment field, including delimiter-like text', () => {
@@ -1153,4 +1155,86 @@ test('#8784 a replayed Stage 3 PR still lists and amends its own decisions from 
   const amended = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
   assert.deepEqual(amended.map((row) => [row.target_sense_id ?? row.text, row.type]),
     [['w2-s1', 'sensory'], ['w3-s2', 'scene'], ['어렴풋이', 'sensory'], ['w4-s1', 'association'], ['고요한 호수', 'scene']]);
+});
+
+// ---- #10265 confirmed Skip markers ----
+async function commitSelection(root, skip, shard = '001') {
+  const canonical = (await readFile(path.join(root, `data/canonical/stdict-0${shard}.jsonl`), 'utf8')).trimEnd().split('\n').map(JSON.parse);
+  await mkdir(path.join(root, 'data/relation-selection'), { recursive: true });
+  await writeFile(path.join(root, `data/relation-selection/selection-${shard}.jsonl`), jsonl(canonical.flatMap((record) =>
+    record.senses.map((sense) => ({ id: sense.id, d: skip.includes(sense.id) ? 's' : 'p' })))));
+  git(root, 'add', 'data/relation-selection');
+  git(root, 'commit', '-qm', `Selection ${shard}`);
+}
+
+test('#10265 a formal prepare marks Skip sources and exact ID targets; a target shard without selection stays unmarked', async (t) => {
+  const root = await repository(t, { crossShardTarget: true });
+  await commitSelection(root, ['w1-s1', 'w4-s1']);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const { prompt_view: prompt, ...view } = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  assert.equal(view.senses[0].source.skip, true);
+  const kept = view.senses[0].relations.find((relation) => relation.target === '유영');
+  const external = view.senses[0].relations.find((relation) => relation.target === '반짝');
+  assert.equal(kept.target_skip, true);
+  assert.equal(external.target_skip, undefined, 'shard 002 has no selection file: no guess');
+  const lines = prompt.split('\n');
+  assert.ok(lines.includes('S\t차분하다\tverb\t마음이 가라앉아 조용하다.\ts'));
+  assert.ok(lines.includes(`I${kept.n}\t유영\tassociation\t5\tnoun\t물속에서 헤엄침.\ts`));
+  assert.ok(lines.filter((line) => /^[XT]\d+\t/u.test(line)).every((line) => !line.endsWith('\ts')), 'Link Repair rows are unchanged');
+  assert.deepEqual(parsePromptView(prompt), judgmentView(view));
+  for (const bad of ['chunk 001/001 relations 1\nS\ta\tb\tc\tx\nI1\ta\tnear\t1',
+    'chunk 001/001 relations 1\nS\ta\tb\tc\nI1\ta\tnear\t1\tn\tg\tp', 'chunk 001/001 relations 1\nS\ta\tb\tc\nI1\ta\tnear\t1\ts']) {
+    assert.throws(() => parsePromptView(bad), undefined, bad);
+  }
+  // The Drop of a marked row still runs the ordinary apply, orphan `z` accounting and verify.
+  await save(root, `chunk 001\nD ${kept.n}\n`);
+  await quiet(() => run(['apply', '--shard', '001'], { root }));
+  const drops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
+  assert.ok(drops.some((drop) => drop.source_sense_id === 'w1-s1' && drop.candidate === '유영' && drop.reason === 'z'));
+});
+
+test('#10265 refresh of a checkpoint prepared before the policy injects no marker into completed or pending chunks', async (t) => {
+  const root = await threeChunkRepository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const checkpointPath = path.join(root, '.warroom-scratch/relation-edit-001.json');
+  const legacy = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  delete legacy.view_policy;
+  await writeFile(checkpointPath, `${JSON.stringify(legacy)}\n`);
+  const viewDir = path.join(root, '.warroom-scratch/relation-edit-001');
+  const before = await Promise.all(['001', '002', '003'].map((chunk) => readFile(path.join(viewDir, `chunk-${chunk}.json`), 'utf8')));
+  await saveExplicit(root, '001', 'chunk 001\nnone\n', (await quiet(() => run(['read-chunk', '--shard', '001', '--chunk', '001'], { root }))).view_sha256);
+  await commitSelection(root, ['w900001-s1', 'w900002-s1', 'w900003-s1']);
+  const refreshed = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.equal(refreshed.current_chunk, '002');
+  assert.equal(refreshed.active_changed, false);
+  assert.doesNotMatch(refreshed.prompt_view, /\ts$/mu);
+  const after = await Promise.all(['001', '002', '003'].map((chunk) => readFile(path.join(viewDir, `chunk-${chunk}.json`), 'utf8')));
+  assert.deepEqual(after, before, 'every prepared view keeps its pre-policy bytes');
+  const checkpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  assert.equal(checkpoint.view_policy, undefined);
+  assert.deepEqual(checkpoint.completed_chunks, ['001']);
+});
+
+test('#10265 a policy checkpoint keeps the same markers and bindings across refresh; scoped Link Repair has none', async (t) => {
+  const root = await threeChunkRepository(t);
+  await commitSelection(root, ['w900002-s1']);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const chunk001 = await quiet(() => run(['read-chunk', '--shard', '001', '--chunk', '001'], { root }));
+  const chunk002 = await quiet(() => run(['read-chunk', '--shard', '001', '--chunk', '002'], { root }));
+  assert.ok(chunk002.senses.every((sense) => sense.source.skip === true));
+  assert.ok(chunk001.senses.every((sense) => sense.source.skip === undefined));
+  await saveExplicit(root, '001', 'chunk 001\nnone\n', chunk001.view_sha256);
+  const refreshed = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.equal(refreshed.current_chunk, '002');
+  assert.equal(refreshed.active_changed, false);
+  assert.equal(refreshed.pending_view_sha256['002'], chunk002.view_sha256);
+  assert.match(refreshed.prompt_view, /^S\t[^\n]*\ts$/mu);
+
+  const scopedRoot = await repositoryForScopedRepair(t);
+  await commitSelection(scopedRoot, ['w600-s1']);
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--part', '02'], { root: scopedRoot }));
+  const scopedCheckpoint = JSON.parse(await readFile(path.join(scopedRoot, '.warroom-scratch/relation-edit-001-02-02.json'), 'utf8'));
+  assert.equal(scopedCheckpoint.view_policy, undefined);
+  const scoped = await quiet(() => run(['read-chunk', '--shard', '001', '--batch', '02', '--part', '02'], { root: scopedRoot }));
+  assert.deepEqual(scoped.senses.map((sense) => sense.source), [{ lemma: '가식적', pos: 'noun', gloss: '말이나 행동 따위를 거짓으로 꾸미는 것.' }]);
 });
