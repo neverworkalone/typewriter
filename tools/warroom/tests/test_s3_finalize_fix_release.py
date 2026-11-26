@@ -79,6 +79,37 @@ class S3FinalizeFixRelease(unittest.TestCase):
             w.git.changed_between_paths = ["scripts/relation/refine/core.mjs", path]
             self.assertIn(path, m._s3_finalize_boundary(self.b(), HEAD1, HEAD2))
 
+    def test_cross_shard_stage_refuses_an_integration_touching_any_shard_data(self):
+        from warroom import refine
+        m, w = self.w.sup.maint, self.w
+        w.git.local_head = HEAD2
+        other = "data/relations/relation-002.jsonl"
+        w.git.changed_between_paths = ["scripts/relation/refine/core.mjs", other]
+        spec = refine.spec_for(self.b())
+        self.assertIsNone(m._s3_finalize_boundary(self.b(), HEAD1, HEAD2))   # two-file Stage 3: another shard is not input
+        cross = __import__("dataclasses").replace(spec, cross_shard=True)
+        with mock.patch.object(refine, "spec_for", return_value=cross):
+            self.assertIn(other, m._s3_finalize_boundary(self.b(), HEAD1, HEAD2))
+
+    def test_stage4_batch_takes_the_same_proof_with_its_cross_shard_scope(self):
+        from warroom import refine
+        w = self.w
+        w.store.update(self.bid, batch="s4")
+        b = self.b()
+        ops = refine.ops(b)
+        cp = ops.checkpoint_path(self.path, "001")
+        cp.parent.mkdir(parents=True, exist_ok=True)
+        cp.write_text(json.dumps({"version": 1, "shard": "001", "chunk_total": 1,
+                                  "completed_chunks": ["001"], "decisions": []}), "utf-8")
+        m = w.sup.maint
+        self.assertEqual(refine.spec_for(b).id, "s4")
+        self.assertEqual(m._resume_kind(b), "s3_finalize")
+        self.assertIsNone(m._s3_finalize_boundary(b, HEAD1))
+        w.git.local_head = HEAD2
+        self.assertIsNone(m._s3_finalize_boundary(b, HEAD1, HEAD2))
+        w.git.changed_between_paths = ["data/relations/relation-300.jsonl"]
+        self.assertIn("relation-300", m._s3_finalize_boundary(b, HEAD1, HEAD2))
+
     def test_release_records_the_released_finalize_head(self):
         m, w = self.w.sup.maint, self.w
         d = {"id": 1, "merge_sha": "c" * 40, "issue_number": 9, "batch_id": self.bid}
