@@ -227,7 +227,9 @@ export async function skipSenseIds(root, senseIds, canonical = null) {
   const byShard = new Map();
   for (const id of senseIds) {
     const shard = shardOfSense.get(id);
-    if (shard) byShard.set(shard, [...(byShard.get(shard) ?? []), id]);
+    if (!shard) continue;
+    if (!byShard.has(shard)) byShard.set(shard, []);
+    byShard.get(shard).push(id);
   }
   const skip = new Set();
   for (const [shard, ids] of [...byShard].sort(([left], [right]) => left.localeCompare(right))) {
