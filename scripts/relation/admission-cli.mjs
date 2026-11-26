@@ -44,6 +44,7 @@ import {
   ACTION_TARGET_POS,
   validateRelationRows,
   verifyAccounting,
+  verifyRelationIntegrity,
   AdmissionVerifyError,
 } from './admission.mjs';
 import { parseCandidateJsonl } from './candidate-contract.mjs';
@@ -1296,24 +1297,22 @@ async function runCommand(options, root, timing) {
   }
 
   if (verifiedCheckpoint) timing?.end();
+  if (options.relationsOnly) {
+    // Relation integrity only (#9929, #10171): Canonical and the approved Relations. No Stage 1 Candidate, Drop or
+    // exclusion file is read, so the check holds after Stage 3 without them; the response keeps `counts.drops` (0).
+    timing?.start('load_shard');
+    const { canonicalRows, index } = await loadShard(options.shard, repositoryRoot, { candidates: false,
+      allCanonical: await runCached(`canonical\u0000${repositoryRoot}`, () => loadAllCanonical(repositoryRoot)) });
+    timing?.end();
+    const payload = await verifyRelationIntegrity({ shard: options.shard, root: repositoryRoot, canonicalRows, index,
+      otherRelationRows: await loadApprovedRelations(repositoryRoot, { exceptShard: options.shard }) });
+    console.log(JSON.stringify(payload));
+    return payload;
+  }
   timing?.start('load_shard');
   const loaded = await loadShardForRun(options.shard, repositoryRoot, options.batch);
   timing?.end();
   const { canonicalRows, index } = loaded;
-  if (options.relationsOnly) {
-    const [relationRows, dropRows, exclusionRows, otherRelationRows] = await Promise.all([
-      loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot)),
-      loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot)),
-      loadOptionalExclusionJsonl(shardDropPath(options.shard, repositoryRoot)),
-      loadApprovedRelations(repositoryRoot, { exceptShard: options.shard }),
-    ]);
-    const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-    validateRelationRows({ relationRows, dropRows, exclusionRows, index, shardSenseIds, otherRelationRows });
-    const payload = { version: 1, ok: true, scope: 'relation-integrity', shard: options.shard,
-      counts: { relations: relationRows.length, drops: dropRows.length } };
-    console.log(JSON.stringify(payload));
-    return payload;
-  }
   // --batch selects and fully validates one 500-record Stage 1 input set; --part narrows only Stage 2 editing/accounting.
   const scoped = options.part
     ? partScope(canonicalRows, loaded.candidateFiles, options.batch, options.part, options.shard)

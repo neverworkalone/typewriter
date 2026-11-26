@@ -72,7 +72,9 @@ Stage 4(선별적 Polish)는 Stage 3 다음에 등록된 정제 Stage입니다(`
 저장 후 TUI에서 `r`로 리로드합니다. Stage 2/3·Maintainer 배정과 진행 중 작업은 바뀌지 않습니다. `refine_max_parallel`(기본 16)은 Stage 4 샤드에도 같은 의미로 적용됩니다. 다른 provider 배정은 오너가 결정하며, 배정이 없는 provider의 Line은 Stage 4 선정 시점에 `BLOCKED`로 멈춥니다.
 
 - **무변경 샤드:** 모든 청크가 정상 판정·저장되고 공식 apply가 변경 없음을 확인하면, 그 HEAD를 shard verify한 뒤 `s4_nochange_SSS`·`s4_ok_SSS`를 기록하고 commit·PR 없이 worktree를 정리합니다. 다음 샤드 선택은 마지막 머지 PR 뒤의 연속된 무변경 완료를 건너뜁니다.
-- **cross-shard PR:** 역방향 관계 편집으로 다른 샤드의 Relation/Drop 파일이 바뀔 수 있습니다. 허용 범위는 공식 CLI가 정합니다(생산 샤드 Sense를 한쪽 끝으로 갖는 관계와 그 회계 변경). 최종화·리뷰 수정·replay 뒤의 verify는 `s4-cli verify --shard SSS --base <merge-base>`가 영향 샤드 전체를 한 번에 검사합니다.
+- **cross-shard·Relation 전용 PR (#9929):** 역방향 관계 편집으로 다른 샤드의 Relation 파일이 바뀔 수 있습니다. Drop 파일은 어느 샤드든 바뀌지 않습니다. spec은 `relations_only=True`이고, 이 값이 PR 검증·최종화·replay의 범위를 함께 정합니다. 생산 샤드 Sense를 한쪽 끝으로 갖는 관계의 편집 범위는 공식 CLI가 정합니다.
+  - 최종화·리뷰 수정·replay 뒤의 verify는 `s4-cli verify --shard SSS --base <merge-base>`입니다. 영향 샤드 전체의 Relation 무결성을 한 번에 검사하고, Candidate·Drop은 읽지 않습니다.
+  - 충돌 replay는 Supervisor가 `replay-cli --relations-only`로 실행합니다.
 - **응답 누락:** 판정이 하나도 남지 않은 청크 응답은 응답 누락 경로(새 세션 1회)로 갑니다. Keep-all을 만들지 않습니다.
 - **정책 거부 — record 단위 Policy Skip (#10047):** provider의 공식 거부는 그 실행 view의 Canonical record에 결속합니다.
   - 여러 record인 청크는 `SPLIT`이 되고, record마다 `NNN-<record_id>` task를 **한 번만** 실행합니다. 같은 슬롯·상한을 쓰고, 청크 번호를 그대로 쓰는 `read-chunk --record` view로 실행합니다. 단일 record 청크는 이미 결속되어 있으므로 바로 `POLICY`가 됩니다.

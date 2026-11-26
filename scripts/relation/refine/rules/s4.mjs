@@ -4,10 +4,11 @@
  * The editor adds, drops, retypes or rebinds Relations without repeating the pre-selection.
  *
  * The rule is keyed (`keyed`): a decision names relation keys, never base rows, because a Sense's reverse Relations are
- * stored in other shards' files (`crossShard`). Every data change goes through the Polish write path (#8784,
- * `polish-cli.mjs apply`): `by:"p"` rows, `z` only for real orphans, `p` exclusions, re-approval settlement, every
- * affected shard's row validator and "no new accounting problem". Chunking, prepared views, the checkpoint and the
- * parallel save are the shared Refinement Engine core.
+ * stored in other shards' files (`crossShard`). It is Relation-only (`relationsOnly`, #9929): its inputs are Canonical,
+ * the confirmed selection and the approved Relations, and every data change goes through the Relation-only mode of the
+ * Polish write path (#8784, `polish-cli.mjs apply`): `by:"p"` rows and every changed Relation file's shared row
+ * validator. No Candidate or Drop file is read or written (no `p`/`z`, no Drop settlement, no Candidate accounting).
+ * Chunking, prepared views, the checkpoint and the parallel save are the shared Refinement Engine core.
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -20,12 +21,13 @@ import { ADMISSION_TYPES, exclusionKey, parseRelationJsonl } from '../../persist
 import { apply as polishApply, loadCanonical, PolishInputError, scanTouching } from '../../polish-cli.mjs';
 import { checkRows, readShardRecords, selectionPath } from '../../selection-cli.mjs';
 import { escapeField } from './s3.mjs';
-import { fail, gitHead, RefineInputError, SHARD_DATA_FILE, writeFilesAtomically } from '../core.mjs';
+import { fail, gitHead, RefineInputError, writeFilesAtomically } from '../core.mjs';
 
 export const label = 'Stage 4';
 export const scratch = 'relation-s4';
 export const keyed = true;
 export const crossShard = true;
+export const relationsOnly = true;
 export const inputPaths = ['data/relation-selection'];
 
 export const usage = `Usage:
@@ -484,18 +486,24 @@ function polishInput(ops, shard) {
     .map((op) => ({ ...op, reason: `Stage 4 shard ${shard}` })) };
 }
 
-const dataStatus = (root) => execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '--', 'data/relations', 'data/relation-drops'],
+const RELATION_DATA_FILE = /^data\/relations\/relation-\d{3}\.jsonl$/u;
+const dataStatus = (root) => execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '--', 'data/relations'],
   { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).split('\n').filter(Boolean).map((line) => line.slice(3));
 
 function assertCleanSources(root) {
-  const dirty = execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '--', 'data/canonical', 'data/relation-candidates', ...inputPaths],
+  const dirty = execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '--', 'data/canonical', ...inputPaths],
     { cwd: root, encoding: 'utf8' });
-  if (dirty.trim()) fail(`${label} requires clean Canonical, Candidate, and selection inputs`);
+  if (dirty.trim()) fail(`${label} requires clean Canonical and selection inputs`);
 }
 
-const changedBetween = (root, base, head) => execFileSync('git', ['diff', '--name-only', '--no-renames', base, head, '--',
-  'data/relations', 'data/relation-drops'], { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
-  .split('\n').filter((file) => SHARD_DATA_FILE.test(file));
+/** The PR's changed Relation files. A Stage 4 PR never changes a Drop file: one is a scope error (paths only, no read). */
+function changedBetween(root, base, head) {
+  const names = (...paths) => execFileSync('git', ['diff', '--name-only', '--no-renames', base, head, '--', ...paths],
+    { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).split('\n').filter(Boolean);
+  const drops = names('data/relation-drops');
+  if (drops.length) throw new RefineInputError(`${label} is Relation-only; ${base.slice(0, 12)}..${head.slice(0, 12)} changes Drop files: ${drops.slice(0, 5).join(', ')}`);
+  return names('data/relations').filter((file) => RELATION_DATA_FILE.test(file));
+}
 
 function showFile(root, revision, relative) {
   try { return execFileSync('git', ['show', `${revision}:${relative}`], { cwd: root, encoding: 'utf8', maxBuffer: 1024 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }); }
@@ -519,7 +527,7 @@ function revisionReader(root, revision, differing) {
 
 const asInput = async (step) => {
   try { return await step(); } catch (error) {
-    if (error instanceof PolishInputError || /would introduce Candidate accounting problems/u.test(error.message)) {
+    if (error instanceof PolishInputError) {
       throw new RefineInputError(error.message);
     }
     throw error;
@@ -528,9 +536,9 @@ const asInput = async (step) => {
 
 /** Plan `ops` against the data at `revision` through Polish; nothing is written. */
 async function planOps({ root, shard, ops, revision, differing, canonical }) {
-  if (!ops.length) return { files: [], affected_shards: [shard], z_added: [], drops_removed: [] };
+  if (!ops.length) return { files: [], affected_shards: [shard] };
   const result = await polishApply(polishInput(ops, shard), { root, dryRun: true, returnTexts: true, canonical,
-    reader: revisionReader(root, revision, differing) });
+    reader: revisionReader(root, revision, differing), relationsOnly: true });
   return { ...result, affected_shards: [...new Set([shard, ...result.affected_shards])].sort() };
 }
 
@@ -601,8 +609,6 @@ export async function applyCheckpoint({ shard, root, checkpoint, readView }) {
     decisions: Object.fromEntries(['add', 'drop', 'set', 'rebind'].map((action) => [action, applied.filter((decision) => decision.action === action).length])),
     edits: counts(ops),
     conflicts,
-    z_added: planned.z_added.length,
-    drops_removed: planned.drops_removed.length,
     affected_shards: planned.affected_shards,
     changed_files: [...next.keys()].sort(),
   };
@@ -659,7 +665,7 @@ export async function listDecisions({ shard, root, base, head, senses = null }) 
   if (senses) {
     // Every base Relation touching the named Senses, in both directions, with this PR's edit of it (or keep).
     const byKey = new Map(ops.map((op) => [opKey(op), op]));
-    const { relations } = await scanTouching(root, senses, new Map(), { reader: state.baseRead });
+    const { relations } = await scanTouching(root, senses, new Map(), { reader: state.baseRead, relationsOnly: true });
     result.rows = relations.map(({ row }) => {
       const op = byKey.get(keyOf(row));
       return describeOp(op ?? { op: 'keep', source_sense_id: row.source_sense_id, ...rowTarget(row) }, canonical.index,
@@ -721,7 +727,7 @@ export async function amendDecisions({ shard, root, base, head, text }) {
   }
   const ops = [...byKey.values()];
   const moved = ops.some((op) => !touches(opRow(op), selection.polished));
-  const originals = moved ? (await scanTouching(root, selection.polished, new Map(), { reader: state.baseRead })).relations.map(({ row }) => row) : [];
+  const originals = moved ? (await scanTouching(root, selection.polished, new Map(), { reader: state.baseRead, relationsOnly: true })).relations.map(({ row }) => row) : [];
   assertScope(ops, selection, shard, canonical, originals, await decisionLookup(root, selection, canonical, opSenseIds(ops)));
   const planned = await asInput(() => planOps({ root, shard, ops, revision: base, differing: state.differing, canonical }));
   // Every file this PR changes or will change: the planned text, or the base text when it no longer changes.
@@ -735,7 +741,7 @@ export async function amendDecisions({ shard, root, base, head, text }) {
   const status = await writePlanned(root, next, expected);
   const outputs = Object.fromEntries([...next].map(([relative, value]) => [relative,
     value === null ? null : createHash('sha256').update(value, 'utf8').digest('hex')]));
-  return { shard, base, head, status, decisions: ops.length, counts: counts(ops), edit_drops_added: planned.z_added.length,
+  return { shard, base, head, status, decisions: ops.length, counts: counts(ops),
     affected_shards: planned.affected_shards, outputs };
 }
 

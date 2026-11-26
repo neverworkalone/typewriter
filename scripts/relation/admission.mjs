@@ -1124,10 +1124,26 @@ export async function loadShardCandidateFiles(shard, root = REPOSITORY_DIRECTORY
   return { files, inventory };
 }
 
-export async function loadShard(shard, root = REPOSITORY_DIRECTORY, { batch = null, allCanonical: loadedCanonical = null } = {}) {
+/**
+ * Relation integrity of one shard (#9929): its stored Relations (and, when the caller passes them, its Drop and
+ * exclusion rows) through the shared row validator, with `otherRelationRows` as duplicate context (default: the other
+ * shards' rows touching this shard's Senses). It reads no Candidate file and runs no Candidate accounting.
+ */
+export async function verifyRelationIntegrity({ shard, root = REPOSITORY_DIRECTORY, canonicalRows, index, dropRows = [],
+  exclusionRows = [], otherRelationRows = null }) {
+  const relationRows = await loadOptionalRelationJsonl(shardRelationPath(shard, root));
+  const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  const others = otherRelationRows ?? await loadShardTouchingRelations(root, { exceptShard: shard, senseIds: shardSenseIds });
+  validateRelationRows({ relationRows, dropRows, exclusionRows, index, shardSenseIds, otherRelationRows: others });
+  return { version: 1, ok: true, scope: 'relation-integrity', shard, counts: { relations: relationRows.length, drops: dropRows.length } };
+}
+
+export async function loadShard(shard, root = REPOSITORY_DIRECTORY, { batch = null, allCanonical: loadedCanonical = null, candidates = true } = {}) {
   assertShard(shard);
   const canonicalRows = await readJsonl(shardCanonicalPath(shard, root));
-  const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root, { batch }),
+  // `candidates: false` (Relation-only Stages, #9929) loads Canonical only: no Stage 1 Candidate file is read.
+  const [{ files, inventory }, allCanonical] = await Promise.all([
+    candidates ? loadShardCandidateFiles(shard, root, { batch }) : { files: [], inventory: null },
     loadedCanonical ?? loadAllCanonical(root)]);
   const index = buildCanonicalIndex(allCanonical);
   const referencesPath = path.join(root, 'data/provenance/stage2-root-references.json');

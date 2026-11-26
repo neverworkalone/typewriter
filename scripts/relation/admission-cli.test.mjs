@@ -2409,6 +2409,17 @@ test('preflight classifies a newly integrated cross-shard optional pair for loca
   assert.equal(verified.missing, 0);
 });
 
+test('#9929 relation-only verify reads no Stage 1 Candidate, Drop or exclusion file', async (t) => {
+  const { root } = await crossShardRepository(t);
+  await rm(path.join(root, 'data/relation-candidates'), { recursive: true, force: true });
+  // An unparseable Drop file proves it is never read; the response keeps its fields with no Drop counted.
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'not json\n');
+  const result = await quiet(() => run(['verify', '--shard', '001', '--relations-only', '--json'], { root }));
+  assert.deepEqual(result, { version: 1, ok: true, scope: 'relation-integrity', shard: '001', counts: { relations: 1, drops: 0 } });
+  await assert.rejects(() => quiet(() => run(['verify', '--shard', '001'], { root })), /Stage 1 inputs are incomplete|not json|Unexpected token/u,
+    'the regular verifier still needs its Candidate and Drop inputs');
+});
+
 test('relation-only integration validation skips incomplete accounting and rejects stale cross-shard combined results', async (t) => {
   const { root } = await crossShardRepository(t);
   const forward = {

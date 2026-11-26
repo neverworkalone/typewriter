@@ -25,7 +25,7 @@ Run commands from the worktree root. Write `.warroom-scratch/s4-fix-response.jso
   K <source_sense_id> <target_sense_id|"text">                 keep the base relation (undo this PR's edit of it)
   ```
 
-  A rebind is a `D` of the old key and an `A` of the new one. Every edit must concern a confirmed `p` Sense in shard {{shard}}, or correct the Sense binding of an existing Relation attached to one. Do not independently edit an `s/e` Sense. The CLI recomputes `z`, `p` and every other accounting row; never write Drop rows yourself.
+  A rebind is a `D` of the old key and an `A` of the new one. Every edit must concern a confirmed `p` Sense in shard {{shard}}, or correct the Sense binding of an existing Relation attached to one. Do not independently edit an `s/e` Sense. Stage 4 changes Relation rows only (no Drop or accounting rows); never write Drop rows yourself.
 
 When every event is judged, write `.warroom-scratch/s4-fix-response.json` as one JSON object with exactly these keys, then stop:
 

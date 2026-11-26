@@ -165,10 +165,9 @@ def stage4_body(model: str, shard: str, *, result: dict, cost: str | None = None
         f"- Decisions: Add {_n(_count(decisions.get('add')))}, Drop {_n(_count(decisions.get('drop')))}, "
         f"Set {_n(_count(decisions.get('set')))}, Rebind {_n(_count(decisions.get('rebind')))}",
         f"- Key Conflicts Resolved: {_n(len(conflicts) if isinstance(conflicts, list) else None)}",
-        f"- Added Orphan Drops (z): {_n(_count(result.get('z_added')))}",
         f"- Affected Shards: {', '.join(shards) if shards else '미측정'}",
         "- Edit Apply: PASS",
-        "- Affected Shard Verify: PASS",
+        "- Affected Shard Relation Verify: PASS",
     ]
     if cost:
         lines.append(f"- Token Cost / Duration: {cost}")

@@ -1003,13 +1003,16 @@ class Git:
     _DATA_FILE = re.compile(r"data/(?:relations/relation|relation-drops/drop)-\d{3}\.jsonl")
 
     def replay_relation_merge(self, path: Path, branch: str, base: str, sha: str, owned: set[str],
-                              checkpoint: str | None = None, timeout: int = 900) -> tuple[str, dict]:
+                              checkpoint: str | None = None, timeout: int = 900,
+                              relations_only: bool = False) -> tuple[str, dict]:
         """Merge `sha` (on origin/<base>) into an owned PR worktree, rebuilding shared shard data by relation key (#8784).
 
         Every shard Relation/Drop file both sides changed since their merge base is replayed by the official CLI: a Stage 2
         Part through `admission-cli replay` (its checkpoint keeps verify/amend exact), any other PR through `replay-cli`.
         Only `owned` data files may need it, and no other path may conflict; otherwise the merge is aborted, the worktree
         is left exactly as it was and IntegrationBlocked is raised. Returns the merge commit and the CLI report.
+        `relations_only` (#9929) replays a Relation-only Stage PR with `replay-cli --relations-only`: no Candidate or Drop
+        file is read, and a Drop file the PR changed is a scope error of the CLI.
         """
         path = self._owned(path)
         if self.registered(path) != branch:
@@ -1052,7 +1055,8 @@ class Git:
             abort("relation replay로 풀 수 없는 충돌 파일이 있습니다: " + ", ".join(sorted(conflicted - set(shared))))
         cli = (["node", "scripts/relation/admission-cli.mjs", "replay", "--checkpoint", checkpoint, "--theirs", sha]
                if checkpoint else
-               ["node", "scripts/relation/replay-cli.mjs", "--base", common, "--ours", before, "--theirs", sha])
+               ["node", "scripts/relation/replay-cli.mjs", "--base", common, "--ours", before, "--theirs", sha,
+                *(["--relations-only"] if relations_only else [])])
         res = self.r.run(cli, cwd=path, env=self.env, timeout=timeout)
         try:
             report = json.loads((res.out or "").strip().splitlines()[-1]) if res.ok else None

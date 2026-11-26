@@ -102,6 +102,14 @@ class RelationReplayMerge(unittest.TestCase):
                                                     "--theirs", sha])
         self.assertEqual(self.git.replay_relation_merge(self.wt, BRANCH, "master", sha, {RELATION})[1], {"status": "no-op"})
 
+    def test_relations_only_replay_passes_the_cli_flag(self):
+        sha = self.polish(**{RELATION: '{"a":1}\n{"polish":1}\n'})
+        self.runner.resolved = '{"a":1}\n{"polish":1}\n{"stage":3}\n'
+        self.git.replay_relation_merge(self.wt, BRANCH, "master", sha, {RELATION}, relations_only=True)
+        base = sh("git", "merge-base", self.before, sha, cwd=self.wt)
+        self.assertEqual(self.runner.calls[0][1:], ["scripts/relation/replay-cli.mjs", "--base", base, "--ours", self.before,
+                                                    "--theirs", sha, "--relations-only"])
+
     def test_stage2_uses_its_checkpoint_replay(self):
         sha = self.polish(**{RELATION: '{"a":1}\n{"polish":1}\n'})
         self.runner.resolved = '{"a":1}\n{"polish":1}\n{"stage":3}\n'

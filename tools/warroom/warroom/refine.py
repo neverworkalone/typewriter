@@ -36,6 +36,7 @@ class NoJudgment(RefineError):
 
 
 _SHARD_DATA = re.compile(r"data/(?:relations/relation|relation-drops/drop)-\d{3}\.jsonl")
+_RELATION_DATA = re.compile(r"data/relations/relation-\d{3}\.jsonl")
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,10 @@ class RefineSpec:
     # as its own task; a refused record (or a refused single-record chunk) is a Policy Skip `P <record_id>`, every
     # other record keeps its ordinary judgment, and a refusal that cannot be bound holds the chunk (never Keep-all).
     refusal_records: bool = False
+    # #9929: a Relation-only Stage (S4 onward) reads and changes Relation files only. It narrows the file kind, not the
+    # shards: with `cross_shard` any shard's Relation file may change, and a Drop file of any shard is out of scope.
+    # The same scope serves PR validation, finalize and replay (`--relations-only`).
+    relations_only: bool = False
     body: Callable | None = None   # (model, shard, result=..., cost=...) -> PR body; None = the Stage 3 body
 
     def title_for(self, model: str, shard: str) -> str:
@@ -96,13 +101,16 @@ class RefineSpec:
         return f"{self.id}_ok_{shard}"
 
     def allowed(self, shard: str) -> set:
-        return {f"data/relations/relation-{shard}.jsonl", f"data/relation-drops/drop-{shard}.jsonl"}
+        relation = f"data/relations/relation-{shard}.jsonl"
+        return {relation} if self.relations_only else {relation, f"data/relation-drops/drop-{shard}.jsonl"}
 
     def scope(self, shard: str, paths=()) -> set:
         """The files this Stage's shard work may change, given the paths it did change: the single edit-scope definition.
-        A two-file Stage is exactly `allowed`; a cross-shard Stage adds every shard Relation/Drop file among `paths`."""
+        A two-file Stage is exactly `allowed`; a cross-shard Stage adds every shard Relation/Drop file among `paths`
+        (Relation files only for a Relation-only Stage)."""
         own = self.allowed(shard)
-        return own | {path for path in paths if isinstance(path, str) and _SHARD_DATA.fullmatch(path)} \
+        data = _RELATION_DATA if self.relations_only else _SHARD_DATA
+        return own | {path for path in paths if isinstance(path, str) and data.fullmatch(path)} \
             if self.cross_shard else own
 
     def nochange_key(self, shard: str) -> str:

@@ -11,6 +11,11 @@
  *   Candidate's owning shard), removes Drops a Polish Add now covers, records/clears `p` exclusions, re-runs the shared
  *   row validator and the Candidate accounting of every affected shard (no new accounting problem may appear), and
  *   saves all changed files together. No change is a no-op.
+ *
+ * `relationsOnly` (Stage 4 onward, #9929/#10171) is the Relation-only mode of the same editor: it reads Canonical and
+ * the approved Relations only, writes only Relation files and validates them with the shared row validator. It reads
+ * no Candidate or Drop file, computes no orphan, writes no `p`/`z`, removes no Drop an Add covers and runs no Candidate
+ * accounting. The default mode (single-word Polish, #8777) is unchanged.
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -82,12 +87,17 @@ async function readText(root, relative) {
 
 const linesOf = (text) => (text ? text.split(/\r?\n/u).filter((line) => line.trim() !== '') : []);
 
-/** Every persisted row of all Relation and Drop files that names one of `senseIds`, with its file and line. */
-export async function scanTouching(root, senseIds, overrides = new Map(), { only = null, reader = null } = {}) {
+const SCAN_FAMILIES = [['data/relations', /^relation-(\d{3})\.jsonl$/u, 'relation'], ['data/relation-drops', /^drop-(\d{3})\.jsonl$/u, 'drop']];
+
+/**
+ * Every persisted row of all Relation and Drop files that names one of `senseIds`, with its file and line.
+ * `relationsOnly` scans the Relation files only: no Drop file is read.
+ */
+export async function scanTouching(root, senseIds, overrides = new Map(), { only = null, reader = null, relationsOnly = false } = {}) {
   const pattern = senseTokenPattern(senseIds);
   const relations = [];
   const drops = [];
-  for (const [directory, namePattern, family] of [['data/relations', /^relation-(\d{3})\.jsonl$/u, 'relation'], ['data/relation-drops', /^drop-(\d{3})\.jsonl$/u, 'drop']]) {
+  for (const [directory, namePattern, family] of relationsOnly ? SCAN_FAMILIES.slice(0, 1) : SCAN_FAMILIES) {
     const absolute = path.join(root, directory);
     const names = new Set(existsSync(absolute) ? (await readdir(absolute)).filter((name) => namePattern.test(name)) : []);
     for (const key of overrides.keys()) if (key.startsWith(`${directory}/`)) names.add(path.posix.basename(key));
@@ -115,9 +125,9 @@ export async function scanTouching(root, senseIds, overrides = new Map(), { only
 }
 
 /** `scanTouching` after the planned edits, re-reading only the files the plan touched. */
-async function rescan(root, senseIds, base, plan) {
+async function rescan(root, senseIds, base, plan, { relationsOnly = false } = {}) {
   const overrides = plan.overrides();
-  const fresh = await scanTouching(root, senseIds, overrides, { only: new Set(overrides.keys()), reader: plan.reader });
+  const fresh = await scanTouching(root, senseIds, overrides, { only: new Set(overrides.keys()), reader: plan.reader, relationsOnly });
   const order = (left, right) => left.file.localeCompare(right.file) || left.line - right.line;
   return {
     relations: [...base.relations.filter((entry) => !overrides.has(entry.file)), ...fresh.relations].sort(order),
@@ -313,7 +323,7 @@ async function writeAll(root, plan, changed, read) {
  * each changed file's planned text to a dry run, so the caller can write it itself.
  */
 export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false, reader = null, canonical = null,
-  returnTexts = false } = {}) {
+  returnTexts = false, relationsOnly = false } = {}) {
   const read = reader ?? ((relative) => readText(root, relative));
   const { index, shardOfSense, rowsByShard } = canonical ?? await loadCanonical(root);
   const edits = parseEdits(input, index);
@@ -328,7 +338,9 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
     scopeRecordsByShard.get(shard).push(record);
   }
   const scopeSenses = new Set([...scopeRecordsByShard.values()].flat().flatMap((record) => record.senses.map((sense) => sense.id)));
-  const beforeAll = await scanTouching(root, scopeSenses, new Map(), { reader: read });
+  // Relation-only mode has no record-wide accounting: the rows touching the edited Senses are the whole context.
+  const scanSenses = relationsOnly ? editSenses : scopeSenses;
+  const beforeAll = await scanTouching(root, scanSenses, new Map(), { reader: read, relationsOnly });
   const touchesEdit = (entry) => editSenses.has(entry.row.source_sense_id) || editSenses.has(entry.row.target_sense_id);
   const before = { relations: beforeAll.relations.filter(touchesEdit), drops: beforeAll.drops.filter(touchesEdit) };
   const plan = new FilePlan(read);
@@ -388,9 +400,31 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
       : { source_record_id: existing.row.source_record_id, source_sense_id: existing.row.source_sense_id,
         target_record_id: existing.row.target_record_id, target_sense_id: existing.row.target_sense_id, reason: 'p' };
     const dropRelative = DROP_FILE(existing.shard);
+    if (relationsOnly) {
+      results.push({ op: 'drop', key: edit.key.replaceAll('\u0000', '|'), removed: `${existing.file}:${existing.line}`, by: provenanceOf(existing.row), reason: edit.reason });
+      continue;
+    }
     if (!exclusions.length) (await plan.open(root, dropRelative)).appended.push(JSON.stringify(serializeDropRow(exclusion)));
     results.push({ op: 'drop', key: edit.key.replaceAll('\u0000', '|'), removed: `${existing.file}:${existing.line}`, by: provenanceOf(existing.row),
       exclusion: exclusions.length ? `${exclusions[0].file}:${exclusions[0].line}` : dropRelative, reason: edit.reason });
+  }
+
+  if (relationsOnly) {
+    // Relation-only settlement: each changed Relation file passes the shared row validator, with the rows touching
+    // the edited records as duplicate context. No Candidate, Drop, orphan or accounting step.
+    const afterAll = await rescan(root, scanSenses, beforeAll, plan, { relationsOnly: true });
+    const others = afterAll.relations;
+    for (const relative of plan.changed()) {
+      const shard = /^data\/relations\/relation-(\d{3})\.jsonl$/u.exec(relative)?.[1];
+      if (!shard) throw new Error(`Relation-only Polish apply planned a non-Relation file ${relative}`);
+      const canonicalRows = rowsByShard.get(shard) ?? [];
+      const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+      const text = plan.text(relative) ?? '';
+      const ownRows = linesOf(text).map((line, position) => deserializeRelationRow(JSON.parse(line), `${relative}:${position + 1}`));
+      validateRelationRows({ relationRows: ownRows, index, shardSenseIds,
+        otherRelationRows: others.filter((entry) => entry.file !== relative).map(({ row }) => row) });
+    }
+    return finish({ root, plan, read, dryRun, returnTexts, results, sideEffects: {}, affectedShards });
   }
 
   // Every Relation edit is planned. Each affected shard is now settled once, in turn, and its Candidate data released:
@@ -475,8 +509,11 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
     const introduced = accountingProblems({ ...common, relationRows: ownRows, dropRows: ownDrops, otherRelationRows: others }).filter((problem) => !old.has(problem));
     if (introduced.length) throw new Error(`Polish edit would introduce Candidate accounting problems in shard ${shard}:\n${introduced.slice(0, 20).map((problem) => `- ${problem}`).join('\n')}`);
   }
-  const changed = plan.changed();
+  return finish({ root, plan, read, dryRun, returnTexts, results, sideEffects, affectedShards });
+}
 
+async function finish({ root, plan, read, dryRun, returnTexts, results, sideEffects, affectedShards }) {
+  const changed = plan.changed();
   if (changed.length && !dryRun) await writeAll(root, plan, changed, read);
   return {
     version: 1,
