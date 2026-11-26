@@ -284,6 +284,17 @@ node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
   - 결속할 수 없는 거부, 판정이나 공식 거부를 얻지 못한 record 실행(실패·누락·중단)은 그 청크를 `HELD`로 미완료 유지한다. 다른 청크는 계속한다. 나머지가 끝나면 `[Policy Hold]` 보고와 함께 최종화하지 않고 멈춘다.
 - **실행:** Stage 3 전체 완료 뒤 War Room 정제 라인이 샤드 001부터 차례로 실행한다(운영 설정은 `tools/warroom/README.md`의 *Stage 4 운영 설정*). 완료한 샤드는 이후 단건 Polish나 다른 샤드의 역방향 편집으로 파일이 바뀌어도 다시 열지 않는다. 첫 샤드 파일럿의 확정 `p/s/e` 수와 실제 처리 `p` 수, Add/Drop/Set 수, 처리 시간, 토큰은 PR 본문·무변경 완료 로그의 기존 집계로 확인한다.
 
+### 4-F. D1 — 생산 PR 검증·리뷰 경계 (#10171, #10274)
+
+D1([#10171](https://github.com/neverworkalone/typewriter/issues/10171))은 확정 `d:"s"` Sense 중 #10171 §3.2의 11개 전체 Drop 범주에 명확히 해당하는 Sense의 Typewriter-authored Relation을 양방향으로 삭제하는 Relation 전용 정제다. 이 절은 생산 PR의 검증·리뷰 경계만 정한다. 범주와 의미 경계(#10171 §3)는 바꾸지 않으며, #10171 §4·§5에 남은 생산 단계의 광범위한 Relation 검증·의미 리뷰 요구를 이 범위에서 대체한다.
+
+- **책임:** P/S/E는 #10174 결과를 그대로 소비하고, D1 입력을 정확한 `s` Sense로 한정하는 것은 공통 입력 코드가 맡는다. 범주 적용은 D1 작성 모델이 맡는다(명확하면 D, 해당하지 않거나 불명확하면 정상 비대상/보류). 판정에 따른 정확한 삭제는 D1 verify, Stage 1 `+1/-1`은 리뷰어, 전체 사전의 구조·무결성은 기존 빌드·Deep CI가 맡는다. 삭제량·비율 목표는 없고, 거부·실행 실패·파싱 실패를 D나 정상 비대상/보류로 메우지 않는다.
+- **D1 verify = 삭제 정확성만:** 확정 D 집합과 실제 변경을 대조한다. ① D Sense에 직접 연결된 authored Relation의 삭제 누락이 없다. ② D와 무관한 행을 삭제하거나 행을 추가·수정하지 않았다. ③ 남은 행과 공식 보호 대상(Canonical·`direct/antonym`·승인된 참조 투영)은 그대로이며 `data/relations/relation-*.jsonl`만 바뀌었다. 정확한 Sense ID·관계 키·정/역방향·text-only는 이 범위를 집행하는 데 필요한 만큼 쓴다. 다른 끝점이 `p`나 비대상/보류라는 이유로 D에 연결된 관계를 보존하지 않는다. 생산 verify에 영향 샤드 전체 Relation 무결성, Canonical 전수, Candidate·Drop 회계, 빌드·Deep CI를 다시 넣지 않는다. 전역 검증 함수와 기존 빌드·Deep CI는 그대로 유지한다.
+- **승인 순서:** 삭제 verify 통과 → 생산 PR(`[D1/<Model>] SSS`, `Refs #10171`) → Stage 1 경량 기술 리뷰 `+1`(`docs/review/prompts/d1.md`) → Stage 2 같은 HEAD 필수 CI·머지(`REVIEW.md`). verify 실패·미완료는 승인 상태가 아니다. 코드·프롬프트·판정 기준 변경이나 혼합 PR은 정상 코드 리뷰를 받는다. D1 생산 데이터 PR은 `no-review`가 아니다.
+- **비용:** PR 보고는 기존 apply·판정·verify 결과(대상 샤드, 판정 집계, 실제 삭제한 고유 관계 수, 변경 파일 수, 검증 결과, 미처리 사항)를 재사용하며 전체 Relation diff를 다시 해석하지 않는다. 모든 판정의 상세 `decisions` 목록은 정상 생산·리뷰의 필수 경로가 아니다. 실제 이의 제기·수정 때 해당 Sense만 조회한다. checkpoint/view의 정확한 결속과 amend 보존 계약은 유지한다. 리뷰용 검증 재실행, 원장·해시·영수증은 만들지 않는다.
+- **수정·재실행:** 확인된 오류는 해당 Sense의 뜻풀이·범주·판정만 조회해 기존 amend/FIXING으로 고친다. 다른 D 끝점의 삭제 효력과 동시 변경은 공통 관계 키 계약대로 보존한다. amend/replay로 실제 변경이 달라지면 삭제 verify만 다시 하고 새 HEAD를 좁게 재리뷰한다. 완료한 배치는 후속 정상 편집 때문에 다시 열지 않는다. 같은 오류가 반복되면 공통 프롬프트·규칙·코드 작업에서 고친다.
+- **남는 위험:** 범주 밖 Sense를 D로 잘못 분류하는 의미 오류는 verify나 빌드가 잡지 않는다. 명확한 범주만 D로 고르고 애매한 것은 남기는 작성 원칙으로 줄이며, 매 PR 의미 재심사로 보완하지 않는다.
+
 ## 5. Polish — 직접 Relation 편집과 동시 변경 (#8784, #8777)
 
 **Polish**는 오너가 지정한 단어의 현재 승인 Relation을 직접 Add/Drop/Set하는 상시 작업이다([#8777](https://github.com/neverworkalone/typewriter/issues/8777), `#8777 <단어> 진행해`). 새 Candidate를 만들거나 Stage 1/2를 다시 실행하지 않는다. 해당 단어·샤드의 Stage/배치가 미시작이든 진행 중이든 완료든 관계없이 실행한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)와 같다. 공식 `direct/antonym`, Canonical, 생성 SQLite는 수정하지 않는다.

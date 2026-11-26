@@ -132,6 +132,8 @@ Both write `by:"p"` Relation rows through the Polish path with relation-key conc
 
 **Stage 4 review boundary (#10268):** the Stage 4 committer applies the editorial standard above and owns expression value, Add/Drop, redundancy and the representative form, the semantic choice of Sense, and Type/Tier fit. Stage 4 PR review is format and technical only (allowed paths and scope, relation-key application, stored integrity, exact ID binding, allowed values and existing constraints) and does not re-judge that content; see `docs/review/prompts/s4.md`. The general review gates below do not apply to Stage 4 PR review.
 
+**D1 review boundary (#10171, #10274):** the D1 author model alone applies the #10171 whole-Drop categories to each confirmed `s` Sense (clear → D, otherwise left as a normal non-target/hold). D1 PR review is a light technical review: changed paths, the existing deletion-verification result for that HEAD, unresolved blockers and concrete defects; it does not re-judge categories, sample Senses or argue for keeping a deleted Relation. A concrete category misapplication is handled for that Sense only. See `docs/relation-factory.md` §4-F and `docs/review/prompts/d1.md`. The general review gates below do not apply to D1 PR review.
+
 ## Different goals, different review gates
 
 The table and the `direct`/`antonym` rules below describe how STDICT-provided
