@@ -34,7 +34,7 @@ import {
   validateRelationRows,
   verifyAccounting,
 } from '../admission.mjs';
-import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl } from '../persisted-jsonl.mjs';
+import { parseDropExclusionJsonl, parseDropJsonl, parseRelationJsonl, serializeDropJsonl } from '../persisted-jsonl.mjs';
 
 export const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 export const RELATION_RELATIVE = (shard) => `data/relations/relation-${shard}.jsonl`;
@@ -542,7 +542,8 @@ export function createRefineCli(rule) {
       ? new Set(partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part, shard)
         .scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)))
       : null;
-    if (relationLines.length !== beforeRelations.length || dropLines.length !== beforeDrops.length) {
+    const exclusionCount = parseDropExclusionJsonl(dropBase.text, path.basename(dropFile)).length;
+    if (relationLines.length !== beforeRelations.length || dropLines.length !== beforeDrops.length + exclusionCount) {
       fail(`Git baseline JSONL lines do not match the parsed ${label} inputs`);
     }
     for (const decision of decisions) {
