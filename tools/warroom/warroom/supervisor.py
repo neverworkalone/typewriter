@@ -5119,6 +5119,7 @@ class Supervisor:
                     valid_direct_rows.append(row)
             seen.add(key)
         unresolved_for_correction = []
+        gloss_probes = {}
         unresolved_seen = set()
         for row in unresolved_rows:
             if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "reason"} \
@@ -5130,12 +5131,21 @@ class Supervisor:
             unresolved_seen.add(key)
             group = next(group for group in page if key in {
                 (candidate["source_sense_id"], candidate["candidate"]) for candidate in group.get("candidates", [])})
-            if correction is None and not required[key]["already_accounted"] and any(
+            previous = required[key].get("decision") or {}
+            if (correction is None and not required[key]["already_accounted"]
+                    and group.get("drop_gloss") and not group.get("conflicts")
+                    and previous.get("disposition") == "drop" and previous.get("reason") == "x"):
+                # Probe the unchanged checkpoint decision only to obtain an official diagnostic. It is never
+                # accepted as an editorial answer: a matching failure must request a source-bound correction.
+                valid_direct_rows.append({"source_sense_id": key[0], "candidate": key[1], "decision": previous})
+                gloss_probes[key] = row["reason"]
+                seen.add(key)
+            elif correction is None and not required[key]["already_accounted"] and any(
                     conflict.get("code") == "id-pair-conflict" for conflict in group.get("conflicts", [])):
                 unresolved_for_correction.append(row)
             else:
                 seen.add(key)
-        if len(unresolved_for_correction) != len(unresolved_rows):
+        if len(unresolved_for_correction) + len(gloss_probes) != len(unresolved_rows):
             current["last_error"] = "unresolved: " + "; ".join(
                 f"{row['source_sense_id']}/{row['candidate']}: {row['reason']}" for row in unresolved_rows[:8])
             raise Stage2RepairUnresolvedError(current["last_error"])
@@ -5198,6 +5208,12 @@ class Supervisor:
         check, cli_problems = None, []
         if cli_rows:
             check, cli_problems = run_check(cli_rows, all_peers)
+
+        for sense_id, name in gloss_probes:
+            key = f"{sense_id}\u0000{name}"
+            if not any(p["candidate_key"] == key and p["field_path"] == "decision.reason"
+                       and p["condition"] == "gloss_named" for p in cli_problems):
+                raise Stage2RepairUnresolvedError(f"unresolved: {sense_id}/{name}: official gloss diagnostic did not recur")
 
         problems = [{"candidate_key": row["candidate_key"], "field_path": "row", "condition": row["code"],
                      "message": row["code"], "source": "wrapper"} for row in schema_diagnostics]
@@ -5271,10 +5287,12 @@ class Supervisor:
                 diagnostics = []
                 for problem in requested:
                     if problem["source"] in {"cli", "semantic_contract"}:
+                        probe_reason = gloss_probes.get(tuple(problem["candidate_key"].split("\u0000", 1)))
                         diagnostics.append({"candidate_key": problem["candidate_key"],
                             "code": "cli_problem" if problem["source"] == "cli" else "independent_judgment",
                             "field_path": problem["field_path"], "condition": problem["condition"],
-                            "message": problem["message"], "required_fields": [], "actual_fields": []})
+                            "message": problem["message"] + (" Previous unresolved reason: " + probe_reason if probe_reason else ""),
+                            "required_fields": [], "actual_fields": []})
                 diagnostics += [row for row in schema_diagnostics if row["candidate_key"] in correction_keys]
                 for problem in missing_requested:
                     if problem["candidate_key"] in correction_peer_keys:
