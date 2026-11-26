@@ -66,7 +66,8 @@ export function renderChunk(records, { start, end }) {
   for (let i = start; i < end; i += 1) {
     const record = records[i];
     if (!record.senses.length) continue;
-    lines.push(`${i + 1} ${record.lemma}${record.homograph_no ?? ''}`);
+    // Multi-Sense records carry their Sense count (`[11]`) so the answer letter count can be matched.
+    lines.push(`${i + 1} ${record.lemma}${record.homograph_no ?? ''}${record.senses.length > 1 ? ` [${record.senses.length}]` : ''}`);
     record.senses.forEach((sense, k) => lines.push(` ${k + 1} ${POS[sense.pos] ?? sense.pos} ${oneLine(sense.gloss)}`));
   }
   return lines.join('\n') + '\n';
@@ -101,6 +102,20 @@ export function parseAnswer(text, records, { start, end }) {
     if (records[i].senses.length && !seen.has(i + 1)) errors.push(`${i + 1}: missing record line`);
   }
   return { lines, letters, errors };
+}
+
+/** Record numbers named by `parseAnswer` errors (wrong length, bad letters, duplicate, missing). */
+export const errorRecords = (errors) => [...new Set(errors.map((error) => Number(error.split(':')[0])))];
+
+/**
+ * Format repair: keep the previous answer's lines for records without errors, take only the repaired records' lines
+ * from the repair answer. The result is re-checked with the strict `parseAnswer`.
+ */
+export function mergeRepair(previous, repair, bad) {
+  const wanted = new Set(bad);
+  const keep = (text, inBad) => String(text ?? '').split('\n').map((raw) => raw.trim().replace(/^`+|`+$/gu, '').trim())
+    .filter((line) => { const match = line.match(DECISION_LINE); return match && wanted.has(Number(match[1])) === inBad; });
+  return [...keep(previous, false), ...keep(repair, true)].join('\n') + '\n';
 }
 
 /** Rows in Canonical order, bound to the real Sense IDs of the same record array. */

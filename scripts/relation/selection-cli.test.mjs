@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { checkRows, chunkShard, parseAnswer, renderChunk, run, save } from './selection-cli.mjs';
+import { checkRows, chunkShard, errorRecords, mergeRepair, parseAnswer, renderChunk, run, save } from './selection-cli.mjs';
 import { claudeUsage, cliArgs } from './selection-run.mjs';
 
 const records = [
@@ -16,7 +16,7 @@ const records = [
 
 test('chunks never split records and keep adjacent same-lemma records', () => {
   assert.deepEqual(chunkShard(records, { targetChars: 5 }), [{ start: 0, end: 1 }, { start: 1, end: 3 }, { start: 3, end: 4 }]);
-  assert.equal(renderChunk(records, { start: 1, end: 3 }), '2 나1\n 1 v yyyyyyyy\n 2 v 둘째 뜻\n3 나2\n 1 x z\n');
+  assert.equal(renderChunk(records, { start: 1, end: 3 }), '2 나1 [2]\n 1 v yyyyyyyy\n 2 v 둘째 뜻\n3 나2\n 1 x z\n');
 });
 
 test('answer lines bind letters to the real Sense IDs of the same record array', () => {
@@ -26,6 +26,11 @@ test('answer lines bind letters to the real Sense IDs of the same record array',
   assert.deepEqual(parseAnswer('1 s\n2 p\n2 ps\n3 x\n9 p', records, chunk).errors,
     ['2: 2 Sense(s) need 2 letter(s), got 1', '2: duplicate record line', '3: letters must be p/s/e only (got "x")', '9: record number outside this chunk', '4: missing record line']);
   assert.equal(parseAnswer('이 요청은 처리할 수 없습니다.', records, chunk).lines, 0);
+  const bad = errorRecords(parseAnswer('1 s\n2 p\n3 e', records, chunk).errors);
+  assert.deepEqual(bad, [2, 4]);
+  const merged = mergeRepair('1 s\n2 p\n3 e', '1 p\n2 ps\n4 p', bad);
+  assert.equal(merged, '1 s\n3 e\n2 ps\n4 p\n');
+  assert.deepEqual(parseAnswer(merged, records, chunk).errors, []);
 });
 
 test('save writes compact id/d rows in Canonical order; check enforces §5', async () => {
