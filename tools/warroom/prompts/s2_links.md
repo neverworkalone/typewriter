@@ -9,6 +9,14 @@ The first line must be the exact `links @<digest>` header in the view. Then prov
 - `c<n> skip` when no further target relation should be added;
 - the exact Relation row format shown by the CLI view for each selected target sense.
 
+{{whole_drop_rule}}
+
+Optional links use the same rule with this answer grammar (never `D e` here):
+
+- If the `S` line ends in `s` and that source Sense clearly fits a category, answer `c<n> skip` for every candidate of that Sense.
+- If an unlinked target `T<k>` ends in `s` and that target Sense clearly fits a category, do not link it, even when the source is ordinary or `p`. Still link any other unlinked target Sense of that candidate that is valid on its own. Answer `c<n> skip` when no valid target remains.
+- Never bind another Sense instead of an excluded one. Saved primary decisions and existing links are not re-judged.
+
 Do not mix `skip` and Relation rows for one candidate, repeat a target, or omit a candidate. Use only target aliases marked `unlinked=` for that candidate. Allowed relation types are `near`, `mood`, `scene`, `sensory`, `action`, and `association`; tiers are integers 1..9. The current checkpoint and target mapping are bound to this exact view.
 
 {{session_note}}

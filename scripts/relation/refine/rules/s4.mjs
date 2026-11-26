@@ -19,7 +19,7 @@ import path from 'node:path';
 import { ACTION_TARGET_POS, normalizeCandidate, sameSpellingTargets } from '../../admission.mjs';
 import { ADMISSION_TYPES, exclusionKey, parseRelationJsonl } from '../../persisted-jsonl.mjs';
 import { apply as polishApply, loadCanonical, PolishInputError, scanTouching } from '../../polish-cli.mjs';
-import { checkRows, readShardRecords, selectionPath } from '../../selection-cli.mjs';
+import { readSelection, SelectionError } from '../../selection-cli.mjs';
 import { escapeField } from './s3.mjs';
 import { fail, gitHead, RefineInputError, writeFilesAtomically } from '../core.mjs';
 
@@ -52,20 +52,15 @@ const touches = (row, senseIds) => senseIds.has(row.source_sense_id) || (!('text
 // ---- view --------------------------------------------------------------------------------------------------------
 
 async function loadSelection(root, shard, records = null) {
-  const canonical = records ?? await readShardRecords(root, shard);
-  let text;
-  try { text = await readFile(selectionPath(root, shard), 'utf8'); }
+  let selection;
+  try { selection = await readSelection(root, shard, records); }
   catch (error) {
-    if (error.code === 'ENOENT') throw new RefineInputError(`${label} requires selection-${shard}.jsonl`);
+    if (error instanceof SelectionError) throw new RefineInputError(`${label} ${error.message}`);
     throw error;
   }
-  const checked = checkRows(canonical, text);
-  if (checked.errors.length) throw new RefineInputError(`${label} invalid selection-${shard}.jsonl: ${checked.errors.slice(0, 20).join('; ')}`);
-  const decisions = new Map(text.split('\n').filter(Boolean).map((line) => {
-    const row = JSON.parse(line);
-    return [row.id, row.d];
-  }));
-  return { shard, counts: checked.counts, decisions,
+  if (!selection) throw new RefineInputError(`${label} requires selection-${shard}.jsonl`);
+  const { decisions } = selection;
+  return { ...selection,
     polished: new Set([...decisions].filter(([, decision]) => decision === 'p').map(([id]) => id)) };
 }
 

@@ -260,11 +260,15 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/relation/candidate-contract.mjs',
           'scripts/relation/persisted-jsonl.mjs',
           'scripts/relation/relation-delta.mjs',
+          'scripts/relation/selection-cli.mjs',
         ]),
       },
       {
         ...affectedTestCheck('scripts/relation/edit-cli.test.mjs', 'Test Stage 3 Relation edit CLI, direct apply and replayed amend', [
           'scripts/relation/edit-cli.mjs',
+          'scripts/relation/refine/core.mjs',
+          'scripts/relation/refine/rules/s3.mjs',
+          'scripts/relation/selection-cli.mjs',
           'scripts/relation/replay-cli.mjs',
           'scripts/relation/relation-delta.mjs',
           'scripts/relation/admission.mjs',

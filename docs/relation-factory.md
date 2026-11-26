@@ -88,6 +88,24 @@ data/relation-candidates/
 
 **검증:** 공통 validator는 `scripts/relation/candidate-contract.mjs <canonical> <candidate>`다. JSONL 파싱·허용 필드, Canonical 배치의 record 행 수·순서·ID와 모든 sense의 정확한 일치, 비어 있지 않은 후보 문자열, 같은 source sense 안의 중복, source lemma와 후보의 양방향 정규화 포함을 확인한다. 후보가 없는 sense는 `candidates: []`이며, 행 누락이나 미완료 파일을 빈 후보로 취급하지 않는다. PR의 Normal 검사는 추가·수정된 Candidate 파일에 이 strict 계약을 적용한다. Stage 2가 이미 머지된 Candidate를 읽을 때는 과거 계약을 유지하고 새 포함 규칙을 소급 적용하지 않는다. 역사적 Candidate를 자동으로 수정하거나 재검증하지 않는다.
 
+### 확정 Skip 전체 Drop 선제 적용 (#10265)
+
+D1(#10171)이 S3 이후 어차피 삭제할 관계를 새 생산에서 승인·보존하지 않도록, **#10265 머지 후 새로 prepare하는 S2 Part와 정식 S3 샤드**에만 #10171 §3.2의 11개 전체 Drop 범주(§3.3 경계 포함)를 적용한다. 범주 정의와 경계의 모델용 요약은 `tools/warroom/prompts/whole_drop_card.md` 한 곳에 두고, S2 primary·optional-links·S3 정책 카드가 함께 읽는다. 원문 기준은 #10171이다.
+
+- **판정 분담:** 코드는 #10174 확정 선별(`data/relation-selection/selection-SSS.jsonl`)의 `d:"s"` 여부만 view에 표시한다. 공통 `readSelection`/`checkRows`가 Sense 소유 샤드의 파일을 한 번씩 읽는다. 범주 해당 여부는 AI가 정확한 Sense의 표제어·품사·전체 gloss로 판단한다. `s` 단독, 분야 표시, 품사, 철자는 Drop 근거가 아니며 불명확하면 종전 기준을 따른다. 별도 판정 파일, 상태 머신, 정규식 분류는 없다.
+- **선별 파일:** 없는 샤드의 Sense는 표시하지 않는다(종전 생산 유지, `s` 추측 금지). 존재하지만 구조가 잘못된 파일은 prepare 오류로 멈춘다.
+- **Stage 2:** Part checkpoint의 선택 필드 `skip_sense_ids`(정렬된 Sense ID)에 source와 정확한 동철 target 중 `s`인 Sense를 기록한다. compact `S`·`T<k>` 줄, JSON view(`skip: true`), optional-links의 `S`·`T<k>` 줄 끝에 `s`를 붙인다.
+  - 범주에 명확히 해당하는 source의 신규 후보는 전부 `D e`다.
+  - 범주에 해당하는 정확한 target에는 결속하지 않는다. primary에서는 `D e`, optional-links에서는 그 target만 제외하고 다른 유효 target은 기존 `R` 형식을 쓰며 남는 것이 없으면 `skip`이다. source가 `p`여도 예외는 없다.
+  - text-only나 다른 Sense로 우회하지 않는다. 이 `e`는 정책상 편집 Drop이며 `x`/`z`/`f`가 아니다.
+  - 이미 승인·커버·저장된 후보와 필드가 없는 기존 checkpoint는 다시 판정하지 않는다. 회계, merge, verify는 그대로다.
+- **Stage 3:** 정식 샤드 prepare가 checkpoint에 `view_policy:"skip-sense-v1"`을 기록하고, 해당 샤드 소유 Relation의 source Sense와 정확한 ID target Sense 중 `s`인 것을 `S`·`I` 행 끝의 `s`로 표시한다.
+  - 범주에 해당하면 기존 `D`로 행 전체를 삭제한다. 상대가 `p`이거나 유용해 보여도 예외는 없다.
+  - `refresh-pending`은 checkpoint의 `view_policy`에 따라 view를 만든다. 그래서 필드가 없는 기존 checkpoint에는 완료·미완료 청크 모두 마커가 들어가지 않는다.
+  - scoped Link Repair, text-only `X`/`T<k>`, S4는 바뀌지 않는다.
+  - `z` 고아 회계, cross-shard reconcile, apply, verify는 기존 경로다. 다른 샤드 소유 행은 D1에 남는다.
+- **범위 밖:** 이미 생산된 샤드의 소급 정리, S3 전역 삭제, D1 착수 시점, D2 관계별 기준, S3 이후 Candidate·Drop 은퇴.
+
 ## 3. Stage 2 — Relation Admission
 
 **입력:** 해당 샤드의 필수 Stage 1 후보 파일 전체(2배치 × 기본 생산자 6개)와 해당 배치에 오너가 지정한 선택적 파일, Canonical, 기존 승인 Relations. **새 후보 생성이나 문학·말뭉치 재검색을 하지 않는다.**

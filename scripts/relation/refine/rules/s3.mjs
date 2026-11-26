@@ -5,6 +5,7 @@
  */
 import { createReverseCandidateFormLookup, sameSpellingTargets } from '../../admission.mjs';
 import { parseRelationJsonl, serializeRelationJsonl } from '../../persisted-jsonl.mjs';
+import { skipSenseIds } from '../../selection-cli.mjs';
 import { fail, idSensePairKey } from '../core.mjs';
 
 export const label = 'Stage 3';
@@ -12,6 +13,18 @@ export const scratch = 'relation-edit';
 export const scopedName = 'scoped Stage 3 Link Repair';
 /** A scoped (Stage 2 Part) Stage 3 run reviews only text-only rows for Link Repair. */
 export const scopedRow = (row) => 'text' in row;
+
+/**
+ * #10265: a formal shard prepare marks confirmed Skip (`d:"s"`) source Senses and exact ID target Senses so the model
+ * can apply the #10171 whole-Drop categories. The core uses this only for a checkpoint prepared under this policy.
+ */
+export const viewPolicy = 'skip-sense-v1';
+
+export async function viewContext(context, { root }) {
+  const ids = new Set(context.shardSenseIds);
+  for (const row of context.ownRelations) if (!('text' in row)) ids.add(row.target_sense_id);
+  return { skip: await skipSenseIds(root, ids) };
+}
 
 export const usage = `Usage:
   node scripts/relation/edit-cli.mjs prepare --shard SSS
@@ -46,10 +59,11 @@ function targetMeaningSet(targets) {
     .sort((left, right) => left.record_id.localeCompare(right.record_id) || left.sense_id.localeCompare(right.sense_id));
 }
 
-export function renderChunk(groups, index, number, total) {
+export function renderChunk(groups, index, number, total, extra = null) {
   let relationNumber = 0;
+  const skip = extra?.skip ?? new Set();
   const senses = groups.map(({ record, sense, relations }) => ({
-    source: { lemma: record.lemma, pos: sense.pos, gloss: sense.gloss },
+    source: { lemma: record.lemma, pos: sense.pos, gloss: sense.gloss, ...(skip.has(sense.id) ? { skip: true } : {}) },
     relations: relations.map(({ rowIndex, row }) => {
       const n = ++relationNumber;
       if ('text' in row) return { n, text: row.text, type: row.type, tier: row.relevance,
@@ -66,6 +80,7 @@ export function renderChunk(groups, index, number, total) {
         target_sense_id: row.target_sense_id,
         target_pos: targetSense.pos,
         target_gloss: targetSense.gloss,
+        ...(skip.has(row.target_sense_id) ? { target_skip: true } : {}),
         type: row.type,
         tier: row.relevance,
         _row: rowIndex,
@@ -99,14 +114,15 @@ export function renderPromptView(chunk) {
   const lines = [`chunk ${chunk.chunk}/${total} relations ${chunk.relation_count}`];
   const row = (...fields) => lines.push(fields.map(escapeField).join('\t'));
   for (const { source, relations } of chunk.senses) {
-    row('S', source.lemma, source.pos, source.gloss);
+    row('S', source.lemma, source.pos, source.gloss, ...(source.skip === true ? ['s'] : []));
     for (const relation of relations) {
       if ('text' in relation) {
         row(`X${relation.n}`, relation.text, relation.type, String(relation.tier));
         for (const target of relation.targets) row(target.alias, target.lemma, target.pos, target.gloss);
       } else {
         row(`I${relation.n}`, relation.target, relation.type, String(relation.tier),
-          ...('target_pos' in relation ? [relation.target_pos, relation.target_gloss] : []));
+          ...('target_pos' in relation ? [relation.target_pos, relation.target_gloss] : []),
+          ...(relation.target_skip === true ? ['s'] : []));
       }
     }
   }
@@ -130,8 +146,8 @@ export function parsePromptView(text) {
       fail(`Stage 3 prompt view has an invalid row tag: ${fields[0]}`);
     }
     if (tag[1] === 'S') {
-      if (fields.length !== 4) fail('Stage 3 prompt view Sense row must have 4 fields');
-      sense = { source: { lemma: fields[1], pos: fields[2], gloss: fields[3] }, relations: [] };
+      if (fields.length !== 4 && !(fields.length === 5 && fields[4] === 's')) fail('Stage 3 prompt view Sense row must have 4 fields and an optional s marker');
+      sense = { source: { lemma: fields[1], pos: fields[2], gloss: fields[3], ...(fields.length === 5 ? { skip: true } : {}) }, relations: [] };
       view.senses.push(sense);
       text_only = null;
     } else if (!sense) {
@@ -149,9 +165,12 @@ export function parsePromptView(text) {
         relation.targets = [];
         text_only = relation;
       } else {
-        if (fields.length !== 4 && fields.length !== 6) fail('Stage 3 prompt view ID row must have 4 or 6 fields');
+        if (fields.length !== 4 && fields.length !== 6 && !(fields.length === 7 && fields[6] === 's')) {
+          fail('Stage 3 prompt view ID row must have 4 or 6 fields and an optional s marker');
+        }
         relation.target = fields[1];
-        if (fields.length === 6) Object.assign(relation, { target_pos: fields[4], target_gloss: fields[5] });
+        if (fields.length >= 6) Object.assign(relation, { target_pos: fields[4], target_gloss: fields[5] });
+        if (fields.length === 7) relation.target_skip = true;
         text_only = null;
       }
       sense.relations.push(relation);

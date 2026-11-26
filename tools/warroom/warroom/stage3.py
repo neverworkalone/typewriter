@@ -94,7 +94,8 @@ def validate_prompt_view(prompt_view, context: dict, total: int) -> None:
             if sense_relations == 0 and sense_seen:
                 raise Stage3Error(f"Stage 3 prompt_view has an empty Source Sense in chunk {chunk}")
             sense_seen, sense_relations = True, 0
-            if len(fields) != 4:
+            # #10265: an optional trailing `s` marks a confirmed Skip Sense.
+            if not (len(fields) == 4 or (len(fields) == 5 and fields[4] == "s")):
                 raise Stage3Error(f"Stage 3 prompt_view Sense row is malformed in chunk {chunk}")
         elif not sense_seen:
             raise Stage3Error(f"Stage 3 prompt_view row precedes its Source Sense in chunk {chunk}")
@@ -110,7 +111,8 @@ def validate_prompt_view(prompt_view, context: dict, total: int) -> None:
                 raise Stage3Error(f"Stage 3 prompt_view Relation {kind}{number} does not match chunk {chunk}")
             if not re.fullmatch(r"[1-9]\d*", fields[3] if len(fields) > 3 else ""):
                 raise Stage3Error(f"Stage 3 prompt_view Relation {number} tier is invalid")
-            if len(fields) not in ((4,) if kind == "X" else (4, 6)):
+            if not (len(fields) in ((4,) if kind == "X" else (4, 6))
+                    or (kind == "I" and len(fields) == 7 and fields[6] == "s")):
                 raise Stage3Error(f"Stage 3 prompt_view Relation {number} is malformed")
             aliases, sense_relations = [], sense_relations + 1
     close_relation()

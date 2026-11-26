@@ -53,6 +53,7 @@ import {
   serializeRelationJsonl,
 } from './persisted-jsonl.mjs';
 import { deltaKey, deltaKeyText, mergeJsonl, removeKeys, supersededDrops } from './relation-delta.mjs';
+import { skipSenseIds } from './selection-cli.mjs';
 
 const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 [--batch 01] [--out <file.json>] [--allow-partial]
@@ -334,6 +335,12 @@ function validateCheckpoint(checkpoint, identity = {}) {
   }
   for (const key of ['shard', 'batch', 'part']) {
     if (identity[key] !== undefined && identity[key] !== checkpoint[key]) throw new Error(`checkpoint ${key} does not match this command`);
+  }
+  // #10265: confirmed Skip Senses among this Part's sources and exact targets, recorded at prepare. Absent = prepared
+  // before #10265, so its views carry no whole-Drop marker.
+  if (checkpoint.skip_sense_ids !== undefined && (!Array.isArray(checkpoint.skip_sense_ids)
+      || checkpoint.skip_sense_ids.some((id, index, ids) => typeof id !== 'string' || (index > 0 && ids[index - 1] >= id)))) {
+    throw new Error('checkpoint skip_sense_ids must be a sorted list of distinct Sense IDs when present');
   }
   if (!Array.isArray(checkpoint.items) || !Number.isInteger(checkpoint.next_chunk_number) || checkpoint.next_chunk_number < 1) {
     throw new Error('checkpoint is missing its items or chunk cursor');
@@ -1346,6 +1353,9 @@ async function runCommand(options, root, timing) {
       includePartiallyCovered: Boolean(options.part),
     });
     if (options.part) {
+      const items = result.items.map((item) => ({ item, targets: item.candidates.map((candidate) => sameSpellingTargets(index, candidate.text)) }));
+      const skipSenses = await skipSenseIds(repositoryRoot, new Set(items.flatMap(({ item, targets }) => [item.sense_id,
+        ...targets.flat().flatMap((target) => target.senses.map((sense) => sense.sense_id))])));
       const checkpoint = {
         version: CHECKPOINT_VERSION,
         type_tier_policy: SOURCE_MIRROR_TYPE_TIER_POLICY,
@@ -1360,15 +1370,16 @@ async function runCommand(options, root, timing) {
         pending_chunk: null,
         optional_review_complete: false,
         merged: false,
-        items: result.items.map((item) => ({
+        skip_sense_ids: [...skipSenses].sort(),
+        items: items.map(({ item, targets }) => ({
           ...item,
           approved_peers: approvedPeersForSense(item.sense_id, [...others, ...own], index),
-          candidates: item.candidates.map((candidate) => {
+          candidates: item.candidates.map((candidate, candidateIndex) => {
             const alreadyAccounted = candidate.already_accounted === true;
             return {
               text: candidate.text,
               producers: candidate.producers,
-              same_spelling_targets: sameSpellingTargets(index, candidate.text),
+              same_spelling_targets: targets[candidateIndex],
               ...(candidate.polish_excluded ? { polish_excluded: candidate.polish_excluded } : {}),
               ...(alreadyAccounted ? {
                 already_accounted: true,
@@ -1465,6 +1476,9 @@ function checkpointProgressPayload(checkpoint) {
 }
 
 function pendingChunkPayload(checkpoint, pending) {
+  const skip = skipSenses(checkpoint);
+  const markTargets = (targets) => (skip.size ? targets.map((target) => ({ ...target,
+    senses: target.senses.map((sense) => (skip.has(sense.sense_id) ? { ...sense, skip: true } : sense)) })) : targets);
   return {
     chunk_id: pending.chunk_id,
     ...(pending.revision === true ? { revision: true } : {}),
@@ -1492,6 +1506,7 @@ function pendingChunkPayload(checkpoint, pending) {
         pos: item.pos,
         gloss: item.gloss,
         ...(item.reference_gloss === undefined ? {} : { reference_gloss: item.reference_gloss }),
+        ...(skip.has(item.sense_id) ? { skip: true } : {}),
         approved_peers: item.approved_peers,
         candidate_start: slice.start,
         candidate_end: slice.end,
@@ -1501,7 +1516,7 @@ function pendingChunkPayload(checkpoint, pending) {
         candidates: item.candidates.slice(slice.start, slice.end).map((candidate) => ({
           text: candidate.text,
           producers: candidate.producers,
-          same_spelling_targets: candidate.same_spelling_targets,
+          same_spelling_targets: markTargets(candidate.same_spelling_targets),
           ...(candidate.already_accounted === true ? {
             already_accounted: true,
             existing_target_sense_ids: candidate.existing_target_sense_ids,
@@ -1540,6 +1555,11 @@ function compactChunkModel(checkpoint, pending) {
   });
   return { sources, candidates, targets };
 }
+
+/** #10265: `s` marks a confirmed Skip Sense the model judges against the #10171 whole-Drop categories. */
+const WHOLE_DROP_LEGEND = '# s\ttrailing field of S / T<k>: confirmed Skip Sense; whole-Drop only if it clearly fits a whole-Drop category of the policy card';
+const skipSenses = (checkpoint) => new Set(checkpoint.skip_sense_ids ?? []);
+const skipMark = (skip, senseId) => (skip.has(senseId) ? ['s'] : []);
 
 function compactField(value) {
   const text = String(value);
@@ -1581,7 +1601,7 @@ const SOURCE_MIRROR_COMPACT_DECISION_GRAMMAR = [
  * sense IDs, so one `= <lemma>` line per target entry plus `T<k> pos gloss` rows keeps every gloss and the
  * homograph-entry boundary at a fraction of the tokens (#7825 analysis: ID columns were ~37% of task input).
  */
-function compactTargetLines(targets) {
+function compactTargetLines(targets, skip = new Set()) {
   const lines = [];
   let record = null;
   for (const target of targets.values()) {
@@ -1589,7 +1609,7 @@ function compactTargetLines(targets) {
       record = target.record_id;
       lines.push(compactLine('=', target.lemma));
     }
-    lines.push(compactLine(target.alias, target.pos, target.gloss));
+    lines.push(compactLine(target.alias, target.pos, target.gloss, ...skipMark(skip, target.sense_id)));
   }
   return lines;
 }
@@ -1607,6 +1627,7 @@ function renderCompactChunk(checkpoint, pending, only = null) {
     if (!selected.size || unknown.length) throw new Error(`--only names no candidate of ${pending.chunk_id}: ${unknown.join(',') || '(empty)'}`);
   }
   const keep = (row) => selected === null || selected.has(row.alias);
+  const skip = skipSenses(checkpoint);
   const usedTargets = new Set(model.candidates.filter(keep).flatMap((row) => row.targets));
   const targets = selected === null ? model.targets
     : new Map([...model.targets].filter(([, target]) => usedTargets.has(target.alias)));
@@ -1620,16 +1641,17 @@ function renderCompactChunk(checkpoint, pending, only = null) {
     '# Q\tsaved decision of an earlier candidate of the same source sense',
     '# c<n>\tcandidate\tproducers\tsame-spelling target aliases (- = none)',
     '# X\tc<n> earlier Polish exclusion of exactly these targets / this text: soft context, re-approve only on new evidence',
+    ...(checkpoint.skip_sense_ids === undefined ? [] : [WHOLE_DROP_LEGEND]),
     ...(usesSourceMirrorTypeTier(checkpoint) ? SOURCE_MIRROR_COMPACT_DECISION_GRAMMAR : COMPACT_DECISION_GRAMMAR)
       .map((rule) => `# decision: ${rule}`),
     '',
     '## targets',
-    ...compactTargetLines(targets),
+    ...compactTargetLines(targets, skip),
   ];
   for (const { slice, item, rows: allRows } of model.sources) {
     const rows = allRows.filter(keep);
     if (!rows.length) continue;
-    lines.push('', compactLine('S', item.sense_id, item.record_id, item.lemma, item.pos, item.reference_gloss === undefined ? item.gloss : `${item.gloss} ⇒ ${item.reference_gloss}`, `candidates ${slice.start + 1}-${slice.end}/${item.candidates.length}`));
+    lines.push('', compactLine('S', item.sense_id, item.record_id, item.lemma, item.pos, item.reference_gloss === undefined ? item.gloss : `${item.gloss} ⇒ ${item.reference_gloss}`, `candidates ${slice.start + 1}-${slice.end}/${item.candidates.length}`, ...skipMark(skip, item.sense_id)));
     for (const peer of item.approved_peers ?? []) {
       lines.push(compactLine('P', peer.type, peer.relevance, 'text' in peer ? peer.text : `${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`));
     }
@@ -2073,14 +2095,17 @@ function renderOptional(checkpoint, links, digest, page, pageSize) {
   const rows = model.candidates.slice((page - 1) * pageSize, page * pageSize);
   const linksByCandidate = new Map(links.map((entry) => [`${entry.item.sense_id}\u0000${entry.candidate.text}`, entry]));
   const usedTargets = new Set(rows.flatMap((row) => row.targetAliases));
+  const skip = skipSenses(checkpoint);
   const targetLines = [...model.targets.values()].filter((target) => usedTargets.has(target.alias))
-    .map((target) => [target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss].map(compactField).join('\t'));
+    .map((target) => [target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss,
+      ...skipMark(skip, target.sense_id)].map(compactField).join('\t'));
   const lines = [
     `links @${digest}`,
     `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${totalPages} · optional candidates ${rows.length}/${model.candidates.length}`,
     '# T<k> target_sense_id target_record_id lemma pos full_gloss',
     '# S source_sense_id record_id lemma pos full_gloss',
     '# c<n> candidate unlinked target aliases',
+    ...(checkpoint.skip_sense_ids === undefined ? [] : [WHOLE_DROP_LEGEND]),
     usesSourceMirrorTypeTier(checkpoint)
       ? '# answer each candidate once: c<n> skip OR one or more c<n> R <type> <tier> T<k> (reverse type/Tier are derived by the CLI)'
       : '# answer each candidate once: c<n> skip OR one or more c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>',
@@ -2089,7 +2114,8 @@ function renderOptional(checkpoint, links, digest, page, pageSize) {
   for (const row of rows) {
     if (!lines.some((line) => line.startsWith(`S\t${row.item.sense_id}\t`))) {
       lines.push('', ['S', row.item.sense_id, row.item.record_id, row.item.lemma, row.item.pos,
-        row.item.reference_gloss === undefined ? row.item.gloss : `${row.item.gloss} ⇒ ${row.item.reference_gloss}`].map(compactField).join('\t'));
+        row.item.reference_gloss === undefined ? row.item.gloss : `${row.item.gloss} ⇒ ${row.item.reference_gloss}`,
+        ...skipMark(skip, row.item.sense_id)].map(compactField).join('\t'));
     }
     const entry = linksByCandidate.get(`${row.item.sense_id}\u0000${row.candidate.text}`);
     const available = new Set(entry.unlinked_target_sense_ids);
