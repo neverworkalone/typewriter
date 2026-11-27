@@ -13,7 +13,9 @@
  * `--relations-only` replays a Relation-only Stage PR (Stage 4 onward, #9929): only Relation files are rebuilt and they
  * pass the shared row validator; no Candidate or Drop file is read and no Candidate accounting runs. A Drop file the PR
  * changed (base -> ours) or named with `--path` is a scope error before anything is written. Drop changes only the
- * latest data made are left to Git, like any file the PR did not change.
+ * latest data made are left to Git, like any file the PR did not change. Its check has the Stage 4 `verify` scope over the
+ * latest -> replayed change (#10345): a file that only lost latest lines is not re-checked; every other rebuilt file and
+ * both owner shards of every Add/Set are.
  *
  * `--drops-only` (with `--relations-only`) replays a D1 PR (#10338), which only removes existing rows of its own shard's
  * Relation file. Every rebuilt file's base -> ours change must remove keys only (an Add or Set is a scope error before
@@ -38,6 +40,7 @@ import { exclusionKey, parseDropExclusionJsonl, parseDropJsonl, parseRelationJso
 import {
   dataFileFamily, deltaKeyText, keptRelationExclusions, mergeJsonl, removeKeys, supersededDrops,
 } from './relation-delta.mjs';
+import { opsBetween, pureDeletion, structuralShards } from './refine/rules/s4.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RELATION_FILE = (shard) => `data/relations/relation-${shard}.jsonl`;
@@ -95,13 +98,26 @@ function accounting(args) {
  * Row validation of each rebuilt shard, and no Candidate accounting problem the latest data did not already have. A
  * replayed Candidate Drop whose Candidate the latest data already answers is left out (latest wins) and reported.
  */
-/** Relation-only check (#9929): each rebuilt Relation file through the shared row validator; no Candidate or Drop. */
-async function checkRelationShards(root, shards, after) {
-  const { index, rowsByShard } = await loadCanonical(root);
-  const shardSenses = new Set([...shards].flatMap((shard) => (rowsByShard.get(shard) ?? [])
+/**
+ * Relation-only check (#9929): the shared row validator over the shards the latest -> replayed change needs, the same
+ * scope as Stage 4 `verify` (#10345). A rebuilt file that only lost lines of the latest file is not re-checked, so a
+ * pure-deletion replay reads no Canonical or other Relation file. Every other rebuilt file's shard and the owner shards
+ * of both ends of every Add/Set are checked against the final state: a rebuilt file is read from `after`, any other from
+ * the merge checkout, and the cross-shard context the same way.
+ */
+async function checkRelationShards(root, before, after) {
+  const changed = [...after.keys()];
+  if (changed.every((relative) => pureDeletion(before.get(relative), after.get(relative)))) return;
+  const read = (texts) => async (relative) => texts.get(relative) ?? null;
+  const ops = await opsBetween(read(before), read(after), changed);
+  const canonical = await loadCanonical(root);
+  const { index, rowsByShard } = canonical;
+  const shards = await structuralShards({ ops, changed, baseRead: read(before), headRead: read(after), canonical });
+  if (!shards.length) return;
+  const shardSenses = new Set(shards.flatMap((shard) => (rowsByShard.get(shard) ?? [])
     .flatMap((record) => record.senses.map((sense) => sense.id))));
   const afterAll = await scanTouching(root, shardSenses, after, { relationsOnly: true });
-  for (const shard of [...shards].sort()) {
+  for (const shard of shards) {
     const canonicalRows = rowsByShard.get(shard);
     if (!canonicalRows) throw new ReplayInputError(`shard ${shard} has no Canonical file`);
     const senseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
@@ -225,7 +241,7 @@ export async function replay({ base, ours, theirs, paths = [], dryRun = false, r
   const shards = new Set(selected.map((relative) => /-(\d{3})\.jsonl$/u.exec(relative)[1]));
   if (shards.size) {
     await (dropsOnly ? checkOwnFiles(root, shards, after)
-      : relationsOnly ? checkRelationShards(root, shards, after) : checkShards(root, shards, before, after, report));
+      : relationsOnly ? checkRelationShards(root, before, after) : checkShards(root, shards, before, after, report));
   }
   if (!dryRun && after.size) await writeTexts(root, after);
   const files = [...report].map(([relative, { applied, conflicts }]) => ({ path: relative, applied: applied.size,

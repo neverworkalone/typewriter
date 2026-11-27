@@ -178,6 +178,35 @@ class Stage4Finalize(unittest.TestCase):
         self.assertEqual(w.store.batch(b["id"])["state"], "COMPLETE")
         self.assertEqual(w.git.removed, [(str(self.w.paths.worktrees / "s4-001"), "s4-codex-001")])
 
+    def test_a_stop_between_the_data_commit_and_its_key_submits_that_commit_not_a_no_change(self):
+        """#10345: a restart over our own clean data commit recovers it and opens its PR; no S4 completion is recorded."""
+        w, commit_key = self.w, f"s3_commit_head_{self.b['id']}"
+        set_key = w.store.set
+
+        def interrupted(key, value):
+            if key == commit_key:
+                raise RuntimeError("stopped after commit")
+            return set_key(key, value)
+
+        def applied(*_args):
+            w.git.dirty_text = f" M {S4_RELATION}\n"
+            return {"status": "applied", "senses": {}, "affected_shards": ["001"], "conflicts": []}
+        with mock.patch.object(w.store, "set", side_effect=interrupted):
+            self.assertEqual(self.finalize(applied)["state"], "ERROR")
+        produced = w.git.local_head
+        self.assertEqual((w.store.get(commit_key), w.git.dirty_text), (None, ""))
+        w.store.update(self.b["id"], state="PRODUCING", error=None)
+        with mock.patch.object(self.ops, "checkpoint", return_value=None), \
+                mock.patch.object(self.ops, "report", return_value={"shard": "001"}):
+            w.sup._stage3_finalize_do(w.store.batch(self.b["id"]))
+        b = w.store.batch(self.b["id"])
+        self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
+        self.assertEqual(w.git.commits, [([S4_RELATION], "[S4/Sol] 001")])
+        self.assertEqual((w.store.get(commit_key), w.git.remote["s4-codex-001"]), (produced, produced))
+        self.assertEqual(len(w.gh.created_prs), 1)
+        self.assertIsNone(w.store.get(stage4.SPEC.nochange_key("001")))
+        self.assertIsNone(w.store.get(stage4.SPEC.ok_key("001")))
+
     def test_a_failed_no_change_verify_records_nothing(self):
         w = self.w
         w.git.refine_verify_fail = ("001",)

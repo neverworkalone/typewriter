@@ -1974,15 +1974,18 @@ class Supervisor:
                 head = self.git.commit_paths(wt, sorted(changed), title)
                 self.store.set(commit_key, head)
                 self.store.log(b["id"], f"{self._stage(b)} 변경 파일을 commit했습니다 ({head[:10]})")
-            elif spec.no_change_complete:
-                return self._refine_no_change(b, head, result)
             elif self.git.commit_subject(wt) in (title, legacy_title) and self.git.commit_parent(wt) is not None:
+                # A crash after the data commit but before its key: recover that commit and submit it. This comes before
+                # the no-change completion (#10345), since a clean worktree over our own commit is not "no change".
                 committed_paths = set(self.git.changed_files(head))
                 unexpected = committed_paths - spec.scope(b["shard"], committed_paths)
                 if unexpected:
                     raise GitError(f"기존 {self._stage(b)} commit이 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
                 head = self.git.head(wt)
                 self.store.set(commit_key, head)
+                self.store.log(b["id"], f"기록 전 중단된 {self._stage(b)} 데이터 commit {head[:10]}을 복구해 제출을 이어갑니다")
+            elif spec.no_change_complete:
+                return self._refine_no_change(b, head, result)
             else:
                 head = self.git.commit_paths(wt, [], title, allow_empty=True)
                 self.store.set(commit_key, head)
