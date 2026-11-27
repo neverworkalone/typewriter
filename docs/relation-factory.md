@@ -377,7 +377,7 @@ node scripts/relation/polish-cli.mjs apply --input edits.json [--dry-run]
     - PR이 바꾼 모든 shard 데이터 파일을 다시 만든다.
     - 영향 shard의 공통 검증과 "새 Candidate 회계 문제 없음"을 확인한 뒤에만 쓴다.
     - Stage 3 PR은 이후 `decisions/amend --base <새 master>`로 같은 행 기반 결정을 계속 다룬다.
-    - **Relation 전용 Stage PR(S4, #9929):** 같은 명령에 `--relations-only`를 붙인다. Relation 파일만 다시 만들고 공통 Relation 검증만 한다. Candidate·Drop은 읽지 않는다. PR 쪽(`base → ours`)에서 Drop 파일이 바뀌었거나 `--path`로 Drop 파일을 지정하면, 쓰기 전에 범위 오류로 거부한다. 최신 쪽에만 있는 Drop 변경은 PR이 바꾸지 않은 파일이므로 Git에 맡긴다. War Room은 spec의 `relations_only`를 보고 이 플래그를 넘긴다.
+    - **Relation 전용 Stage PR(S4, #9929):** 같은 명령에 `--relations-only`를 붙인다. Relation 파일만 다시 만들고 공통 Relation 검증만 한다. Candidate·Drop은 읽지 않는다. PR 쪽(`base → ours`)에서 Drop 파일이 바뀌었거나 `--path`로 Drop 파일을 지정하면, 쓰기 전에 범위 오류로 거부한다. 최신 쪽에만 있는 Drop 변경은 PR이 바꾸지 않은 파일이므로 Git에 맡긴다. 검사 범위는 S4 `verify`와 같고 최신(theirs)→replay 결과의 실제 변경으로 정한다(#10345): 최신 파일의 줄만 지운 순수 삭제 파일은 구조 재검사를 생략하고(Canonical·다른 Relation 파일도 읽지 않는다), 그 밖의 재구성 파일 샤드와 모든 Add/Set 양끝 소유 샤드만 검사한다. 재구성하지 않은 파일은 merge checkout에서 읽는다. War Room은 spec의 `relations_only`를 보고 이 플래그를 넘긴다.
   - **Stage 2 Part:** `node scripts/relation/admission-cli.mjs replay --checkpoint <cp> --theirs <최신 master>`
     - 최신 데이터를 checkpoint `premerge.replay` 스냅숏으로 한 번 기록한다.
     - 이후 merge·checkpoint verify·amend의 기대값은 `premerge → materialize(checkpoint) → replay`의 3-way다.

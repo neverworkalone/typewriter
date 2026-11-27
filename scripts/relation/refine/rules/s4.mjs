@@ -791,6 +791,16 @@ const relationFileShard = (relative) => /^data\/relations\/relation-(\d{3})\.jso
 export async function verifyPlan({ shard, root, base, head, canonical }) {
   const state = prState(root, base, head);
   const ops = await opsBetween(state.baseRead, state.headRead, state.changed);
+  return { shards: affectedShards(ops, canonical, shard),
+    validated: await structuralShards({ ops, changed: state.changed, baseRead: state.baseRead, headRead: state.headRead, canonical }) };
+}
+
+/**
+ * The shards whose Relation file needs the full structural check for the change `baseRead` -> `headRead` of the
+ * `changed` files with relation-key edits `ops`: the owner shards of both ends of every Add/Set, and the shard of every
+ * changed Relation file that is not a proven pure deletion. Shared by `verify` and the Relation-only replay (#10345).
+ */
+export async function structuralShards({ ops, changed, baseRead, headRead, canonical }) {
   const validated = new Set();
   for (const op of ops.filter((edit) => edit.op !== 'drop')) {
     for (const senseId of [op.source_sense_id, op.target_sense_id].filter(Boolean)) {
@@ -798,11 +808,11 @@ export async function verifyPlan({ shard, root, base, head, canonical }) {
       if (owner) validated.add(owner);
     }
   }
-  for (const relative of state.changed) {
+  for (const relative of changed) {
     const owner = relationFileShard(relative);
-    if (owner && !validated.has(owner) && !pureDeletion(await state.baseRead(relative), await state.headRead(relative))) validated.add(owner);
+    if (owner && !validated.has(owner) && !pureDeletion(await baseRead(relative), await headRead(relative))) validated.add(owner);
   }
-  return { shards: affectedShards(ops, canonical, shard), validated: [...validated].sort() };
+  return [...validated].sort();
 }
 
 // Every Sense ID token of a Relation line; a line is decoded only when one of its tokens is a Sense of `senseIds`.

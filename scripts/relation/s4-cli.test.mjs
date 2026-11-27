@@ -520,3 +520,62 @@ test('#10331 one-pass cross-shard context equals the per-shard context', async (
   assert.equal(contexts.get('001').length, 2);
   assert.equal(contexts.get('002').length, RELATIONS_001.filter((row) => row.target_sense_id?.startsWith('w2')).length);
 });
+
+// #10345: the Relation-only replay checks the latest -> replayed change with the Stage 4 `verify` scope.
+const BAD_002 = { ...idRow('w20001-s1', 'w20002-s1', 'near', 3, { polish: true }), target_record_id: 'w20003' };
+const MOOD_002 = idRow('w2000-s1', 'w1-s2', 'mood', 4, { polish: true });
+
+test('#10345 a pure-deletion Stage 4 replay is not blocked by an unrelated earlier error; the latest key wins', async (t) => {
+  const root = await repository(t);
+  const { replay } = await import('./replay-cli.mjs');
+  const file = path.join(root, 'data/relations/relation-002.jsonl');
+  await writeFile(file, serializeRelationJsonl([...RELATIONS_002, MOOD_002, BAD_002]));
+  const base = commitAll(root, 'earlier unrelated binding error');
+  git(root, 'switch', '-qc', 's4-001');
+  const prepared = await cli(root, 'prepare', '--shard', '001');
+  await save(root, '001', (view) => [`D ${find(view, 'w1-s2', '반짝이다').relation} ${find(view, 'w1-s2', '별빛').relation}`]);
+  await saveNone(root, 2, prepared.chunk_count);
+  assert.deepEqual((await cli(root, 'apply', '--shard', '001')).changed_files, ['data/relations/relation-002.jsonl']);
+  const ours = commitAll(root, '[S4/Sol] 001');
+  const verified = await cli(root, 'verify', '--shard', '001', '--base', base);
+  assert.deepEqual([verified.ok, verified.validated], [true, []]);
+  // Latest master retypes one of the dropped keys: the merge conflicts.
+  git(root, 'switch', '-q', 'master');
+  const latestMood = { ...MOOD_002, relevance: 6, reverse_relevance: 6 };
+  await writeFile(file, serializeRelationJsonl([...RELATIONS_002, latestMood, BAD_002]));
+  const theirs = commitAll(root, 'later retype');
+  git(root, 'switch', '-q', 's4-001');
+  assert.notEqual(spawnSync('git', ['merge', '--no-commit', '--no-ff', theirs], { cwd: root }).status, 0);
+  const replayed = await quiet(() => replay({ base, ours, theirs, relationsOnly: true }, root));
+  assert.deepEqual(replayed.files, [{ path: 'data/relations/relation-002.jsonl', applied: 1, conflicts: ['R|i|w1-s2|w2000-s1'] }]);
+  assert.equal(await read(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([latestMood, BAD_002]));
+});
+
+test('#10345 a Stage 4 replay Add checks the target shard from the merge checkout and rejects a new reverse duplicate', async (t) => {
+  const root = await repository(t);
+  const { replay } = await import('./replay-cli.mjs');
+  const base = head(root);
+  git(root, 'switch', '-qc', 's4-001');
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([...RELATIONS_001,
+    idRow('w6-s1', 'w2001-s1', 'mood', 3, { polish: true })]));
+  const ours = commitAll(root, '[S4/Sol] 001 add');
+  const merge = async (rows002) => {
+    git(root, 'switch', '-q', 'master');
+    git(root, 'reset', '-q', '--hard', base);
+    await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl(rows002));
+    const theirs = commitAll(root, 'latest 002');
+    git(root, 'switch', '-q', 's4-001');
+    git(root, 'reset', '-q', '--hard', ours);
+    git(root, 'merge', '--no-commit', '--no-ff', theirs);
+    return theirs;
+  };
+  // Only 001 is rebuilt; 002 (the Add's target shard) is validated from the merged checkout and passes.
+  let theirs = await merge([...RELATIONS_002, idRow('w2000-s1', 'w2001-s1', 'near', 2, { polish: true })]);
+  const replayed = await quiet(() => replay({ base, ours, theirs, relationsOnly: true, dryRun: true }, root));
+  assert.deepEqual(replayed.files.map((entry) => entry.path), ['data/relations/relation-001.jsonl']);
+  git(root, 'merge', '--abort');
+  // The latest data already stores the reverse of the PR's Add: the replay is refused before anything is written.
+  theirs = await merge([...RELATIONS_002, idRow('w2001-s1', 'w6-s1', 'near', 2, { polish: true })]);
+  await assert.rejects(replay({ base, ours, theirs, relationsOnly: true }, root), (error) => error instanceof AdmissionVerifyError
+    && /reverse-duplicate/u.test(error.message));
+});

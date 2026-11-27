@@ -181,8 +181,9 @@ test('#10338 a D1 replay keeps a key the latest data changed; verify and amend a
   git(root, 'switch', '-q', 'd1-001');
   const common = git(root, 'merge-base', ours, theirs);
   spawnSync('git', ['merge', '--no-commit', '--no-ff', theirs], { cwd: root });
-  // The global Relation-only check scans 002 and fails; the D1 drop-only replay reads only its own file.
-  await assert.rejects(replay({ base: common, ours, theirs, relationsOnly: true, dryRun: true }, root), /w2000-s1|w1-s1/u);
+  // The merged file only lost latest lines, so neither the Relation-only replay (#10345) nor the D1 drop-only replay
+  // re-checks it or reads 002's unrelated problem.
+  assert.equal((await quiet(() => replay({ base: common, ours, theirs, relationsOnly: true, dryRun: true }, root))).status, 'planned');
   const replayed = await quiet(() => replay({ base: common, ours, theirs, relationsOnly: true, dropsOnly: true }, root));
   assert.deepEqual(replayed.files, [{ path: 'data/relations/relation-001.jsonl', applied: 1, conflicts: ['R|i|w4-s1|w5-s1'] }]);
   assert.equal(await shard(root, '001'), serializeRelationJsonl([A, B, latestC, E]));
