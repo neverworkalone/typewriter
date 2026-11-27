@@ -8108,8 +8108,9 @@ class Supervisor:
                 bb, pp = stage2.split_key(b["batch"])
                 checkpoint = f".warroom-scratch/relation-admission-{b['shard']}-{bb}-{pp}.json"
             relations_only = b["method"] in REFINE_METHODS and refine.spec_for(b).relations_only   # #9929
+            drops_only = b["method"] in REFINE_METHODS and refine.spec_for(b).replay_drops_only   # D1, #10338
             new_head, report = self.git.replay_relation_merge(wt, b["branch"], base_ref, base_sha, owned, checkpoint,
-                                                              relations_only=relations_only)
+                                                              relations_only=relations_only, drops_only=drops_only)
             if b["method"] == STAGE2_METHOD:
                 ok, detail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=True)
             else:
@@ -8371,7 +8372,9 @@ class Supervisor:
     def _stage3_merged_verify(self, b, info) -> bool:
         """Count a refinement shard complete only after its merged change verifies: Stage 3 by the shard admission verify
         on the current master; a Stage with its own CLI verify (S4, D1 with its kept judgments; #10330) by that verify of
-        exactly the merged change `merge_sha^1`..`merge_sha`, so later master changes are not this PR's."""
+        exactly the merged change `merge_sha^1`..`merge_sha`, so later master changes are not this PR's. That verified
+        `merge_sha` is the S4/D1 completion record (#10338): a cleanup Retry after master moved finds it complete and
+        never asks for the removed worktree again. Stage 3 keeps the latest master SHA."""
         gate = f"s3_merge_wait_{b['id']}"
         if self.clock() - float(self.store.get(gate, "0")) < self.cfg["poll_seconds"]:
             return False
@@ -8386,9 +8389,11 @@ class Supervisor:
             if not self.git.contains_on_base(merge_sha, base):
                 self.store.log(b["id"], f"머지 커밋 {merge_sha[:10]}이 아직 origin/{base}에 보이지 않습니다 — 재확인 예정", "warn")
                 return False
-            if self.store.get(refine.ops(b).ok_key(b["shard"])) == sha:
+            cli_verify = refine.spec_for(b).cli_verify
+            done = merge_sha if cli_verify else sha
+            if self.store.get(refine.ops(b).ok_key(b["shard"])) == done:
                 return True
-            if refine.spec_for(b).cli_verify:
+            if cli_verify:
                 parent = self.git.merge_base(Path(b["worktree"]), f"{merge_sha}^1", merge_sha)
                 outcome = self._refine_verify_call(b, merge_sha, parent)[0]()
                 ok, detail = outcome.ok, outcome.tail
@@ -8405,8 +8410,9 @@ class Supervisor:
                        f"{detail}. worktree를 보존하고 확인 후 Retry 하세요.")
             self.store.set(gate, "0")
             return False
-        self.store.set(refine.ops(b).ok_key(b["shard"]), sha)
-        self.store.log(b["id"], f"최신 master {sha[:10]}에서 {self._stage(b)} 샤드 {b['shard']} verify 통과")
+        self.store.set(refine.ops(b).ok_key(b["shard"]), done)
+        self.store.log(b["id"], (f"머지 변경 {merge_sha[:10]}" if cli_verify else f"최신 master {sha[:10]}")
+                       + f"에서 {self._stage(b)} 샤드 {b['shard']} verify 통과")
         return True
 
     def _parallel_maintenance(self) -> None:

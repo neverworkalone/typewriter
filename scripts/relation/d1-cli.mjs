@@ -28,7 +28,10 @@ export async function run(argv, { root = REPOSITORY_DIRECTORY, fullOtherRows = f
       fail(`verify requires --shard SSS --base <sha> [--judgments <worktree>]\n${d1.usage}`);
     }
     assertShard(shard);
+    // The judgments worktree's HEAD is the PR head: after a squash merge its replay merges prove the keys a
+    // relation-key replay kept at the latest value (#10338).
     const payload = await d1.verifyDecisions({ shard, root, base, head: gitHead(root),
+      history: judgments ? gitHead(path.resolve(judgments)) : null,
       saved: refine.savedDecisions(shard, judgments ? path.resolve(judgments) : root) });
     console.log(JSON.stringify(payload));
     return payload;

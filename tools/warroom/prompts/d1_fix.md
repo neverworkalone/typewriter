@@ -19,7 +19,7 @@ D1 review is a light technical review centred on the deletion verification. A fi
   amend
   D <sense_id> <1-11>   whole Drop with this category
   N <sense_id>          not in a category (its Relations come back, unless another D end still drops one)
-  H <sense_id>          unclear: hold for D2
+  H <sense_id>          unclear: hold (its Relations come back unchanged, unless another D end still drops one)
   ```
 
   Only Senses this PR judged; a Policy Skip is not amended. D1 changes Relation rows only; never write Drop rows yourself.

@@ -145,7 +145,7 @@ MAINTENANCE_DIAGNOSIS_HOLD_PREFIX = "증거 검증 차단으로 HELD 인계"
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
 STAGE2_METHOD = "s2"       # Stage 2 Relation Admission: ONE Part at a time across all models, not a Stage 1 queue method
 STAGE3_METHOD = "s3"       # Stage 3 editorial pass: one owned shard and one PR at a time
-# #10171: the Drop line (D1, later D2) runs the same refinement engine beside the Refinement line, in parallel with it.
+# #10171: the Drop line (D1) runs the same refinement engine beside the Refinement line, in parallel with it.
 # Not "d": that is the retired Stage 1 method D, whose rows stay in the DB.
 DROP_METHOD = "drop"
 REFINE_METHODS = (STAGE3_METHOD, DROP_METHOD)   # every line the shared refinement engine runs

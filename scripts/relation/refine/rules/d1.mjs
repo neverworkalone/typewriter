@@ -15,6 +15,7 @@ import { createHash } from 'node:crypto';
 
 import { discardStaged, loadCanonical, scanTouching, stageText } from '../../polish-cli.mjs';
 import { exclusionKey } from '../../persisted-jsonl.mjs';
+import { mergeJsonl } from '../../relation-delta.mjs';
 import { fail, gitHead, RefineInputError, viewDigest } from '../core.mjs';
 import { escapeField } from './s3.mjs';
 import {
@@ -43,12 +44,12 @@ export const usage = `Usage:
   node scripts/relation/d1-cli.mjs report --shard SSS [--out <file>]
   node scripts/relation/d1-cli.mjs decisions --shard SSS --base <sha> [--senses <id,...>] [--out <file>]
   node scripts/relation/d1-cli.mjs amend --shard SSS --base <sha> --in <delta.txt>
-  node scripts/relation/d1-cli.mjs verify --shard SSS --base <sha> [--judgments <worktree>]   # every own-file D Relation dropped, nothing else
+  node scripts/relation/d1-cli.mjs verify --shard SSS --base <sha> [--judgments <worktree>]   # every own-file D Relation dropped (or kept at the latest value by a replay conflict), nothing else
 
 A chunk answer is "chunk NNN" and then exactly one verdict for every shown Sense:
   D <n> <1-11>    whole Drop, with its category number
   N <n> [<n>...]  not in a category
-  H <n> [<n>...]  unclear: held for D2 (#10244)
+  H <n> [<n>...]  unclear: held; its Relations stay unchanged
 An amend delta is "amend" and then D <sense_id> <1-11> | N <sense_id> | H <sense_id> lines.`;
 
 const VERDICTS = new Set(['D', 'N', 'H', 'P']);
@@ -257,6 +258,34 @@ async function dropOps(root, shard, senses, reader = null) {
   return [...ops.values()];
 }
 
+/**
+ * Own-file keys a relation-key replay of this PR kept at the latest value (#10338). Every two-parent merge commit in
+ * `base..<head>` (for each of `heads`) whose own Relation file is exactly the official 3-way merge of its parents
+ * (`mergeJsonl`: merge base, first parent = the PR, second = the latest data) is a replay; its reported conflicts are
+ * the exact keys the latest data changed after the PR's base. Nothing else is exempt, and no record is written.
+ */
+export function replayKept(root, shard, base, heads) {
+  const run = (args) => {
+    try { return execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 1 << 30, stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch { return null; }
+  };
+  const own = ownRelationFile(shard);
+  const blob = (revision) => run(['show', `${revision}:${own}`]);
+  const kept = new Set();
+  const merges = new Set(heads.filter(Boolean).flatMap((head) => (run(['rev-list', '--merges', '--parents', `${base}..${head}`]) ?? '')
+    .split('\n').filter(Boolean)));
+  for (const line of merges) {
+    const [merge, ours, theirs, ...more] = line.split(' ');
+    if (more.length || !theirs) continue;
+    const common = run(['merge-base', ours, theirs])?.trim();
+    if (!common) continue;
+    const merged = mergeJsonl({ base: blob(common), ours: blob(ours), theirs: blob(theirs), family: 'Relation', label: own });
+    if (merged.text !== blob(merge)) continue;
+    for (const key of merged.conflicts) kept.add(key.slice(2));
+  }
+  return kept;
+}
+
 function diffSize(root, args) {
   const numstat = execFileSync('git', ['diff', '--numstat', '--no-renames', ...args, '--', 'data/relations'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
     .split('\n').filter(Boolean).map((line) => line.split('\t'));
@@ -347,7 +376,8 @@ export async function amendDecisions({ shard, root, base, head, text, saved }) {
   const next = decisions.map((decision) => (changes.has(decision.sense) ? { ...decision, ...changes.get(decision.sense) } : decision))
     .sort((a, b) => a.chunk.localeCompare(b.chunk) || JSON.stringify(decisionIdentity(a)).localeCompare(JSON.stringify(decisionIdentity(b))));
   const state = prState(root, base, head, label);
-  const ops = await dropOps(root, shard, dSenses(next), state.baseRead);
+  const kept = replayKept(root, shard, base, [head]);   // a replay kept these at the latest value; never re-drop them
+  const ops = (await dropOps(root, shard, dSenses(next), state.baseRead)).filter((op) => !kept.has(keyOf(op)));
   const planned = await planOps({ root, shard, ops, revision: base, differing: state.differing, canonical, reason: `D1 shard ${shard}`,
     only: new Set([ownRelationFile(shard)]) });
   const { files, expected } = await amendTargets(root, state, planned);
@@ -368,11 +398,13 @@ export async function amendDecisions({ shard, root, base, head, text, saved }) {
  * `verify`: the PR does exactly its judgments, checked on the relation-key diff base..head and nothing more.
  * 1. Every Relation of this shard's own file touching a kept `D` Sense at the base is dropped (#10330). A row another
  *    shard's file stores toward a `D` Sense is not this PR's and is never a finding.
+ *    The one exception is a key a relation-key replay of this PR kept at the latest value (`replayKept`, #10338),
+ *    proven by a merge commit in `base..head` or `base..history` (the PR head, when `head` is its squash merge).
  * 2. Nothing else changed: only this shard's Relation file, only drops, and every dropped key touches a `D` Sense.
  * The dictionary-wide structural integrity of Relation files is the build's and Deep CI's job, not re-run per shard.
  * A failure throws `AdmissionVerifyError` (family `d1-scope`) with every finding.
  */
-export async function verifyDecisions({ shard, root, base, head, saved }) {
+export async function verifyDecisions({ shard, root, base, head, saved, history = null }) {
   const skipped = skipSenses(await loadSelection(root, shard, null, label));
   const { decisions } = await boundDecisions(await saved.loadCheckpoint(), saved.readView, skipped);
   const errors = [];
@@ -392,17 +424,21 @@ export async function verifyDecisions({ shard, root, base, head, saved }) {
     else dropped.add(key);
   }
   const expected = await ownTouching(root, shard, senses, state.baseRead);
+  const latest = replayKept(root, shard, base, [head, history]);
   const kept = new Set();
+  let keptLatest = 0;
   for (const { row } of expected) {
     const key = keyOf(row);
-    if (touches(row, senses) && !dropped.has(key) && !kept.has(key)) {
-      kept.add(key);
+    if (!touches(row, senses) || dropped.has(key) || kept.has(key)) continue;
+    kept.add(key);
+    if (latest.has(key)) keptLatest += 1;
+    else {
       errors.push(`${key.replaceAll('\u0000', '|')}: touches a D Sense but is not dropped`);
     }
   }
   if (errors.length) throw new AdmissionVerifyError('d1-scope', errors, `${label} verify failed: ${errors.length} finding(s)`);
   return { version: 1, ok: true, shard, scope: 'd1-decisions', d_senses: senses.size, removed_relations: dropped.size,
-    changed_files: state.changed.length };
+    kept_latest: keptLatest, changed_files: state.changed.length };
 }
 
 // A keyed rule has no Stage 2 Part-scoped mode.

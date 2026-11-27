@@ -1004,7 +1004,7 @@ class Git:
 
     def replay_relation_merge(self, path: Path, branch: str, base: str, sha: str, owned: set[str],
                               checkpoint: str | None = None, timeout: int = 900,
-                              relations_only: bool = False) -> tuple[str, dict]:
+                              relations_only: bool = False, drops_only: bool = False) -> tuple[str, dict]:
         """Merge `sha` (on origin/<base>) into an owned PR worktree, rebuilding shared shard data by relation key (#8784).
 
         Every shard Relation/Drop file both sides changed since their merge base is replayed by the official CLI: a Stage 2
@@ -1012,7 +1012,8 @@ class Git:
         Only `owned` data files may need it, and no other path may conflict; otherwise the merge is aborted, the worktree
         is left exactly as it was and IntegrationBlocked is raised. Returns the merge commit and the CLI report.
         `relations_only` (#9929) replays a Relation-only Stage PR with `replay-cli --relations-only`: no Candidate or Drop
-        file is read, and a Drop file the PR changed is a scope error of the CLI.
+        file is read, and a Drop file the PR changed is a scope error of the CLI. `drops_only` (D1, #10338) adds
+        `--drops-only`: the PR may only remove rows, and no other shard's Relation file is read.
         """
         path = self._owned(path)
         if self.registered(path) != branch:
@@ -1056,7 +1057,7 @@ class Git:
         cli = (["node", "scripts/relation/admission-cli.mjs", "replay", "--checkpoint", checkpoint, "--theirs", sha]
                if checkpoint else
                ["node", "scripts/relation/replay-cli.mjs", "--base", common, "--ours", before, "--theirs", sha,
-                *(["--relations-only"] if relations_only else [])])
+                *(["--relations-only"] if relations_only else []), *(["--drops-only"] if drops_only else [])])
         res = self.r.run(cli, cwd=path, env=self.env, timeout=timeout)
         try:
             report = json.loads((res.out or "").strip().splitlines()[-1]) if res.ok else None

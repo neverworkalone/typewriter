@@ -165,6 +165,59 @@ test('#10330 D1 judges Skip Senses by gloss only and drops only its own file\'s 
   assert.ok(s4.chunk_count >= 1);
 });
 
+test('#10338 a D1 replay keeps a key the latest data changed; verify and amend accept exactly that key, before and after a squash merge', async (t) => {
+  const root = await repository(t);
+  const { replay } = await import('./replay-cli.mjs');
+  await produce(root, (view) => [`D ${numberOf(view, 'w5-s1')} 4`, `D ${numberOf(view, 'w4-s1')} 1`, `N ${numberOf(view, 'w1-s1')} ${numberOf(view, 'w1-s2')}`]);
+  const ours = git(root, 'rev-parse', 'HEAD');
+  // Latest master: a later edit retypes 흐르다↔몰리브데넘 (5 → 6), which this PR drops. 002's file (not D1's to read)
+  // now also stores the reverse of 001's 고요↔별빛, a cross-file problem that is not this PR's.
+  git(root, 'switch', '-q', 'master');
+  const latestC = { ...C, relevance: 6, reverse_relevance: 6 };
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([A, B, latestC, T, E]));
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([F, G, X, idRow('w2000-s1', 'w1-s1', 'mood', 3)]));
+  git(root, 'commit', '-qam', 'S4 retype');
+  const theirs = git(root, 'rev-parse', 'HEAD');
+  git(root, 'switch', '-q', 'd1-001');
+  const common = git(root, 'merge-base', ours, theirs);
+  spawnSync('git', ['merge', '--no-commit', '--no-ff', theirs], { cwd: root });
+  // The global Relation-only check scans 002 and fails; the D1 drop-only replay reads only its own file.
+  await assert.rejects(replay({ base: common, ours, theirs, relationsOnly: true, dryRun: true }, root), /w2000-s1|w1-s1/u);
+  const replayed = await quiet(() => replay({ base: common, ours, theirs, relationsOnly: true, dropsOnly: true }, root));
+  assert.deepEqual(replayed.files, [{ path: 'data/relations/relation-001.jsonl', applied: 1, conflicts: ['R|i|w4-s1|w5-s1'] }]);
+  assert.equal(await shard(root, '001'), serializeRelationJsonl([A, B, latestC, E]));
+  git(root, 'add', 'data/relations/relation-001.jsonl');
+  git(root, 'commit', '-q', '--no-edit');
+
+  // Right after the replay the kept key passes; every other D Relation is still required to be dropped.
+  const afterReplay = await cli(root, 'verify', '--shard', '001', '--base', theirs);
+  assert.deepEqual([afterReplay.ok, afterReplay.removed_relations, afterReplay.kept_latest], [true, 1, 1]);
+  // A review amend rebuilds from the PR base and never re-drops the latest value.
+  await cli(root, 'amend', '--shard', '001', '--base', theirs, '--in', await delta(root, ['D w1-s1 2']));
+  assert.equal(await shard(root, '001'), serializeRelationJsonl([latestC, E]));
+  git(root, 'commit', '-qam', 'amend');
+  const prHead = git(root, 'rev-parse', 'HEAD');
+  assert.equal((await cli(root, 'verify', '--shard', '001', '--base', theirs)).kept_latest, 1);
+
+  // Squash merge: the merged change has no merge commit; the kept judgments' worktree (the PR head) proves the key.
+  const checkout = await mkdtemp(path.join(tmpdir(), 'typewriter-d1-merged-'));
+  t.after(() => rm(checkout, { recursive: true, force: true }));
+  git(root, 'worktree', 'add', '-q', '--detach', checkout, theirs);
+  git(checkout, 'merge', '-q', '--squash', prHead);
+  git(checkout, 'commit', '-qm', '[D1/Test] 001');
+  const merged = git(checkout, 'rev-parse', 'HEAD');
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--base', theirs, '--judgments', root], { root: checkout }));
+  assert.deepEqual([verified.ok, verified.removed_relations, verified.kept_latest], [true, 3, 1]);
+  // Without that proof (the judgments copied into the merged checkout) the same kept row is the ordinary missing drop.
+  const scratch = path.join(checkout, '.warroom-scratch');
+  await cp(path.join(root, '.warroom-scratch'), scratch, { recursive: true });
+  await assert.rejects(quiet(() => run(['verify', '--shard', '001', '--base', theirs], { root: checkout })), (error) => {
+    assert.deepEqual(error.errors, ['i|w4-s1|w5-s1: touches a D Sense but is not dropped']);
+    return true;
+  });
+  assert.equal(git(checkout, 'rev-parse', 'HEAD'), merged);
+});
+
 test('#10171 a D1 answer must give every shown Sense exactly one valid verdict; nothing is filled in', async (t) => {
   const root = await repository(t);
   await cli(root, 'prepare', '--shard', '001');

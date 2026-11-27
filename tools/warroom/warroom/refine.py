@@ -95,6 +95,9 @@ class RefineSpec:
     # #10171: the Stage CLI keeps its judgments (checkpoint + views) in the batch worktree after apply, and its `verify`
     # checks the PR against them: the exact-commit verify checkout reads them with `--judgments <batch worktree>`.
     verify_judgments: bool = False
+    # #10338: a Stage whose PR only removes rows of its own Relation file (D1) replays with `--drops-only`: the same
+    # relation-key 3-way merge, limited to that change, with no other shard's Relation file read.
+    replay_drops_only: bool = False
 
     def title_for(self, model: str, shard: str) -> str:
         return f"[{self.short}/{model}] {shard}"
