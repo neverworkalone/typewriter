@@ -3,8 +3,8 @@
 D1 runs on the Drop line (`DROP_METHOD`), the refinement engine's second line beside Refinement: the same parallel
 chunk engine, finalize, Review FIXING Coordinator and replay, one shard and one PR at a time on its own line. Its CLI
 (`scripts/relation/d1-cli.mjs`) shows each confirmed `s` Sense's headword, POS and gloss only; the model gives every
-shown Sense one verdict (`D <n> <1-11>`, `N <n...>`, `H <n...>`) and the CLI drops every Relation touching a `D` Sense
-through the Relation-only Polish write path. The CLI's save is strict (a missing or conflicting verdict refuses the
+shown Sense one verdict (`D <n> <1-11>`, `N <n...>`, `H <n...>`) and the CLI drops every Relation of the shard's own
+Relation file touching a `D` Sense (#10330) through the Relation-only Polish write path. The CLI's save is strict (a missing or conflicting verdict refuses the
 answer); this module only checks the compact grammar against the prepared view.
 """
 from __future__ import annotations
@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import sys
 
-from . import fixcoord, prbody, refine, stage3
+from . import fixcoord, prbody, refine, stage3, stage4
 from .refine import NoJudgment, RefineError
 from .store import DROP_METHOD
 
@@ -111,8 +111,15 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
 
 
 def _all_stage3(kv, shard: str) -> bool:
-    """D1 starts after every shard's Stage 3 (#10171 §1): the gate is the whole factory's, not one shard's."""
+    """Every shard's Stage 3 is complete (#10171 §1): the whole factory's gate, kept by #10330."""
     return all(kv.get(stage3.ok_key(f"{number:03d}")) for number in range(1, refine.SHARDS + 1))
+
+
+def _gate(kv, shard: str) -> bool:
+    """D1 SSS starts after every shard's Stage 3 and after Stage 4 SSS completed (#10330): its merged-and-verified PR or
+    its official no-change completion, both recorded as `s4_ok_SSS`. An open, reviewing or failed S4 is not complete;
+    other shards' S4 progress does not matter."""
+    return _all_stage3(kv, shard) and bool(kv.get(stage4.SPEC.ok_key(shard)))
 
 
 SPEC = refine.register(refine.RefineSpec(
@@ -120,10 +127,10 @@ SPEC = refine.register(refine.RefineSpec(
     scratch="relation-d1", title=prbody.D1_TITLE, issue_link=prbody.D1_ISSUE_LINK,
     detail_title=re.compile(r"\[D1/([A-Za-z0-9-]+)\] (\d{3})"), search_phrases=('"D1"',), legacy_title=None,
     chunk_prompt="d1_chunk", fix_prompt="d1_fix", policy_card="d1_policy_card",
-    gate=_all_stage3, gate_label="전체 Stage 3",
+    gate=_gate, gate_label="전체 Stage 3·동일 샤드 Stage 4",
     rule=sys.modules[__name__],
     fix=fixcoord.FixSpec(prefix="d1", label="D1", response=".warroom-scratch/d1-fix-response.json",
                          amend_input=".warroom-scratch/d1-fix-amend.txt",
                          commit_subject="Apply D1 review amendments", amend_header="amend"),
-    cross_shard=True, no_change_complete=True, refusal_keep_all=False, refusal_records=True, relations_only=True,
+    cross_shard=False, no_change_complete=True, refusal_keep_all=False, refusal_records=True, relations_only=True,
     method=DROP_METHOD, verify_judgments=True, body=prbody.d1_body))

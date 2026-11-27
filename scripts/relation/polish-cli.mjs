@@ -375,8 +375,10 @@ async function writeAll(root, plan, changed, read) {
  * each changed file's planned text to a dry run, so the caller can write it itself.
  */
 export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false, reader = null, canonical = null,
-  returnTexts = false, relationsOnly = false, stage = false } = {}) {
+  returnTexts = false, relationsOnly = false, stage = false, only = null } = {}) {
   if (stage && !(relationsOnly && dryRun)) throw new Error('Polish apply stages files only in a Relation-only dry run');
+  // `only` (#10330): a Relation-only caller that owns one Relation file reads and edits that file alone.
+  if (only && !relationsOnly) throw new Error('Polish apply limits its files only in Relation-only mode');
   const read = reader ?? ((relative) => readText(root, relative));
   const { index, shardOfSense, rowsByShard } = canonical ?? await loadCanonical(root);
   const edits = parseEdits(input, index);
@@ -395,7 +397,7 @@ export async function apply(input, { root = REPOSITORY_DIRECTORY, dryRun = false
   // finds its row by key, and a changed file can gain a duplicate only of an added key (no other row changes key). All
   // rows touching the edited Senses would be millions for a whole-shard edit list (#10171).
   const scanSenses = relationsOnly ? editSenses : scopeSenses;
-  const beforeAll = await scanTouching(root, scanSenses, new Map(), { reader: read, relationsOnly,
+  const beforeAll = await scanTouching(root, scanSenses, new Map(), { reader: read, relationsOnly, only,
     keys: relationsOnly ? new Set(edits.map((edit) => edit.key)) : null });
   const touchesEdit = (entry) => editSenses.has(entry.row.source_sense_id) || editSenses.has(entry.row.target_sense_id);
   const before = { relations: beforeAll.relations.filter(touchesEdit), drops: beforeAll.drops.filter(touchesEdit) };

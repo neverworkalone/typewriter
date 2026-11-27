@@ -62,10 +62,10 @@ Stage 3는 `b.method='s3'`로 바꿔 shard 단위로 조회합니다. 과거 Sta
 
 D1(확정 Skip Sense 전체 Drop)은 정제 엔진의 **두 번째 라인**(`DROP_METHOD = "drop"`, Board의 Refinement 아래 `Drop` 칸)에서 돕니다(`stage_d1.py`, CLI `scripts/relation/d1-cli.mjs`, 프롬프트 `d1_chunk`·`d1_fix`·`d1_policy_card`, 범주 카드는 공통 `whole_drop_card`). 병렬 청크·최종화·Review FIXING·replay는 Refinement 라인과 같은 엔진이며, 생산 지시는 #10171, 리뷰 경계는 #10274(`docs/review/prompts/d1.md`)입니다.
 
-- **착수:** 001–428 전체의 Stage 3 완료 기록(`s3_ok_SSS`)이 있어야 시작합니다. 같은 샤드의 S4 선행은 요구하지 않습니다. 배정은 `assignments.d1`이며 모델·effort는 오너가 지정합니다(예: `"assignments": { "d1": { "codex": "sol" } }`).
+- **착수:** 001–428 전체의 Stage 3 완료 기록(`s3_ok_SSS`)과 **같은 샤드의 Stage 4 완료 기록**(`s4_ok_SSS`: 머지 후 verify 통과 또는 공식 no-change)이 있어야 그 샤드를 시작합니다(#10330). S4 실행 중·리뷰/CI 대기·실패는 완료가 아니며, 다른 샤드의 S4 진행 여부와 S4 전체 완료는 상관없습니다. 배정은 `assignments.d1`이며 모델·effort는 오너가 지정합니다(예: `"assignments": { "d1": { "codex": "sol" } }`).
 - **병행과 점유:** Drop 라인은 자기 라인 안에서만 한 번에 한 샤드를 점유합니다. Refinement 라인(S4)의 배치·PR은 Drop 라인을 막지 않고, 반대도 같습니다. 정상적인 다른 라인의 Relation 전용 PR(제목·이슈 링크·Relation 파일만)은 점유로 보지 않으며, 실제 키 충돌은 `replay-cli --relations-only`가 처리합니다. 같은 라인의 열린 생산 PR은 로컬 배치가 없어도 그 샤드를 점유합니다. 파일 목록을 알 수 없는 PR은 점유 없음으로 처리하지 않습니다.
 - **열린 PR 조회:** `open_prs()`는 PR 메타데이터만 가져오고, 파일 목록은 점유 판단에 필요할 때 PR마다 한 번 페이지 단위로 조회합니다. 조회 실패는 그 PR 번호와 함께 오류로 남습니다.
-- **판정 보존과 verify:** D1 CLI는 apply 뒤에도 checkpoint와 view를 배치 worktree에 남깁니다. 최종화·리뷰 수정·replay 뒤의 exact-commit verify는 `d1-cli verify --shard SSS --base <merge-base> --judgments <배치 worktree>`로, D Sense의 관계가 빠짐없이 지워졌고 그 밖의 변경이 없는지만 봅니다.
+- **판정 보존과 verify:** D1 CLI는 apply 뒤에도 checkpoint와 view를 배치 worktree에 남깁니다. 최종화·리뷰 수정·replay 뒤의 exact-commit verify는 `d1-cli verify --shard SSS --base <merge-base> --judgments <배치 worktree>`로, 자기 파일 `relation-SSS.jsonl`에서 D Sense의 관계가 빠짐없이 지워졌고 그 밖의 변경(다른 파일 포함)이 없는지만 봅니다. 머지 후에는 머지된 변경(`merge_sha^1..merge_sha`)을 같은 CLI verify로 확인한 뒤에만 `d1_ok_SSS`를 기록합니다. D1은 자기 Relation 파일 하나만 바꾸며(`cross_shard=False`), 다른 샤드가 소유한 D Sense 대상 관계는 남깁니다.
 - **무변경 샤드:** 지울 관계가 없으면 `d1_nochange_SSS`·`d1_ok_SSS`를 기록하고 commit·PR 없이 정리합니다.
 - **PR:** 제목 `[D1/<Model>] SSS`, 본문 `Refs #10171`. 본문은 apply 결과의 판정 집계(검토 Sense, D/N/H/Policy Skip, 범주별 D), 삭제한 고유 관계 수, 변경 파일·샤드 수, 비용을 씁니다.
 - **리뷰 수정:** 리뷰가 지목한 Sense의 보존 판정(과 그 base 관계)만 PR context로 줍니다. 수정은 `d1-cli amend`의 `D <sense_id> <1-11>` / `N` / `H`입니다.

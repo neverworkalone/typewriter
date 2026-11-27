@@ -121,6 +121,12 @@ class RefineSpec:
         return own | {path for path in paths if isinstance(path, str) and data.fullmatch(path)} \
             if self.cross_shard else own
 
+    @property
+    def cli_verify(self) -> bool:
+        """#10330: the exact-commit verify is the Stage CLI's own `verify` (S4, D1) rather than the shard admission verify
+        (Stage 3). A cross-shard Stage and a Stage that keeps its judgments both have one."""
+        return self.cross_shard or self.verify_judgments
+
     def nochange_key(self, shard: str) -> str:
         return f"{self.id}_nochange_{shard}"
 
