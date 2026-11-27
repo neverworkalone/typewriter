@@ -42,6 +42,8 @@ from .recovery import FORCE_STOP_PREFIX, Recovery
 from .store import DROP_METHOD, MAINTENANCE_METHOD, STAGE2_METHOD, REFINE_METHODS, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
 
 
+RECOVERY_KEY = ("recovery", "*")   # the Recovery lane's Coordinator job key (never a Line: no Line row has method "*")
+
 # A failed *query* asking again can fix. It is never a verdict: callers re-raise it past every broad `except`.
 TRANSIENT = (GhTransient, GitTransient)
 
@@ -8471,12 +8473,14 @@ class Supervisor:
                 self._slow_logged.add(key)
                 label = "maintainer" if key is None else f"{key[0]}/{key[1]}"
                 self.store.log(None, f"Line job이 {2 * self._interval:g}초(2×interval)를 넘어 실행 중입니다: {label}", "warn", line=label)
-        self._recovery_step()   # after collection, before submission: it reads what the Workers just advanced
         if self._stopping():
             return cursor
         keys = [(ln["model"], ln["method"]) for ln in self.store.lines()
                 if ln["method"] != MAINTENANCE_METHOD and not control.retired(ln, self.cfg)]
         keys.append(None)
+        # The Recovery lane runs in a Worker slot like a Line: its GitHub reads (PR scan, merge checks) never hold the
+        # one Coordinator, and a slow turn only skips its own next submission (`key in pending`).
+        keys.append(RECOVERY_KEY)
         offset = cursor % len(keys)
         for key in keys[offset:] + keys[:offset]:
             if self._frozen_skips(key):
@@ -8486,6 +8490,7 @@ class Supervisor:
             if key in pending:
                 continue
             pending[key] = (pool.submit(self._parallel_maintenance) if key is None
+                            else pool.submit(self._recovery_step) if key == RECOVERY_KEY
                             else pool.submit(self._tick_line, *key))
             self._submitted_at[key] = time.monotonic()
         return (offset + 1) % len(keys)

@@ -118,13 +118,14 @@ Recovery는 예전 `tools/warroom/recovery-desk`의 복구 점검반을 Supervis
   Codex 모두 됩니다. Claude는 `--permission-mode auto`로, Codex는 운영 Git 관리 디렉터리(`--add-dir`)와 프로필의
   `permission_profile`로 실행합니다. Codex 프로필에 `permission_profile`이 없으면 실행하지 않습니다(후속 지시
   `codex exec resume`이 Git 관리 디렉터리를 열 수 없음).
-- `recovery_max_parallel`(1~2): 동시에 도는 복구 실행 수. 일일 상한이나 후속 횟수 제한은 없습니다.
+- `recovery_max_parallel`(1~2): 동시에 도는 복구 실행 수(watchdog도 범위 밖 값은 1로 읽음). 일일 상한이나 후속 횟수 제한은 없습니다.
 - `recovery_stall_seconds`(기본 600, 60 이상): 정체 판정의 관찰 간격. 정체만 이 간격으로 **연속 3회** 확인합니다.
 
 ### 감지
 
-Supervisor의 `tick`과 병렬 Coordinator가 매 턴 `Recovery.step()`을 부릅니다. 자기 `try` 안에서 돌기 때문에 Recovery의
-오류가 Line을 멈추지 않습니다. STOPPING 중에는 새 실행을 시작하지 않고 모든 AI 시작은 `launch_gate`를 거칩니다.
+직렬 `tick`은 매 턴 `Recovery.step()`을 부르고, 병렬 Coordinator는 이를 Line과 같은 **Worker 작업**으로 제출합니다. 그래서
+GitHub 조회(PR 감시·머지 확인)가 느려도 Coordinator와 Line 배정은 막히지 않고, 느린 턴은 자기 다음 제출만 건너뜁니다. 자기
+`try` 안에서 돌기 때문에 Recovery의 오류가 Line을 멈추지 않습니다. STOPPING 중에는 새 실행을 시작하지 않고 모든 AI 시작은 `launch_gate`를 거칩니다.
 
 - **정상(추적만, AI 없음)**: 진행 중인 작업(task/run·공식 저장·로그가 움직임), 리뷰·CI 대기, QUEUED·idle, 오너
   Stop·force-stop PAUSED, Clear 요청, `run=0`, 실제 실행 한도(사용량 한도 PAUSED).

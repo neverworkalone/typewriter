@@ -192,6 +192,40 @@ class Detection(Base):
         self.assertEqual(w.store.peek_line("codex", "s2")["drain"], 1)   # untouched
         self.assertEqual(w.store.recovery_case_for_batch(b["id"])["state"], "OPEN")
 
+    def test_slow_github_reads_never_hold_the_coordinator(self):
+        import threading
+        import time as _time
+        from concurrent.futures import ThreadPoolExecutor
+        from warroom.supervisor import RECOVERY_KEY
+        w = self.w
+        w.cfg["poll_seconds"] = 0
+        b = make_batch(w, "s3", "codex", state="WAITING_REVIEW", pr_number=7, head_sha=HEAD1)
+        w.pr_info(7, HEAD1, head_ref=b["branch"])
+        w.store.line("codex", "s3")
+        release, entered = threading.Event(), threading.Event()
+
+        def slow_pull(n):
+            entered.set()
+            release.wait(10)
+            return dict(w.gh.prs[n])
+        pending = {}
+        with mock.patch.object(w.gh, "pull", side_effect=slow_pull), \
+                mock.patch.object(w.sup, "_tick_line"), mock.patch.object(w.sup, "_parallel_maintenance"):
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                try:
+                    cursor, started = 0, _time.monotonic()
+                    for _ in range(3):   # one full rotation: every key gets its turn
+                        cursor = w.sup._parallel_cycle(pool, pending, cursor, 8)
+                    self.assertTrue(entered.wait(5))            # the Recovery job is inside the slow GitHub read
+                    self.assertLess(_time.monotonic() - started, 2)   # ... and the Coordinator was never held by it
+                    self.assertIn(RECOVERY_KEY, pending)
+                    self.assertIn(("codex", "s3"), pending)      # Line jobs were still submitted
+                    recovery_job = pending[RECOVERY_KEY]
+                    w.sup._parallel_cycle(pool, pending, cursor, 8)
+                    self.assertIs(pending[RECOVERY_KEY], recovery_job)   # a slow turn only skips its own resubmission
+                finally:
+                    release.set()
+
     def test_a_recovery_exception_never_stops_a_line(self):
         w = self.w
         with mock.patch.object(w.sup.recovery, "step", side_effect=RuntimeError("bad")), \

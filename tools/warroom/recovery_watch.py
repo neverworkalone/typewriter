@@ -110,6 +110,13 @@ def child_env(base: dict, gh_config: Path, git_name: str = "", git_email: str = 
     return env
 
 
+def max_parallel(cfg: dict) -> int:
+    """`recovery_max_parallel` as config_problem allows it (an int 1-2); anything else is read as the safe 1, never
+    passed through: the watchdog runs exactly when the Supervisor's own config check could not."""
+    n = cfg.get("recovery_max_parallel", MAX_PARALLEL_DEFAULT)
+    return n if type(n) is int and 1 <= n <= 2 else MAX_PARALLEL_DEFAULT
+
+
 def recovery_pins(cfg: dict) -> dict | None:
     """The configured `recovery` producer/profile resolved like config.role_entry(RECOVERY) (test-checked); None when it
     is off or cannot be resolved to exactly one producer."""
@@ -433,7 +440,7 @@ class Watch:
                 cur = conn.execute(CLAIM_RECOVERY_RUN_SQL, (
                     cid, "start", pins["producer"], pins["model"], pins["effort"],
                     pins["permission_profile"] or ("auto" if pins["adapter"] == "claude" else ""), None, str(log), str(ex),
-                    time.time(), cid, cid, int(cfg.get("recovery_max_parallel") or MAX_PARALLEL_DEFAULT)))
+                    time.time(), cid, cid, max_parallel(cfg)))
                 if cur.rowcount != 1:
                     return {"case_id": cid, "run_id": None}
                 run_id = cur.lastrowid

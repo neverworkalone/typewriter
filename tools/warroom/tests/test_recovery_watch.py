@@ -139,6 +139,21 @@ class Lifecycle(Env):
         self.assertIsNotNone(self.store.claim_recovery_run(cid, "followup", **claim))   # the Supervisor's own run
         self.assertEqual(self.watch.open_supervisor_case({"kwar_exit": 1})["run_id"], None)
 
+    def test_an_out_of_range_parallel_limit_on_disk_is_never_passed_through(self):
+        other = self.store.open_recovery_case("batch:9", "task")
+        claim = dict(producer="sonnet", model="m", effort="high", permission="auto", session_id=None, log_file="l",
+                     exit_file="e", max_parallel=1)
+        self.assertIsNotNone(self.store.claim_recovery_run(other, "start", **claim))   # one Recovery run already open
+        for raw in (3, "2", True, 0, None):
+            with self.subTest(raw=raw):
+                (self.local / "config.json").write_text(json.dumps({**self.cfg, "recovery_max_parallel": raw}))
+                self.assertEqual(recovery_watch.max_parallel(self.watch.config()), 1)
+                result = self.watch.open_supervisor_case({"kwar_exit": 1})
+                self.assertIsNone(result["run_id"])   # the safe limit 1 is already used: no second run
+        self.assertEqual(len(self.store.open_recovery_runs()), 1)
+        self.assertEqual(self.spawned, [])
+        self.assertEqual(recovery_watch.max_parallel({"recovery_max_parallel": 2}), 2)
+
     def test_paused_and_line_controls_untouched(self):
         self.watch.dir.mkdir(parents=True)
         self.watch.paused_flag.touch()
