@@ -35,8 +35,10 @@ Stage 3는 `b.method='s3'`로 바꿔 shard 단위로 조회합니다. 과거 Sta
 아래 명령은 저장소 루트에서 실행합니다.
 
 ```sh
-./war                 # TUI 열기/재연결; 대기 중인 재시작 요청 확인 및 미실행 Supervisor 기동
+./war                 # TUI 열기/재연결; 대기 중인 재시작 요청 확인 및 미실행 Supervisor 기동; ./recovery 감시 시작
 ./kwar                # Supervisor 인스턴스만 안전하게 교체한 뒤 TUI 열기/재연결
+./kwar --no-attach    # 교체만 하고 0/1/2 결과로 끝냄 (TUI를 붙이지 않음: 복구 실행·watchdog용)
+./recovery status     # Recovery watchdog과 Supervisor 상태 (아래 "Recovery")
 ```
 
 설정 변경은 `tools/warroom/.local/config.json` 수정 후 TUI의 `r`로 리로드합니다. 기존 AI run의 프로필·세션은 바뀌지 않습니다. 새 모델에 따른 TUI 열 구성은 TUI를 다시 열어야 반영될 수 있습니다.
@@ -95,6 +97,106 @@ Stage 4(선별적 Polish)는 Stage 3 다음에 등록된 정제 Stage입니다(`
   - Policy Skip이 있으면 저장 전에 기존 수동 Issue 경로에 `[Policy Skip][S4/<producer>] SSS Chunk NNN`(record ID·표제어·Sense·사유)을 남깁니다.
   - 결속할 수 없는 거부나 `HELD` record가 있는 청크는 `HELD`로 미완료를 유지합니다. 다른 청크는 계속 진행합니다. 나머지가 모두 저장되면 `[Policy Hold]` 보고를 남기고 최종화 없이 ERROR로 멈춥니다. Retry해도 거부 내용은 재제출되지 않으므로 오너 결정이 필요합니다.
 
+## Recovery (복구 lane)
+
+Recovery는 예전 `tools/warroom/recovery-desk`의 복구 점검반을 Supervisor 안으로 옮긴 것입니다. LLM 앱이 닫혀 있어도
+돕니다. **감지는 결정적**입니다. 주기적인 AI 점검은 없고, Supervisor가 확인된 장애로 case를 열 때만 Claude/Codex 복구
+실행이 시작됩니다. 복구 실행의 계약은 `prompts/recovery.md`입니다. 증거 확인 → 원인 → 공통 수정 → PR·리뷰·머지 →
+운영 반영(`git merge --ff-only origin/master` 후 `./kwar --no-attach`) → 원 task의 공식 저장·검증 → 정상 생산 지속까지가
+그 책임입니다.
+
+### 설정
+
+```json
+"maintainer": "terra",
+"recovery": "sonnet",
+"recovery_max_parallel": 1,
+"recovery_stall_seconds": 600
+```
+
+- `recovery`는 `maintainer`와 같은 방식으로 **모델 ID 또는 프로필 ID**를 받습니다. `null`(기본)이면 꺼집니다. Claude와
+  Codex 모두 됩니다. Claude는 `--permission-mode auto`로, Codex는 운영 Git 관리 디렉터리(`--add-dir`)와 프로필의
+  `permission_profile`로 실행합니다. Codex 프로필에 `permission_profile`이 없으면 실행하지 않습니다(후속 지시
+  `codex exec resume`이 Git 관리 디렉터리를 열 수 없음).
+- `recovery_max_parallel`(1~2): 동시에 도는 복구 실행 수. 일일 상한이나 후속 횟수 제한은 없습니다.
+- `recovery_stall_seconds`(기본 600, 60 이상): 정체 판정의 관찰 간격. 정체만 이 간격으로 **연속 3회** 확인합니다.
+
+### 감지
+
+Supervisor의 `tick`과 병렬 Coordinator가 매 턴 `Recovery.step()`을 부릅니다. 자기 `try` 안에서 돌기 때문에 Recovery의
+오류가 Line을 멈추지 않습니다. STOPPING 중에는 새 실행을 시작하지 않고 모든 AI 시작은 `launch_gate`를 거칩니다.
+
+- **정상(추적만, AI 없음)**: 진행 중인 작업(task/run·공식 저장·로그가 움직임), 리뷰·CI 대기, QUEUED·idle, 오너
+  Stop·force-stop PAUSED, Clear 요청, `run=0`, 실제 실행 한도(사용량 한도 PAUSED).
+- **즉시 case** (다음 처리 턴에 바로): 배치 `ERROR`·(오너 Stop이 아닌) `PAUSED`, 진행하지 않는 Maintainer에 묶인 공통
+  결함·HELD Maintainer, PR 충돌·필수 CI(`Validate and test Typewriter`) 실패·처리되지 않은 리뷰 `-1`(직전 확인 뒤 새 push나
+  수정 run이 없을 때), 머지된 수정의 반영 차단(restart request의 같은 `blocker`가 한 관찰 간격 동안 그대로), Maintainer 정지.
+  Maintainer의 ERROR 접수가 가능한 ERROR는 접수할 차례를 먼저 줍니다(120초).
+- **정체**: 진행 상태인데 task/run/공식 저장 진전이 3회 연속 없음. 배치 PID 하나·마지막 run 하나·로그 mtime 하나로
+  정상/정지를 판정하지 않습니다.
+- **머지 정체**: 현재 HEAD에 `+1`, 그 뒤 `-1` 없음, 필수 CI `SUCCESS`, `MERGEABLE`/`CLEAN`, `+1` 뒤 30분 이상이면
+  Supervisor가 AI 없이 `gh pr merge --squash --match-head-commit <HEAD>`로 직접 머지합니다. Maintainer PR과 오너·외부 PR은
+  대상이 아닙니다. 머지가 실패하면 case가 열립니다.
+- Drain은 "현재 배치는 끝내고 다음 배치를 시작하지 않음"이므로 Drain 중인 Line의 현재 배치도 복구합니다. 다음 배치 차단은
+  그대로입니다.
+
+### 소유와 상태
+
+- case 하나가 장애 묶음 하나입니다: `defect:<issue>`(공통 결함·Maintainer Issue와 그 종속 배치), `batch:<id>`, `supervisor`(하나뿐).
+  배치 하나는 열린 case 하나에만 속합니다(`recovery_case_batches`).
+- Maintainer가 정상 진행 중이면 case는 `MAINTAINER`(추적만)입니다. **Maintainer가 멈췄으면** 공식 `control.stop_maintainer`로
+  넘겨받고, Maintainer 실행이 끝난 것을 확인한 뒤에만 복구 실행을 시작합니다. 같은 장애를 둘이 동시에 고치지 않습니다.
+  복구가 끝나면 `control.retry_maintainer`로 되돌립니다.
+- 상태: `OPEN`(실행 필요) · `MAINTAINER` · `TRACKING`(리뷰·CI·머지·정상 생산 지속 확인 대기, AI 없음) · `WAITING_OWNER` ·
+  `RESOLVED`.
+- 실행 보고(`STATUS`/`BOUNDARY`/`PR`)는 **주장**입니다. `RESOLVED`는 유형별 공식 증거로만 기록합니다: 실패 task의 공식
+  저장과 그 뒤 생산 지속, PR 차단 해소와 머지·정리 진행, Maintainer 정상화와 종속 배치 복구, 새 Supervisor instance와
+  `loaded_code_sha`의 수정 포함. 복구 PR은 머지(또는 superseded로 닫힘)되고 `code_sha`에 들어와야 합니다.
+- `BOUNDARY` 주장(`limit`·`owner_control`·`denied`·`ownership`)은 공식 기록과 맞을 때만 `WAITING_OWNER`가 되고, 그
+  기록이 풀릴 때만 풀립니다. `denied`는 `./recovery resume <case-id>` 또는 확인된 설정 변경으로 풉니다.
+- 반복 방지: 같은 증거에 같은 지시는 다시 보내지 않습니다. 대신 근본 원인 조사·공통 수정 지시로 바꾸고, 그래도 진전이
+  없으면 포기하지 않고 증거가 바뀔 때까지 30분 → 최대 6시간 간격으로 다시 확인합니다.
+
+### 재시작 생존과 이어받기
+
+- 복구 실행은 adapter의 분리 프로세스 그룹에서 돕니다. 복구 실행이 직접 부르는 `./kwar`도, watchdog의 재시작도 그 실행을
+  죽이지 않습니다.
+- 실행 기록(핀·로그·exit 경로)은 spawn **전에** `recovery_runs`에 남고, pid는 wrapper의 `<exit>.pid`로도 복구됩니다. 새
+  Supervisor는 매 턴 열린 실행을 같은 기록으로 이어받습니다. case당 열린 실행은 하나뿐이며, 이 판정은 Supervisor·새
+  instance·watchdog이 같이 쓰는 DB 문장 하나(`store.CLAIM_RECOVERY_RUN_SQL`)입니다.
+- 복구 실행 기록은 `runs`가 아니라 `recovery_*` 테이블에 있어서 배치나 재시작 drain을 막지 않습니다. **열린 `recovery_*`
+  행과 그 로그·작업물은 이력 삭제 대상이 아닙니다**(#10357 정리에서 제외).
+
+### 외부 watchdog `./recovery`
+
+Supervisor 자신이 죽었거나 기동하지 못하는 경우만 맡습니다. `tools/warroom/recovery_watch.py`는 표준 라이브러리만 쓰고
+`warroom` 패키지를 import하지 않으므로 Supervisor 쪽 오류로 멈추지 않습니다.
+
+```sh
+./recovery            # tmux warroom-recovery에서 60초 감시 시작 (이미 돌면 그대로). ./war가 자동으로 시작
+./recovery status     # Supervisor·watchdog 상태 JSON
+./recovery once       # 한 번만 확인
+./recovery pause      # 재시작 일시정지 (unpause로 해제)
+./recovery resume <case-id>   # denied로 오너 대기 중인 case 재개
+./recovery stop       # 감시 중지
+```
+
+- 먼저 `recovery-desk/guard.sh`로 운영 메인 checkout인지 확인하고, 아니면 아무것도 쓰거나 시작하지 않고 exit 3입니다.
+- Supervisor가 정상(lock·runtime pid·heartbeat)이면 아무것도 하지 않습니다. 진행 중인 재시작(STOPPING 인계 창, `restarting`
+  요청이 계속 확인되는 중, launcher 잠금)은 기다리고, blocker에 멈춘 재시작·죽은 Supervisor는 `./kwar --no-attach`로 한 번
+  공식 재시작합니다.
+- 그래도 기동하지 않으면 시도 조건(HEAD·config·venv·blocker)과 근거를 `.git/typewriter-supervisor/recovery/watchdog.json`에
+  남기고, 한 번 크게 알린 뒤, 원인을 고칠 `supervisor` case와 복구 실행을 같은 DB 판정으로 엽니다(Supervisor가 다시 뜨면
+  그 실행을 이어받음). **같은 조건으로는 재시작을 반복하지 않고**, HEAD·설정·환경·blocker가 바뀌면 다시 시도합니다.
+- Line 제어(Stop·Drain·`run=0`)는 읽지도 쓰지도 않습니다.
+
+### TUI
+
+Recovery 카드는 Maintainer 카드 **바로 아래 칸**(같은 열, 다음 줄)에 있습니다. 상태는 IDLE / WORKING / TRACKING /
+WAITING_OWNER / ERROR이고, watchdog의 기동 실패도 ERROR로 보입니다. Enter는 읽기 전용 상세(case·소유·차단 단위·세션·
+마지막 보고·로그·대기 사유)를 엽니다. 제어 버튼은 없습니다.
+
+
 ## Supervisor 재시작과 코드 반영 (#5162)
 
 **Supervisor 재시작은 배치 Retry나 AI 재생산이 아니라 Supervisor 프로세스 교체입니다.** 새 인스턴스는 DB·PID/종료 기록·checkpoint·worktree·Git HEAD/remote·PR 상태를 다시 확인하고 기존 작업을 이어갑니다. 다른 Line의 AI·Worker·finalization 완료를 전역적으로 기다리지 않습니다. 사용자 Stop/Clear/Drain 및 defect hold는 그대로 유지하며, 소유권이나 쓰기 결과가 불확실한 자원은 해당 범위만 보류합니다.
@@ -130,4 +232,4 @@ TYPEWRITER_WARROOM_ROOT="$PWD" PYTHONPATH="$PWD/tools/warroom" \
 
 `supervisor_workers`의 기본값은 **16**입니다(`tools/warroom/config.example.json`). 운영 설정에 `1`을 우연히 남기지 마세요. `1`은 직렬 회귀·장애 폴백 전용이며 1→4→16 단계 확대 절차를 다시 진행하지 않습니다.
 
-프롬프트·설정·Supervisor는 **운영 메인 checkout**에서만 읽으며 임시 worktree를 실행 루트로 바꾸지 않습니다. **`.local/` 삭제, DB 수동 초기화, 수동 `tmux kill-session`·signal 종료, 코드 로드를 위한 배치 Retry는 금지**합니다. 일반 운영자는 `./war`와 `./kwar` 및 위 공식 코드 갱신 요청만 사용합니다.
+프롬프트·설정·Supervisor는 **운영 메인 checkout**에서만 읽으며 임시 worktree를 실행 루트로 바꾸지 않습니다. **`.local/` 삭제, DB 수동 초기화, 수동 `tmux kill-session`·signal 종료, 코드 로드를 위한 배치 Retry는 금지**합니다. 일반 운영자는 `./war`와 `./kwar`, `./recovery` 및 위 공식 코드 갱신 요청만 사용합니다.

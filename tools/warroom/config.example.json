@@ -58,6 +58,9 @@
     }
   },
   "maintainer": "luna-xhigh",
+  "recovery": "sonnet-medium",
+  "recovery_max_parallel": 1,
+  "recovery_stall_seconds": 600,
   "shared_defect_verify": [],
   "quota_patterns": [],
   "trusted_reviewers": [

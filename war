@@ -19,6 +19,9 @@ if [ ! -x "$VENV/bin/python" ]; then
   "$VENV/bin/pip" install -q -r "$WR/requirements.txt"
 fi
 
+NO_ATTACH=0
+for arg in "$@"; do [ "$arg" = "--no-attach" ] && NO_ATTACH=1; done
+
 # The launcher is independent of a long-running TUI/Supervisor Python process. It can consume a durable restart
 # request after a code deployment even when the existing TUI session was started from an older checkout revision.
 if [ "${1:-}" = "--replace" ]; then
@@ -29,6 +32,11 @@ if [ "${1:-}" = "--replace" ]; then
 else
   env TYPEWRITER_WARROOM_ROOT="$ROOT" PYTHONPATH="$WR" "$VENV/bin/python" -m warroom.restart_controller
 fi
+# The external Recovery watchdog (`./recovery`): started once per operating checkout, never twice (it checks itself).
+sh "$ROOT/recovery" start >/dev/null 2>&1 || true
+# `--no-attach` (`./kwar --no-attach`, used by recovery runs and the watchdog, which have no terminal): the replace
+# result above is the answer; the TUI is not attached.
+[ "$NO_ATTACH" = 1 ] && exit 0
 
 CMD="cd '$ROOT' && env TYPEWRITER_WARROOM_ROOT='$ROOT' PYTHONPATH='$WR' '$VENV/bin/python' -m warroom.tui"
 # `=warroom` is an exact match: a bare `-t warroom` also matches the `warroom-supervisor` session by prefix, which made a

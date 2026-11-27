@@ -615,3 +615,86 @@ def maintainer_status(store: Store, cfg: dict, model: str) -> dict:
     st["can_retry"] = st["can_retry"] or cleared or diagnosis_retry
     st["issue_number"] = info["issue"]
     return st
+
+
+# --- the Recovery lane's Board card and read-only Detail ----------------------------------------------------------------
+RECOVERY_STATES = ("IDLE", "WORKING", "TRACKING", "WAITING_OWNER", "ERROR")
+
+
+def _case_rank(store: Store, case, open_runs) -> tuple[int, int]:
+    run = next((r for r in open_runs if r["case_id"] == case["id"]), None)
+    if run is not None:
+        return 0, case["id"]
+    return {"OPEN": 1, "WAITING_OWNER": 2, "TRACKING": 3, "MAINTAINER": 3}.get(case["state"], 4), case["id"]
+
+
+def recovery_card(store: Store, cfg: dict, watchdog: dict | None = None, now: float | None = None) -> dict:
+    """Status-only content of the Recovery card (below the Maintainer card): the case that matters now, its model,
+    elapsed time and summary. A watchdog startup failure is an ERROR. It starts nothing."""
+    now = time.time() if now is None else now
+    out = {"state": "IDLE", "key": "", "model": "", "elapsed": None, "summary": "", "more": 0}
+    if watchdog and watchdog.get("failed_key"):
+        attempt = watchdog.get("evidence") or {}
+        out.update(state="ERROR", key="supervisor",
+                   summary=f"Supervisor 기동 실패 (./kwar exit {attempt.get('kwar_exit')}) — 같은 조건 재시도 중단")
+    try:
+        cases, runs = store.open_recovery_cases(), store.open_recovery_runs()
+    except Exception:   # an older DB without the Recovery tables: nothing to show
+        cases, runs = [], []
+    if not cases:
+        if out["state"] == "IDLE":
+            out["summary"] = "열린 복구 case 없음" if cfg.get("recovery") is not None else "Recovery 꺼짐 (config recovery 미설정)"
+        return out
+    ranked = sorted(cases, key=lambda c: _case_rank(store, c, runs))
+    case = ranked[0]
+    out["more"] = len(cases) - 1
+    run = next((r for r in runs if r["case_id"] == case["id"]), None)
+    try:
+        report = json.loads(case["last_report"] or "{}")
+    except ValueError:
+        report = {}
+    if out["state"] != "ERROR":
+        if run is not None:
+            out["state"] = "WORKING"
+        elif case["state"] == "WAITING_OWNER":
+            out["state"] = "WAITING_OWNER"
+        elif case["state"] in ("TRACKING", "MAINTAINER"):
+            out["state"] = "TRACKING"
+        elif case["next_action_at"] and case["next_action_at"] > now:
+            out["state"] = "ERROR"   # backing off after no progress: the owner should look
+        else:
+            out["state"] = "WORKING"
+        out["key"] = case["key"]
+        notes = (case["notes"] or "").strip().splitlines()
+        out["summary"] = (report.get("REMAINING") or report.get("DONE") or (notes[-1] if notes else "")
+                          or case["kind"])
+    model = (run["model"] if run is not None else None) or case["producer"] or ""
+    out["model"] = model
+    if run is not None:
+        out["elapsed"] = max(0.0, now - run["started_at"])
+    elif case["opened_at"]:
+        out["elapsed"] = max(0.0, now - case["opened_at"])
+    return out
+
+
+def recovery_detail(store: Store, limit: int = 20) -> list[dict]:
+    """Every open case first, then recent resolved ones: state, ownership, blocking unit, session, report, logs, wait."""
+    try:
+        cases = list(store.open_recovery_cases()) + [c for c in store.recovery_cases(limit) if c["state"] == "RESOLVED"]
+    except Exception:
+        return []
+    out = []
+    for c in cases[:limit]:
+        def load(text):
+            try:
+                return json.loads(text or "null")
+            except ValueError:
+                return text
+        out.append({"id": c["id"], "key": c["key"], "kind": c["kind"], "state": c["state"], "issue": c["issue"],
+                    "pr": c["pr_number"], "session": c["session_id"], "producer": c["producer"],
+                    "batches": store.recovery_case_batch_ids(c["id"]), "blocking_unit": load(c["blocking_unit"]),
+                    "wait_reason": load(c["wait_reason"]), "last_report": load(c["last_report"]),
+                    "notes": c["notes"], "opened_at": c["opened_at"], "resolved_at": c["resolved_at"],
+                    "runs": [{k: r[k] for k in ("id", "kind", "model", "pid", "log_file", "started_at", "ended_at",
+                                               "exit_status")} for r in store.recovery_runs(c["id"])[-5:]]})
+    return out

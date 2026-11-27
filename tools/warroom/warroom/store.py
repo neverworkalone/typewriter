@@ -127,6 +127,43 @@ CREATE TABLE IF NOT EXISTS s2_tasks (
   PRIMARY KEY (batch_id, task)
 );
 """
+# Additive migration (user_version 17): the Recovery lane (former tools/warroom/recovery-desk ledger.json). A case is one
+# failure group (`defect:<issue>` / `batch:<id>` / `supervisor`); a batch belongs to at most one open case; recovery runs
+# live in their own table so they never hold a batch (`runs.batch_id`) or the restart drain.
+SCHEMA_V17 = """
+CREATE TABLE IF NOT EXISTS recovery_cases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL, kind TEXT NOT NULL,          -- kind: task | pr | maintainer | supervisor | stall
+  issue INTEGER, pr_number INTEGER,
+  state TEXT NOT NULL DEFAULT 'OPEN',             -- OPEN | MAINTAINER | TRACKING | WAITING_OWNER | RESOLVED
+  blocking_unit TEXT NOT NULL DEFAULT '{}',       -- evidence recorded when the case opened (what must recover)
+  fingerprint TEXT, stale_checks INTEGER NOT NULL DEFAULT 0,
+  run_id INTEGER, session_id TEXT, producer TEXT,
+  last_prompt_hash TEXT, no_progress_turns INTEGER NOT NULL DEFAULT 0, next_action_at REAL,
+  wait_reason TEXT, last_report TEXT, notes TEXT NOT NULL DEFAULT '',
+  opened_at REAL NOT NULL, updated_at REAL NOT NULL, resolved_at REAL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS recovery_cases_open_key ON recovery_cases(key) WHERE state != 'RESOLVED';
+CREATE TABLE IF NOT EXISTS recovery_case_batches (
+  case_id INTEGER NOT NULL, batch_id INTEGER NOT NULL UNIQUE,
+  PRIMARY KEY (case_id, batch_id)
+);
+CREATE TABLE IF NOT EXISTS recovery_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, case_id INTEGER NOT NULL,
+  kind TEXT NOT NULL, producer TEXT, model TEXT, effort TEXT, permission TEXT,
+  session_id TEXT, pid INTEGER, log_file TEXT, exit_file TEXT,
+  started_at REAL NOT NULL, ended_at REAL, exit_status TEXT
+);
+CREATE INDEX IF NOT EXISTS recovery_runs_case ON recovery_runs(case_id);
+"""
+# The one duplicate-launch guard shared by the Supervisor, a replacement instance and the external watchdog
+# (`recovery_watch.py` repeats this exact statement): a run is inserted only while its case is open, has no open run,
+# and fewer than `max_parallel` recovery runs are open in total. One statement, so the check and the insert are atomic.
+CLAIM_RECOVERY_RUN_SQL = (
+    "INSERT INTO recovery_runs(case_id,kind,producer,model,effort,permission,session_id,log_file,exit_file,started_at) "
+    "SELECT ?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM recovery_cases WHERE id=? AND state!='RESOLVED') "
+    "AND NOT EXISTS (SELECT 1 FROM recovery_runs WHERE case_id=? AND ended_at IS NULL) "
+    "AND (SELECT COUNT(*) FROM recovery_runs WHERE ended_at IS NULL) < ?")
 # Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
 # Additive migration (user_version 8, Issue #1809): the observed unit of intermediate progress (chunks/senses).
 # Additive migration (user_version 9, Issue #2033): per-run token / tool-call usage read from the run's own log when
@@ -137,7 +174,8 @@ RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_toke
 # Additive migration (user_version 15, Issue #3349): `batches.error_seq/error_at/error_first` number each non-ERROR -> ERROR
 # transition; `defects.fix_kind/applied_code_sha` record how a merged Maintainer fix was proven applied.
 # Additive migration (user_version 16, Issue #3583): nullable per-run Codex Fast setting; old runs remain unknown.
-SCHEMA_VERSION = 16
+# Additive migration (user_version 17): the Recovery lane tables (SCHEMA_V17).
+SCHEMA_VERSION = 17
 
 RESTART_PHASE_KEY = "restart_phase"
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
@@ -281,6 +319,7 @@ class Store:
         for col in ("fix_kind TEXT", "applied_code_sha TEXT"):
             if col.split()[0] not in have:
                 c.execute(f"ALTER TABLE defects ADD COLUMN {col}")
+        c.executescript(SCHEMA_V17)
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
@@ -2144,3 +2183,138 @@ class Store:
                 f"운영자 Retry: Issue #{issue_number}의 undetermined 진단을 재조사 대기열에 넣었습니다. "
                 "incident 배치는 PAUSED로 보존합니다."))
             return True
+
+    # --- Recovery lane (user_version 17) ---------------------------------------------------------------------------
+    def open_recovery_case(self, key: str, kind: str, *, batch_ids=(), issue: int | None = None,
+                           pr_number: int | None = None, blocking_unit: dict | None = None, state: str = "OPEN",
+                           notes: str = "", session_id: str | None = None, producer: str | None = None,
+                           now: float | None = None) -> int | None:
+        """Open one case for a failure group, or None when an open case already has this key or one of its batches
+        (a batch is owned by at most one open case). One transaction: two callers never both open it."""
+        now = time.time() if now is None else now
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if c.execute("SELECT 1 FROM recovery_cases WHERE key=? AND state!='RESOLVED'", (key,)).fetchone():
+                return None
+            for bid in batch_ids:
+                if c.execute("SELECT 1 FROM recovery_case_batches WHERE batch_id=?", (bid,)).fetchone():
+                    return None
+            cid = c.execute("INSERT INTO recovery_cases(key,kind,issue,pr_number,state,blocking_unit,notes,session_id,"
+                            "producer,opened_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                            (key, kind, issue, pr_number, state, json.dumps(blocking_unit or {}, sort_keys=True),
+                             notes, session_id, producer, now, now)).lastrowid
+            for bid in batch_ids:
+                c.execute("INSERT INTO recovery_case_batches(case_id,batch_id) VALUES(?,?)", (cid, bid))
+            return cid
+
+    def attach_recovery_batch(self, case_id: int, batch_id: int) -> bool:
+        """Add a dependent batch to an open case (False: it already belongs to an open case)."""
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if c.execute("SELECT 1 FROM recovery_case_batches WHERE batch_id=?", (batch_id,)).fetchone():
+                return False
+            if not c.execute("SELECT 1 FROM recovery_cases WHERE id=? AND state!='RESOLVED'", (case_id,)).fetchone():
+                return False
+            c.execute("INSERT INTO recovery_case_batches(case_id,batch_id) VALUES(?,?)", (case_id, batch_id))
+            return True
+
+    def recovery_case(self, case_id: int):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM recovery_cases WHERE id=?", (case_id,)).fetchone()
+
+    def recovery_case_by_key(self, key: str):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM recovery_cases WHERE key=? AND state!='RESOLVED'", (key,)).fetchone()
+
+    def open_recovery_cases(self):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM recovery_cases WHERE state!='RESOLVED' ORDER BY id").fetchall()
+
+    def recovery_cases(self, limit: int = 50):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM recovery_cases ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+
+    def recovery_case_batch_ids(self, case_id: int) -> list[int]:
+        with self._conn() as c:
+            return [r["batch_id"] for r in c.execute(
+                "SELECT batch_id FROM recovery_case_batches WHERE case_id=? ORDER BY batch_id", (case_id,))]
+
+    def recovery_case_for_batch(self, batch_id: int):
+        with self._conn() as c:
+            return c.execute("SELECT rc.* FROM recovery_cases rc JOIN recovery_case_batches b ON b.case_id=rc.id "
+                             "WHERE b.batch_id=? AND rc.state!='RESOLVED'", (batch_id,)).fetchone()
+
+    RECOVERY_CASE_FIELDS = frozenset({"state", "kind", "issue", "pr_number", "blocking_unit", "fingerprint",
+                                      "stale_checks", "run_id", "session_id", "producer", "last_prompt_hash",
+                                      "no_progress_turns", "next_action_at", "wait_reason", "last_report", "notes"})
+
+    def update_recovery_case(self, case_id: int, **fields) -> None:
+        bad = set(fields) - self.RECOVERY_CASE_FIELDS
+        if bad:
+            raise ValueError(f"unknown recovery case fields: {sorted(bad)}")
+        if not fields:
+            return
+        for k in ("blocking_unit", "wait_reason"):
+            if isinstance(fields.get(k), dict):
+                fields[k] = json.dumps(fields[k], sort_keys=True)
+        sets = ", ".join(f"{k}=?" for k in fields)
+        with self._conn() as c:
+            c.execute(f"UPDATE recovery_cases SET {sets}, updated_at=? WHERE id=? AND state!='RESOLVED'",
+                      (*fields.values(), time.time(), case_id))
+
+    def resolve_recovery_case(self, case_id: int, note: str = "") -> bool:
+        """RESOLVED is final: the case leaves the open index and frees its batches; its runs and logs stay as history."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if c.execute("SELECT 1 FROM recovery_runs WHERE case_id=? AND ended_at IS NULL", (case_id,)).fetchone():
+                return False   # never resolve under a live run
+            cur = c.execute("UPDATE recovery_cases SET state='RESOLVED', resolved_at=?, updated_at=?, "
+                            "notes=CASE WHEN ?='' THEN notes ELSE notes || ? END WHERE id=? AND state!='RESOLVED'",
+                            (now, now, note, ("\n" if note else "") + note, case_id))
+            if cur.rowcount != 1:
+                return False
+            c.execute("DELETE FROM recovery_case_batches WHERE case_id=?", (case_id,))
+            return True
+
+    def claim_recovery_run(self, case_id: int, kind: str, *, producer: str | None, model: str | None,
+                           effort: str | None, permission: str | None, session_id: str | None, log_file, exit_file,
+                           max_parallel: int, now: float | None = None) -> int | None:
+        """Record a recovery run BEFORE its spawn (CLAIM_RECOVERY_RUN_SQL): None = refused (case closed, a run of this
+        case is open, or the parallel limit is reached)."""
+        now = time.time() if now is None else now
+        with self._conn() as c:
+            cur = c.execute(CLAIM_RECOVERY_RUN_SQL,
+                            (case_id, kind, producer, model, effort, permission, session_id, str(log_file),
+                             str(exit_file), now, case_id, case_id, max_parallel))
+            if cur.rowcount != 1:
+                return None
+            run_id = cur.lastrowid
+            c.execute("UPDATE recovery_cases SET run_id=?, producer=COALESCE(?, producer), updated_at=? WHERE id=?",
+                      (run_id, producer, now, case_id))
+            return run_id
+
+    def set_recovery_run(self, run_id: int, **fields) -> None:
+        allowed = {"pid", "session_id"}
+        if set(fields) - allowed:
+            raise ValueError("pid/session_id only")
+        sets = ", ".join(f"{k}=?" for k in fields)
+        with self._conn() as c:
+            c.execute(f"UPDATE recovery_runs SET {sets} WHERE id=?", (*fields.values(), run_id))
+
+    def finish_recovery_run(self, run_id: int, status: str, now: float | None = None) -> bool:
+        with self._conn() as c:
+            return c.execute("UPDATE recovery_runs SET ended_at=?, exit_status=? WHERE id=? AND ended_at IS NULL",
+                             (time.time() if now is None else now, status, run_id)).rowcount == 1
+
+    def recovery_run(self, run_id: int):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM recovery_runs WHERE id=?", (run_id,)).fetchone()
+
+    def open_recovery_runs(self):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM recovery_runs WHERE ended_at IS NULL ORDER BY id").fetchall()
+
+    def recovery_runs(self, case_id: int):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM recovery_runs WHERE case_id=? ORDER BY id", (case_id,)).fetchall()

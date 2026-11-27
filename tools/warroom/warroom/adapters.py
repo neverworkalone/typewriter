@@ -441,18 +441,29 @@ class ClaudeCodeAdapter(ProcessAdapter):
         re-read an hour later; the CLI's default 1h cache write costs 2x base input vs 1.25x for 5m (#7825 analysis)."""
         return {**env, "FORCE_PROMPT_CACHING_5M": "1"} if is_stage2_chunk(env) else env
 
-    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
+    PERMISSION_MODES = ("auto", "default", "acceptEdits", "plan")   # never a bypass mode
+
+    @classmethod
+    def _permission_args(cls, permission_mode: str | None) -> list[str]:
+        """Optional `--permission-mode` (the Recovery lane runs in `auto`); every other caller passes none."""
+        if permission_mode is None:
+            return []
+        if permission_mode not in cls.PERMISSION_MODES:
+            raise ValueError(f"허용되지 않는 Claude permission mode {permission_mode!r}")
+        return ["--permission-mode", permission_mode]
+
+    def start(self, prompt, cwd, env, run, title, log_file, exit_file, permission_mode=None):
         env = self._cache_env(env)
         big = self._prompt_via_stdin(prompt)
         cmd = [self.binary, "-p", *([] if big else [prompt]), *self._pins(_pinned(run)), "--name", title,
-               *self._answer_only_args(env)]
+               *self._permission_args(permission_mode), *self._answer_only_args(env)]
         return self._spawn(cmd, cwd, env, log_file, exit_file, **({"stdin_text": prompt} if big else {}))
 
-    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
+    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file, permission_mode=None):
         env = self._cache_env(env)
         big = self._prompt_via_stdin(prompt)
         cmd = [self.binary, "-p", *([] if big else [prompt]), "--resume", session_id, *self._pins(_pinned(run)),
-               *self._answer_only_args(env)]
+               *self._permission_args(permission_mode), *self._answer_only_args(env)]
         return self._spawn(cmd, cwd, env, log_file, exit_file, **({"stdin_text": prompt} if big else {}))
 
     def preflight(self, runner, env, runs):
