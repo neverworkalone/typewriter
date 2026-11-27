@@ -395,12 +395,21 @@ class Recovery:
     def _limited(b) -> bool:
         return b["state"] == "PAUSED" and any(m in (b["error"] or "") for m in LIMIT_MARKERS)
 
+    def _operator_released(self, m) -> bool:
+        """A HELD Maintainer whose linked incidents the operator all took over (OVERRIDDEN): nothing is left to recover."""
+        if m["state"] != "HELD" or m["batch_id"]:
+            return False
+        linked = [d for d in self.store.defects() if d["issue_number"] == m["issue_number"]]
+        return bool(linked) and all(d["state"] == "OVERRIDDEN" for d in linked)
+
     def maintainer_state(self, issue: int | None, obs: dict | None = None) -> str:
         """`progressing` | `stopped` | `owner` | `none` for the Maintainer of one Issue."""
         if issue is None:
             return "none"
         m = self.store.maintenance(issue)
         if m is None or m["state"] == "DONE":
+            return "none"
+        if self._operator_released(m):
             return "none"
         if m["state"] == "HELD":
             return "owner" if (m["hold_reason"] or "") == CLEARED_HOLD else "stopped"
@@ -519,7 +528,8 @@ class Recovery:
             if cid is not None:
                 self._log(f"case {key} 열림 ({kind}): {reason}"[:600], "warn", batch_id=b["id"])
         for m in self.store.maintenance_rows():   # a HELD Maintainer Issue with no execution left
-            if m["state"] != "HELD" or (m["hold_reason"] or "") == CLEARED_HOLD or m["batch_id"]:
+            if m["state"] != "HELD" or (m["hold_reason"] or "") == CLEARED_HOLD or m["batch_id"] \
+                    or self._operator_released(m):
                 continue
             key = f"defect:{m['issue_number']}"
             if self.store.recovery_case_by_key(key) is None:
