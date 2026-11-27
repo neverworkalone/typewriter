@@ -563,6 +563,18 @@ class Ownership(Base):
         w.store.update(src["id"], defect_id=did)
         return mb, w.store.batch(src["id"])
 
+    def test_a_held_issue_whose_incidents_the_operator_overrode_opens_no_case_and_closes_an_open_one(self):
+        w = self.w
+        w.store.ensure_maintenance(101)
+        with w.store._conn() as c:
+            c.execute("INSERT INTO defects(event_key,batch_id,source,defect_class,state,report,issue_number,"
+                      "created_at,updated_at) VALUES('ev-2',1,'incident','cls','OVERRIDDEN','r',101,0,0)")
+        w.store.update_maintenance(101, state="HELD", hold_reason="연결된 incident가 모두 운영자에 의해 OVERRIDDEN — x")
+        self.assertEqual(w.sup.recovery.maintainer_state(101), "none")
+        self.step()
+        self.assertIsNone(w.store.recovery_case_by_key("defect:101"))
+        self.assertEqual(w.adapter.launches, [])
+
     def test_a_progressing_maintainer_owns_the_failure(self):
         w = self.w
         mb, src = self.maintainer()
