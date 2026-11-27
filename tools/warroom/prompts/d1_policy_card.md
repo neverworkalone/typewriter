@@ -1,6 +1,6 @@
 # Relation Factory D1 — Skip Sense whole-Drop card (#10171)
 
-Every displayed Sense is a confirmed Skip (`d:"s"`) from the common pre-selection (#10174), and at least one approved Typewriter Relation touches it. You judge only whether **this exact Sense** clearly falls in one of the 11 whole-Drop categories below. The CLI then drops every approved Relation of a `D` Sense, in both directions and in any shard; you never see or judge those Relations.
+Every displayed Sense is a confirmed Skip (`d:"s"`) from the common pre-selection (#10174), and at least one approved Typewriter Relation stored in this shard's own Relation file touches it. You judge only whether **this exact Sense** clearly falls in one of the 11 whole-Drop categories below. The CLI then drops every Relation of this shard's own file touching a `D` Sense, at either end; you never see or judge those Relations.
 
 {{whole_drop_rule}}
 

@@ -1833,14 +1833,16 @@ class Supervisor:
             return "reported"
         return f"{self._stage(b)} verify의 재현된 CLI 오류를 Maintainer 경로에 등록하지 못했습니다. worktree를 보존합니다."
 
-    def _refine_verify_call(self, b, head: str):
+    def _refine_verify_call(self, b, head: str, base: str | None = None):
         """The exact-commit verify of a refinement batch's Stage, and its command for reports: the shard's admission
-        verify, or for a cross-shard Stage its CLI verify over every shard the PR (merge base..`head`) affects."""
+        verify (Stage 3), or for a Stage with its own CLI verify (S4, D1; #10330) that verify over the PR's change
+        `base`..`head` — by default the merge base with the base branch; after merge, the merged change itself."""
         spec = refine.spec_for(b)
-        if not spec.cross_shard:
+        if not spec.cli_verify:
             return (lambda: self.git.verify_stage2_outcome(head, "shard", b["shard"], None, None),
                     f"node scripts/relation/admission-cli.mjs verify --shard {b['shard']} --json")
-        base = self.git.merge_base(Path(b["worktree"]), head, f"origin/{self.cfg['base_branch']}")
+        if base is None:
+            base = self.git.merge_base(Path(b["worktree"]), head, f"origin/{self.cfg['base_branch']}")
         judgments = Path(b["worktree"]) if spec.verify_judgments else None   # D1: its kept judgments (#10171)
         return (lambda: self.git.verify_refine_outcome(head, spec.cli, b["shard"], base, judgments=judgments),
                 f"node {spec.cli} verify --shard {b['shard']} --base {base}"
@@ -1848,7 +1850,7 @@ class Supervisor:
 
     def _refine_verify(self, b, head: str) -> tuple[bool, str]:
         """(ok, tail) of the exact-commit verify: Stage 3 keeps its shard `verify_stage2`."""
-        if not refine.spec_for(b).cross_shard:
+        if not refine.spec_for(b).cli_verify:
             return self.git.verify_stage2(head, "shard", b["shard"], None, None)
         outcome = self._refine_verify_call(b, head)[0]()
         return outcome.ok, outcome.tail
@@ -8367,7 +8369,9 @@ class Supervisor:
         return True
 
     def _stage3_merged_verify(self, b, info) -> bool:
-        """Count a Stage 3 shard complete only after its merged files verify on the current master."""
+        """Count a refinement shard complete only after its merged change verifies: Stage 3 by the shard admission verify
+        on the current master; a Stage with its own CLI verify (S4, D1 with its kept judgments; #10330) by that verify of
+        exactly the merged change `merge_sha^1`..`merge_sha`, so later master changes are not this PR's."""
         gate = f"s3_merge_wait_{b['id']}"
         if self.clock() - float(self.store.get(gate, "0")) < self.cfg["poll_seconds"]:
             return False
@@ -8384,7 +8388,12 @@ class Supervisor:
                 return False
             if self.store.get(refine.ops(b).ok_key(b["shard"])) == sha:
                 return True
-            ok, detail = self.git.verify_stage2(sha, "shard", b["shard"], None, None)
+            if refine.spec_for(b).cli_verify:
+                parent = self.git.merge_base(Path(b["worktree"]), f"{merge_sha}^1", merge_sha)
+                outcome = self._refine_verify_call(b, merge_sha, parent)[0]()
+                ok, detail = outcome.ok, outcome.tail
+            else:
+                ok, detail = self.git.verify_stage2(sha, "shard", b["shard"], None, None)
         except TRANSIENT as error:
             self._transient_wait(gate, error, b["id"])
             return False

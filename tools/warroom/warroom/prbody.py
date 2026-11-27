@@ -197,7 +197,7 @@ def d1_body(model: str, shard: str, *, result: dict, cost: str | None = None) ->
         "- Method: D1",
         f"- Model: {model}",
         f"- Shard: {shard}",
-        "- Scope: Confirmed s Senses, whole Drop by the #10171 categories (Relation files only)",
+        "- Scope: Confirmed s Senses, whole Drop by the #10171 categories (own Relation file only)",
         f"- Completed Chunks: {'미측정' if done is None or total is None else f'{done}/{total}'}",
         f"- {d1_sense_summary(result)}",
         f"- D by Category: {', '.join(f'{k}: {v}' for k, v in categories.items()) if categories else '없음' if categories == {} else '미측정'}",

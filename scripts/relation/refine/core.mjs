@@ -341,9 +341,11 @@ export function createRefineCli(rule) {
     const ownRelations = relationText === undefined ? await loadOptionalRelationJsonl(relationFile)
       : parseRelationJsonl(relationText, path.basename(relationFile));
     const shardSenseIds = senseIdsOf(loaded.canonicalRows);
-    const otherRelations = referenceRun.getStore() === true
-      ? await loadApprovedRelations(root, { exceptShard: shard })
-      : await loadShardTouchingRelations(root, { exceptShard: shard, senseIds: shardSenseIds });
+    // A shard-owned Relation-only rule (D1, #10330) reads and edits its own Relation file alone: no other shard is read.
+    const otherRelations = rule.crossShard !== true ? []
+      : referenceRun.getStore() === true
+        ? await loadApprovedRelations(root, { exceptShard: shard })
+        : await loadShardTouchingRelations(root, { exceptShard: shard, senseIds: shardSenseIds });
     validateRelationRows({ relationRows: ownRelations, index: loaded.index, shardSenseIds, otherRelationRows: otherRelations });
     return { ...loaded, ownRelations, otherRelations, shardSenseIds };
   }

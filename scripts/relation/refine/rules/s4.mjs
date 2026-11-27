@@ -531,10 +531,10 @@ const asInput = async (step) => {
  * time: the result holds paths, hashes and staged temporaries, never every file's text (#10171). The caller installs
  * the staged files (`writePlanned`) or discards them.
  */
-export async function planOps({ root, shard, ops, revision, differing, canonical, reason = `${label} shard ${shard}` }) {
+export async function planOps({ root, shard, ops, revision, differing, canonical, reason = `${label} shard ${shard}`, only = null }) {
   if (!ops.length) return { files: [], affected_shards: [shard] };
   const result = await polishApply(polishInput(ops, reason), { root, dryRun: true, stage: true, canonical,
-    reader: revisionReader(root, revision, differing), relationsOnly: true });
+    reader: revisionReader(root, revision, differing), relationsOnly: true, only });
   return { ...result, affected_shards: [...new Set([shard, ...result.affected_shards])].sort() };
 }
 

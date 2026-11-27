@@ -4,7 +4,7 @@ Only an effective blocking `-1` review event calls for a response. **Never respo
 
 {{session_note}} Keep the assigned worktree, branch, PR, and current HEAD. Do not merge, rebase, reset, switch branches, create another PR, request a review, or merge this PR.
 
-**You submit the judgment only.** The Supervisor applies it with the official D1 CLI: `d1-cli amend` changes the kept Sense verdicts, rebuilds every Relation file this PR changes from the PR base with the whole new `D` set, then the Supervisor commits only those files, runs the D1 deletion verify on the exact commit, pushes, and posts your reply. Do not edit any file, run `amend` or `verify`, commit, push, or post PR comments yourself.
+**You submit the judgment only.** The Supervisor applies it with the official D1 CLI: `d1-cli amend` changes the kept Sense verdicts, rebuilds this shard's own Relation file from the PR base with the whole new `D` set, then the Supervisor commits only those files, runs the D1 deletion verify on the exact commit, pushes, and posts your reply. Do not edit any file, run `amend` or `verify`, commit, push, or post PR comments yourself.
 
 Run commands from the worktree root. Write `.warroom-scratch/d1-fix-response.json` with any available, permitted file-writing method; if writing is actually denied, report that instead of working around it. If a reproducible shared-layer defect blocks this work, including an official CLI failure on valid input, follow `tools/warroom/prompts/shared-defect.md` and stop.
 

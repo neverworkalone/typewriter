@@ -1,7 +1,10 @@
 // D1 rule (#10171): whole Drop of confirmed Skip Senses. The model judges only whether each confirmed `s` Sense
 // (#10174) clearly falls in one of the 11 whole-Drop categories, from its headword, POS, full gloss and homograph
-// number; it sees no Relation list. Code then drops every approved Relation touching a `D` Sense, in both directions
-// and in any shard, through the Relation-only Polish write path (#9929). No Candidate or Drop file is read or written.
+// number; it sees no Relation list. Code then drops every approved Relation stored in this shard's own Relation file
+// (`relation-SSS.jsonl`, #10330) that touches a `D` Sense at either end, through the Relation-only Polish write path
+// (#9929). No other shard's Relation file is read or written: a row another shard owns toward a `D` Sense stays for that
+// shard's own later refinement, and one stored row still projects in both directions. No Candidate or Drop file is
+// read or written.
 //
 // The judgments are the PR's own record: the checkpoint and the prepared views it is bound to stay after apply
 // (`keepDecisions`), so report, decisions and amend read the same Sense verdicts. Nothing is committed for them.
@@ -22,7 +25,7 @@ import {
 export const label = 'D1';
 export const scratch = 'relation-d1';
 export const keyed = true;
-export const crossShard = true;
+export const crossShard = false;
 export const relationsOnly = true;
 export const keepDecisions = true;
 export const inputPaths = ['data/relation-selection'];
@@ -40,7 +43,7 @@ export const usage = `Usage:
   node scripts/relation/d1-cli.mjs report --shard SSS [--out <file>]
   node scripts/relation/d1-cli.mjs decisions --shard SSS --base <sha> [--senses <id,...>] [--out <file>]
   node scripts/relation/d1-cli.mjs amend --shard SSS --base <sha> --in <delta.txt>
-  node scripts/relation/d1-cli.mjs verify --shard SSS --base <sha> [--judgments <worktree>]   # every D Relation dropped, nothing else
+  node scripts/relation/d1-cli.mjs verify --shard SSS --base <sha> [--judgments <worktree>]   # every own-file D Relation dropped, nothing else
 
 A chunk answer is "chunk NNN" and then exactly one verdict for every shown Sense:
   D <n> <1-11>    whole Drop, with its category number
@@ -52,18 +55,19 @@ const VERDICTS = new Set(['D', 'N', 'H', 'P']);
 const keyOf = (row) => exclusionKey(row);
 const sha256 = (text) => (text === null ? null : createHash('sha256').update(text, 'utf8').digest('hex'));
 const touches = (row, senseIds) => senseIds.has(row.source_sense_id) || (!('text' in row) && senseIds.has(row.target_sense_id));
+const ownRelationFile = (shard) => `data/relations/relation-${shard}.jsonl`;
 const skipSenses = (selection) => new Set([...selection.decisions].filter(([, decision]) => decision === 's').map(([id]) => id));
 
 // ---- prepare --------------------------------------------------------------------------------------------------
 
 /**
- * One group per Canonical record with confirmed `s` Senses that some approved Relation touches (stored here or in
- * another shard, either direction). An `s` Sense without Relations has nothing to drop and is not judged.
+ * One group per Canonical record with confirmed `s` Senses that a Relation stored in this shard's own file touches
+ * (either end, #10330). An `s` Sense with no such Relation has nothing for this shard to drop and is not judged.
  */
 export async function senseGroups(context, { root, shard }) {
   const skipped = skipSenses(await loadSelection(root, shard, context.canonicalRows, label));
   const touched = new Set();
-  for (const row of [...context.ownRelations, ...context.otherRelations]) {
+  for (const row of context.ownRelations) {
     if (skipped.has(row.source_sense_id)) touched.add(row.source_sense_id);
     if (!('text' in row) && skipped.has(row.target_sense_id)) touched.add(row.target_sense_id);
   }
@@ -236,10 +240,14 @@ function summarize(decisions, skipped) {
 
 const dSenses = (decisions) => new Set(decisions.filter((decision) => decision.verdict === 'D').map((decision) => decision.sense));
 
-/** One drop edit for every approved Relation key touching a `D` Sense in the data `reader` reads; a key once. */
-async function dropOps(root, senses, reader = null) {
-  if (!senses.size) return [];
-  const { relations } = await scanTouching(root, senses, new Map(), { reader, relationsOnly: true });
+/** The approved Relations of this shard's own file (as `reader` reads it) touching `senses`; no other file is read. */
+const ownTouching = async (root, shard, senses, reader = null) => (senses.size
+  ? (await scanTouching(root, senses, new Map(), { reader, relationsOnly: true, only: new Set([ownRelationFile(shard)]) })).relations
+  : []);
+
+/** One drop edit for every own-file Relation key touching a `D` Sense in the data `reader` reads; a key once. */
+async function dropOps(root, shard, senses, reader = null) {
+  const relations = await ownTouching(root, shard, senses, reader);
   const ops = new Map();
   for (const { row } of relations) {
     if (!touches(row, senses)) continue;
@@ -259,16 +267,16 @@ function diffSize(root, args) {
 
 // ---- apply, report, decisions, amend --------------------------------------------------------------------------
 
-/** `apply`: every approved Relation touching a `D` Sense in the current data, dropped through one Polish plan. */
+/** `apply`: every own-file Relation touching a `D` Sense in the current data, dropped through one Polish plan. */
 export async function applyCheckpoint({ shard, root, checkpoint, readView }) {
   gitHead(root);
   assertCleanSources(root, label);
   const canonical = await loadCanonical(root);
   const skipped = skipSenses(await loadSelection(root, shard, canonical.rowsByShard.get(shard), label));
   const { decisions } = await boundDecisions(checkpoint, readView, skipped);
-  const ops = await dropOps(root, dSenses(decisions));
+  const ops = await dropOps(root, shard, dSenses(decisions));
   const planned = await planOps({ root, shard, ops, revision: 'HEAD', differing: new Set(dataStatus(root)), canonical,
-    reason: `D1 shard ${shard}` });
+    reason: `D1 shard ${shard}`, only: new Set([ownRelationFile(shard)]) });
   const status = planned.files.length
     ? await writePlanned(root, planned.files, new Map(planned.files.map((file) => [file.path, file.original_sha256])), label)
     : 'no-change';
@@ -287,7 +295,7 @@ export async function reportWorktree({ shard, root, saved }) {
     changed_files: dirty, changed_shards: shardsOf(dirty), diff: diffSize(root, []) };
 }
 
-/** The PR's kept judgments; with `senses`, every base Relation touching them and whether this PR drops it. */
+/** The PR's kept judgments; with `senses`, every base own-file Relation touching them and whether this PR drops it. */
 export async function listDecisions({ shard, root, base, head, senses = null, saved }) {
   const skipped = skipSenses(await loadSelection(root, shard, null, label));
   const { decisions, senses: shown } = await boundDecisions(await saved.loadCheckpoint(), saved.readView, skipped);
@@ -299,7 +307,7 @@ export async function listDecisions({ shard, root, base, head, senses = null, sa
     changed_files: state.changed, changed_shards: shardsOf(state.changed), diff: diffSize(root, [base, head]) };
   if (senses) {
     const dropped = new Set(ops.filter((op) => op.op === 'drop').map((op) => keyOf(op)));
-    const { relations } = await scanTouching(root, senses, new Map(), { reader: state.baseRead, relationsOnly: true });
+    const relations = await ownTouching(root, shard, senses, state.baseRead);
     result.rows = relations.map(({ row }) => ({ status: dropped.has(keyOf(row)) ? 'drop' : 'keep', source_sense_id: row.source_sense_id,
       ...('text' in row ? { text: row.text } : { target_sense_id: row.target_sense_id }), type: row.type, relevance: row.relevance }));
   }
@@ -339,8 +347,9 @@ export async function amendDecisions({ shard, root, base, head, text, saved }) {
   const next = decisions.map((decision) => (changes.has(decision.sense) ? { ...decision, ...changes.get(decision.sense) } : decision))
     .sort((a, b) => a.chunk.localeCompare(b.chunk) || JSON.stringify(decisionIdentity(a)).localeCompare(JSON.stringify(decisionIdentity(b))));
   const state = prState(root, base, head, label);
-  const ops = await dropOps(root, dSenses(next), state.baseRead);
-  const planned = await planOps({ root, shard, ops, revision: base, differing: state.differing, canonical, reason: `D1 shard ${shard}` });
+  const ops = await dropOps(root, shard, dSenses(next), state.baseRead);
+  const planned = await planOps({ root, shard, ops, revision: base, differing: state.differing, canonical, reason: `D1 shard ${shard}`,
+    only: new Set([ownRelationFile(shard)]) });
   const { files, expected } = await amendTargets(root, state, planned);
   try {
     files.push(await stageText(root, saved.checkpointRelative, `${JSON.stringify({ ...checkpoint, decisions: next })}\n`));
@@ -355,12 +364,11 @@ export async function amendDecisions({ shard, root, base, head, text, saved }) {
     outputs: Object.fromEntries(files.filter((file) => file.path !== saved.checkpointRelative).map((file) => [file.path, file.sha256])) };
 }
 
-const RELATION_DATA_FILE = /^data\/relations\/relation-\d{3}\.jsonl$/u;
-
 /**
  * `verify`: the PR does exactly its judgments, checked on the relation-key diff base..head and nothing more.
- * 1. Every approved Relation touching a kept `D` Sense at the base is dropped.
- * 2. Nothing else changed: only Relation files, only drops, and every dropped key touches a `D` Sense.
+ * 1. Every Relation of this shard's own file touching a kept `D` Sense at the base is dropped (#10330). A row another
+ *    shard's file stores toward a `D` Sense is not this PR's and is never a finding.
+ * 2. Nothing else changed: only this shard's Relation file, only drops, and every dropped key touches a `D` Sense.
  * The dictionary-wide structural integrity of Relation files is the build's and Deep CI's job, not re-run per shard.
  * A failure throws `AdmissionVerifyError` (family `d1-scope`) with every finding.
  */
@@ -370,7 +378,8 @@ export async function verifyDecisions({ shard, root, base, head, saved }) {
   const errors = [];
   const paths = execFileSync('git', ['diff', '--name-only', '--no-renames', base, head], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
     .split('\n').filter(Boolean);
-  for (const file of paths.filter((file) => !RELATION_DATA_FILE.test(file))) errors.push(`${file}: a D1 PR changes Relation files only`);
+  const own = ownRelationFile(shard);
+  for (const file of paths.filter((file) => file !== own)) errors.push(`${file}: a D1 PR changes ${own} only`);
   const state = prState(root, base, head, label);
   const senses = dSenses(decisions);
   const ops = await opsBetween(state.baseRead, state.headRead, state.changed);
@@ -382,7 +391,7 @@ export async function verifyDecisions({ shard, root, base, head, saved }) {
     else if (!touches(op, senses)) errors.push(`${name}: dropped, but neither end is a D Sense`);
     else dropped.add(key);
   }
-  const expected = senses.size ? (await scanTouching(root, senses, new Map(), { reader: state.baseRead, relationsOnly: true })).relations : [];
+  const expected = await ownTouching(root, shard, senses, state.baseRead);
   const kept = new Set();
   for (const { row } of expected) {
     const key = keyOf(row);

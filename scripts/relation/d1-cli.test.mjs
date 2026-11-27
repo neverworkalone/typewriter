@@ -31,16 +31,17 @@ const idRow = (source, target, type, relevance) => ({ source_record_id: source.s
   target_record_id: target.split('-')[0], target_sense_id: target, type, relevance, reverse_type: type, reverse_relevance: relevance, polish: true });
 const textRow = (source, text) => ({ source_record_id: source.split('-')[0], source_sense_id: source, text, type: 'association', relevance: 5, polish: true });
 
-// Shard 001: 고요 (two `s` Senses), 물결 (`p`), 흐르다 and 몰리브데넘 (`s`), 쓸쓸하다 (`s`, no Relation). Shard 002:
-// 별빛 (`s`) and 반짝이다 (`p`).
+// Shard 001: 고요 (two `s` Senses), 물결 (`p`), 흐르다 and 몰리브데넘 (`s`), 쓸쓸하다 (`s`, no Relation), 아득하다 (`s`,
+// a Relation stored only in 002's file). Shard 002: 별빛 (`s`) and 반짝이다 (`p`).
 const OWN = [
   { id: 'w1', lemma: '고요', search_forms: ['고요'], senses: [sense('w1-s1', 'noun', '조용하고 잠잠한 상태.'), sense('w1-s2', 'noun', '바람이 없는 상태.')] },
   { id: 'w3', lemma: '물결', search_forms: ['물결'], senses: [sense('w3-s1', 'noun', '물이 움직여 오르내리는 모양.')] },
   { id: 'w4', lemma: '흐르다', search_forms: ['흐르다'], senses: [sense('w4-s1', 'verb', '물이 낮은 곳으로 내려가다.')] },
   { id: 'w5', lemma: '몰리브데넘', search_forms: ['몰리브데넘'], homograph_no: 1, senses: [sense('w5-s1', 'noun', '크로뮴족 원소의 하나.')] },
   { id: 'w6', lemma: '쓸쓸하다', search_forms: ['쓸쓸하다'], senses: [sense('w6-s1', 'adjective', '외롭고 적적하다.')] },
+  { id: 'w7', lemma: '아득하다', search_forms: ['아득하다'], senses: [sense('w7-s1', 'adjective', '보기에 매우 멀다.')] },
 ];
-const SKIP = new Set(['w1-s1', 'w1-s2', 'w4-s1', 'w5-s1', 'w6-s1', 'w2000-s1']);
+const SKIP = new Set(['w1-s1', 'w1-s2', 'w4-s1', 'w5-s1', 'w6-s1', 'w7-s1', 'w2000-s1']);
 const A = idRow('w1-s1', 'w3-s1', 'scene', 4);
 const B = idRow('w1-s1', 'w2000-s1', 'mood', 3);
 const C = idRow('w4-s1', 'w5-s1', 'association', 5);
@@ -48,6 +49,7 @@ const T = textRow('w5-s1', '금속');
 const E = idRow('w3-s1', 'w1-s2', 'near', 2);
 const F = idRow('w2001-s1', 'w5-s1', 'association', 6);
 const G = idRow('w2001-s1', 'w2000-s1', 'sensory', 5);
+const X = idRow('w2001-s1', 'w7-s1', 'mood', 4);
 
 async function repository(t, { select = (id) => (SKIP.has(id) ? 's' : 'p'), extra001 = [], relations001 = [A, B, C, T, E] } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-d1-'));
@@ -65,7 +67,7 @@ async function repository(t, { select = (id) => (SKIP.has(id) ? 's' : 'p'), extr
       record.senses.map((item) => ({ id: item.id, d: select(item.id) })))));
   }
   await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl(relations001));
-  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([F, G]));
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([F, G, X]));
   git(root, 'init', '-q', '--initial-branch=master');
   git(root, 'config', 'user.name', 'Typewriter Test');
   git(root, 'config', 'user.email', 'test@example.invalid');
@@ -105,48 +107,58 @@ async function produce(root, verdicts) {
   return { applied, report };
 }
 
-test('#10171 D1 judges Skip Senses by gloss only and drops every Relation of a D Sense in both directions and shards', async (t) => {
+test('#10330 D1 judges Skip Senses by gloss only and drops only its own file\'s Relations of a D Sense, at either end', async (t) => {
   const root = await repository(t);
   const prepared = await cli(root, 'prepare', '--shard', '001');
   assert.equal(prepared.chunk_count, 1);
   const { view } = await answer(root, '001', []);
-  // Only `s` Senses some Relation touches are judged: 쓸쓸하다 has none, 물결 is `p`. No Relation reaches the model.
+  // Only `s` Senses a Relation of 001's own file touches are judged: 쓸쓸하다 has none, 아득하다 only one stored in 002,
+  // 물결 is `p`. No Relation reaches the model.
   assert.deepEqual(view.senses.map((entry) => entry.sense_id), ['w1-s1', 'w1-s2', 'w4-s1', 'w5-s1']);
   assert.equal(view.prompt_view, ['chunk 001/001 senses 4', 'W\t고요\t-', 'S1\tnoun\t조용하고 잠잠한 상태.', 'S2\tnoun\t바람이 없는 상태.',
     'W\t흐르다\t-', 'S3\tverb\t물이 낮은 곳으로 내려가다.', 'W\t몰리브데넘\t1', 'S4\tnoun\t크로뮴족 원소의 하나.'].join('\n'));
 
   const base = git(root, 'rev-parse', 'HEAD');
   const { applied, report } = await produce(root, (shown) => [`D ${numberOf(shown, 'w5-s1')} 4`, `D ${numberOf(shown, 'w4-s1')} 1`,
-    `N ${numberOf(shown, 'w1-s1')}`, `H ${numberOf(shown, 'w1-s2')}`]);
-  // 흐르다↔몰리브데넘 (both D) goes once; the 002 row reaching 몰리브데넘 goes too. Only Relation files change.
+    `N ${numberOf(shown, 'w1-s1')}`, `D ${numberOf(shown, 'w1-s2')} 3`]);
+  // 흐르다↔몰리브데넘 (both ends D) goes once, the text row of 몰리브데넘 (source D) and 물결→고요 s2 (only the target D) go.
+  // 002's rows toward 몰리브데넘 and 아득하다 stay: they are 002's to refine. Only 001's Relation file changes.
   assert.equal(applied.status, 'applied');
   assert.equal(applied.removed_relations, 3);
-  assert.deepEqual(applied.changed_files, ['data/relations/relation-001.jsonl', 'data/relations/relation-002.jsonl']);
-  assert.deepEqual(applied.senses, { skip_senses: 5, judged: 4, no_relations: 1, dropped: 2, not_target: 1, held: 1, policy_skipped: 0, by_category: { 1: 1, 4: 1 } });
+  assert.deepEqual(applied.changed_files, ['data/relations/relation-001.jsonl']);
+  assert.deepEqual(applied.senses, { skip_senses: 6, judged: 4, no_relations: 2, dropped: 3, not_target: 1, held: 0, policy_skipped: 0, by_category: { 1: 1, 3: 1, 4: 1 } });
   assert.deepEqual(git(root, 'diff', '--name-only', base, 'HEAD').split('\n'), applied.changed_files);
-  assert.equal(await shard(root, '001'), serializeRelationJsonl([A, B, E]));
-  assert.equal(await shard(root, '002'), serializeRelationJsonl([G]));
-  assert.deepEqual([report.removed_relations, report.other_edits, report.diff.files, report.diff.deletions], [3, 0, 2, 3]);
+  assert.equal(await shard(root, '001'), serializeRelationJsonl([A, B]));
+  assert.equal(await shard(root, '002'), serializeRelationJsonl([F, G, X]));
+  assert.deepEqual([report.removed_relations, report.other_edits, report.diff.files, report.diff.deletions], [3, 0, 1, 3]);
   assert.deepEqual(report.decisions.map((entry) => [entry.sense, entry.verdict, entry.category]),
-    [['w1-s1', 'N', null], ['w1-s2', 'H', null], ['w4-s1', 'D', 1], ['w5-s1', 'D', 4]]);
+    [['w1-s1', 'N', null], ['w1-s2', 'D', 3], ['w4-s1', 'D', 1], ['w5-s1', 'D', 4]]);
 
+  // The other shard's remaining rows toward a D Sense are not a finding.
   const verified = await cli(root, 'verify', '--shard', '001', '--base', base);
-  assert.deepEqual([verified.ok, verified.d_senses, verified.removed_relations, verified.changed_files], [true, 2, 3, 2]);
-  // verify fails on a missed Relation of a D Sense, a drop of an unrelated one (물결↔고요 s2) or any other edit
-  // (a retype in 002) — all reported at once.
+  assert.deepEqual([verified.ok, verified.d_senses, verified.removed_relations, verified.changed_files], [true, 3, 3, 1]);
+  // verify fails on a missed own-file Relation of a D Sense, a drop of an unrelated one (고요 s1↔별빛), another file's
+  // change (002's drop toward 몰리브데넘 and a retype) — all reported at once.
   const head = git(root, 'rev-parse', 'HEAD');
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([A, B, C]));
-  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([{ ...G, type: 'mood', reverse_type: 'mood' }]));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([A, C]));
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([{ ...G, type: 'mood', reverse_type: 'mood' }, X]));
   git(root, 'commit', '-qam', 'wrong D1');
   await assert.rejects(cli(root, 'verify', '--shard', '001', '--base', base), (error) => {
     assert.equal(error.family, 'd1-scope');
     assert.deepEqual([...error.errors].sort(), [
-      'i|w1-s2|w3-s1: dropped, but neither end is a D Sense',
+      'data/relations/relation-002.jsonl: a D1 PR changes data/relations/relation-001.jsonl only',
+      'i|w1-s1|w2000-s1: dropped, but neither end is a D Sense',
       'i|w2000-s1|w2001-s1: a D1 PR only drops Relations (set)',
       'i|w4-s1|w5-s1: touches a D Sense but is not dropped',
     ]);
     return true;
   });
+  // decisions and amend refuse a PR that changes another shard's file, and amend writes nothing.
+  await assert.rejects(cli(root, 'decisions', '--shard', '001', '--base', base), /outside shard 001/u);
+  const checkpoint = await read(root, '.warroom-scratch/relation-d1-001.json');
+  await assert.rejects(cli(root, 'amend', '--shard', '001', '--base', base, '--in', await delta(root, ['N w1-s2'])), /outside shard 001/u);
+  assert.equal(await read(root, '.warroom-scratch/relation-d1-001.json'), checkpoint);
+  assert.equal(git(root, 'status', '--porcelain', '--', 'data'), '');
   git(root, 'reset', '-q', '--hard', head);
   // A later Stage 4 of the same shard prepares on the remaining Relations; no Candidate accounting stops it.
   const s4 = await quiet(() => runS4(['prepare', '--shard', '001'], { root }));
@@ -184,13 +196,13 @@ test('#10171 D1 keeps its judgments through apply, report, decisions and amend; 
   assert.deepEqual(listed.decisions.map((entry) => [entry.sense, entry.verdict, entry.category, entry.lemma]),
     [['w1-s1', 'N', null, '고요'], ['w1-s2', 'N', null, '고요'], ['w4-s1', 'D', 1, '흐르다'], ['w5-s1', 'D', 4, '몰리브데넘']]);
   assert.deepEqual(listed.rows.map((row) => [row.source_sense_id, row.target_sense_id ?? row.text, row.status]),
-    [['w4-s1', 'w5-s1', 'drop'], ['w5-s1', '금속', 'drop'], ['w2001-s1', 'w5-s1', 'drop']]);
+    [['w4-s1', 'w5-s1', 'drop'], ['w5-s1', '금속', 'drop']]);
 
   // Withdrawing 몰리브데넘's D restores its own rows byte for byte; 흐르다↔몰리브데넘 stays dropped while 흐르다 is D.
   const withdrawn = await cli(root, 'amend', '--shard', '001', '--base', base, '--in', await delta(root, ['N w5-s1']));
   assert.equal(withdrawn.status, 'applied');
   assert.equal(await shard(root, '001'), serializeRelationJsonl([A, B, T, E]));
-  assert.equal(await shard(root, '002'), serializeRelationJsonl([F, G]));
+  assert.equal(await shard(root, '002'), serializeRelationJsonl([F, G, X]));
   assert.equal((await cli(root, 'amend', '--shard', '001', '--base', base, '--in', await delta(root, ['N w5-s1']))).status, 'already-applied');
   git(root, 'add', 'data');
   git(root, 'commit', '-qm', 'amend 1');
@@ -258,9 +270,10 @@ test('#10171 D1 chunks hold about 100 Sense judgments without splitting a record
   assert.equal(sizes.reduce((sum, size) => sum + size, 0), ids.size);
   assert.ok(sizes.slice(0, -1).every((size) => size >= 90 && size <= 100), JSON.stringify(sizes));
 
-  const empty = await repository(t, { select: (id) => (id === 'w6-s1' ? 's' : 'p') });
+  // 쓸쓸하다 has no Relation and 아득하다 only one stored in 002 (#10330): nothing for 001 to judge or change.
+  const empty = await repository(t, { select: (id) => (['w6-s1', 'w7-s1'].includes(id) ? 's' : 'p') });
   assert.equal((await cli(empty, 'prepare', '--shard', '001')).chunk_count, 0);
   const applied = await cli(empty, 'apply', '--shard', '001');
-  assert.deepEqual([applied.status, applied.removed_relations, applied.senses.no_relations], ['no-change', 0, 1]);
+  assert.deepEqual([applied.status, applied.removed_relations, applied.senses.no_relations], ['no-change', 0, 2]);
   assert.equal(git(empty, 'status', '--porcelain', '--', 'data'), '');
 });
