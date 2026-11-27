@@ -133,4 +133,4 @@ SPEC = refine.register(refine.RefineSpec(
                          amend_input=".warroom-scratch/d1-fix-amend.txt",
                          commit_subject="Apply D1 review amendments", amend_header="amend"),
     cross_shard=False, no_change_complete=True, refusal_keep_all=False, refusal_records=True, relations_only=True,
-    method=DROP_METHOD, verify_judgments=True, body=prbody.d1_body))
+    method=DROP_METHOD, verify_judgments=True, replay_drops_only=True, body=prbody.d1_body))

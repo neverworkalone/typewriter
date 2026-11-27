@@ -1,7 +1,7 @@
 /**
  * Relation delta replay (#8784 PR-2): re-apply one PR's approved Relation/Drop delta onto newer approved data.
  *
- *   node scripts/relation/replay-cli.mjs --base <rev> --ours <rev> --theirs <rev> [--path <data file>]... [--relations-only] [--dry-run]
+ *   node scripts/relation/replay-cli.mjs --base <rev> --ours <rev> --theirs <rev> [--path <data file>]... [--relations-only [--drops-only]] [--dry-run]
  *
  * `base` is the data the PR started from (normally the merge base), `ours` the PR result and `theirs` the latest
  * approved data (for example the latest master). Each shard Relation/Drop file the PR changed (or each named `--path`)
@@ -14,6 +14,12 @@
  * pass the shared row validator; no Candidate or Drop file is read and no Candidate accounting runs. A Drop file the PR
  * changed (base -> ours) or named with `--path` is a scope error before anything is written. Drop changes only the
  * latest data made are left to Git, like any file the PR did not change.
+ *
+ * `--drops-only` (with `--relations-only`) replays a D1 PR (#10338), which only removes existing rows of its own shard's
+ * Relation file. Every rebuilt file's base -> ours change must remove keys only (an Add or Set is a scope error before
+ * anything is written). The merge is the same relation-key 3-way merge: a key the latest data changed keeps its latest
+ * value and is reported as a conflict. Only the rebuilt file itself is row-validated; no other shard's Relation file is
+ * read, since removing rows cannot create a cross-file problem.
  */
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -28,7 +34,7 @@ import {
   validateRelationRows, verifyAccounting,
 } from './admission.mjs';
 import { loadCanonical, scanTouching } from './polish-cli.mjs';
-import { parseDropExclusionJsonl, parseDropJsonl, parseRelationJsonl } from './persisted-jsonl.mjs';
+import { exclusionKey, parseDropExclusionJsonl, parseDropJsonl, parseRelationJsonl } from './persisted-jsonl.mjs';
 import {
   dataFileFamily, deltaKeyText, keptRelationExclusions, mergeJsonl, removeKeys, supersededDrops,
 } from './relation-delta.mjs';
@@ -107,6 +113,27 @@ async function checkRelationShards(root, shards, after) {
   }
 }
 
+/** `--drops-only` (#10338): the base -> ours change of every rebuilt Relation file removes existing keys only. */
+function assertDropsOnly(relative, baseText, ourText) {
+  const rows = (text, side) => new Map((text ? parseRelationJsonl(text, `${relative} (${side})`) : [])
+    .map((row) => [exclusionKey(row), JSON.stringify(row)]));
+  const [baseRows, ourRows] = [rows(baseText, 'base'), rows(ourText, 'ours')];
+  const changed = [...ourRows].filter(([key, value]) => baseRows.get(key) !== value).map(([key]) => key.replaceAll('\u0000', '|'));
+  if (changed.length) throw new ReplayInputError(`--drops-only replay: ${relative} adds or changes ${changed.slice(0, 10).join(', ')}`);
+}
+
+/** `--drops-only` check: each rebuilt Relation file alone through the shared row validator. */
+async function checkOwnFiles(root, shards, after) {
+  const { index, rowsByShard } = await loadCanonical(root);
+  for (const shard of [...shards].sort()) {
+    const canonicalRows = rowsByShard.get(shard);
+    if (!canonicalRows) throw new ReplayInputError(`shard ${shard} has no Canonical file`);
+    const text = after.get(RELATION_FILE(shard));
+    validateRelationRows({ relationRows: text ? parseRelationJsonl(text, RELATION_FILE(shard)) : [], index,
+      shardSenseIds: new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id))) });
+  }
+}
+
 async function checkShards(root, shards, before, after, report) {
   const { index, rowsByShard } = await loadCanonical(root);
   const lemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
@@ -169,7 +196,9 @@ async function checkShards(root, shards, before, after, report) {
   }
 }
 
-export async function replay({ base, ours, theirs, paths = [], dryRun = false, relationsOnly = false }, root = REPOSITORY_DIRECTORY) {
+export async function replay({ base, ours, theirs, paths = [], dryRun = false, relationsOnly = false, dropsOnly = false },
+  root = REPOSITORY_DIRECTORY) {
+  if (dropsOnly && !relationsOnly) throw new ReplayInputError('--drops-only needs --relations-only');
   const [baseSha, ourSha, theirSha] = [commit(root, base, '--base'), commit(root, ours, '--ours'), commit(root, theirs, '--theirs')];
   for (const relative of paths) if (!dataFileFamily(relative)) throw new ReplayInputError(`--path ${relative} is not a shard Relation/Drop file`);
   const ourChanges = changedData(root, baseSha, ourSha);
@@ -187,13 +216,17 @@ export async function replay({ base, ours, theirs, paths = [], dryRun = false, r
   for (const relative of selected) {
     const family = dataFileFamily(relative);
     const [baseText, ourText, theirText] = [blob(root, baseSha, relative), blob(root, ourSha, relative), blob(root, theirSha, relative)];
+    if (dropsOnly) assertDropsOnly(relative, baseText, ourText);
     const merged = mergeJsonl({ base: baseText, ours: ourText, theirs: theirText, family, label: relative });
     before.set(relative, theirText);
     after.set(relative, merged.text);
     report.set(relative, { applied: new Set(merged.applied), conflicts: merged.conflicts });
   }
   const shards = new Set(selected.map((relative) => /-(\d{3})\.jsonl$/u.exec(relative)[1]));
-  if (shards.size) await (relationsOnly ? checkRelationShards(root, shards, after) : checkShards(root, shards, before, after, report));
+  if (shards.size) {
+    await (dropsOnly ? checkOwnFiles(root, shards, after)
+      : relationsOnly ? checkRelationShards(root, shards, after) : checkShards(root, shards, before, after, report));
+  }
   if (!dryRun && after.size) await writeTexts(root, after);
   const files = [...report].map(([relative, { applied, conflicts }]) => ({ path: relative, applied: applied.size,
     conflicts: conflicts.map(deltaKeyText) }));
@@ -202,11 +235,12 @@ export async function replay({ base, ours, theirs, paths = [], dryRun = false, r
 }
 
 function parseArgs(argv) {
-  const options = { base: null, ours: null, theirs: null, paths: [], dryRun: false, relationsOnly: false };
+  const options = { base: null, ours: null, theirs: null, paths: [], dryRun: false, relationsOnly: false, dropsOnly: false };
   for (let position = 0; position < argv.length; position += 1) {
     const flag = argv[position];
     if (flag === '--dry-run') { options.dryRun = true; continue; }
     if (flag === '--relations-only') { options.relationsOnly = true; continue; }
+    if (flag === '--drops-only') { options.dropsOnly = true; continue; }
     const value = argv[position + 1];
     if (value === undefined || value.startsWith('--')) throw new ReplayInputError(`${flag} needs a value`);
     position += 1;
@@ -217,7 +251,7 @@ function parseArgs(argv) {
     else throw new ReplayInputError(`unknown option ${flag}`);
   }
   if (!options.base || !options.ours || !options.theirs) {
-    throw new ReplayInputError('usage: replay-cli.mjs --base <rev> --ours <rev> --theirs <rev> [--path <data file>]... [--relations-only] [--dry-run]');
+    throw new ReplayInputError('usage: replay-cli.mjs --base <rev> --ours <rev> --theirs <rev> [--path <data file>]... [--relations-only [--drops-only]] [--dry-run]');
   }
   return options;
 }

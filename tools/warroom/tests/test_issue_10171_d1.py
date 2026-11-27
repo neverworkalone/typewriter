@@ -214,11 +214,14 @@ class DropVerifyAndReplay(unittest.TestCase):
             w.sup._replay_relation_pr(w.store.batch(b["id"]), {"base_ref": w.cfg["base_branch"],
                                                                "base_sha": w.git.base_sha, "head_sha": head})
         self.assertIs(merged.call_args.kwargs["relations_only"], True)
+        self.assertIs(merged.call_args.kwargs["drops_only"], True, "#10338: D1 replays its own file drop-only")
         self.assertEqual(merged.call_args.args[4], {"data/relations/relation-001.jsonl"})
+        self.assertFalse(stage4.SPEC.replay_drops_only, "S4 keeps its cross-shard replay")
 
     def test_merged_verify_uses_each_stages_own_verify_of_the_merged_change(self):
         """#10330: after merge, Stage 3 keeps the shard admission verify; S4 and D1 run their CLI verify over exactly
-        merge_sha^1..merge_sha (D1 with its kept judgments), and only success records the ok key."""
+        merge_sha^1..merge_sha (D1 with its kept judgments), and only success records the ok key: the verified
+        merge_sha for S4/D1 (#10338), the latest master for Stage 3."""
         merge, parent = "c" * 40, "d" * 40
         for tag, method, spec in (("all", STAGE3_METHOD, None), ("s4", STAGE3_METHOD, stage4.SPEC), ("d1", DROP_METHOD, stage_d1.SPEC)):
             for fail in (False, True):
@@ -232,7 +235,7 @@ class DropVerifyAndReplay(unittest.TestCase):
                     result = w.sup._stage3_merged_verify(b, {"number": 7, "merge_commit_sha": merge})
                 self.assertEqual(result, not fail, (tag, [e["msg"] for e in w.store.events_after(0)][-3:]))
                 ok_key = spec.ok_key("001") if spec else stage3.ok_key("001")
-                self.assertEqual(w.store.get(ok_key), None if fail else w.git.base_sha, tag)
+                self.assertEqual(w.store.get(ok_key), None if fail else (merge if spec else w.git.base_sha), tag)
                 if spec is None:
                     self.assertEqual(w.git.verify_calls, [("shard", "001", None, None)])
                     self.assertEqual(w.git.__dict__.get("refine_verify_calls", []), [])
@@ -241,6 +244,43 @@ class DropVerifyAndReplay(unittest.TestCase):
                 self.assertEqual(w.git.refine_verify_calls, [(merge, spec.cli, "001", parent)])
                 self.assertEqual(w.git.refine_verify_judgments, [path if spec.verify_judgments else None])
                 self.assertEqual(base.call_args.args[1:], (f"{merge}^1", merge))
+
+    def test_a_cleanup_retry_after_master_moved_finishes_without_the_removed_worktree(self):
+        """#10338: S4/D1 verified the merged change and recorded its merge_sha; the worktree was removed and the run
+        stopped before branch cleanup. After master moves on, Retry finds the shard complete (no second verify, no
+        merge base or judgments of the removed worktree) and the existing cleanup proof path finishes."""
+        merge, head = "c" * 40, "a" * 40
+        for tag, method, spec, title in (("s4", STAGE3_METHOD, stage4.SPEC, "[S4/Sol] 001"),
+                                         ("d1", DROP_METHOD, stage_d1.SPEC, "[D1/Sol] 001")):
+            w = world(self)
+            w.now, w.git.on_base, w.git.base_sha = 10 ** 9, True, "e" * 40   # master moved past the merge
+            b, path = self.batch(w, method, tag)
+            w.store.update(b["id"], state="CLEANUP", pr_number=7, head_sha=head)
+            w.store.set(spec.ok_key("001"), merge)
+            path.rmdir()
+            del w.git.reg[str(path)]
+            w.gh.prs[7] = {"number": 7, "title": title, "body": f"Refs #{9929 if tag == 's4' else 10171}",
+                           "head_ref": b["branch"], "head_sha": head, "base_ref": "master", "state": "closed",
+                           "merged": True, "merge_commit_sha": merge}
+            w.gh.files[7] = [REL("001")]
+            removed = mock.Mock()
+            with mock.patch.object(w.git, "merge_base", side_effect=AssertionError("removed worktree read"), create=True), \
+                    mock.patch.object(w.git, "remove_owned", removed):
+                w.sup._cleanup(w.store.batch(b["id"]))
+            self.assertEqual(w.store.batch(b["id"])["state"], "COMPLETE", (tag, [e["msg"] for e in w.store.events_after(0)][-3:]))
+            self.assertEqual(w.git.__dict__.get("refine_verify_calls", []), [], tag)
+            self.assertEqual(w.store.get(spec.ok_key("001")), merge, tag)
+
+    def test_d1_card_has_no_marker_contradiction_and_no_d2_handoff(self):
+        """#10338: the shared whole-Drop card no longer tells D1 (no marker) to skip unmarked Senses; S2/S3 keep it."""
+        from warroom import prompts
+        card = prompts.stage3_chunk({"method": DROP_METHOD, "shard": "001", "batch": "d1", "branch": "d1-codex-001"},
+                                    "001", "chunk 001/001 senses 1\nW\t말\t-\nS1\tnoun\t뜻.")
+        self.assertIn("in D1 every displayed Sense is already a confirmed Skip", card)
+        self.assertIn("in S2/S3 a trailing `s` field marks it", card)
+        self.assertNotIn("a Sense without the marker is never judged", card)
+        self.assertNotIn("D2", card)
+        self.assertIn("**`H <n...>`:**", card)
 
     def test_d1_fix_context_shows_only_the_named_senses_verdicts(self):
         w = world(self)

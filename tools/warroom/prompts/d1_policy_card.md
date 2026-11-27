@@ -8,6 +8,6 @@ Every displayed Sense is a confirmed Skip (`d:"s"`) from the common pre-selectio
 
 - **`D <n> <1-11>`:** the Sense clearly means one category; give its number.
 - **`N <n...>`:** it clearly falls in none.
-- **`H <n...>`:** applicability is unclear. This is a normal hold: the Sense stays for D2 (#10244, per-relation judgment). It is never a permanent keep and never a guess.
+- **`H <n...>`:** applicability is unclear. This is a normal hold: the Sense is not whole-Dropped and its current Relations stay unchanged. It is never a guess.
 
-Give every displayed Sense exactly one verdict. Do not reclassify P/S/E, do not consider the §3.5 candidate groups as categories, and do not keep or drop a Relation one by one (that is D2). There is no deletion count or ratio target. A provider refusal, a failure or missing work is never a verdict: leave it to the Supervisor.
+Give every displayed Sense exactly one verdict. Do not reclassify P/S/E, do not consider the §3.5 candidate groups as categories, and do not keep or drop a Relation one by one. There is no deletion count or ratio target. A provider refusal, a failure or missing work is never a verdict: leave it to the Supervisor.

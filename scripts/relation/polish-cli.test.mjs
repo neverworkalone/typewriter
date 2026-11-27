@@ -195,6 +195,9 @@ test('#9929 Relation-only Polish apply and replay read no Candidate or Drop file
   const theirs = git('rev-parse', 'HEAD');
   git('switch', '-q', 'stage4');
   assert.throws(() => git('merge', '-q', '--no-edit', theirs), /conflict|CONFLICT|Command failed/u);
+  // #10338: the D1 drop-only replay refuses a PR that adds (or changes) a Relation before anything is written.
+  await assert.rejects(replay({ base, ours, theirs, relationsOnly: true, dropsOnly: true }, root), /--drops-only replay: .*w4-s1/u);
+  await assert.rejects(replay({ base, ours, theirs, dropsOnly: true }, root), ReplayInputError);
   const result = await replay({ base, ours, theirs, relationsOnly: true }, root);
   assert.deepEqual(result.files.map((file) => [file.path, file.conflicts]), [['data/relations/relation-001.jsonl', ['R|i|w1-s1|w2000-s1']]]);
   // The shared key keeps the latest retype; the PR's other edits are replayed.
