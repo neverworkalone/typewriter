@@ -235,6 +235,7 @@ class Store:
 
     @staticmethod
     def _migrate(c) -> None:
+        old = c.execute("PRAGMA user_version").fetchone()[0]
         c.executescript(SCHEMA_V2)
         if "line" not in {r["name"] for r in c.execute("PRAGMA table_info(events)")}:
             c.execute("ALTER TABLE events ADD COLUMN line TEXT")
@@ -262,8 +263,10 @@ class Store:
                  int(retry) if busy and retry == str(latest["id"]) and legacy.get("force_stop") != "1" else None,
                  legacy.get("blocked", "") if busy or legacy.get("run") == "1" else "",
                  latest["model_tier"], time.time()))
-        # Run history from the logs the old Supervisor kept: batch-<id>-<ts>.log/.exit
-        for r in rows:
+        # Run history from the logs the old Supervisor kept: batch-<id>-<ts>.log/.exit. Only a pre-v2 database has such
+        # history to import; re-running this on every later schema bump globbed the whole logs directory once per batch
+        # (8k batches x 96k files kept ./kwar in the v17 migration for ~20 min with no Supervisor).
+        for r in (rows if old < 2 else ()):
             if not r["log_file"]:
                 continue
             log = Path(r["log_file"])
