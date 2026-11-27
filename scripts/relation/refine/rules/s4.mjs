@@ -13,11 +13,11 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { ACTION_TARGET_POS, normalizeCandidate, sameSpellingTargets } from '../../admission.mjs';
-import { ADMISSION_TYPES, exclusionKey, parseRelationJsonl } from '../../persisted-jsonl.mjs';
+import { ADMISSION_TYPES, exclusionKey, parseRelationJsonl, parseRelationJsonlLinesMatching } from '../../persisted-jsonl.mjs';
 import { apply as polishApply, discardStaged, installStaged, loadCanonical, PolishInputError, scanTouching, stageText } from '../../polish-cli.mjs';
 import { readSelection, SelectionError } from '../../selection-cli.mjs';
 import { escapeField } from './s3.mjs';
@@ -760,6 +760,100 @@ export async function verifyShards({ shard, root, base, head }) {
   const canonical = await loadCanonical(root);
   const state = prState(root, base, head);
   return affectedShards(await opsBetween(state.baseRead, state.headRead, state.changed), canonical, shard);
+}
+
+/**
+ * True only when `after` is `before` with whole lines removed: every remaining line, blank lines included, is an
+ * original line in the original order with no more copies than before (an order-preserving subsequence). A pure
+ * deletion cannot create a new problem in the remaining rows, so its file needs no structural re-check (#10277).
+ */
+export function pureDeletion(before, after) {
+  if (after === null || after === '') return true;
+  if (before === null) return false;
+  const original = before.split('\n');
+  let index = 0;
+  for (const line of after.split('\n')) {
+    while (index < original.length && original[index] !== line) index += 1;
+    if (index === original.length) return false;
+    index += 1;
+  }
+  return true;
+}
+
+const relationFileShard = (relative) => /^data\/relations\/relation-(\d{3})\.jsonl$/u.exec(relative)?.[1] ?? null;
+
+/**
+ * `verify` scope of a PR (base..head). `shards` is every affected shard (owners of an edited Sense plus the produced
+ * shard), as before. `validated` is the shards whose Relation file gets the full structural check: the shard of every
+ * changed file that is not a proven pure deletion, and the owner shards of both ends of every Add/Set. A file that
+ * only lost lines is not re-checked; anything else (a repeated line, a changed field, a moved line) is.
+ */
+export async function verifyPlan({ shard, root, base, head, canonical }) {
+  const state = prState(root, base, head);
+  const ops = await opsBetween(state.baseRead, state.headRead, state.changed);
+  const validated = new Set();
+  for (const op of ops.filter((edit) => edit.op !== 'drop')) {
+    for (const senseId of [op.source_sense_id, op.target_sense_id].filter(Boolean)) {
+      const owner = canonical.shardOfSense.get(senseId);
+      if (owner) validated.add(owner);
+    }
+  }
+  for (const relative of state.changed) {
+    const owner = relationFileShard(relative);
+    if (owner && !validated.has(owner) && !pureDeletion(await state.baseRead(relative), await state.headRead(relative))) validated.add(owner);
+  }
+  return { shards: affectedShards(ops, canonical, shard), validated: [...validated].sort() };
+}
+
+// Every Sense ID token of a Relation line; a line is decoded only when one of its tokens is a Sense of `senseIds`.
+// A pattern-like object for the shared line selector, so no regular expression of every wanted Sense ID is built.
+function sensePattern(senseIds) {
+  const token = /"w\d+-s\d+"/gu;
+  return {
+    lastIndex: 0,
+    exec(text) {
+      token.lastIndex = this.lastIndex;
+      for (let match = token.exec(text); match !== null; match = token.exec(text)) {
+        if (senseIds.has(match[0].slice(1, -1))) { this.lastIndex = token.lastIndex; return match; }
+      }
+      this.lastIndex = 0;
+      return null;
+    },
+  };
+}
+
+/**
+ * Cross-shard context of several shards in one pass over the Relation files: for each shard (a Map of shard -> its
+ * Canonical Sense IDs), the rows of every other shard's file that touch one of its Senses, in file then line order.
+ * This is `loadShardTouchingRelations` for each shard, with every file read and decoded once instead of once per
+ * shard; only the selected rows are kept.
+ */
+export async function touchingContexts(root, sensesByShard) {
+  const contexts = new Map([...sensesByShard.keys()].map((name) => [name, []]));
+  const shardsOf = new Map();
+  for (const [name, senseIds] of sensesByShard) {
+    for (const senseId of senseIds) {
+      if (!shardsOf.has(senseId)) shardsOf.set(senseId, []);
+      shardsOf.get(senseId).push(name);
+    }
+  }
+  const directory = path.join(root, 'data/relations');
+  if (!shardsOf.size || !existsSync(directory)) return contexts;
+  const wanted = new Set(shardsOf.keys());
+  for (const name of (await readdir(directory)).filter((item) => /^relation-\d{3}\.jsonl$/u.test(item)).sort()) {
+    const owner = name.slice('relation-'.length, -'.jsonl'.length);
+    for (const { row } of parseRelationJsonlLinesMatching(await readFile(path.join(directory, name), 'utf8'), name, sensePattern(wanted))) {
+      const hit = new Set([...(shardsOf.get(row.source_sense_id) ?? []), ...('text' in row ? [] : shardsOf.get(row.target_sense_id) ?? [])]);
+      for (const target of hit) if (target !== owner) contexts.get(target).push(row);
+    }
+  }
+  return contexts;
+}
+
+/** Non-empty line count of a Relation file in the checkout: the row count of a shard whose file is not re-checked. */
+export async function relationLineCount(root, shard) {
+  const file = path.join(root, `data/relations/relation-${shard}.jsonl`);
+  return existsSync(file) ? (await readFile(file, 'utf8')).split('\n').filter((line) => line.trim() !== '').length : 0;
 }
 
 /** Every Canonical Sense of a spelling, for exact Add targets (one call per chunk, only when needed). */
