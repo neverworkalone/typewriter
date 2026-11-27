@@ -458,3 +458,65 @@ test('#9929 Stage 4 verify still rejects Relation duplicates and wrong Sense bin
   await assert.rejects(cli(root, 'verify', '--shard', '001', '--base', base), /Relation-only/u);
   await assert.rejects(cli(root, 'decisions', '--shard', '001', '--base', base), /outside shard 001|Relation-only/u);
 });
+
+test('#10331 Stage 4 verify skips the structural re-check of a shard whose file only lost lines', async (t) => {
+  const root = await repository(t);
+  // A pre-existing reverse duplicate in shard 002 that a full re-check of shard 002 reports.
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([...RELATIONS_002,
+    idRow('w2000-s1', 'w1-s1', 'near', 2, { polish: true })]));
+  const base = commitAll(root, 'earlier reverse duplicate');
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([idRow('w2000-s1', 'w1-s1', 'near', 2, { polish: true })]));
+  commitAll(root, '[S4/Sol] 001 drop only');
+  const verified = await cli(root, 'verify', '--shard', '001', '--base', base);
+  assert.deepEqual(verified.shards, ['001', '002']);
+  assert.deepEqual(verified.validated, []);
+  assert.deepEqual(verified.counts, { '001': { relations: RELATIONS_001.length, drops: 0 }, '002': { relations: 1, drops: 0 } });
+});
+
+test('#10331 Stage 4 verify re-checks a file that is not a pure deletion, even with no relation-key edit', async (t) => {
+  const root = await repository(t);
+  const base = head(root);
+  // The same line twice: the relation keys do not change, but the file is not a pure deletion.
+  const text = await read(root, 'data/relations/relation-001.jsonl');
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), `${text}${text.split('\n')[0]}\n`);
+  commitAll(root, 'repeated line');
+  await assert.rejects(cli(root, 'verify', '--shard', '001', '--base', base), (error) => error instanceof AdmissionVerifyError
+    && /duplicate/u.test(error.message));
+  git(root, 'reset', '-q', '--hard', base);
+  // A stored field other than Type/Tier changed on the same key.
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([
+    { ...RELATIONS_001[0], target_record_id: 'w4' }, ...RELATIONS_001.slice(1)]));
+  commitAll(root, 'changed field');
+  await assert.rejects(cli(root, 'verify', '--shard', '001', '--base', base), /is not a sense of w4/u);
+});
+
+test('#10331 Stage 4 verify checks both owner shards of an Add even when the other file only lost lines', async (t) => {
+  const root = await repository(t);
+  const base = head(root);
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([...RELATIONS_001,
+    idRow('w6-s1', 'w2000-s1', 'mood', 3, { polish: true })]));
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([]));
+  commitAll(root, '[S4/Sol] 001 add and drop');
+  const verified = await cli(root, 'verify', '--shard', '001', '--base', base);
+  assert.deepEqual(verified.shards, ['001', '002']);
+  assert.deepEqual(verified.validated, ['001', '002']);
+  assert.deepEqual(verified.counts['001'], { relations: RELATIONS_001.length + 1, drops: 0 });
+});
+
+test('#10331 one-pass cross-shard context equals the per-shard context', async (t) => {
+  const root = await repository(t);
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([...RELATIONS_002,
+    idRow('w2000-s1', 'w3-s1', 'near', 2, { polish: true }), idRow('w2000-s1', 'w2001-s1', 'near', 2, { polish: true }),
+    { source_record_id: 'w2001', source_sense_id: 'w2001-s1', text: '빛', type: 'association', relevance: 6, polish: true }]));
+  const { loadCanonical } = await import('./polish-cli.mjs');
+  const { loadShardTouchingRelations, shardSenseIds } = await import('./admission.mjs');
+  const { touchingContexts } = await import('./refine/rules/s4.mjs');
+  const { rowsByShard } = await loadCanonical(root);
+  const senses = new Map(['001', '002'].map((shard) => [shard, shardSenseIds(rowsByShard.get(shard))]));
+  const contexts = await touchingContexts(root, senses);
+  for (const [shard, senseIds] of senses) {
+    assert.deepEqual(contexts.get(shard), await loadShardTouchingRelations(root, { exceptShard: shard, senseIds }));
+  }
+  assert.equal(contexts.get('001').length, 2);
+  assert.equal(contexts.get('002').length, RELATIONS_001.filter((row) => row.target_sense_id?.startsWith('w2')).length);
+});

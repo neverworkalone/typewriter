@@ -5,7 +5,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { AdmissionVerifyError, assertShard, verifyRelationIntegrity } from './admission.mjs';
+import { AdmissionVerifyError, assertShard, shardSenseIds, verifyRelationIntegrity } from './admission.mjs';
 import { loadCanonical } from './polish-cli.mjs';
 import { createRefineCli, fail, gitHead, REPOSITORY_DIRECTORY, RefineInputError, runAsScript } from './refine/core.mjs';
 import * as stage4 from './refine/rules/s4.mjs';
@@ -33,14 +33,22 @@ export async function run(argv, { root = REPOSITORY_DIRECTORY, fullOtherRows = f
     const base = option(argv, '--base');
     if (argv.length !== 5 || !shard || !/^[a-f0-9]{40}$/u.test(base ?? '')) fail(`verify requires --shard SSS --base <sha>\n${stage4.usage}`);
     assertShard(shard);
-    const shards = await stage4.verifyShards({ shard, root, base, head: gitHead(root) });
-    const { index, rowsByShard } = await loadCanonical(root);
+    const canonical = await loadCanonical(root);
+    const { index, rowsByShard } = canonical;
+    // `shards`: every affected shard. `validated`: those whose Relation file is not a proven pure deletion or that own
+    // an end of an Add/Set; only they get the full structural check (#10331). Their cross-shard context is read in
+    // one pass over the Relation files.
+    const { shards, validated } = await stage4.verifyPlan({ shard, root, base, head: gitHead(root), canonical });
+    const contexts = await stage4.touchingContexts(root, new Map(validated.map((name) => [name, shardSenseIds(rowsByShard.get(name) ?? [])])));
     const counts = {};
-    for (const name of shards) {
+    for (const name of [...new Set([...shards, ...validated])].sort()) {
       // One output line: the combined success, or (thrown) the first failing shard's `--json` failure.
-      counts[name] = (await verifyRelationIntegrity({ shard: name, root, canonicalRows: rowsByShard.get(name) ?? [], index })).counts;
+      counts[name] = validated.includes(name)
+        ? (await verifyRelationIntegrity({ shard: name, root, canonicalRows: rowsByShard.get(name) ?? [], index,
+          otherRelationRows: contexts.get(name) })).counts
+        : { relations: await stage4.relationLineCount(root, name), drops: 0 };
     }
-    const payload = { version: 1, ok: true, shards, counts };
+    const payload = { version: 1, ok: true, shards, validated, counts };
     console.log(JSON.stringify(payload));
     return payload;
   }
