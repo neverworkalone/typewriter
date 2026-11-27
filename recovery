@@ -1,0 +1,30 @@
+#!/bin/sh
+# War Room Recovery watchdog (tools/warroom/recovery_watch.py): watches that the Supervisor is alive and restarts it with
+# ./kwar when it died or cannot start. It never touches owner Stop / Drain / run=0. See tools/warroom/README.md "Recovery".
+#   ./recovery [start]          start the 60 s watch loop in tmux `warroom-recovery` (no-op when it already runs)
+#   ./recovery once             one iteration in the foreground
+#   ./recovery status           Supervisor + watchdog state (JSON)
+#   ./recovery stop             stop the watch loop
+#   ./recovery pause|unpause    pause / resume restarts (status keeps working)
+#   ./recovery resume <case-id> answer a Recovery case waiting on an explicit tool denial
+# Outside the operating main checkout nothing is written or started: exit 3 (recovery-desk/guard.sh).
+set -eu
+ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+sh "$ROOT/tools/warroom/recovery-desk/guard.sh" "$ROOT" || exit 3
+PY="$(command -v python3 || true)"
+[ -n "$PY" ] || { echo "[recovery] python3가 필요합니다" >&2; exit 1; }
+WATCH="$ROOT/tools/warroom/recovery_watch.py"
+SESSION=warroom-recovery
+cmd="${1:-start}"
+case "$cmd" in
+  start)
+    command -v tmux >/dev/null 2>&1 || { echo "[recovery] tmux가 필요합니다: brew install tmux" >&2; exit 1; }
+    if tmux has-session -t "=$SESSION" 2>/dev/null; then echo "[recovery] 이미 실행 중 ($SESSION)"; exit 0; fi
+    tmux new-session -d -s "$SESSION" -c "$ROOT" "'$PY' -I '$WATCH' '$ROOT' loop"
+    echo "[recovery] 감시 시작 ($SESSION)" ;;
+  stop)
+    tmux kill-session -t "=$SESSION" 2>/dev/null && echo "[recovery] 감시 중지" || echo "[recovery] 실행 중 아님" ;;
+  once|status|pause|unpause) exec "$PY" -I "$WATCH" "$ROOT" "$cmd" ;;
+  resume) [ $# -eq 2 ] || { echo "usage: $0 resume <case-id>" >&2; exit 2; }; exec "$PY" -I "$WATCH" "$ROOT" resume "$2" ;;
+  *) echo "usage: $0 [start|once|status|stop|pause|unpause|resume <case-id>]" >&2; exit 2 ;;
+esac

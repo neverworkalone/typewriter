@@ -2,4 +2,5 @@
 # War Room safe Supervisor restart (#5162): replace the Supervisor instance with the code this checkout holds now, then
 # open the TUI. Nothing is killed by hand here: the TUI session, AI runs, batches, checkpoints and PRs are preserved and
 # the new instance continues every batch from its own state. See tools/warroom/README.md.
-exec "$(cd "$(dirname "$0")" && pwd)/war" --replace
+#   ./kwar --no-attach   replace only and return its 0/1/2 result without attaching the TUI (recovery runs, watchdog)
+exec "$(cd "$(dirname "$0")" && pwd)/war" --replace "$@"

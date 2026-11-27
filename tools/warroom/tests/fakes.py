@@ -44,8 +44,8 @@ class FakeAdapter(AgentAdapter):
     def read_pid(self, exit_file):
         return next((pid for pid, r in self.running.items() if r.get("ex") == Path(exit_file)), None)
 
-    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
-        return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
+    def start(self, prompt, cwd, env, run, title, log_file, exit_file, **extra):
+        return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort, extra=extra,
                         permission_profile=run.permission_profile, fast=run.fast,
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
                         stage2_repair=env.get("WARROOM_STAGE2_REPAIR"),
@@ -55,8 +55,8 @@ class FakeAdapter(AgentAdapter):
                         git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
                         worker_path=env.get("PATH"))
 
-    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
-        return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
+    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file, **extra):
+        return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort, extra=extra,
                         permission_profile=run.permission_profile, fast=run.fast,
                         session=session_id,
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
@@ -1099,6 +1099,14 @@ class FakeGh:
         return files
 
     def reviews(self, n): return self.reviews_
+
+    def required_check(self, head):
+        return getattr(self, "checks", {}).get(head)
+
+    def merge_squash(self, n, head):
+        if getattr(self, "merge_error", None):
+            raise self.merge_error
+        self.merged_squash = getattr(self, "merged_squash", []) + [(n, head)]
     def inline_comments(self, n): return self.inline_
     def issue_comments(self, n): return self.issue_comments_.get(n, self.issue_)
     def commit_time(self, sha): return self.commit_ts

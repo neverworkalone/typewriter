@@ -38,8 +38,11 @@ from .lanes import Lanes
 from .launch_gate import LaunchDenied, LaunchGate
 from . import maintenance as maint_results
 from .maintenance import Maintenance
+from .recovery import FORCE_STOP_PREFIX, Recovery
 from .store import DROP_METHOD, MAINTENANCE_METHOD, STAGE2_METHOD, REFINE_METHODS, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
 
+
+RECOVERY_KEY = ("recovery", "*")   # the Recovery lane's Coordinator job key (never a Line: no Line row has method "*")
 
 # A failed *query* asking again can fix. It is never a verdict: callers re-raise it past every broad `except`.
 TRANSIENT = (GhTransient, GitTransient)
@@ -167,6 +170,7 @@ class Supervisor:
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
         self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
         self.s3p = s3parallel.ParallelStage3(self)   # parallel Stage 3 chunk tasks inside a new shard (#3149)
+        self.recovery = Recovery(self)   # the Recovery lane: deterministic detection, AI only for an opened case
         self.refine_fix = {}   # #6555: one Review FIXING Coordinator per refinement Stage (`_refine_fix`)
         self.parallel_new_s3 = True   # False only lets a fixture exercise the serial Stage 3 path an already running shard keeps
         self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
@@ -304,6 +308,16 @@ class Supervisor:
                 self.maint.step()   # after the Lines: it reads the batch states they just advanced
             except LaunchDenied:
                 self._freeze(None)
+        self._recovery_step()
+
+    def _recovery_step(self) -> None:
+        """The Recovery lane, in its own try: its failure never stops a Line (serial tick and Coordinator alike)."""
+        try:
+            self.recovery.step()
+        except LaunchDenied:
+            pass   # STOPPING: no new recovery run; open ones are adopted by the next instance
+        except Exception:
+            self.store.log(None, "Recovery 예외:\n" + traceback.format_exc()[-800:], "error", line="recovery")
 
     def _handle_reload(self) -> None:
         """Operator `r`: re-read config.json. The new config replaces `self.cfg` only if it passes every check."""
@@ -1175,7 +1189,7 @@ class Supervisor:
         if b["pause_reason"] == "shared_defect":   # the operator took over: no automatic release until a deliberate Retry
             self.store.set(f"defect_hold_{b['id']}", "1")
         self.store.update(b["id"], retry_after=None)
-        self._fail(b, "PAUSED", "강제 중지됨. worktree·브랜치·PR은 보존됨 (프로세스 종료 확인 후 Retry로 재개).")
+        self._fail(b, "PAUSED", f"{FORCE_STOP_PREFIX}. worktree·브랜치·PR은 보존됨 (프로세스 종료 확인 후 Retry로 재개).")
         self._reap_stopped(self.store.batch(b["id"]))
 
     # ---- CLEARING: operator-confirmed abandon of one batch ------------------
@@ -8464,6 +8478,9 @@ class Supervisor:
         keys = [(ln["model"], ln["method"]) for ln in self.store.lines()
                 if ln["method"] != MAINTENANCE_METHOD and not control.retired(ln, self.cfg)]
         keys.append(None)
+        # The Recovery lane runs in a Worker slot like a Line: its GitHub reads (PR scan, merge checks) never hold the
+        # one Coordinator, and a slow turn only skips its own next submission (`key in pending`).
+        keys.append(RECOVERY_KEY)
         offset = cursor % len(keys)
         for key in keys[offset:] + keys[:offset]:
             if self._frozen_skips(key):
@@ -8473,6 +8490,7 @@ class Supervisor:
             if key in pending:
                 continue
             pending[key] = (pool.submit(self._parallel_maintenance) if key is None
+                            else pool.submit(self._recovery_step) if key == RECOVERY_KEY
                             else pool.submit(self._tick_line, *key))
             self._submitted_at[key] = time.monotonic()
         return (offset + 1) % len(keys)

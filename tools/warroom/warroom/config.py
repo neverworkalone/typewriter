@@ -60,6 +60,12 @@ DEFAULTS = {
     "assignments": {},
     # Issue #1555: the logical producer ID (a key of `producers`) that runs the hidden Maintainer; None = disabled.
     "maintainer": None,
+    # The Recovery lane (former recovery-desk): a producer ID or profile ID, resolved like `maintainer`; None = off.
+    # Claude or Codex. `recovery_max_parallel` (1-2) recovery runs at once; `recovery_stall_seconds` is the observation
+    # interval of the only judgment that needs repeated confirmation (3 unchanged checks = stalled).
+    "recovery": None,
+    "recovery_max_parallel": 1,
+    "recovery_stall_seconds": 600,
     # Extra argv lists run in a paused batch worktree after a shared fix was merged into it (all must pass).
     "shared_defect_verify": [],
     "claude_bin": "claude",
@@ -251,7 +257,7 @@ def registry(cfg: dict) -> dict[str, dict]:
     return out
 
 
-STAGE2, MAINTAINER = "stage2", "maintainer"
+STAGE2, MAINTAINER, RECOVERY = "stage2", "maintainer", "recovery"
 
 
 def refine_roles(method: str | None = None) -> tuple[str, ...]:
@@ -273,6 +279,8 @@ def role_label(role: str) -> str:
         return "Stage 2"
     if role == MAINTAINER:
         return "Maintainer"
+    if role == RECOVERY:
+        return "Recovery"
     spec = refine.spec_for_role(role)
     return spec.label if spec else role
 
@@ -312,32 +320,43 @@ def _assigned_profiles(cfg: dict, producer: str) -> list[str]:
     return [p for p in (_assigned(cfg, r, producer) for r in assignment_roles()) if p]
 
 
-def maintainer_target(cfg: dict) -> tuple[str | None, str | None, str | None]:
-    """(producer, profile, problem) of the configured Maintainer. `maintainer` is a legacy producer ID or a profile ID.
+def _role_target(cfg: dict, key: str) -> tuple[str | None, str | None, str | None]:
+    """(producer, profile, problem) of a top-level role key (`maintainer`, `recovery`): a legacy producer ID or a
+    profile ID.
 
     A profile ID runs on the one producer of its adapter; several producers of that adapter are narrowed to those
     assigned that profile; anything still ambiguous is an error (never guessed from the adapter name).
     """
-    m = cfg.get("maintainer")
+    m = cfg.get(key)
     if m is None:
-        return None, None, "maintainer가 설정되지 않았습니다"
+        return None, None, f"{key}가 설정되지 않았습니다"
     reg, profs = registry(cfg), _profiles(cfg)
     if m in reg and m in profs:
-        return None, None, f"maintainer {m!r}가 모델 ID와 프로필 ID 양쪽에 있어 모호합니다 — 이름을 구분하세요."
+        return None, None, f"{key} {m!r}가 모델 ID와 프로필 ID 양쪽에 있어 모호합니다 — 이름을 구분하세요."
     if m in reg:
         if _assigned_profiles(cfg, m):
-            return None, None, f"maintainer {m!r}는 프로필로 배정된 모델 ID입니다 — 프로필 ID(model_profiles)를 지정하세요."
+            return None, None, f"{key} {m!r}는 프로필로 배정된 모델 ID입니다 — 프로필 ID(model_profiles)를 지정하세요."
         return m, None, None
     if m in profs:
         cands = [pid for pid, p in reg.items() if p["adapter"] == profs[m]["adapter"]]
         if len(cands) > 1:
             cands = [pid for pid in cands if m in _assigned_profiles(cfg, pid)]
         if len(cands) != 1:
-            return None, None, (f"maintainer 프로필 {m!r}를 실행할 모델 ID를 하나로 정할 수 없습니다 "
+            return None, None, (f"{key} 프로필 {m!r}를 실행할 모델 ID를 하나로 정할 수 없습니다 "
                                 f"(adapter {profs[m]['adapter']!r}: {', '.join(cands) or '해당 모델 없음'}) — "
                                 f"assignments에 이 프로필을 배정해 모델 ID를 지정하세요.")
         return cands[0], m, None
-    return None, None, f"maintainer {m!r}는 등록된 모델 ID도 프로필 ID도 아닙니다 (모델: {', '.join(reg) or '없음'}; 프로필: {', '.join(profs) or '없음'})"
+    return None, None, f"{key} {m!r}는 등록된 모델 ID도 프로필 ID도 아닙니다 (모델: {', '.join(reg) or '없음'}; 프로필: {', '.join(profs) or '없음'})"
+
+
+def maintainer_target(cfg: dict) -> tuple[str | None, str | None, str | None]:
+    """(producer, profile, problem) of the configured Maintainer."""
+    return _role_target(cfg, MAINTAINER)
+
+
+def recovery_target(cfg: dict) -> tuple[str | None, str | None, str | None]:
+    """(producer, profile, problem) of the configured Recovery lane."""
+    return _role_target(cfg, RECOVERY)
 
 
 def role_entry(cfg: dict, producer: str, role: str) -> dict:
@@ -349,13 +368,13 @@ def role_entry(cfg: dict, producer: str, role: str) -> dict:
     mismatch.
     """
     p = dict(registry(cfg)[producer])
-    if role == MAINTAINER:
-        m = cfg.get("maintainer")
+    if role in (MAINTAINER, RECOVERY):
+        m = cfg.get(role)
         if m not in _profiles(cfg):
             return p
-        target, _, problem = maintainer_target(cfg)
+        target, _, problem = _role_target(cfg, role)
         if problem or target != producer:
-            raise ValueError(f"{producer}: maintainer 프로필 {m!r}는 이 모델 ID로 실행할 수 없습니다 ({problem or target})")
+            raise ValueError(f"{producer}: {role} 프로필 {m!r}는 이 모델 ID로 실행할 수 없습니다 ({problem or target})")
         pid = m
     else:
         pid = _assigned(cfg, role, producer)
@@ -501,10 +520,13 @@ def config_problem(cfg: dict) -> str | None:
                     bad.append(f"producers.{pid}.fast는 Codex에서 true/false Boolean이어야 합니다")
     bad += pricing_problems(cfg.get("pricing"))
     bad += _maintainer_config_problems(cfg)
+    bad += _recovery_config_problems(cfg)
     if not bad:
         bad += _profile_config_problems(cfg)
     if not bad and cfg.get("maintainer") is not None:   # an unknown/ambiguous Maintainer never falls back to a guess
         bad += [p] if (p := maintainer_target(cfg)[2]) else []
+    if not bad and cfg.get("recovery") is not None:     # likewise the Recovery lane (its pins are checked at launch)
+        bad += [p] if (p := recovery_target(cfg)[2]) else []
     return "; ".join(bad) or None
 
 
@@ -555,6 +577,40 @@ def _maintainer_config_problems(cfg: dict) -> list[str]:
     if not isinstance(v, list) or not all(_strings(a, nonempty=True) for a in v):
         bad.append("shared_defect_verify는 비어 있지 않은 문자열 argv 목록의 목록이어야 합니다")
     return bad
+
+
+def _recovery_config_problems(cfg: dict) -> list[str]:
+    """`recovery` is absent (off) or a producer/profile ID string; its limits are small positive integers."""
+    bad = []
+    r = cfg.get("recovery")
+    if r is not None and not isinstance(r, str):
+        bad.append("recovery는 producers의 모델 ID 또는 model_profiles의 프로필 ID 문자열이어야 합니다")
+    n = cfg.get("recovery_max_parallel", 1)
+    if type(n) is not int or not 1 <= n <= 2:
+        bad.append("recovery_max_parallel은 1~2 범위의 정수여야 합니다")
+    s = cfg.get("recovery_stall_seconds", 600)
+    if not _number(s) or s < 60:
+        bad.append("recovery_stall_seconds는 60 이상의 숫자여야 합니다")
+    return bad
+
+
+def recovery_problem(cfg: dict) -> str | None:
+    """Why the configured Recovery lane must not launch (None = it may). Claude or Codex only; a Codex profile needs a
+    permission_profile, because a follow-up (`codex exec resume`) can only open the Git admin directory through it."""
+    producer, _, problem = recovery_target(cfg)
+    if problem:
+        return problem
+    reg = registry(cfg)
+    if reg[producer]["adapter"] not in ("claude", "codex"):
+        return f"recovery {producer!r}: Recovery는 Claude 또는 Codex 모델만 실행할 수 있습니다"
+    try:
+        entry = role_entry(cfg, producer, RECOVERY)
+    except ValueError as e:
+        return str(e)
+    if entry["adapter"] == "codex" and not entry.get("permission_profile"):
+        return (f"recovery {cfg.get('recovery')!r}: Codex Recovery에는 permission_profile이 필요합니다 "
+                "(후속 지시 resume이 운영 Git 관리 디렉터리를 열 수 있어야 합니다)")
+    return registry_problems(cfg).get(producer) or _producer_problem(producer, entry)
 
 
 def maintainer_id(cfg: dict) -> str | None:
@@ -721,4 +777,6 @@ def role_pin_lines(cfg: dict) -> list[str]:
                 lines.append(f"  {role}/{model}: (미배정; assignments.{role}에 프로필 ID를 지정하세요)")
     if cfg.get("maintainer") in profs:
         lines.append(one("maintainer", cfg["maintainer"]))
+    if cfg.get("recovery") in profs:
+        lines.append(one("recovery", cfg["recovery"]))
     return lines

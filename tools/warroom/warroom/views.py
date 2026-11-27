@@ -267,6 +267,20 @@ def maintainer_card_text(card: dict) -> str:
     return "\n".join([title] + lines + [""] * (CARD_LINES - 1 - len(lines)))
 
 
+RECOVERY_LABELS = {"WORKING": "WORKING  ▶", "TRACKING": "추적 중", "WAITING_OWNER": "오너 대기", "ERROR": "ERROR  ✖"}
+
+
+def recovery_card_text(card: dict) -> str:
+    """Recovery card, the Maintainer card's fixed 4-line format: title/state, case, summary, model and elapsed time."""
+    if card["state"] == "IDLE":
+        return "\n".join([_fit("Recovery"), _fit("—  " + (card.get("summary") or "열린 복구 case 없음"))]
+                         + [""] * (CARD_LINES - 2))
+    title = _two_sided("Recovery", RECOVERY_LABELS[card["state"]])
+    key = card["key"] + (f" (+{card['more']}건)" if card.get("more") else "")
+    elapsed = f"경과 {fmt_elapsed(card['elapsed'])}" if card.get("elapsed") is not None else ""
+    return "\n".join([title, _fit(key), _fit(card.get("summary") or ""), _two_sided(card.get("model") or "", elapsed)])
+
+
 def board_footer() -> str:
     """One-line board key legend; values are Rich markup."""
     return "[b #ffa500]q[/] Quit · [b #ffa500]Shift+S[/] Stop All · [b #ffa500]r[/] 설정 리로드"

@@ -44,7 +44,8 @@ ALLOWED = {"fix": {"pr", "head", "branch", "shard", "batch", "part", "review_eve
            "s2_links": _STAGE2 | {"link_input", "whole_drop_rule"},
            "s2_links_fix": {"digest", "problem", "relation_direction_rule"},
            "s2_repair": _STAGE2 | {"repair_input", "round_info", "format_feedback"},
-           "s3_policy_card": {"whole_drop_rule"}, "s3_chunk": _STAGE3, "whole_drop_card": set()}
+           "s3_policy_card": {"whole_drop_rule"}, "s3_chunk": _STAGE3, "whole_drop_card": set(),
+           "recovery": {"case_key", "case_facts"}}   # the Recovery lane's run contract (former recovery-desk brief)
 MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
 CHUNK_VIEW = ".warroom-scratch/active-chunk.txt"

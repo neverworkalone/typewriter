@@ -221,7 +221,8 @@ class GhClient:
                 "url": d.get("html_url", ""), "merge_commit_sha": d.get("merge_commit_sha") or "",
                 "title": d.get("title") or "", "body": d.get("body") or "",
                 "base_ref": (d.get("base") or {}).get("ref"),
-                "base_sha": (d.get("base") or {}).get("sha"), "mergeable": d.get("mergeable")}
+                "base_sha": (d.get("base") or {}).get("sha"), "mergeable": d.get("mergeable"),
+                "mergeable_state": d.get("mergeable_state"), "user": (d.get("user") or {}).get("login")}
 
     # ---- Issues (Issue #1555: shared-defect urgent Issues) --------------------------------------------------------
     def issue(self, n: int) -> dict:
@@ -408,6 +409,30 @@ class GhClient:
             if len(names) >= 20:
                 break
         return "Failed test identifiers: " + (", ".join(names) if names else "unavailable; inspect the linked failed job")
+
+    REQUIRED_CHECK = "Validate and test Typewriter"
+
+    def required_check(self, head: str) -> str | None:
+        """State of the required CI check on `head`: SUCCESS | FAILURE | PENDING, or None when it has not run."""
+        from urllib.parse import quote
+        data = self._api(f"repos/{self.repo}/commits/{head}/check-runs?check_name={quote(self.REQUIRED_CHECK)}&per_page=100")
+        runs = [r for r in (data or {}).get("check_runs") or [] if isinstance(r, dict) and r.get("name") == self.REQUIRED_CHECK
+                and isinstance(r.get("id"), int)]
+        if not runs:
+            return None
+        run = max(runs, key=lambda r: r["id"])
+        if run.get("status") != "completed":
+            return "PENDING"
+        return "SUCCESS" if run.get("conclusion") == "success" else "FAILURE"
+
+    def merge_squash(self, n: int, head: str) -> None:
+        """Squash-merge PR `n` only while its HEAD is still `head` (`--match-head-commit`): a later push is never merged."""
+        if not re.fullmatch(r"[0-9a-f]{40}", head or ""):
+            raise GhError(f"merge_squash: invalid head {head!r}")
+        r = self.runner.run(["gh", "pr", "merge", str(n), "--repo", self.repo, "--squash", "--match-head-commit", head],
+                            env=self.env, timeout=120)
+        if not r.ok:
+            raise self._fail(f"gh pr merge {n}", r)
 
     def reviews(self, n: int) -> list[dict]:
         return self._api(f"repos/{self.repo}/pulls/{n}/reviews", paginate=True)

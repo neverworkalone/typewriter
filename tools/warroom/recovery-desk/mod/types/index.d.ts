@@ -1,23 +1,30 @@
-export type DeskSession = {
-  state: 'none' | 'running' | 'idle'
-  id?: string
-  last_report?: string | null
-  last_exit?: string | null
-  last_at?: number | null
+export type RecoveryRun = { id: number; kind: string; model: string | null; pid: number | null; log_file: string; started_at: number }
+export type RecoveryReport = { STATUS?: string; DONE?: string; REMAINING?: string; BOUNDARY?: string; exit?: string }
+export type RecoveryCase = {
+  id: number
+  key: string
+  kind: string
+  state: string
+  issue: number | null
+  pr: number | null
+  session: string | null
+  run: RecoveryRun | null
+  report: RecoveryReport | null
+  wait: Record<string, unknown> | null
+  note: string
 }
-export type DeskCase = { key: string; status: string; notes: string; session: DeskSession }
 export type DeskSnapshot = {
   now: number
-  paused: boolean
-  inspector: { running: boolean; last_at: number | null; last_result: string | null; last_exit: string | null }
-  cases: DeskCase[]
+  error?: string
+  watchdog: { state?: string; failed_key?: string | null; checked_at?: number } | null
+  supervisor: { heartbeat_age: number | null }
+  cases: RecoveryCase[]
 }
 
 declare module 'claude-code' {
   interface PluginState {
     'recovery-desk': {
       snap: Shaped<DeskSnapshot | null>
-      nextAt: number
       error: string
     }
   }

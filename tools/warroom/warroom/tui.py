@@ -23,6 +23,7 @@ from .config import (ROOT_ENV, Paths, RootError, check_runtime_root, adapter_lab
                      refine_models, stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (CARD_W, _hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
+                    recovery_card_text,
                     model_title, board_footer, detail_meta, scheduled_at, usage_text,
                     refine_display_model, pin_view)
 from .logtail import LogTail, redact
@@ -283,6 +284,73 @@ class MaintainerCard(Card):
         # The model shown is the producer that really runs the Maintainer, not the Board column the card sits in.
         who = control.maintainer_producer(self.app.store, self.app.cfg, self.model)
         self.app.push_screen(LineDetail(who or self.model, MAINTENANCE_METHOD))
+
+
+class RecoveryCard(Card):
+    """Card of the Recovery lane, in the cell directly below the Maintainer card (same column, the next row), whichever
+    row the Maintainer sits in. Enter/click opens a read-only Detail: it has no controls."""
+    ROW = MaintainerCard.ROW + 1
+
+    def __init__(self):
+        super().__init__("recovery", STAGE2_METHOD, card_id="card-recovery", column=MAINTAINER_COLUMN)
+        self.set_classes("card empty")
+
+    def action_open(self) -> None:
+        self.app.push_screen(RecoveryDetail())
+
+
+class RecoveryDetail(Screen):
+    """Read-only Recovery Detail: cases, state, ownership, blocking unit, session, last report, logs and wait reason."""
+    BINDINGS = [("escape", "back", "Back")]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield RichLog(id="recovery-detail", wrap=True, markup=False)
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.refresh_view()
+        self.set_interval(5, self.refresh_view)
+
+    def refresh_view(self) -> None:
+        log = self.query_one("#recovery-detail", RichLog)
+        log.clear()
+        watchdog = _watchdog_record(self.app.paths)
+        if watchdog:
+            log.write(Text(f"watchdog: {watchdog.get('state') or '?'}"
+                           + (f" · 실패 조건 {watchdog['failed_key']} (같은 조건 재시도 중단)" if watchdog.get("failed_key") else "")))
+        rows = control.recovery_detail(self.app.store)
+        if not rows:
+            log.write(Text("복구 case 없음"))
+        for c in rows:
+            log.write(Text(f"#{c['id']} {c['key']} · {c['state']} · {c['kind']}"
+                           + (f" · Issue #{c['issue']}" if c["issue"] else "") + (f" · PR #{c['pr']}" if c["pr"] else "")))
+            log.write(Text(f"  배치 {c['batches'] or '-'} · 모델 {c['producer'] or '-'} · 세션 {c['session'] or '-'}"))
+            unit = c["blocking_unit"] if isinstance(c["blocking_unit"], dict) else {}
+            if unit.get("reason"):
+                log.write(Text(f"  원인: {unit['reason']}"))
+            if c["wait_reason"]:
+                log.write(Text(f"  대기: {json.dumps(c['wait_reason'], ensure_ascii=False)}"))
+            if isinstance(c["last_report"], dict):
+                rep = c["last_report"]
+                log.write(Text(f"  보고: STATUS={rep.get('STATUS') or '-'} BOUNDARY={rep.get('BOUNDARY') or '-'} "
+                               f"exit={rep.get('exit')} · {rep.get('REMAINING') or rep.get('DONE') or ''}"))
+            for r in c["runs"]:
+                log.write(Text(f"  실행 #{r['id']} {r['kind']} {r['model'] or ''} exit={r['exit_status'] or '실행 중'} "
+                               f"로그 {r['log_file']}"))
+            if c["notes"]:
+                log.write(Text("  " + c["notes"].strip().splitlines()[-1]))
+
+    def action_back(self) -> None:
+        self.app.pop_screen()
+
+
+def _watchdog_record(paths) -> dict | None:
+    try:
+        data = json.loads((paths.supervisor_state / "recovery" / "watchdog.json").read_text("utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
 
 
 MAINTAINER_COLUMN = "maintainer"   # the board's fixed third column
@@ -757,11 +825,19 @@ class WarRoom(App):
                     else:
                         yield Static("", classes="spacer")
                 refine = [model for model in lines[:2] if model in self.refine_capable]
+                has_maint = MAINTAINER_COLUMN in columns
                 if refine:
                     for card in (RefineCard, DropCard):
                         yield card(refine[0], span=len(refine))
-                        for _ in range(len(columns) - len(refine)):
-                            yield Static("", classes="spacer")
+                        for column in columns[len(refine):]:
+                            # The Recovery card: the cell directly below the Maintainer card (its column, the next row).
+                            if has_maint and column == MAINTAINER_COLUMN and card.ROW == RecoveryCard.ROW:
+                                yield RecoveryCard()
+                            else:
+                                yield Static("", classes="spacer")
+                elif has_maint:
+                    for column in columns:
+                        yield RecoveryCard() if column == MAINTAINER_COLUMN else Static("", classes="spacer")
         yield Static(id="banner")
         yield Static(id="drain-note")
         yield BoardFooter(show_command_palette=False)
@@ -984,6 +1060,11 @@ class WarRoom(App):
             mc.update(Text(maintainer_card_text(maint)))   # hold reasons may hold [brackets]: text, never markup
             mc.set_classes("card " + {"IDLE": "empty", "WORKING": "PRODUCING", "COMING": "WAITING_REVIEW", "ERROR": "ERROR",
                                        "WAITING": "WAITING_REVIEW"}[maint["state"]])
+        for rc in root.query(RecoveryCard):
+            rec = control.recovery_card(store, self.cfg, _watchdog_record(self.paths))
+            rc.update(Text(recovery_card_text(rec)))
+            rc.set_classes("card " + {"IDLE": "empty", "WORKING": "PRODUCING", "TRACKING": "WAITING_REVIEW",
+                                      "WAITING_OWNER": "PAUSED", "ERROR": "ERROR"}[rec["state"]])
         drain_schedule = store.drain_schedule("all")
         schedule_select = root.query_one("#drain-all-time", Select)
         schedule_button = root.query_one("#schedule-all", Button)

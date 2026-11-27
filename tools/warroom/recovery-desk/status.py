@@ -1,70 +1,62 @@
-"""복구 점검반 상태를 JSON 한 줄로 출력한다 (앱 패널용, 읽기 전용).
+"""War Room Recovery status as one JSON line (the app panel's data source; strictly read-only).
 
-{"inspector": {"running", "last_at", "last_result", "last_exit"},
- "cases": [{"key", "status", "session": {"state", "id", "last_report", "last_exit"}}]}
+Reads the Recovery tables of the operating DB through a read-only SQLite connection and the external watchdog's record.
+It never writes, starts or stops anything.
+
+{"now", "watchdog": {...} | null, "supervisor": {"heartbeat_age"},
+ "cases": [{"id", "key", "kind", "state", "issue", "pr", "session", "run": {...} | null, "report": {...} | null,
+            "wait": {...} | null, "note"}]}
 """
 import json
 import os
-import subprocess
+import sqlite3
 import sys
 import time
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-DESK = os.path.join(ROOT, ".git", "typewriter-supervisor", "recovery-desk")
+ROOT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+DB = os.path.join(ROOT, "tools", "warroom", ".local", "warroom.db")
+WATCHDOG = os.path.join(ROOT, ".git", "typewriter-supervisor", "recovery", "watchdog.json")
 
 
-def tmux_alive(name):
-    return subprocess.run(["tmux", "has-session", "-t", "=" + name],
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-
-
-def tail_log(path, size=400_000):
-    """Last result text and exit code of a stream-json log, plus the time of its last write."""
-    if not os.path.exists(path):
-        return None, None, None
-    with open(path, "rb") as f:
-        f.seek(max(0, os.path.getsize(path) - size))
-        lines = f.read().decode("utf-8", "replace").splitlines()
-    result = code = None
-    for line in reversed(lines):
-        if code is None and line.startswith("exit="):
-            code = line[5:].strip()
-        if result is None and '"type":"result"' in line:
-            try:
-                result = json.loads(line).get("result")
-            except ValueError:
-                pass
-        if result is not None and code is not None:
-            break
-    return result, code, os.path.getmtime(path)
-
-
-def slug(key):
-    return "".join(c if c.isalnum() or c in "_-" else "-" for c in key)
+def load(text):
+    try:
+        return json.loads(text) if text else None
+    except ValueError:
+        return text
 
 
 def main():
-    res, code, at = tail_log(os.path.join(DESK, "inspector.log"))
-    out = {"now": time.time(), "paused": os.path.exists(os.path.join(DESK, "paused")),
-           "inspector": {"running": tmux_alive("recovery-inspector"), "last_at": at,
-                         "last_result": res, "last_exit": code},
-           "cases": []}
+    now = time.time()
+    out = {"now": now, "watchdog": None, "supervisor": {"heartbeat_age": None}, "cases": []}
     try:
-        with open(os.path.join(DESK, "ledger.json"), encoding="utf-8") as f:
-            cases = json.load(f).get("cases", [])
+        with open(WATCHDOG, encoding="utf-8") as f:
+            out["watchdog"] = json.load(f)
     except (OSError, ValueError):
-        cases = []
-    for case in cases:
-        key = str(case.get("key", "?"))
-        s = slug(key)
-        idf = os.path.join(DESK, "sessions", s + ".id")
-        sess = {"state": "none"}
-        if os.path.exists(idf):
-            r, c, t = tail_log(os.path.join(DESK, "sessions", s + ".log"))
-            sess = {"state": "running" if tmux_alive("recovery-" + s) else "idle",
-                    "id": open(idf).read().strip(), "last_report": r, "last_exit": c, "last_at": t}
-        out["cases"].append({"key": key, "status": case.get("status", "?"),
-                             "notes": case.get("notes", ""), "session": sess})
+        pass
+    try:
+        conn = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=10)
+    except sqlite3.Error as e:
+        out["error"] = f"DB를 열 수 없습니다: {e}"
+        json.dump(out, sys.stdout, ensure_ascii=False)
+        return
+    conn.row_factory = sqlite3.Row
+    try:
+        hb = conn.execute("SELECT value FROM kv WHERE key='heartbeat'").fetchone()
+        if hb:
+            out["supervisor"]["heartbeat_age"] = max(0.0, now - float(hb["value"]))
+        cases = conn.execute("SELECT * FROM recovery_cases WHERE state!='RESOLVED' ORDER BY id").fetchall()
+        for c in cases:
+            run = conn.execute("SELECT id, kind, model, pid, log_file, started_at FROM recovery_runs "
+                               "WHERE case_id=? AND ended_at IS NULL", (c["id"],)).fetchone()
+            notes = (c["notes"] or "").strip().splitlines()
+            out["cases"].append({"id": c["id"], "key": c["key"], "kind": c["kind"], "state": c["state"],
+                                 "issue": c["issue"], "pr": c["pr_number"], "session": c["session_id"],
+                                 "run": dict(run) if run else None, "report": load(c["last_report"]),
+                                 "wait": load(c["wait_reason"]), "note": notes[-1] if notes else ""})
+    except sqlite3.Error as e:   # an older DB without the Recovery tables
+        out["error"] = f"Recovery 기록을 읽을 수 없습니다: {e}"
+    finally:
+        conn.close()
     json.dump(out, sys.stdout, ensure_ascii=False)
 
 
