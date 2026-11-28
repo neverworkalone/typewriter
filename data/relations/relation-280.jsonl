@@ -7354,28 +7354,12 @@
 {"id":"w358116","sid":"w358116-s1","tid":"w358484","tsid":"w358484-s2","tp":"near","rv":3,"ver":1,"fm":["폐점"],"rfm":[]}
 {"id":"w358116","sid":"w358116-s1","tid":"w239360","tsid":"w239360-s1","tp":"scene","rv":4,"ver":1,"fm":["영화관"],"rfm":[]}
 {"id":"w358116","sid":"w358116-s1","tt":"운영시간","tp":"association","rv":5}
-{"id":"w358116","sid":"w358116-s1","tt":"마감시간","tp":"association","rv":4}
 {"id":"w358116","sid":"w358116-s1","tid":"w413536","tsid":"w413536-s1","tp":"action","rv":3,"ver":1,"fm":["닫다"],"rfm":[]}
 {"id":"w358116","sid":"w358116-s1","tid":"w500595","tsid":"w500595-s2","tp":"near","rv":4,"ver":1,"fm":["폐쇄"],"rfm":[]}
-{"id":"w358116","sid":"w358116-s1","tt":"문 닫기","tp":"action","rv":3}
-{"id":"w358116","sid":"w358116-s1","tt":"영업 종료","tp":"near","rv":4}
 {"id":"w358116","sid":"w358116-s1","tt":"출입 통제","tp":"association","rv":5}
-{"id":"w358116","sid":"w358116-s1","tt":"잠금","tp":"action","rv":5}
-{"id":"w358116","sid":"w358116-s1","tt":"관람 종료","tp":"association","rv":4}
-{"id":"w358116","sid":"w358116-s1","tid":"w460328","tsid":"w460328-s1","tp":"scene","rv":7,"ver":1,"fm":["어스름"],"rfm":[]}
-{"id":"w358116","sid":"w358116-s1","tid":"w475004","tsid":"w475004-s1","tp":"association","rv":6,"ver":1,"fm":["자물쇠"],"rfm":[]}
 {"id":"w358116","sid":"w358116-s1","tt":"마감 종","tp":"sensory","rv":5}
 {"id":"w358116","sid":"w358116-s1","tt":"불 꺼진 로비","tp":"scene","rv":5}
-{"id":"w358116","sid":"w358116-s1","tid":"w398535","tsid":"w398535-s1","tp":"association","rv":5,"ver":1,"fm":["관람객"],"rfm":[]}
-{"id":"w358116","sid":"w358116-s1","tid":"w464427","tsid":"w464427-s1","tp":"association","rv":6,"ver":1,"fm":["열쇠"],"rfm":[]}
-{"id":"w358116","sid":"w358116-s1","tt":"안내방송","tp":"sensory","rv":5}
-{"id":"w358116","sid":"w358116-s1","tid":"w475740","tsid":"w475740-s1","tp":"scene","rv":6,"ver":1,"fm":["저녁"],"rfm":[]}
-{"id":"w358116","sid":"w358116-s1","tid":"w452880","tsid":"w452880-s1","tp":"scene","rv":6,"ver":1,"fm":["야간"],"rfm":[]}
-{"id":"w358116","sid":"w358116-s1","tt":"문단속","tp":"action","rv":5}
 {"id":"w358116","sid":"w358116-s1","tt":"입장 마감","tp":"association","rv":5}
-{"id":"w358116","sid":"w358116-s1","tid":"w494426","tsid":"w494426-s1","tp":"association","rv":6,"ver":1,"fm":["출입"],"rfm":[]}
-{"id":"w358116","sid":"w358116-s1","tid":"w294136","tsid":"w294136-s1","tp":"mood","rv":6,"ver":1,"fm":["정적"],"rfm":[]}
-{"id":"w358116","sid":"w358116-s1","tid":"w348313","tsid":"w348313-s1","tp":"association","rv":5,"ver":1,"fm":["퇴근"],"rfm":[]}
 {"id":"w358117","sid":"w358117-s1","tid":"w507583","tsid":"w507583-s1","tp":"association","rv":3,"ver":1,"fm":["휴관"],"rfm":[]}
 {"id":"w358117","sid":"w358117-s1","tid":"w420016","tsid":"w420016-s1","tp":"association","rv":4,"ver":1,"fm":["마감"],"rfm":[]}
 {"id":"w358117","sid":"w358117-s1","tid":"w124452","tsid":"w124452-s1","tp":"association","rv":6,"ver":1,"fm":["문단속"],"rfm":[]}
@@ -7815,7 +7799,6 @@
 {"id":"w358159","sid":"w358159-s1","tid":"w130198","tsid":"w130198-s1","tp":"association","rv":5,"ver":1,"fm":["밀물"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w454513","tsid":"w454513-s1","tp":"association","rv":5,"ver":1,"fm":["썰물"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w481712","tsid":"w481712-s1","tp":"association","rv":4,"ver":1,"fm":["조수"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w11941","tsid":"w11941-s1","tp":"scene","rv":4,"ver":1,"fm":["개펄"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w354223","tsid":"w354223-s1","tp":"scene","rv":5,"ver":1,"fm":["포구"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w124629","tsid":"w124629-s1","tp":"near","rv":3,"ver":1,"fm":["물가"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w130030","tsid":"w130030-s1","tp":"near","rv":2,"ver":1,"fm":["바닷가"],"rfm":[]}
@@ -7827,22 +7810,11 @@
 {"id":"w358159","sid":"w358159-s1","tid":"w109450","tsid":"w109450-s1","tp":"association","rv":6,"ver":1,"fm":["만조"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w461152","tsid":"w461152-s1","tp":"scene","rv":6,"ver":1,"fm":["어촌"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w422962","tsid":"w422962-s1","tp":"scene","rv":6,"ver":1,"fm":["모래톱"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w368691","tsid":"w368691-s1","tp":"near","rv":2,"ver":1,"fm":["해변"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w225215","tsid":"w225215-s1","tp":"association","rv":7,"ver":1,"fm":["어부"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w142792","tsid":"w142792-s1","tp":"scene","rv":6,"ver":1,"fm":["백사장"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w499093","tsid":"w499093-s1","tp":"sensory","rv":4,"ver":1,"fm":["파도"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w428733","tsid":"w428733-s1","tp":"sensory","rv":4,"ver":1,"fm":["바닷바람"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w430018","tsid":"w430018-s1","tp":"scene","rv":3,"ver":1,"fm":["바다"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w135845","tsid":"w135845-s1","tp":"association","rv":7,"ver":1,"fm":["배"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w177946","tsid":"w177946-s1","tp":"association","rv":8,"ver":1,"fm":["상륙"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w444770","tsid":"w444770-s1","tp":"scene","rv":7,"ver":1,"fm":["새벽"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w458242","tsid":"w458242-s2","tp":"scene","rv":8,"ver":1,"fm":["야영"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w505619","tsid":"w505619-s1","tp":"association","rv":8,"ver":1,"fm":["해적"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w57728","tsid":"w57728-s1","tp":"association","rv":8,"ver":1,"fm":["나룻배"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w409358","tsid":"w409358-s1","tp":"sensory","rv":6,"ver":1,"fm":["노을"],"rfm":[]}
 {"id":"w358159","sid":"w358159-s1","tid":"w193376","tsid":"w193376-s1","tp":"scene","rv":5,"ver":1,"fm":["수평선"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w422402","tsid":"w422402-s1","tp":"scene","rv":6,"ver":1,"fm":["모래사장"],"rfm":[]}
-{"id":"w358159","sid":"w358159-s1","tid":"w297997","tsid":"w297997-s1","tp":"association","rv":8,"ver":1,"fm":["조난"],"rfm":[]}
 {"id":"w358160","sid":"w358160-s1","tid":"w484391","tsid":"w484391-s1","tp":"near","rv":2,"ver":1,"fm":["지병"],"rfm":[]}
 {"id":"w358160","sid":"w358160-s1","tid":"w393620","tsid":"w393620-s1","tp":"near","rv":3,"ver":1,"fm":["고질"],"rfm":[]}
 {"id":"w358160","sid":"w358160-s1","tid":"w350405","tsid":"w350405-s1","tp":"association","rv":3,"ver":1,"fm":["투병"],"rfm":[]}
@@ -8021,11 +7993,9 @@
 {"id":"w358174","sid":"w358174-s1","tid":"w361955","tsid":"w361955-s1","tp":"action","rv":4,"ver":1,"fm":["하늘거리다"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w408179","tsid":"w408179-s1","tp":"association","rv":6,"ver":1,"fm":["나그네"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w136294","tsid":"w136294-s1","tp":"association","rv":5,"ver":1,"fm":["방랑"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w97768","tsid":"w97768-s1","tp":"association","rv":7,"ver":1,"fm":["떠돌이"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w498394","tsid":"w498394-s1","tp":"near","rv":4,"ver":1,"fm":["홀연"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w36385","tsid":"w36385-s1","tp":"association","rv":7,"ver":1,"fm":["구름"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w428449","tsid":"w428449-s1","tp":"sensory","rv":7,"ver":1,"fm":["바람결"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w375961","tsid":"w375961-s1","tp":"near","rv":4,"ver":1,"fm":["홀연히"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w436954","tsid":"w436954-s2","tp":"near","rv":4,"ver":1,"fm":["불쑥"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w504533","tsid":"w504533-s4","tp":"near","rv":2,"ver":1,"fm":["훌쩍"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w474377","tsid":"w474377-s1","tp":"near","rv":4,"ver":1,"fm":["자유분방"],"rfm":[]}
@@ -8037,26 +8007,9 @@
 {"id":"w358174","sid":"w358174-s2","tid":"w368470","tsid":"w368470-s1","tp":"association","rv":7,"ver":1,"fm":["행방"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w475312","tsid":"w475312-s1","tp":"association","rv":7,"ver":1,"fm":["작별"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w507883","tsid":"w507883-s3","tp":"near","rv":5,"ver":1,"fm":["훌훌"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tt":"도포 자락","tp":"association","rv":7}
-{"id":"w358174","sid":"w358174-s2","tid":"w124754","tsid":"w124754-s1","tp":"scene","rv":7,"ver":1,"fm":["문간"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w12483","tsid":"w12483-s1","tp":"near","rv":1,"ver":1,"fm":["거침없다"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w406868","tsid":"w406868-s1","tp":"action","rv":4,"ver":1,"fm":["나타나다"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w14864","tsid":"w14864-s1","tp":"association","rv":6,"ver":1,"fm":["걸음걸이"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tt":"외투자락","tp":"association","rv":7}
-{"id":"w358174","sid":"w358174-s2","tid":"w411783","tsid":"w411783-s1","tp":"scene","rv":7,"ver":1,"fm":["대문"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w389498","tsid":"w389498-s1","tp":"scene","rv":7,"ver":1,"fm":["객지"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w446596","tsid":"w446596-s1","tp":"scene","rv":7,"ver":1,"fm":["산수"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w459607","tsid":"w459607-s1","tp":"association","rv":5,"ver":1,"fm":["여행"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w499803","tsid":"w499803-s1","tp":"scene","rv":7,"ver":1,"fm":["평원"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w299288","tsid":"w299288-s1","tp":"association","rv":7,"ver":1,"fm":["죽장"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w470485","tsid":"w470485-s1","tp":"association","rv":7,"ver":1,"fm":["이별"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w402860","tsid":"w402860-s2","tp":"association","rv":7,"ver":1,"fm":["기차"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w403593","tsid":"w403593-s3","tp":"scene","rv":5,"ver":1,"fm":["길"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w2960","tsid":"w2960-s1","tp":"sensory","rv":7,"ver":1,"fm":["가을바람"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w165674","tsid":"w165674-s1","tp":"scene","rv":7,"ver":1,"fm":["산길"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tt":"방랑성","tp":"association","rv":6}
-{"id":"w358174","sid":"w358174-s2","tid":"w25899","tsid":"w25899-s1","tp":"association","rv":7,"ver":1,"fm":["고향"],"rfm":[]}
-{"id":"w358174","sid":"w358174-s2","tid":"w342459","tsid":"w342459-s1","tp":"scene","rv":7,"ver":1,"fm":["타향"],"rfm":[]}
 {"id":"w358174","sid":"w358174-s2","tid":"w276483","tsid":"w276483-s1","tp":"association","rv":7,"ver":1,"fm":["잠적"],"rfm":[]}
 {"id":"w358175","sid":"w358175-s1","tid":"w52937","tsid":"w52937-s1","tp":"association","rv":5,"ver":1,"fm":["깃털"],"rfm":[]}
 {"id":"w358175","sid":"w358175-s1","tid":"w247604","tsid":"w247604-s1","tp":"association","rv":3,"ver":1,"fm":["옷자락"],"rfm":[]}
