@@ -50,6 +50,8 @@ const E = idRow('w3-s1', 'w1-s2', 'near', 2);
 const F = idRow('w2001-s1', 'w5-s1', 'association', 6);
 const G = idRow('w2001-s1', 'w2000-s1', 'sensory', 5);
 const X = idRow('w2001-s1', 'w7-s1', 'mood', 4);
+// #10517: a Relation a later S4/Polish adds toward a D Sense after D1 was prepared.
+const K = idRow('w4-s1', 'w3-s1', 'action', 4);
 
 async function repository(t, { select = (id) => (SKIP.has(id) ? 's' : 'p'), extra001 = [], relations001 = [A, B, C, T, E] } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-d1-'));
@@ -160,12 +162,32 @@ test('#10330 D1 judges Skip Senses by gloss only and drops only its own file\'s 
   assert.equal(await read(root, '.warroom-scratch/relation-d1-001.json'), checkpoint);
   assert.equal(git(root, 'status', '--porcelain', '--', 'data'), '');
   git(root, 'reset', '-q', '--hard', head);
+  // #10517: after D1 was prepared, master adds K toward a D Sense. A clean squash merge (no replay) keeps it: verify of
+  // the merged change accepts exactly that latest key; dropping it with the old D verdicts is a finding.
+  git(root, 'switch', '-q', 'master');
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([K, A, B, C, T, E]));
+  git(root, 'commit', '-qam', 'S4 add');
+  const latest = git(root, 'rev-parse', 'HEAD');
+  git(root, 'switch', '-q', 'd1-001');
+  const checkout = await mkdtemp(path.join(tmpdir(), 'typewriter-d1-clean-'));
+  t.after(() => rm(checkout, { recursive: true, force: true }));
+  git(root, 'worktree', 'add', '-q', '--detach', checkout, latest);
+  git(checkout, 'merge', '-q', '--squash', head);
+  git(checkout, 'commit', '-qm', '[D1/Test] 001');
+  const squashed = await quiet(() => run(['verify', '--shard', '001', '--base', latest, '--judgments', root], { root: checkout }));
+  assert.deepEqual([squashed.ok, squashed.removed_relations, squashed.kept_latest], [true, 3, 1]);
+  await writeFile(path.join(checkout, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([A, B]));
+  git(checkout, 'commit', '-qam', 'drops the latest key');
+  await assert.rejects(quiet(() => run(['verify', '--shard', '001', '--base', latest, '--judgments', root], { root: checkout })), (error) => {
+    assert.deepEqual(error.errors, ['i|w3-s1|w4-s1: the latest approved value is not kept']);
+    return true;
+  });
   // A later Stage 4 of the same shard prepares on the remaining Relations; no Candidate accounting stops it.
   const s4 = await quiet(() => runS4(['prepare', '--shard', '001'], { root }));
   assert.ok(s4.chunk_count >= 1);
 });
 
-test('#10338 a D1 replay keeps a key the latest data changed; verify and amend accept exactly that key, before and after a squash merge', async (t) => {
+test('#10338 #10517 a D1 replay keeps the keys the latest data changed or added; verify and amend accept exactly those keys, across replays and a squash merge', async (t) => {
   const root = await repository(t);
   const { replay } = await import('./replay-cli.mjs');
   await produce(root, (view) => [`D ${numberOf(view, 'w5-s1')} 4`, `D ${numberOf(view, 'w4-s1')} 1`, `N ${numberOf(view, 'w1-s1')} ${numberOf(view, 'w1-s2')}`]);
@@ -174,7 +196,8 @@ test('#10338 a D1 replay keeps a key the latest data changed; verify and amend a
   // now also stores the reverse of 001's 고요↔별빛, a cross-file problem that is not this PR's.
   git(root, 'switch', '-q', 'master');
   const latestC = { ...C, relevance: 6, reverse_relevance: 6 };
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([A, B, latestC, T, E]));
+  // It also adds K toward the D Sense 흐르다 (#10517), which the PR's older D verdicts must not drop.
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([A, B, latestC, T, E, K]));
   await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl([F, G, X, idRow('w2000-s1', 'w1-s1', 'mood', 3)]));
   git(root, 'commit', '-qam', 'S4 retype');
   const theirs = git(root, 'rev-parse', 'HEAD');
@@ -186,34 +209,60 @@ test('#10338 a D1 replay keeps a key the latest data changed; verify and amend a
   assert.equal((await quiet(() => replay({ base: common, ours, theirs, relationsOnly: true, dryRun: true }, root))).status, 'planned');
   const replayed = await quiet(() => replay({ base: common, ours, theirs, relationsOnly: true, dropsOnly: true }, root));
   assert.deepEqual(replayed.files, [{ path: 'data/relations/relation-001.jsonl', applied: 1, conflicts: ['R|i|w4-s1|w5-s1'] }]);
-  assert.equal(await shard(root, '001'), serializeRelationJsonl([A, B, latestC, E]));
+  assert.equal(await shard(root, '001'), serializeRelationJsonl([A, B, latestC, E, K]));
   git(root, 'add', 'data/relations/relation-001.jsonl');
   git(root, 'commit', '-q', '--no-edit');
 
-  // Right after the replay the kept key passes; every other D Relation is still required to be dropped.
+  // Right after the replay the kept keys pass; every other D Relation is still required to be dropped.
   const afterReplay = await cli(root, 'verify', '--shard', '001', '--base', theirs);
-  assert.deepEqual([afterReplay.ok, afterReplay.removed_relations, afterReplay.kept_latest], [true, 1, 1]);
-  // A review amend rebuilds from the PR base and never re-drops the latest value.
+  assert.deepEqual([afterReplay.ok, afterReplay.removed_relations, afterReplay.kept_latest], [true, 1, 2]);
+  // Dropping a latest key (the new K or the replay-kept latestC) is a finding, not a D drop.
+  const replayHead = git(root, 'rev-parse', 'HEAD');
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([A, B, E]));
+  git(root, 'commit', '-qam', 'drops the latest keys');
+  await assert.rejects(cli(root, 'verify', '--shard', '001', '--base', theirs), (error) => {
+    assert.deepEqual([...error.errors].sort(), ['i|w3-s1|w4-s1: the latest approved value is not kept',
+      'i|w4-s1|w5-s1: the latest approved value is not kept']);
+    return true;
+  });
+  git(root, 'reset', '-q', '--hard', replayHead);
+  // A review amend rebuilds from the PR base and never re-drops the latest values.
   await cli(root, 'amend', '--shard', '001', '--base', theirs, '--in', await delta(root, ['D w1-s1 2']));
-  assert.equal(await shard(root, '001'), serializeRelationJsonl([latestC, E]));
+  assert.equal(await shard(root, '001'), serializeRelationJsonl([latestC, E, K]));
   git(root, 'commit', '-qam', 'amend');
+  assert.equal((await cli(root, 'verify', '--shard', '001', '--base', theirs)).kept_latest, 2);
+
+  // A later replay over a newer master keeps protecting K: the work base is still the PR's original base.
+  git(root, 'switch', '-q', 'master');
+  const N = idRow('w3-s1', 'w2001-s1', 'mood', 2);
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl([A, B, latestC, T, E, K, N]));
+  git(root, 'commit', '-qam', 'S4 add');
+  const newer = git(root, 'rev-parse', 'HEAD');
+  git(root, 'switch', '-q', 'd1-001');
+  const amended = git(root, 'rev-parse', 'HEAD');
+  spawnSync('git', ['merge', '--no-commit', '--no-ff', newer], { cwd: root });
+  await quiet(() => replay({ base: git(root, 'merge-base', amended, newer), ours: amended, theirs: newer, relationsOnly: true, dropsOnly: true }, root));
+  assert.equal(await shard(root, '001'), serializeRelationJsonl([latestC, E, K, N]));
+  git(root, 'add', 'data/relations/relation-001.jsonl');
+  git(root, 'commit', '-q', '--no-edit');
   const prHead = git(root, 'rev-parse', 'HEAD');
-  assert.equal((await cli(root, 'verify', '--shard', '001', '--base', theirs)).kept_latest, 1);
+  assert.equal((await cli(root, 'verify', '--shard', '001', '--base', newer)).kept_latest, 2);
 
   // Squash merge: the merged change has no merge commit; the kept judgments' worktree (the PR head) proves the key.
   const checkout = await mkdtemp(path.join(tmpdir(), 'typewriter-d1-merged-'));
   t.after(() => rm(checkout, { recursive: true, force: true }));
-  git(root, 'worktree', 'add', '-q', '--detach', checkout, theirs);
+  git(root, 'worktree', 'add', '-q', '--detach', checkout, newer);
   git(checkout, 'merge', '-q', '--squash', prHead);
   git(checkout, 'commit', '-qm', '[D1/Test] 001');
   const merged = git(checkout, 'rev-parse', 'HEAD');
-  const verified = await quiet(() => run(['verify', '--shard', '001', '--base', theirs, '--judgments', root], { root: checkout }));
-  assert.deepEqual([verified.ok, verified.removed_relations, verified.kept_latest], [true, 3, 1]);
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--base', newer, '--judgments', root], { root: checkout }));
+  assert.deepEqual([verified.ok, verified.removed_relations, verified.kept_latest], [true, 3, 2]);
   // Without that proof (the judgments copied into the merged checkout) the same kept row is the ordinary missing drop.
   const scratch = path.join(checkout, '.warroom-scratch');
   await cp(path.join(root, '.warroom-scratch'), scratch, { recursive: true });
-  await assert.rejects(quiet(() => run(['verify', '--shard', '001', '--base', theirs], { root: checkout })), (error) => {
-    assert.deepEqual(error.errors, ['i|w4-s1|w5-s1: touches a D Sense but is not dropped']);
+  await assert.rejects(quiet(() => run(['verify', '--shard', '001', '--base', newer], { root: checkout })), (error) => {
+    assert.deepEqual(error.errors, ['i|w4-s1|w5-s1: touches a D Sense but is not dropped',
+      'i|w3-s1|w4-s1: touches a D Sense but is not dropped']);
     return true;
   });
   assert.equal(git(checkout, 'rev-parse', 'HEAD'), merged);

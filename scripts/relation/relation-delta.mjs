@@ -30,6 +30,11 @@ export function deltaKey(row, family) {
 /** Readable form of a key for reports. */
 export const deltaKeyText = (key) => key.replaceAll('\u0000', '|');
 
+/** Key → `{ line, value }` of one JSONL file's rows (`value` is the canonical encoding used to compare rows). */
+export function jsonlEntries(text, family, label = family) {
+  return entries(text, family, label);
+}
+
 function entries(text, family, label) {
   const result = new Map();
   if (!text) return result;

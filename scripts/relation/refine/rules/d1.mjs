@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto';
 
 import { discardStaged, loadCanonical, scanTouching, stageText } from '../../polish-cli.mjs';
 import { exclusionKey } from '../../persisted-jsonl.mjs';
-import { mergeJsonl } from '../../relation-delta.mjs';
+import { jsonlEntries, mergeJsonl } from '../../relation-delta.mjs';
 import { fail, gitHead, RefineInputError, viewDigest } from '../core.mjs';
 import { escapeField } from './s3.mjs';
 import {
@@ -44,7 +44,7 @@ export const usage = `Usage:
   node scripts/relation/d1-cli.mjs report --shard SSS [--out <file>]
   node scripts/relation/d1-cli.mjs decisions --shard SSS --base <sha> [--senses <id,...>] [--out <file>]
   node scripts/relation/d1-cli.mjs amend --shard SSS --base <sha> --in <delta.txt>
-  node scripts/relation/d1-cli.mjs verify --shard SSS --base <sha> [--judgments <worktree>]   # every own-file D Relation dropped (or kept at the latest value by a replay conflict), nothing else
+  node scripts/relation/d1-cli.mjs verify --shard SSS --base <sha> [--judgments <worktree>]   # every own-file D Relation dropped (or a latest approved key kept at its value), nothing else
 
 A chunk answer is "chunk NNN" and then exactly one verdict for every shown Sense:
   D <n> <1-11>    whole Drop, with its category number
@@ -286,6 +286,43 @@ export function replayKept(root, shard, base, heads) {
   return kept;
 }
 
+const git = (root, args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 1 << 30, stdio: ['ignore', 'pipe', 'pipe'] });
+
+/**
+ * The PR's original work base (#10517): the first parent of the oldest commit on the PR head's first-parent chain that
+ * `base` does not contain. A replay merge keeps the PR as its first parent, so this is the commit D1 was prepared on
+ * before any replay; for a squash merge `prHead` is the kept judgments' PR head. A Git failure throws: it never
+ * widens what is protected.
+ */
+export function workBase(root, base, prHead) {
+  const own = git(root, ['rev-list', '--first-parent', prHead, `^${base}`]).split('\n').filter(Boolean);
+  return own.length ? git(root, ['rev-parse', `${own.at(-1)}^1`]).trim() : base;
+}
+
+/** This shard's own Relation file at `revision` as exclusion key → row entry; an absent file (not a failure) is empty. */
+export function ownEntries(root, shard, revision) {
+  const own = ownRelationFile(shard);
+  if (!git(root, ['ls-tree', '--name-only', revision, '--', own]).trim()) return new Map();
+  const rows = jsonlEntries(git(root, ['show', `${revision}:${own}`]), 'Relation', `${own}@${revision.slice(0, 10)}`);
+  return new Map([...rows].map(([key, entry]) => [key.slice(2), entry]));   // drop the `R\0` delta-key prefix
+}
+
+/**
+ * The own-file keys whose latest approved value this PR must keep (#10338, #10517): the same-key conflicts a
+ * relation-key replay kept (`replayKept`), and every key the approved master side added after the PR's work base
+ * (absent there, present at `base`). A D1 prepared earlier never drops a newer Relation by its older D verdicts.
+ * Verify and amend both use this set; the caller checks that each key is kept at its `base` value.
+ */
+export function latestKeys(root, shard, { base, prHead, heads, baseRows }) {
+  const keys = replayKept(root, shard, base, heads);
+  const work = workBase(root, base, prHead);
+  if (work !== base) {
+    const before = ownEntries(root, shard, work);
+    for (const key of baseRows().keys()) if (!before.has(key)) keys.add(key);
+  }
+  return keys;
+}
+
 function diffSize(root, args) {
   const numstat = execFileSync('git', ['diff', '--numstat', '--no-renames', ...args, '--', 'data/relations'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
     .split('\n').filter(Boolean).map((line) => line.split('\t'));
@@ -376,7 +413,8 @@ export async function amendDecisions({ shard, root, base, head, text, saved }) {
   const next = decisions.map((decision) => (changes.has(decision.sense) ? { ...decision, ...changes.get(decision.sense) } : decision))
     .sort((a, b) => a.chunk.localeCompare(b.chunk) || JSON.stringify(decisionIdentity(a)).localeCompare(JSON.stringify(decisionIdentity(b))));
   const state = prState(root, base, head, label);
-  const kept = replayKept(root, shard, base, [head]);   // a replay kept these at the latest value; never re-drop them
+  // The latest approved keys (a replay's conflicts, keys master added after the work base): never re-drop them.
+  const kept = latestKeys(root, shard, { base, prHead: head, heads: [head], baseRows: () => ownEntries(root, shard, base) });
   const ops = (await dropOps(root, shard, dSenses(next), state.baseRead)).filter((op) => !kept.has(keyOf(op)));
   const planned = await planOps({ root, shard, ops, revision: base, differing: state.differing, canonical, reason: `D1 shard ${shard}`,
     only: new Set([ownRelationFile(shard)]) });
@@ -398,8 +436,10 @@ export async function amendDecisions({ shard, root, base, head, text, saved }) {
  * `verify`: the PR does exactly its judgments, checked on the relation-key diff base..head and nothing more.
  * 1. Every Relation of this shard's own file touching a kept `D` Sense at the base is dropped (#10330). A row another
  *    shard's file stores toward a `D` Sense is not this PR's and is never a finding.
- *    The one exception is a key a relation-key replay of this PR kept at the latest value (`replayKept`, #10338),
- *    proven by a merge commit in `base..head` or `base..history` (the PR head, when `head` is its squash merge).
+ *    The one exception is a latest approved key (`latestKeys`): a key a relation-key replay of this PR kept at the
+ *    latest value (#10338), proven by a merge commit in `base..head` or `base..history` (the PR head, when `head` is
+ *    its squash merge), or a key the approved master side added after the PR's work base (#10517), with or without a
+ *    replay. Such a key must stay exactly at its base value; dropping or changing it is a finding.
  * 2. Nothing else changed: only this shard's Relation file, only drops, and every dropped key touches a `D` Sense.
  * The dictionary-wide structural integrity of Relation files is the build's and Deep CI's job, not re-run per shard.
  * A failure throws `AdmissionVerifyError` (family `d1-scope`) with every finding.
@@ -424,7 +464,18 @@ export async function verifyDecisions({ shard, root, base, head, saved, history 
     else dropped.add(key);
   }
   const expected = await ownTouching(root, shard, senses, state.baseRead);
-  const latest = replayKept(root, shard, base, [head, history]);
+  let baseRows = null;
+  const readBase = () => (baseRows ??= ownEntries(root, shard, base));
+  const latest = latestKeys(root, shard, { base, prHead: history ?? head, heads: [head, history], baseRows: readBase });
+  // A latest approved key stays exactly at its base value: dropping or changing it is a finding (#10517).
+  if (latest.size) {
+    const headRows = ownEntries(root, shard, head);
+    for (const key of latest) {
+      if ((readBase().get(key)?.value ?? null) !== (headRows.get(key)?.value ?? null)) {
+        errors.push(`${key.replaceAll('\u0000', '|')}: the latest approved value is not kept`);
+      }
+    }
+  }
   const kept = new Set();
   let keptLatest = 0;
   for (const { row } of expected) {

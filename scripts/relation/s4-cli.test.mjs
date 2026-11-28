@@ -188,6 +188,24 @@ test('Stage 4 shows selected Polish Senses in both directions and applies Add/Dr
   // An amend may not reach a relation without an end in the produced shard.
   await writeFile(delta, 'amend\nA w2000-s1 w2001-s1 near 3\n');
   await assert.rejects(cli(root, 'amend', '--shard', '001', '--base', base, '--in', delta), RefineInputError);
+
+  // #10517: this PR's older Set of 흐르다↔물 뿌린 듯이 meets a newer D1 Drop of the same key. The replay keeps the Drop,
+  // applies the other S4 edits, and S4 verify passes without any relaxed check.
+  const s4Head = commitAll(root, 'amend');
+  const isFlow = (row) => row.source_sense_id === 'w4-s1' && row.target_sense_id === 'w5-s1';
+  git(root, 'switch', '-qc', 'latest-d1', base);
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl((await relations(root, '001')).filter((row) => !isFlow(row))));
+  const theirs = commitAll(root, '[D1/Sol] 001');
+  git(root, 'switch', '-qc', 's4-replay', s4Head);
+  spawnSync('git', ['merge', '--no-commit', '--no-ff', theirs], { cwd: root });
+  const { replay } = await import('./replay-cli.mjs');
+  const replayed = await quiet(() => replay({ base, ours: s4Head, theirs, relationsOnly: true }, root));
+  assert.ok(replayed.files.find((entry) => entry.path === 'data/relations/relation-001.jsonl').conflicts.includes('R|i|w4-s1|w5-s1'));
+  const merged = await relations(root, '001');
+  assert.ok(!merged.some(isFlow), 'the latest D1 Drop is kept');
+  assert.ok(merged.some((row) => row.target_sense_id === 'w2001-s1' && row.polish === true), 'the other S4 edits apply');
+  commitAll(root, 'replay');
+  assert.equal((await cli(root, 'verify', '--shard', '001', '--base', theirs)).ok, true);
 });
 
 test('#9928 conflicting chunk decisions resolve by key, whole decisions, independent of save order; a re-run apply is a no-op', async (t) => {
