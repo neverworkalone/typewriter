@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import sys
 
-from . import fixcoord, prbody, refine, stage3, stage4
+from . import fixcoord, prbody, refine, stage3
 from .refine import NoJudgment, RefineError
 from .store import DROP_METHOD
 
@@ -110,16 +110,16 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
     return "\n".join([f"chunk {chunk}", *accepted]) + "\n", warnings
 
 
-def _all_stage3(kv, shard: str) -> bool:
+def _all_stage3(kv) -> bool:
     """Every shard's Stage 3 is complete (#10171 §1): the whole factory's gate, kept by #10330."""
     return all(kv.get(stage3.ok_key(f"{number:03d}")) for number in range(1, refine.SHARDS + 1))
 
 
 def _gate(kv, shard: str) -> bool:
-    """D1 SSS starts after every shard's Stage 3 and after Stage 4 SSS completed (#10330): its merged-and-verified PR or
-    its official no-change completion, both recorded as `s4_ok_SSS`. An open, reviewing or failed S4 is not complete;
-    other shards' S4 progress does not matter."""
-    return _all_stage3(kv, shard) and bool(kv.get(stage4.SPEC.ok_key(shard)))
+    """D1 never waits for Stage 4 (#10517). Only the first new D1 shard, 001, checks that every shard's Stage 3 is
+    complete; `RefineOps.choose` reaches a later shard only as the successor of the latest D1 production PR or of its
+    contiguous official no-change completions, so 002 onward reads no Stage 3 or Stage 4 completion."""
+    return shard != "001" or _all_stage3(kv)
 
 
 SPEC = refine.register(refine.RefineSpec(
@@ -127,7 +127,7 @@ SPEC = refine.register(refine.RefineSpec(
     scratch="relation-d1", title=prbody.D1_TITLE, issue_link=prbody.D1_ISSUE_LINK,
     detail_title=re.compile(r"\[D1/([A-Za-z0-9-]+)\] (\d{3})"), search_phrases=('"D1"',), legacy_title=None,
     chunk_prompt="d1_chunk", fix_prompt="d1_fix", policy_card="d1_policy_card",
-    gate=_gate, gate_label="전체 Stage 3·동일 샤드 Stage 4",
+    gate=_gate, gate_label="전체 Stage 3",
     rule=sys.modules[__name__],
     fix=fixcoord.FixSpec(prefix="d1", label="D1", response=".warroom-scratch/d1-fix-response.json",
                          amend_input=".warroom-scratch/d1-fix-amend.txt",

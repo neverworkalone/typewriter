@@ -1,5 +1,5 @@
 """Issue #10171: the Drop line (D1) runs the refinement engine beside the Refinement line, Relation-only.
-#10330: D1 SSS edits its own Relation file only and starts after Stage 4 SSS completed."""
+#10330: D1 SSS edits its own Relation file only. #10517: D1 never waits for Stage 4; only its first shard checks Stage 3."""
 import json
 import unittest
 from unittest import mock
@@ -42,7 +42,7 @@ def view(records):
 
 
 class DropLineRegistration(unittest.TestCase):
-    def test_d1_is_the_drop_line_stage_own_file_only_and_gated_on_every_stage3_and_its_shards_stage4(self):
+    def test_d1_is_the_drop_line_stage_own_file_only_and_only_its_first_shard_checks_every_stage3(self):
         self.assertEqual([spec.id for spec in refine.stages(DROP_METHOD)], ["d1"])
         self.assertEqual([spec.id for spec in refine.stages(STAGE3_METHOD)], ["s3", "s4"])
         spec = stage_d1.SPEC
@@ -51,15 +51,11 @@ class DropLineRegistration(unittest.TestCase):
         self.assertFalse(spec.cross_shard, "#10330: D1 SSS edits relation-SSS.jsonl only")
         self.assertEqual(spec.scope("001", ["data/relations/relation-007.jsonl", "data/relation-drops/drop-007.jsonl"]),
                          {"data/relations/relation-001.jsonl"})
-        s4_ok = stage4.SPEC.ok_key
         kv = {stage3.ok_key(f"{n:03d}"): "x" for n in range(1, 428)}
-        kv[s4_ok("001")] = "x"
-        self.assertFalse(spec.gate(kv, "001"), "D1 waits for the whole factory's Stage 3, not one shard's")
+        self.assertFalse(spec.gate(kv, "001"), "D1 001 waits for the whole factory's Stage 3, not one shard's")
         kv[stage3.ok_key("428")] = "x"
-        self.assertTrue(spec.gate(kv, "001"), "S4 001 merged (or its official no-change, also s4_ok_001)")
-        self.assertFalse(spec.gate(kv, "002"), "S4 002 not complete: D1 002 waits, whatever other shards' S4 does")
-        self.assertFalse(spec.gate({stage3.ok_key(f"{n:03d}"): "x" for n in range(1, 429)}, "001"),
-                         "every Stage 3 alone is not enough")
+        self.assertTrue(spec.gate(kv, "001"), "#10517: no Stage 4 completion is needed")
+        self.assertTrue(spec.gate({}, "002"), "a successor shard reads no Stage 3 or Stage 4 completion")
         self.assertEqual(control.method_label(DROP_METHOD), "Drop")
 
     def test_answer_grammar_keeps_d_n_h_lines_for_the_strict_cli_and_never_fills_in(self):
@@ -127,26 +123,80 @@ class TwoLines(unittest.TestCase):
         with self.assertRaises(batches.BatchError):
             batches.pr_line_shards({"number": 4, "title": "x", "body": "", "files": None}, DROP_METHOD)
 
-    def choose(self, open_prs, s4_done=("001",)):
+    def choose(self, open_prs, stage3_done=428):
         store = self.w.store
-        for n in range(1, 429):
+        for n in range(1, stage3_done + 1):
             store.set(stage3.ok_key(f"{n:03d}"), "x")
-        for shard in s4_done:
-            store.set(stage4.SPEC.ok_key(shard), "x")
         return refine.ops_for(stage_d1.SPEC).choose(kv=store, open_prs=open_prs, stage2_batches=[], stage3_batches=[],
                                                     latest_pr=None)
 
     def test_d1_selection_ignores_open_stage4_prs_and_waits_for_its_own(self):
-        self.assertEqual(self.choose([pr(1, "[S4/Sol] 002", 9929, [REL("002")])]).shard, "001",
-                         "S4 001 complete: another shard's open S4 does not hold D1 001")
+        self.assertEqual(self.choose([pr(1, "[S4/Sol] 002", 9929, [REL("002")])]).shard, "001")
         self.assertEqual(self.choose([pr(2, "[D1/Sol] 001", 10171, [REL("003")])]).status, "wait")
 
-    def test_d1_waits_until_its_shards_stage4_is_complete(self):
-        # An open S4 PR (in review or CI) or a no-review pilot PR records no s4_ok: not complete (#10330).
-        for open_prs in ([pr(1, "[S4/Sol] 001", 9929, [REL("001")])], [pr(3, "[D1/Luna Pilot] Shard 001", 10171, [REL("001")])]):
-            self.assertNotEqual(self.choose(open_prs, s4_done=()).status, "shard")
-        self.assertEqual(self.choose([], s4_done=()).status, "unready")
-        self.assertEqual(self.choose([], s4_done=("002",)).status, "unready", "another shard's S4 does not open D1 001")
+    def test_d1_001_needs_every_stage3_but_no_stage4(self):
+        # #10517: no s4_ok at all, and the same shard's S4 PR open (in review or CI): D1 001 still starts.
+        self.assertEqual(self.choose([]).shard, "001")
+        self.assertEqual(self.choose([pr(1, "[S4/Sol] 001", 9929, [REL("001")])]).shard, "001")
+        self.assertEqual(self.choose([pr(3, "[D1/Luna Pilot] Shard 001", 10171, [REL("001")])]).status, "wait",
+                         "D1's own PR still holds its shard")
+
+    def test_d1_001_ends_unready_without_every_stage3(self):
+        self.assertEqual(self.choose([], stage3_done=427).status, "unready")
+
+
+class IndependentOfStage4(unittest.TestCase):
+    """#10517: the real Drop line selection on a re-created Supervisor over the same DB."""
+
+    def setUp(self):
+        self.w = world(self)
+
+    def start(self):
+        w = self.w
+        self.assertTrue(w.store.start_stage3("codex", "continuous", DROP_METHOD)[0])
+        w.sup = w.make_sup()
+        read, get = [], w.store.get
+
+        def spy(key, *args, **kwargs):
+            read.append(key)
+            return get(key, *args, **kwargs)
+
+        with mock.patch.object(w.store, "get", side_effect=spy), mock.patch.object(w.sup, "_prepare_existing"):
+            w.sup._prepare_new_stage3(dict(w.store.line("codex", DROP_METHOD)))
+        completion = (stage3.ok_key("001")[:-3], stage4.SPEC.ok_key("001")[:-3])
+        return w.store.latest_batch("codex", DROP_METHOD), [key for key in read if key.startswith(completion)]
+
+    def test_first_shard_starts_on_every_stage3_with_an_open_stage4_of_the_same_shard(self):
+        w = self.w
+        for n in range(1, 429):
+            w.store.set(stage3.ok_key(f"{n:03d}"), "x")
+        w.gh.open = [pr(1, "[S4/Sol] 001", 9929, [REL("001")])]
+        b, _ = self.start()
+        self.assertEqual((b["shard"], b["batch"]), ("001", "d1"))
+
+    def test_first_shard_without_every_stage3_ends_the_line(self):
+        w = self.w
+        for n in range(1, 428):
+            w.store.set(stage3.ok_key(f"{n:03d}"), "x")
+        b, _ = self.start()
+        self.assertIsNone(b)
+        self.assertEqual(w.store.line("codex", DROP_METHOD)["run"], 0)
+
+    def test_successor_after_a_merged_001_reads_no_stage3_or_stage4_completion(self):
+        w = self.w
+        w.gh.latest_d1_pr = {"title": "[D1/Sol] 001", "merge_commit_sha": w.git.base_sha}
+        w.store.set(stage_d1.SPEC.ok_key("001"), w.git.base_sha)
+        b, read = self.start()
+        self.assertEqual((b["shard"], b["batch"]), ("002", "d1"))
+        self.assertEqual(read, [])
+
+    def test_successor_after_an_official_no_change_001_reads_no_stage3_or_stage4_completion(self):
+        w = self.w
+        w.store.set(stage_d1.SPEC.nochange_key("001"), w.git.base_sha)
+        w.store.set(stage_d1.SPEC.ok_key("001"), w.git.base_sha)
+        b, read = self.start()
+        self.assertEqual((b["shard"], b["batch"]), ("002", "d1"))
+        self.assertEqual(read, [])
 
 
 class LazyOpenPrFiles(unittest.TestCase):
