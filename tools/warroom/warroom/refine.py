@@ -77,6 +77,9 @@ class RefineSpec:
     cross_shard: bool = False
     # A shard whose official apply changes nothing completes without a commit or PR (`<id>_nochange_SSS`).
     no_change_complete: bool = False
+    # #10512: (apply result) -> the judgment summary logged on that no-change completion, in the Stage's own result
+    # format (S4: Sense counts, D1: Skip Sense verdicts). Required with `no_change_complete`.
+    no_change_summary: Callable | None = None
     # A provider prompt refusal may be saved as an explicit Keep-all `none` (Stage 3, #2292); False sends it to the
     # ordinary task failure path, since an editorial Skip and a refusal are different results.
     refusal_keep_all: bool = True
@@ -147,6 +150,8 @@ def register(spec: RefineSpec) -> RefineSpec:
         raise ValueError(f"refinement Stage {spec.id} is registered twice (id, tag or role {spec.role!r})")
     if not isinstance(spec.role, str) or not re.fullmatch(r"[a-z0-9-]+", spec.role) or spec.role in RESERVED_ROLES:
         raise ValueError(f"refinement Stage {spec.id} has an invalid or reserved role {spec.role!r}")
+    if spec.no_change_complete and not callable(spec.no_change_summary):
+        raise ValueError(f"refinement Stage {spec.id} completes without changes but declares no no_change_summary")
     _REGISTRY.append(spec)
     return spec
 
@@ -282,6 +287,10 @@ class RefineOps:
         while spec.no_change_complete and previous < SHARDS and kv.get(spec.nochange_key(f"{previous + 1:03d}")):
             previous += 1
         if previous >= SHARDS:
+            # #10512: a merged last PR alone is not completion; the final shard's recorded completion is.
+            final = f"{SHARDS:03d}"
+            if not kv.get(spec.ok_key(final)):
+                return Choice("unready", note=f"{label} 최종 샤드 {final} 완료 기록 없음 / 실행 종료")
             return Choice("done", note=f"{label} 전체 샤드 생산이 완료되었습니다.")
         shard = f"{previous + 1:03d}"
         if pin and pin != shard:

@@ -132,5 +132,6 @@ SPEC = refine.register(refine.RefineSpec(
     fix=fixcoord.FixSpec(prefix="d1", label="D1", response=".warroom-scratch/d1-fix-response.json",
                          amend_input=".warroom-scratch/d1-fix-amend.txt",
                          commit_subject="Apply D1 review amendments", amend_header="amend"),
-    cross_shard=False, no_change_complete=True, refusal_keep_all=False, refusal_records=True, relations_only=True,
+    cross_shard=False, no_change_complete=True, no_change_summary=prbody.d1_sense_summary, refusal_keep_all=False,
+    refusal_records=True, relations_only=True,
     method=DROP_METHOD, verify_judgments=True, replay_drops_only=True, body=prbody.d1_body))

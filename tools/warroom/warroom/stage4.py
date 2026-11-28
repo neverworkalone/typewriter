@@ -191,5 +191,6 @@ SPEC = refine.register(refine.RefineSpec(
     fix=fixcoord.FixSpec(prefix="s4", label="Stage 4", response=".warroom-scratch/s4-fix-response.json",
                          amend_input=".warroom-scratch/s4-fix-amend.txt",
                          commit_subject="Apply Stage 4 review amendments", amend_header="amend"),
-    cross_shard=True, no_change_complete=True, refusal_keep_all=False, refusal_records=True, relations_only=True,
+    cross_shard=True, no_change_complete=True, no_change_summary=prbody.stage4_sense_summary, refusal_keep_all=False,
+    refusal_records=True, relations_only=True,
     body=prbody.stage4_body))
