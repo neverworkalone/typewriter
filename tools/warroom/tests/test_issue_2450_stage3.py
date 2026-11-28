@@ -45,6 +45,9 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
         self.assertEqual(stage3.choose(**{**args, "stage2_batches": [{"shard": "007", "state": "PRODUCING"}]}, latest_pr=latest).status, "wait")
         self.assertEqual(stage3.choose(**{**args, "stage3_batches": [{"shard": "007", "batch": "all", "state": "COMPLETE", "merged": 1}]}, latest_pr=latest).status, "wait")
         self.assertEqual(stage3.choose(**args, latest_pr=latest, pin="008").status, "unready")
+        # #10512: a merged last PR is not completion without the final shard's recorded completion
+        self.assertEqual(stage3.choose(**args, latest_pr={"title": "[S3/Codex] 428"}).status, "unready")
+        w.store.set(stage3.ok_key("428"), HEAD1)
         self.assertEqual(stage3.choose(**args, latest_pr={"title": "[S3/Codex] 428"}).status, "done")
 
     def test_claude_or_codex_line_can_start_and_store_reserves_one_shard(self):

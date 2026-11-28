@@ -39,7 +39,7 @@ from .launch_gate import LaunchDenied, LaunchGate
 from . import maintenance as maint_results
 from .maintenance import Maintenance
 from .recovery import FORCE_STOP_PREFIX, Recovery
-from .store import DROP_METHOD, MAINTENANCE_METHOD, STAGE2_METHOD, REFINE_METHODS, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, REFINE_METHODS, STAGE3_METHOD, LineBusy, LineNotRunnable, exit_verdict_key
 
 
 RECOVERY_KEY = ("recovery", "*")   # the Recovery lane's Coordinator job key (never a Line: no Line row has method "*")
@@ -1369,10 +1369,15 @@ class Supervisor:
             if occupied:
                 choice = refine.Choice("wait", note=f"{spec.label} 샤드 {occupied['shard']} 작업 점유")
             else:
-                sha = None
+                # #10512: a Stage whose final shard is complete (`<id>_ok_<SHARDS>`: its merged-and-verified PR or its
+                # official no-change completion, reachable only after every earlier shard in sequence) is skipped
+                # without any PR lookup; only the first unfinished Stage selects its next shard.
+                final, choice = f"{refine.SHARDS:03d}", refine.Choice("done")
                 for spec in refine.stages(method):
+                    if self.store.get(spec.ok_key(final)):
+                        continue
                     latest = self.gh.latest_refine_production(base, spec)
-                    sha = sha or self.git.fetch_base(base)
+                    sha = self.git.fetch_base(base)
                     if latest and not self.git.is_ancestor(latest["merge_commit_sha"], sha):
                         choice = refine.Choice("wait", note=f"최근 {spec.label} 머지의 master 반영 대기")
                         break
@@ -1381,8 +1386,7 @@ class Supervisor:
                         stage2_batches=[b for b in all_batches if b["method"] == STAGE2_METHOD],
                         stage3_batches=s3_batches, latest_pr=latest,
                         pin=ln["shard_pin"] if ln["mode"] == "single" else "")
-                    if choice.status != "done":
-                        break
+                    break
         except TRANSIENT as error:
             return self._transient_wait(key, error, line=line)
         except Exception as error:
@@ -1882,7 +1886,7 @@ class Supervisor:
             raise GitError(verify)
         self.store.set(spec.nochange_key(b["shard"]), head)
         self.store.set(spec.ok_key(b["shard"]), head)
-        self.store.log(b["id"], f"{self._stage(b)} 샤드 {b['shard']} 무변경 완료: {(prbody.d1_sense_summary if spec.method == DROP_METHOD else prbody.stage4_sense_summary)(result)}, "
+        self.store.log(b["id"], f"{self._stage(b)} 샤드 {b['shard']} 무변경 완료: {spec.no_change_summary(result)}, "
                        f"비용 {prbody.run_cost(self.store.runs(b['id'])) or '미측정'}. commit·PR 없이 정리합니다.")
         self.store.update(b["id"], state="CLEANUP", run_kind=None, pid=None)
 

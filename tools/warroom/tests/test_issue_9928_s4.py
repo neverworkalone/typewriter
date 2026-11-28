@@ -56,6 +56,8 @@ class Stage4Registration(unittest.TestCase):
         self.assertTrue(latest is None or latest["batch"] == "all", "Stage 3 is not done: no Stage 4")
 
         w.gh.merged_stage3_prs = [{"title": "[S3/Sol] 428", "merge_commit_sha": w.git.base_sha}]
+
+        w.store.set(stage3.ok_key("428"), w.git.base_sha)   # its recorded final-shard completion
         self.assertTrue(w.store.start_stage3("codex", "continuous")[0])
         # Shards 001-002 completed without changes (no PR); the next selection is 003, gated on its Stage 3 success.
         w.store.set(stage4.SPEC.nochange_key("001"), w.git.base_sha)
@@ -77,6 +79,7 @@ class Stage4Registration(unittest.TestCase):
         w = self.w
         del w.cfg["assignments"]["stage4"]
         w.gh.merged_stage3_prs = [{"title": "[S3/Sol] 428", "merge_commit_sha": w.git.base_sha}]
+        w.store.set(stage3.ok_key("428"), w.git.base_sha)   # its recorded final-shard completion
         w.store.set(stage3.ok_key("001"), w.git.base_sha)
         self.start().assert_not_called()
         self.assertIn("Stage 4", w.store.line("codex", STAGE3_METHOD)["blocked"])

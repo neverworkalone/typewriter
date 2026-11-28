@@ -5,10 +5,10 @@ import unittest
 from unittest import mock
 
 from tests.fakes import World, assign_profiles
-from warroom import refine, s3parallel, stage3, stage4
+from warroom import refine, s3parallel, stage3, stage4, stage_d1
 from warroom.adapters import RunSpec
 from warroom.config import config_problem, role_problem
-from warroom.store import STAGE3_METHOD, LineBusy
+from warroom.store import DROP_METHOD, STAGE3_METHOD, LineBusy
 
 
 class RefinementStageRegistry(unittest.TestCase):
@@ -45,6 +45,7 @@ class RefinementStageRegistry(unittest.TestCase):
     def test_the_next_stage_starts_after_every_shard_of_the_previous_one_gated_per_shard(self):
         w = self.w
         w.gh.merged_stage3_prs = [{"title": "[S3/Codex] 428", "merge_commit_sha": w.git.base_sha}]
+        w.store.set(stage3.ok_key("428"), w.git.base_sha)   # its recorded final-shard completion
         self.start().assert_not_called()   # Stage 3 is done, but shard 001 has no Stage 3 success yet
         self.assertEqual(w.store.line("codex", STAGE3_METHOD)["run"], 0)
         self.assertIsNone(w.store.latest_batch("codex", STAGE3_METHOD))
@@ -80,6 +81,7 @@ class RefinementStageRegistry(unittest.TestCase):
         w = self.w
         del w.cfg["assignments"]["stage-test"]
         w.gh.merged_stage3_prs = [{"title": "[S3/Codex] 428", "merge_commit_sha": w.git.base_sha}]
+        w.store.set(stage3.ok_key("428"), w.git.base_sha)   # its recorded final-shard completion
         w.store.set(stage3.SPEC.ok_key("001"), w.git.base_sha)
         self.start().assert_not_called()
         line = w.store.line("codex", STAGE3_METHOD)
@@ -92,11 +94,95 @@ class RefinementStageRegistry(unittest.TestCase):
     def test_the_line_ends_normally_after_the_last_registered_stage(self):
         w = self.w
         w.gh.merged_stage3_prs = [{"title": "[S3/Codex] 428", "merge_commit_sha": w.git.base_sha}]
+        w.store.set(stage3.ok_key("428"), w.git.base_sha)   # its recorded final-shard completion
         w.gh.latest_s4_pr = {"title": "[S4/Codex] 428", "merge_commit_sha": w.git.base_sha}
+        w.store.set(self.s4.ok_key("428"), w.git.base_sha)
         self.start().assert_not_called()
         self.assertEqual(w.store.line("codex", STAGE3_METHOD)["run"], 0)
         self.assertIsNone(w.store.latest_batch("codex", STAGE3_METHOD))
         self.assertIn("등록된 모든 정제 Stage", " ".join(e["msg"] for e in w.store.recent_events()))
+
+    def later_stage(self, base, sid, gate_on, method=STAGE3_METHOD, **extra):
+        """#10512: a test-only Stage after `gate_on` on `method`'s line, with its own profile."""
+        role = f"{sid}-test"
+        self.w.cfg["assignments"][role] = {"codex": "codex-s4"}
+        spec = refine.register(dataclasses.replace(
+            base, id=sid, tag=sid, label=sid.upper(), role=role, short=sid.upper(), method=method,
+            title=re.compile(rf"^\[{sid.upper()}/[^\]/\s]+\] (\d{{3}})$"),
+            detail_title=re.compile(rf"\[{sid.upper()}/([A-Za-z0-9-]+)\] (\d{{3}})"),
+            search_phrases=(f'"{sid.upper()}"',), gate=lambda kv, shard: bool(kv.get(gate_on.ok_key(shard))),
+            gate_label=gate_on.label, fix=dataclasses.replace(base.fix, prefix=sid, label=sid.upper()), module=None,
+            **extra))
+        self.addCleanup(refine._REGISTRY.remove, spec)
+        self.addCleanup(refine._OPS.pop, sid, None)
+        return spec
+
+    def start_looked_up(self, method=STAGE3_METHOD):
+        """Run one selection; return whether a batch was prepared and the Stage ids whose PRs were looked up."""
+        w = self.w
+        with mock.patch.object(w.gh, "latest_refine_production", wraps=w.gh.latest_refine_production) as lookup, \
+                mock.patch.object(w.sup, "_prepare_existing") as prepare:
+            w.sup._prepare_new_stage3(dict(w.store.line("codex", method)))
+        return prepare.called, [call.args[1].id for call in lookup.call_args_list]
+
+    def test_a_completed_stage_is_skipped_without_any_pr_lookup_on_every_later_selection(self):
+        w, final = self.w, f"{refine.SHARDS:03d}"
+        s5 = self.later_stage(self.s4, "s5", self.s4)
+        w.store.set(stage3.SPEC.ok_key(final), w.git.base_sha)
+        w.store.set(self.s4.ok_key(final), w.git.base_sha)
+        w.store.set(self.s4.ok_key("001"), w.git.base_sha)
+        self.assertEqual(self.start_looked_up(), (True, ["s5"]))
+        b = w.store.latest_batch("codex", STAGE3_METHOD)
+        self.assertEqual((b["shard"], b["batch"]), ("001", "s5"))
+        # its next shard after a restart: the recorded completions persist, so still only S5 is looked up
+        w.store.update(b["id"], state="COMPLETE", merged=1)
+        w.store.set(s5.ok_key("001"), w.git.base_sha)
+        w.gh.latest_s5_pr = {"title": "[S5/Codex] 001", "merge_commit_sha": w.git.base_sha}
+        w.store.set(self.s4.ok_key("002"), w.git.base_sha)
+        self.assertTrue(w.store.start_stage3("codex", "continuous")[0])
+        self.assertEqual(self.start_looked_up(), (True, ["s5"]))
+        self.assertEqual(w.store.latest_batch("codex", STAGE3_METHOD)["shard"], "002")
+
+    def test_the_drop_line_skips_a_stage_whose_last_shard_completed_without_changes(self):
+        w, final = self.w, f"{refine.SHARDS:03d}"
+        d2 = self.later_stage(stage_d1.SPEC, "d2", stage_d1.SPEC, method=DROP_METHOD)
+        self.assertTrue(w.store.start_stage3("codex", "continuous", DROP_METHOD)[0])
+        w.store.set(stage_d1.SPEC.nochange_key(final), w.git.base_sha)   # its official no-change: no PR
+        w.store.set(stage_d1.SPEC.ok_key(final), w.git.base_sha)
+        w.store.set(stage_d1.SPEC.ok_key("001"), w.git.base_sha)
+        self.assertEqual(self.start_looked_up(DROP_METHOD), (True, ["d2"]))
+        self.assertEqual(w.store.latest_batch("codex", DROP_METHOD)["batch"], "d2")
+
+        w.store.update(w.store.latest_batch("codex", DROP_METHOD)["id"], state="COMPLETE", merged=1)
+        w.store.set(d2.ok_key(final), w.git.base_sha)
+        self.assertTrue(w.store.start_stage3("codex", "continuous", DROP_METHOD)[0])
+        self.assertEqual(self.start_looked_up(DROP_METHOD), (False, []), "every Stage done: no lookup at all")
+        self.assertEqual(w.store.line("codex", DROP_METHOD)["run"], 0)
+        self.assertIn("등록된 모든 정제 Stage", " ".join(e["msg"] for e in w.store.recent_events()))
+
+    def test_a_merged_last_pr_without_its_recorded_completion_does_not_skip_the_stage(self):
+        w = self.w
+        w.gh.merged_stage3_prs = [{"title": "[S3/Codex] 428", "merge_commit_sha": w.git.base_sha}]
+        w.store.set(stage3.SPEC.ok_key("001"), w.git.base_sha)
+        self.assertEqual(self.start_looked_up(), (False, ["s3"]))
+        self.assertEqual(w.store.line("codex", STAGE3_METHOD)["run"], 0)
+        self.assertIsNone(w.store.latest_batch("codex", STAGE3_METHOD))
+        self.assertIn("Stage 3 최종 샤드 428 완료 기록 없음", " ".join(e["msg"] for e in w.store.recent_events()))
+
+    def test_the_no_change_summary_is_the_stages_own(self):
+        w = self.w
+        with self.assertRaises(ValueError):
+            refine.register(dataclasses.replace(self.s4, id="s9", tag="s9", role="s9-test", no_change_complete=True))
+        s5 = self.later_stage(self.s4, "s5", self.s4, no_change_complete=True,
+                              no_change_summary=lambda result: f"S5 판정 {result['n']}건")
+        wt = w.paths.worktrees / "s5-001"
+        bid = w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="001", batch="s5",
+                                   branch="s5-codex-001", worktree=str(wt))
+        w.git.reg[str(wt)] = "s5-codex-001"
+        with mock.patch.object(w.sup, "_stage3_finalize_verify", return_value=None):
+            w.sup._refine_no_change(w.store.batch(bid), w.git.base_sha, {"n": 7})
+        self.assertEqual(w.store.get(s5.ok_key("001")), w.git.base_sha)
+        self.assertIn("샤드 001 무변경 완료: S5 판정 7건", " ".join(e["msg"] for e in w.store.recent_events()))
 
     def test_registration_rejects_a_duplicate_or_reserved_role(self):
         for role in ("stage-test", "stage3", "stage2", "maintainer"):
